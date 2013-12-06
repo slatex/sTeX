@@ -1,0 +1,173 @@
+#!/usr/bin/perl -w
+#######################################################################################
+# A tool for creating graphs of module usage patterns based on graphviz.              #
+# Copyright (c) 2005, Ioan Sucan, released under the Gnu General Public License (GPL) #
+#                                 see http://www.gnu.org/copyleft/gpl.html            #
+# $URL: svn://kwarc.eecs.iu-bremen.de/repos/kwarc/projects/content/bin/sgraph$        # 
+# $Date: 2005-10-04 19:31:43 +0200 (Tue, 04 Oct 2005) $ $Rev: 4376 $                  #
+#######################################################################################
+
+use strict;
+
+use Getopt::Long;
+use Modparse;
+use Pod::Usage;
+
+my $input = "-", my $output = "out", my $format = "ps";
+my $root, my $stop_at_end=0, my $use_grouping = 0;
+my $rmdot = 0, my $verbose=0, my $theory = '', my $srange = '';
+my %arg_snippath; my @snippathList;
+
+sub group_name{
+    my ($st) = @_;
+    if ($st =~ /^(.*[\/\\])?([^\/\\]+)\.[^\.\/\\]*$/) { $st = $2; }
+    elsif ($st =~ /^(.*[\/\\])?([^\.\/\\]+)$/) { $st = $2; }
+    $st =~ s/-/_/g;
+    return $st; }
+
+GetOptions("output=s" => \$output,
+	   "format=s" => \$format,
+	   "nodot" => sub {$rmdot = 1;},
+	   "root=s" => \$root,
+	   "theory=s" => \$theory,
+	   "sliderange=s" => \$srange,
+	   "path=s" => \%arg_snippath,
+	   "defpath=s" => \@snippathList,
+	   "verbose" => sub {$verbose = 1;},
+	   "grouping" => sub {$use_grouping = 1},
+	   "stop" => sub {$stop_at_end = 1},
+	   "help" => sub {pod2usage(2)});
+
+$output = $1 if ($output =~ m/([^.]+)\..*/);
+$input = $ARGV[0] if ($#ARGV>=0);
+$root = group_name($input) unless $root;
+
+
+my %data = (); my %group = ();
+my $mp = Modparse->new(snippathList=>\@snippathList,
+		       snippath=>\%arg_snippath,
+		       stopAtEnd=>$stop_at_end,
+		       verbose=>$verbose,
+		       onBegin=>sub { $_[0]->{perm}->{slide} = 0; $_[0]->{perm}->{linecount} = 0;
+				      if ($srange =~ /(\d+)\:(\d+)/){
+					  ($_[0]->{perm}->{sbegin}, $_[0]->{perm}->{send}) = ($1, $2);
+					  $_[0]->{perm}->{in_sliderange} = ($_[0]->{perm}->{sbegin}<1);
+				      } else { $_[0]->{perm}->{in_sliderange} = 1; }},
+		       onBeginFile=>sub { $_[0]->{grp} = group_name($_[0]->{filename}); },
+		       onBeginModule=>sub { 
+			   if ($_[0]->{perm}->{in_sliderange} && (my $id = $_[0]->{module_id})){
+			       $id =~ s/[:-]/_/g; 
+			       my $uses = '';
+			       if ($_[0]->{module_args} =~ /uses=(([\w-]+)|(\{[\w,-]+\}))/){
+				   $uses = $1;
+				   $uses =~ s/,/;/g; $uses =~ s/[:-]/_/g; }
+			       $data{$id}=$uses;
+			       $group{$id}=$_[0]->{perm}->{grp};
+			   }},
+		       onEveryLine=>sub {
+			   $_[0]->{perm}->{linecount}++;
+			   print ". " if ($_[0]->{pack}->{verbose} && ($_[0]->{perm}->{linecount} % 1000==0));
+			   $_[0]->{perm}->{slide}++ if $_[0]->{simple_tex} =~ /\\begin\{slide\}/;
+			   $_[0]->{perm}->{in_sliderange}=($_[0]->{perm}->{slide}<=$_[0]->{perm}->{send} &&
+							   $_[0]->{perm}->{slide}>=$_[0]->{perm}->{sbegin})
+			       if ($_[0]->{perm}->{sbegin} && $_[0]->{perm}->{send});
+		       });
+
+print "\nGenerating graph...\n" if $verbose;
+
+$mp->execute($input);
+
+my @queue=();
+
+if ($theory){
+    $theory =~ s/-/_/g;
+    if ($data{$theory}){
+	my $start = 0, my $end = 1, my %already_in;
+	$queue[0] = $theory;
+	$already_in{$theory} = 1;
+	while ($start<$end){
+	    my $idx, my $usesx;
+	    $idx = $queue[$start];
+	    $usesx = $data{$queue[$start]};	    
+	    $start++;
+	    if ($usesx){
+		$usesx =~ s/\{//;
+		$usesx =~ s/\}//;		
+		foreach (split(/;/,$usesx)){
+		    next if $already_in{$_};
+		    $queue[$end] = $_;
+		    $already_in{$_} = 1;
+		    $end++;
+		}
+	    }
+	}
+    }
+} else{
+    @queue = keys %data;
+}
+
+open(FOUT,">$output.dot")  or die "Can't open output file\n";
+print FOUT "digraph TEX {\n";
+print FOUT "$root [shape=box];\n";
+
+if ($use_grouping){
+    my %subgraph = ();
+    foreach (@queue){
+	$subgraph{$group{$_}}.="$_;";
+    }
+    foreach my $subgr (keys %subgraph){
+	print FOUT "subgraph cluster_$subgr {\n";
+	print FOUT "color = blue;\n";
+	print FOUT "label = $subgr;\n";
+	print FOUT "$subgraph{$subgr}\n";    
+	print FOUT "}\n";
+    }
+}
+
+my $lk = 0;
+for my $idx (@queue){
+    my $usesx = $data{$idx};
+    $lk=$lk+($usesx =~ tr/;//)+1;        
+    if ($usesx){
+	print FOUT "$idx -> $usesx;\n";
+    } else {
+	print FOUT "$idx -> $root;\n";
+    }
+}
+
+print "Number of links: $lk\n" if $verbose;
+
+
+print FOUT "}\n";
+close(FOUT);
+
+`dot -T$format -o $output.$format $output.dot`;
+unlink "$output.dot" if ($rmdot==1);
+
+print "Done.\n" if $verbose;
+
+__END__
+
+=head1 SYNOPSIS
+
+sgraph <filename> [options] 
+
+    <filename>      .tex input file; stdin by default
+
+    Options:
+    --output        output file; out.dot by default
+    --format        output format; .ps by default; for available formats, see dot --help
+    --nodot         do not generate .dot file, just target format
+    --root          the 'root' of the graph. (name of course)
+    --theory        generate a subgraph for the theory
+    --sliderange    only look at the given slide range; (2:16 for example)
+    --path XXX      specify the value of \XXX (some snippath) in case it is 
+         = somePath      not defined in the processed .tex file
+    --defpath XXX   specify which \XXX (snippath definitions) to look for
+    --stop          stop reading data when \end{document} is found, not at EOF
+    --grouping      group modules within sections.
+    --verbose       verbose on
+    --help          this screen
+
+Example:
+./sgraph slides.tex -o graph -f ps -n -t TCN --sliderange 20:10000 -r GenCS -v

@@ -1,0 +1,96 @@
+\begin{omgroup}[id=intro]{Introduction}
+  We will show how to semantically mark up mathematics in the {\sTeX}
+  format~\cite{Kohlhase:ulsmf08} and how to convert it into
+  {\omdoc}~\cite{Kohlhase:OMDoc1.3}.
+
+  We have some mathematical material in {\sref{sec.math}} which will serve as example
+  content. In the rest of this section we will explain the setup of the example and
+  present an approach to automation of the {\omdoc} conversion via Unix Makefiles.
+  \begin{omgroup}{The Setup}
+    \begin{module}[id=setup]
+    \begin{definition}[display=flow]
+      The source of this note is contained in the file {\texttt{paper.tex}}. We call it
+     the {\defi{target}}, since formatting it with {\LaTeX} will generate the main
+      document. The content in {\sref{sec.contfuncs}} and {\sref{sec.differentiable}}
+      comes from included files {\texttt{continuous.tex}} and
+     {\texttt{differentiable.tex}}, we will call them {\defi{module}s}, since they may
+      be used (i.e. included) by other target documents as well.
+    \end{definition}
+
+    \begin{omtext}
+      As the modules are built for inclusion into other documents, they are not
+      self-contained:
+    \begin{enumerate}
+    \item they do not contain a {\LaTeX} preamble and
+      \verb|\begin|/\verb|\end{document}|, and
+    \item they may depend on other modules, whose semantic macros they need to include,
+    \item to facilitate this a module file {\texttt{modf.tex}} comes with a ``semantic
+      macro short form'' {\texttt{modf.sms}} that can be included without generating
+      output in the PDF.
+    \end{enumerate}
+  \end{omtext}
+  
+  \begin{omtext}
+    This will have consequences for the automation. Concretely, the module on
+    differentiable functions in {\sref{sec.differentiable}} depends on that for continuous
+    functions in {\sref{sec.contfuncs}}. Both of them depend on modules for real numbers,
+    sets and functions that we do not want to cover in this note. \inlinedef{We assume
+      that they have already been marked up with the same methods as we describe here and
+      are accessible to us and call them {\defii{background}{module}s}}. In our setup we
+    keep them in the subdirectory {\texttt{background}}.
+  \end{omtext}
+\end{module}
+\end{omgroup}
+
+\begin{omgroup}{Formatting and {\omdoc} conversion}
+  To format an {\sTeX} document --- i.e. to produce a PDF file from the {\sTeX} marked-up
+  sources --- we only need to run the {\texttt{pdflatex}} program over the target document
+  --- assuming that all modules (regular or background) have semantic macro short forms.
+
+  To convert an {\sTeX} document to {\omdoc}, we need to run {\texttt{latexml}} over it,
+  post-process the result by {\texttt{latexmlpost}}, and finally massage away all remaining
+  {\latexml} islands with a stylesheet, see ~\cite{Kohlhase:ssmtl*} for details.
+\end{omgroup}
+
+\begin{omgroup}{Makefile-based Automation}
+ As the conversion to {\omdoc} is rather complex (the programs in the three steps take a
+  variety of options), we support an automation by Unix Makefiles. There are three main
+  {\texttt{make}} targets.
+
+  \begin{description}
+  \item[{\texttt{make omdoc}}] will trigger the {\omdoc} transformation of the target
+    document.
+  \item[{\texttt{make mods}}] will trigger the {\omdoc} transformation of the modules.
+  \item[{\texttt{make pdf}}] will trigger the {\LaTeX} formatting the target
+  \item[{\texttt{make mpdf}}] will trigger the {\LaTeX} formatting the modules
+  \item[{\texttt{make sms}}] will trigger the re-generation of all semantic macro short
+    forms of modules (this is implicitly called in all the other {\texttt{make}} targets)
+  \end{description}
+  To use this, we need to set up a {\texttt{{Makefile}}} of the following form:
+ 
+\lstset{columns=flexible,frame=lines,numbers=left,stepnumber=2,numberstyle=\tiny,basicstyle=\small}
+\lstinputlisting[language=make]{Makefile} 
+
+  The variable {\lstinline{STEXDIR}} has to be set to the main directory of the {\sTeX}
+  distribution. The variable {\lstinline{TARGET}} specifies the target document (all other
+  {\texttt{*.tex}} files that are not excluded in the {\lstinline{BUTFILES}} variables are
+  considered as modules). Here, the {\texttt{background}} directory for convenience. The
+  {\lstinline{MODSLIBDIR}} specifies the location of the prefix and postfix files
+  {\texttt{pre.tex}} and {\texttt{post.tex}} that will be prepended and appended to the
+  modules to make them into complete files {\TeX} files that can be converted. The last
+  three lines just include the Makefiles from the {\sTeX} distribution and configure the
+  default make target (\texttt{make all}) to be produce the pdf version 
+
+  Note that in the directory {\texttt{background}} we have a very similar Makefile as
+  above. The only differences are that the variable {\lstinline{STEXDIR}} is adapted and
+  that the {\lstinline{BUTFILE}} variable is set to {\texttt{pre.tex}} and
+  {\texttt{post.tex}}, so that they are not converted. In the directory
+  {\texttt{background}} we have followed good practice by establishing a phony 
+\end{omgroup}
+
+\end{omgroup}
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: "paper"
+%%% End: 

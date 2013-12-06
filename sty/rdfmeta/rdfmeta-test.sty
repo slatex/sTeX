@@ -1,0 +1,88 @@
+%%
+%% This is file `rdfmeta.sty',
+%% generated with the docstrip utility.
+%%
+%% The original source files were:
+%%
+%% rdfmeta.dtx  (with options: `package')
+%% 
+\NeedsTeXFormat{LaTeX2e}[1999/12/01]
+\ProvidesPackage{rdfmeta}[2010/09/01 v0.2 Metadata key upgrades]
+\DeclareOption{showmeta}{\PassOptionsToPackage{\CurrentOption}{metakeys}}
+\newif\if@rdfmeta@sectioning\@rdfmeta@sectioningfalse
+\DeclareOption{sectioning}{\@rdfmeta@sectioningtrue}
+\ProcessOptions
+\RequirePackage{sref,modules}
+\newcommand\keydef[2]{\addmetakey{#1}{#2}%
+\message{adding key #2 to key group #1}
+\expandafter\g@addto@macro\this@module{\addmetakey{#1}{#2}}}
+\def\@yes@{yes}
+\addmetakey*{upgrade}{idlabel}
+\addmetakey*{upgrade}{optarg}
+\addmetakey*[yes]{upgrade}{optargstar}
+\addmetakey*{upgrade}{keygroup}
+\newcommand\rdfmeta@upgrade{\@ifstar\rdfmeta@upgrade@star\rdfmeta@upgrade@nostar}
+
+\newcommand\rdfmeta@upgrade@nostar[2][]{%
+\@ifundefined{#2}{}{\@rdfmeta@upgrade{#1}{#2}{#2}\rdfmeta@upgrade@base{#2}}}
+\newcommand\rdfmeta@upgrade@star[2][]{%
+\@ifundefined{#2}{}{\@rdfmeta@upgrade{#1}{#2}{#2 and #2*}\rdfmeta@upgrade@base@star{#2}}}
+
+\newcommand\@rdfmeta@upgrade[3]{\metasetkeys{upgrade}{#1}%
+\ifx\upgrade@keygroup\@empty\def\@@group{#2}\else\edef\@@group{\upgrade@keygroup}\fi
+\ifx\upgrade@idlabel\@empty\srefaddidkey{#2}%
+\else\srefaddidkey[prefix=\upgrade@idlabel]{#2}\fi%
+\expandafter\let\csname rdfmeta@#2@old\expandafter\endcsname%
+\csname#2\endcsname%
+\message{redefining macro #3 for an optional argument with keygroup \@@group}
+\ifx\upgrade@optarg\@empty\else
+\message{adding key {\upgrade@optarg} to keygroup \@@group}
+\addmetakey*{\@@group}\upgrade@optarg\fi}
+
+\newcommand{\rdfmeta@upgrade@base}[1]{%
+\ifx\upgrade@optarg\@empty
+\expandafter\renewcommand\csname #1\endcsname[1][]%
+{\metasetkeys{\@@group}{##1}\@nameuse{rdfmeta@#1@old}}
+\else
+\expandafter\renewcommand\csname #1\endcsname[1][]%
+{\metasetkeys{\@@group}{##1}
+% \def\@@gropt{\@nameuse{\@@group @\upgrade@optarg}}
+% \message{gropt:\@@gropt!}
+\@nameuse{rdfmeta@#1@old}}
+\fi}
+
+\newcommand\rdfmeta@upgrade@base@star[1]{
+\expandafter\renewcommand\csname #1\endcsname%
+{\@ifstar{\@nameuse{rdfmeta@#1@star}}{\@nameuse{rdfmeta@#1@nostar}}}%
+\expandafter\newcommand\csname rdfmeta@#1@nostar\endcsname[1][]%
+{\metasetkeys{#1}{##1}%
+\ifx\@@gropt\@empty\@nameuse{rdfmeta@#1@old}%
+\else\@nameuse{rdfmeta@#1@old}[\@@gropt]\fi}%
+\ifx\upgrade@optargstar\@yes@%
+\expandafter\newcommand\csname rdfmeta@#1@star\endcsname[1][]%
+{\metasetkeys{#1}{##1}\def\@@gropt{\@nameuse{\@@group @\upgrade@optarg}}
+\@nameuse{rdfmeta@#1@old}*[\@@gropt]}%
+\else%
+\expandafter\newcommand\csname rdfmeta@#1@star\endcsname[1][]%
+{\metasetkeys{#1}{##1}%
+\@nameuse{rdfmeta@#1@old}*}%
+\fi%
+\addmetakey*\@@group{\upgrade@optarg}}
+
+\if@rdfmeta@sectioning
+\message{redefining sectioning commands!}
+\rdfmeta@upgrade*[keygroup=sectioning,optarg=short,optargstar=no]{part}
+\rdfmeta@upgrade*[keygroup=sectioning,optarg=short,optargstar=no]{chapter}
+\rdfmeta@upgrade*[keygroup=sectioning,optarg=short,optargstar=no]{section}
+\rdfmeta@upgrade*[keygroup=sectioning,optarg=short,optargstar=no]{subsection}
+\rdfmeta@upgrade*[keygroup=sectioning,optarg=short,optargstar=no]{subsubsection}
+\rdfmeta@upgrade*[keygroup=sectioning,optarg=short,optargstar=no]{paragraph}
+\fi
+\endinput
+%%
+%% End of file `rdfmeta.sty'.
+
+%%% Local Variables: 
+%%% mode: LaTeX
+%%% TeX-master: "test"
+%%% End :

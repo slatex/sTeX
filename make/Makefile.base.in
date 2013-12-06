@@ -1,0 +1,48 @@
+sms:		$(MODS.sms) 
+
+####################### sTeX utilities ##############################
+
+$(MODS.sms): 	%.sms: %.tex $(STEXBINDIR)/sms 
+		$(SMSPROG) $<
+
+driver: $(DRIVER)
+$(DRIVER): $(MODS) $(MODS.pre) $(MODS.post)
+	cat $(MODS.pre) > $@
+	@echo '\\begin{document}' >> $@
+	@echo '\\tableofcontents\\newpage' >> $@
+#	@for d in $(MODS4all); do (echo "\\\begin{omgroup}{File: $$d.tex}  \n\\input{$$d}\n\\\end{omgroup}\n\\\newpage\n" >>$@) done
+	@for d in $(MODS4all); do (echo "\\\begin{center}\\LARGE File: \\\url{$$d.tex}\\end{center}" >>$@; echo "\\input{$$d}\\\newpage" >>$@) done
+	cat $(MODS.post) >> $@
+	echo '\\end{document}' >> $@
+
+graph:	
+	$(GRAPHPROG) -o graph -f pdf $(SNIPPATHS) all.tex 
+
+idtest:		$(TARGET)
+		$(STEXBINDIR)/idcheck -q slides.tex
+
+struct:		$(TARGET)
+		$(STEXBINDIR)/modstr < slides.tex
+
+ccheck:		$(TARGET)
+		latex slides.tex
+		$(STEXBINDIR)/idcheck slides.tex
+		$(STEXBINDIR)/modstr -s < slides.tex > sstruct
+		cat sstruct
+
+############################# svn #################################
+cleanup:
+	svn $@ 
+ci:
+	svn $@ -m'draining'
+
+upgrade:
+	svn upgrade 
+
+
+############################# cleaning #################################
+clean: 
+	rm -Rf $(CLEAN)
+
+distclean:  clean
+	rm -Rf $(DISTCLEAN)

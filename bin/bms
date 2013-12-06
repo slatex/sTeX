@@ -1,0 +1,340 @@
+#!/usr/bin/perl -w
+
+#######################################################################################
+# A tool for building a default module usage structure.                               #
+# Copyright (c) 2005, Ioan Sucan, released under the Gnu General Public License (GPL) #
+#                                 see http://www.gnu.org/copyleft/gpl.html            #
+# $URL: svn://kwarc.eecs.iu-bremen.de/repos/kwarc/projects/content/bin/bms$           # 
+# $Date: 2005-10-04 10:47:41 -0500 (Tue, 04 Oct 2005) $ $Rev: 4371 $                  #
+#######################################################################################
+
+use strict;
+
+use Getopt::Long;
+use File::Path;
+use Pod::Usage;
+use Modparse;
+
+
+##########################################
+# Command Line processing
+##########################################
+
+my $input="-", my $graph_output='', my $graph_root='', 
+my $verbose=0, my $stop_at_end=0;
+my $show_definitions=0, my $show_modules = 0;
+my %arg_snippath; my @snippathList;
+
+$main::path_new='';
+$main::new_name='';
+
+GetOptions("path=s" => \%arg_snippath,
+	   "defpath=s" => \@snippathList,
+	   "graph=s" => \$graph_output,
+	   "opath=s" => \$main::path_new,
+	   "output=s" => \$main::new_name,
+	   "root=s" => \$graph_root,
+	   "definitions" => sub {$show_definitions = 1;},
+	   "modules" => sub {$show_modules = 1;},
+	   "stop" => sub {$stop_at_end = 1;},
+	   "verbose" => sub {$verbose = 1;},
+	   "help" => sub {pod2usage(2);});
+
+$input = $ARGV[0] if ($#ARGV>=0);
+
+##########################################
+# .tex data reading
+##########################################
+
+$main::no_name_modules = 0;
+%main::definition_module = ();
+@main::definitions_list = ();
+
+%main::module_definitions = ();
+%main::used_modules = ();
+@main::modules_list = ();
+
+my $mp = Modparse->new(snippathList=>\@snippathList,
+		       snippath=>\%arg_snippath,
+		       stopAtEnd=>$stop_at_end,
+		       verbose=>$verbose,
+		       requireStatus=>'exclude',
+		       onlyModuleLines=>1,
+		       onBeginModule=>sub {
+			   if (!defined $_[0]->{module_id}) {
+			       $_[0]->{module_id} = "MOD".$main::no_name_modules;
+			       $main::no_name_modules++; }
+			   $_[0]->{defines} = '';
+		       },
+		       onEveryLine=>sub {		 	   
+			   if ($_[0]->{simple_tex} =~ /\\(sym|abbr|ell)def\{\\([^\}]+)\}/) {
+			       my $data = $2;
+			       $_[0]->{defines} .= "$data;";
+			       $main::definition_module{$data} = $_[0]->{module_id};
+			       push(@main::definitions_list, $data);
+			   } elsif ($_[0]->{simple_tex} =~ /\\STRlabel\{([^\}]*)\}/){
+			       my $data = "L:$1";
+			       $_[0]->{defines} .= "$data;";
+			       $main::definition_module{$data} = $_[0]->{module_id};
+			       push(@main::definitions_list, $data);
+			   }
+			   $_[0]->{module_content} .= $_[0]->{simple_tex};
+		       },
+		       onEndModule=>sub {
+			   chop($_[0]->{defines}) if $_[0]->{defines};
+			   $main::module_definitions{$_[0]->{module_id}} = $_[0]->{defines};
+			   push(@main::modules_list, $_[0]->{module_id});
+			   my $module_refs = '';
+			   foreach my $def(@main::definitions_list){
+			       next if $main::definition_module{$def} eq $_[0]->{module_id};
+			       next unless $module_refs !~ /$main::definition_module{$def}/;
+			       if ($def =~ /^L\:(.*)/){
+				   $module_refs .= "$main::definition_module{$def};" 
+				       if ($_[0]->{module_content} =~ /\\STRcopy\{$1\}/);
+			       } else {
+				   $module_refs .= "$main::definition_module{$def};" 
+				       if ($_[0]->{module_content} =~ /\\$def/);
+			       }
+			   }
+			   chop($module_refs) if $module_refs;
+			   $main::used_modules{$_[0]->{module_id}} = $module_refs;
+		       });
+
+##################################################################
+# Internal routines for BMS
+##################################################################
+
+%main::bms = ();
+
+# add a dummy module that uses nothig, such that any other module uses at least something
+sub addroot {
+    foreach my $module(@main::modules_list){
+	next if $main::used_modules{$module};
+	$main::used_modules{$module} = $graph_root;
+    }
+    push(@main::modules_list, $graph_root);
+    $main::module_definitions{$graph_root}='';
+    $main::used_modules{$graph_root}='';
+}
+# end addroot
+
+sub included {
+    my ($a1_ref, $a2_ref) = @_;
+    my $ok;
+    foreach my $elem (@$a1_ref){
+	$ok = 0;
+	foreach (@$a2_ref){
+	    if ($elem eq $_){
+		$ok=1;
+		last; }}
+	return 0 unless $ok;}
+    return 1;
+}
+
+# find if a module uses another module
+sub can_go{
+    my ($src,$dest) = @_;    
+    return 1 if $src eq $dest;
+    foreach (split(/;/, $main::bms{$src})){
+	return 1 if can_go($_,$dest);
+    }
+    return 0;
+}
+# end can_go
+
+# find the actual module structure
+sub find_bms{
+    my @added_modules, my @can_add, my @to_look, my @next_step;
+    
+    %main::bms=();        
+    @to_look = @main::modules_list;
+    @added_modules = ();
+
+    while($#main::modules_list != $#added_modules){       
+
+	@can_add=(); @next_step=();
+
+	foreach my $module(@to_look){	    
+	    my @temp = split(/;/, $main::used_modules{$module});	    
+	    included(\@temp,\@added_modules)?push(@can_add,$module):push(@next_step,$module);
+	}
+	@to_look = @next_step;	
+	
+	foreach my $module(@can_add){	
+	    
+	    my @uses = split(/;/,$main::used_modules{$module});
+	    my $change = 1;
+	    while ($change){
+		$change = 0;
+		foreach my $f1(@uses){
+		    foreach my $f2(@uses){
+			next if $f1 eq $f2;
+			if (can_go($f1,$f2)){ # i.e. f2 used by f1 => can remove f2
+			    my @new_uses;
+			    foreach (@uses){
+				push(@new_uses,$_) unless ($_ eq $f2);
+			    }
+			    @uses = @new_uses;
+			    $change = 1;
+			    last;
+			}
+		    }
+		    last if $change;
+		}
+	    }	    
+	    $main::bms{$module} = join(";",@uses);
+	    push(@added_modules,$module);
+	}	
+    }    
+}
+# end find_bms
+
+# print the content of %bms in a .dot file; note: may change %bms by adding dummy root
+sub printgraph {
+    my $out = shift;
+
+    addroot if $graph_root;
+
+    open(FOUT,">$out") or die "Can't write $out\n";
+    print FOUT "digraph MS {\n";    
+    while (my ($module, $uses) = each %main::bms){
+	$uses =~ s/-/_/g;
+	$module =~ s/-/_/g;
+	if ($uses){
+	    if ($uses =~ /;/){
+		print FOUT "$module -> {$uses};\n";
+	    } else {
+		print FOUT "$module -> $uses;\n";
+	    }
+	} else {
+	    print FOUT "$module [shape=box color=red];\n";
+	}
+    }
+    print FOUT "}\n";
+    close(FOUT);
+}
+# end printgraph
+
+# print the list of definitions
+sub printdefinitions{
+    while (my ($module,$def) = each %main::module_definitions){
+	print "$module:\n" if $def;
+	foreach (split(/;/,$def)){
+	    print "\t$_\n";
+	}
+    }}
+# end printdefinitions
+
+#print the list of modules
+sub printmodules{
+    while (my ($module,$uses) = each %main::used_modules){
+	print "'$module' uses:\n $uses\n\n\n";
+    }}
+#end printmodules
+
+
+# wite the new .tex file, with found module usage, in given path
+sub writenew {
+    my ($filename) = @_;
+    $main::no_name_modules = 0;
+    my $wmp = Modparse->new(snippathList=>\@snippathList,
+			    snippath=>\%arg_snippath,
+			    stopAtEnd=>$stop_at_end,
+			    verbose=>$verbose,
+			    requireStatus=>'exclude',
+			    onlyModuleLines=>0,
+			    onBeginFile=> sub {
+				$_[0]->{'new_content'.$_[0]->{depth}} = '';
+			    },
+			    onBeginModule=>sub {
+				if (!defined $_[0]->{module_id}) {
+				    $_[0]->{module_id} = "MOD".$main::no_name_modules;
+				    $main::no_name_modules++; }
+				my $new_uses = $main::bms{$_[0]->{module_id}};
+				if (defined $new_uses) {
+				    $new_uses =~ s/;/,/g;
+				    $new_uses="{$new_uses}" if $new_uses =~ /,/;
+				    my $arg = $_[0]->{module_args};
+				    my @new_arg=();
+				    my $done = 0;
+				    while ($arg =~ /^([\w-]+)=(([\w-]+)|(\{[\w,-]+\}))/){
+					if ($1 eq 'uses'){
+					    push(@new_arg,"$1=$new_uses")if $new_uses;
+					    $done = 1;
+					} else {
+					    push(@new_arg,"$1=$2");
+					}
+					$arg=substr($arg,length($1)+length($2)+1);
+					$arg=substr($arg,1) if ($arg =~ /^,/);
+				    }
+				    if ($new_uses) {
+					push(@new_arg,"uses=$new_uses") unless $done; }
+				    $_[0]->{original} = "\\begin{module}\[".join(',',@new_arg)."\] ". $_[0]->{comment}. "\n";
+				}
+			    },
+			    onEveryLine=>sub {
+				$_[0]->{'new_content'.$_[0]->{depth}} .= $_[0]->{original};
+			    },
+			    onEndFile=> sub {
+				my $filename = ($main::path_new).'/'.$_[0]->{filename};
+				my $path = $filename;
+				while ($path !~ m!\/$!) { chop($path); }
+				mkpath($path);
+				$filename = $path.'/'.$main::new_name if ($main::new_name && $_[0]->{depth} == 1);
+				print "Writing $filename\n" if $_[0]->{pack}->{verbose};
+				open(FS, ">$filename") or die "Cannot write $filename\n";
+				print FS $_[0]->{'new_content'.$_[0]->{depth}};
+				close(FS);
+			    });
+    
+    $wmp->execute($filename);
+}
+
+
+#############################################################
+#  Start program 
+#############################################################
+
+$mp->execute($input);
+
+printdefinitions if $show_definitions;
+printmodules if $show_modules;
+
+if ($graph_output || $main::path_new){
+    find_bms;
+    writenew($input) if $main::path_new;
+    printgraph($graph_output) if $graph_output;
+}
+
+__END__
+
+
+=head1 SYNOPSIS
+
+bms <input filename> [options]
+
+Options:
+
+    --path XXX            specify the value of \XXX (some snippath) in case it is 
+         = somePath       not defined in the processed .tex file
+    --defpath XXX         specify which \XXX (snippath definitions) to look for
+    --graph <filename>    if mentioned, produce the suggested module structure as
+                          a graphviz digraph. (.dot file)
+    --opath <pathname>    if mentioned, produce same input file/s (including
+                          dependencies) in specified path with suggested 
+                          module structure.
+    --output <name>       the new name of the main .tex file in specified path.
+    --root <name>         if mentioned, a father module is included, so that all 
+                          other modules descend from it. generally the course name.
+    --stop                stop when \end{document} is found; default is to go on.
+    --definitions         show a list of all definitions.
+    --modules             show a list of all modules.
+    --verbose             verbose on.
+    --help                this screen.
+
+
+    This program has the purpose of computing a default module structure, according
+to actual necessities. 
+    Example:
+    ./bms -i slides.tex -g out.dot
+    ./bms -i slides.tex -s -g - | dot -Tps > out.ps; ggv out.ps

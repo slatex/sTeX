@@ -1,0 +1,135 @@
+# A RelaxNG schema for Open Mathematical documents (OMDoc 1.3) Module ST 
+# $Id: omdocst.rnc 9247 2012-07-23 08:31:24Z kohlhase $
+# $HeadURL: https://svn.omdoc.org/repos/omdoc/branches/omdoc-1.3/schema/rnc/omdocst.rnc $
+# See the documentation and examples at http://www.omdoc.org
+# Copyright (c) 2004-2007 Michael Kohlhase, released under the GNU Public License (GPL) 
+
+default namespace omdoc = "http://omdoc.org/ns"
+
+omdoc.class &= symbol* &  axiom* &  definition* & imports* & assertion* &  type* & alternative* & example*  & theory*
+
+constitutive.attribs = id.attribs &  attribute generated-from {omdocref}?
+sym.role.attrib = attribute role {"type" | "sort" | "object" |
+		                  "binder" | "attribution" | "application" | "constant" |
+		                  "semantic-attribution" | "error"}
+theory-unique  = xsd:NCName 
+scope.attrib = attribute scope {"global" | "local"}?
+symbol.attribs = scope.attrib & 
+                         attribute name {theory-unique}? & 
+	  		 constitutive.attribs & 
+          	         sym.role.attrib? 
+symbol.model = metadata.class & type*
+symbol = element symbol {tref|(symbol.attribs & symbol.model)}
+
+forname.attrib = attribute for {list {xsd:NCName+}}
+axiom.attribs = constitutive.attribs & forname.attrib & attribute type {xsd:string}?
+axiom.model = metadata.class & mcf.class
+axiom = element axiom {tref|(axiom.attribs & axiom.model)}
+
+#informal definitions
+def.informal = attribute type {"informal"}?
+
+#simple definitions
+def.simple.attribs = attribute type {"simple"} 
+def.simple = def.simple.attribs &  mobj
+
+#implicit definitions
+exists.attrib = attribute existence {omdocref} 
+unique.attrib = attribute uniqueness {omdocref}
+def.implicit.attribs = attribute type {"implicit"} & exists.attrib? & unique.attrib?
+def.implicit = def.implicit.attribs & FMP*
+
+exhaust.attrib = attribute exhaustivity {omdocref}
+consist.attrib = attribute consistency {omdocref}
+
+def.pattern.attribs = attribute type {"pattern"}? & exhaust.attrib? & consist.attrib?
+def.pattern.model = requation*
+def.pattern = def.pattern.attribs & def.pattern.model
+
+def.inductive.attribs = attribute type {"inductive"}? & exhaust.attrib? & consist.attrib?
+def.inductive.model = requation* & measure? & ordering?
+def.inductive = def.inductive.attribs & def.inductive.model
+
+def.eq = def.pattern | def.inductive
+
+#all definition forms, add more by extending this.
+defs.all = def.informal | def.simple | def.implicit | def.eq
+
+# Definitions contain CMPs,  FMPs and concept specifications. 
+# The latter define the set of concepts defined in this element. 
+# They can be reached under this name in the content dictionary 
+# of the name specified in the theory attribute of the definition.
+definition.attribs = constitutive.attribs & forname.attrib
+definition = element definition {tref|(definition.attribs & mc.class & defs.all)}
+
+requation.attribs = id.attribs
+requation.model = mobj,mobj
+requation = element requation {tref|(requation.attribs & requation.model)}
+
+measure.attribs = id.attribs
+measure.model = mobj
+measure = element measure {tref|(measure.attribs & measure.model)}
+
+ordering.attribs = id.attribs & attribute terminating {omdocref}?
+ordering.model = mobj
+ordering = element ordering {tref|(ordering.attribs & ordering.model)}
+
+# the non-constitutive statements, they need a theory attribute
+toplevel.attribs &= attribute theory {omdocref}?
+
+ded.status.class = "satisfiable" | "counter-satisfiable" | "no-consequence" |
+		   "theorem" | "conter-theorem" | "contradictory-axioms" | 
+		   "tautologous-conclusion" | " tautology" | "equivalent" | 
+		   "conunter-equivalent" | "unsatisfiable-conclusion" |  "unsatisfiable"
+
+just-by.attrib = attribute just-by {omdocref}
+assertion.attribs = toplevel.attribs & 
+                                    attribute type {assertiontype}? & 
+     				    attribute status {ded.status.class}? & 
+     				    just-by.attrib?
+assertion.model = mcf.class
+assertion = element assertion {tref|(assertion.attribs & assertion.model)}
+# the assertiontype has no formal meaning yet, it is solely for human consumption. 
+# 'just-by' is a list of URIRefs that point to proof objects, etc that justifies the status.
+
+type.attribs = toplevel.attribs &  just-by.attrib? & 
+		     attribute system {omdocref}? & 
+		     attribute for {omdocref}?
+type.model = mc.class, mobj, mobj?
+type = element type {tref|(type.attribs & type.model)}
+
+##just-by, points to the theorem justifying well-definedness
+## entailed-by, entails, point to other (equivalent definitions
+## entailed-by-thm, entails-thm point to the theorems justifying
+## the entailment relation)
+alternative.attribs = toplevel.attribs &  for.attrib & 
+		    ((attribute equivalence {omdocref},
+ 		    		     attribute equivalence-thm {omdocref}) |	
+                                   (attribute entailed-by {omdocref} & 
+                                   attribute entails {omdocref} & 
+                                   attribute entailed-by-thm {omdocref} & 
+                                   attribute entails-thm {omdocref}))
+alternative.model = mc.class & defs.all
+alternative = element alternative {tref|(alternative.attribs & alternative.model)}
+
+example.attribs = toplevel.attribs &  for.attrib & 
+	  	  	   attribute type {"for" | "against" }? & 
+			   attribute assertion {omdocref}?
+example.model = mc.class,mobj*
+example = element example {tref|(example.attribs & example.model)}
+
+theory.attribs = id.attribs & 
+			 attribute cdurl {xsd:anyURI}? & 
+	                 attribute cdbase {xsd:anyURI}? &
+			 attribute cdreviewdate {xsd:date}? & 
+			 attribute cdversion {xsd:nonNegativeInteger}? & 
+			 attribute cdrevision {xsd:nonNegativeInteger}? & 
+			 attribute cdstatus {"official" | "experimental" |"private" |  "obsolete"}?
+theory.model = metadata.class & omdoc.class 
+theory = element theory {tref|(theory.attribs & theory.model)}
+
+imports.attribs = id.attribs & from.attrib 
+imports.model = metadata.class
+imports = element imports {tref|(imports.attribs & imports.model)}
+
+

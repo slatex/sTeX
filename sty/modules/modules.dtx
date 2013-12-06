@@ -1,0 +1,1665 @@
+% \iffalse meta-comment
+% An Infrastructure for Semantic Macros and Module Scoping
+% Copyright (C) 2004-2013 Michael Kohlhase, all rights reserved
+%               this file is released under the
+%               LaTeX Project Public License (LPPL)
+%
+% The development version of this file can be found at
+% $HeadURL: https://svn.kwarc.info/repos/stex/trunk/sty/modules/modules.dtx $
+% \fi
+%  
+% \iffalse
+%<package>\NeedsTeXFormat{LaTeX2e}[1999/12/01]
+%<package>\ProvidesPackage{modules}[2013/08/25 v1.2 Semantic Markup]
+%
+%<*driver>
+\documentclass{ltxdoc}
+\usepackage{stex-logo,modules}
+\usepackage{url,array,float,textcomp}
+\usepackage[show]{ed}
+\usepackage[hyperref=auto,style=alphabetic,backend=bibtex]{biblatex}
+\usepackage{listings}
+\usepackage{amsfonts}
+\bibliography{kwarc}
+\usepackage[eso-foot,today]{svninfo}
+\svnInfo $Id: modules.dtx 2416 2013-11-25 06:52:29Z kohlhase $
+\svnKeyword $HeadURL: https://svn.kwarc.info/repos/stex/trunk/sty/modules/modules.dtx $
+\usepackage{../ctansvn}
+\usepackage{hyperref} 
+\makeindex
+\floatstyle{boxed}
+\newfloat{exfig}{thp}{lop}
+\floatname{exfig}{Example}
+\def\tracissue#1{\cite{sTeX:online}, \hyperlink{http://trac.kwarc.info/sTeX/ticket/#1}{issue #1}}
+\begin{document}\DocInput{modules.dtx}\end{document} 
+%</driver>
+% \fi
+% 
+% \iffalse\CheckSum{926}\fi
+%
+% \changes{v0.9}{2005/06/14}{First Version with Documentation}
+% \changes{v0.9a}{2005/07/01}{Completed Documentation}
+% \changes{v0.9b}{2005/08/06}{Complete functionality and Updated Documentation}
+% \changes{v0.9c}{2006/01/13}{more packaging}
+% \changes{v0.9d}{2007/12/12}{fixing double loading of .tex and .sms}
+% \changes{v0.9e}{2008/06/17}{fixing LaTeXML}
+% \changes{v0.9f}{2008/06/17}{remove unused options uses and usesqualified}
+% \changes{v0.9g}{2009/05/02}{adding resymdef functionality}
+% \changes{v0.9g}{2009/08/12}{adding importOMDocmodule}
+% \changes{v0.9h}{2010/01/19}{using {\texttt{\textbackslash mod@newcommand}} instead of
+% {\texttt{\textbackslash providecommand}} for more intuitive inheritance.}
+% \changes{v0.9h}{2010/03/05}{adding {\texttt{\textbackslash metalanguage}}}
+% \changes{v1.0}{2010/06/18}{minor fixes}
+% \changes{v1.1}{2010/12/30}{adding optional arguments to semantic macros for display
+%   variants. The resymdef functionality introduced in 0.9g is now deprecated. It was hardly
+%   used.}
+% \changes{v1.1}{2012/06/25}{adding additional keys for the \texttt{\textbackslash symdef}
+%   macro and exporting them to OMDoc}
+% \changes{v1.1}{2012/07/06}{exporting requiremodules to the \texttt{aux} file, so that
+%   they are preloaded (pre-required) so semantic macros in section titles can work.}
+% \changes{v1.1}{2012/11/09}{Moving LaTeXML bindings into \texttt{modules.sty.ltxml} and
+% disabling generation}
+% \changes{v1.2}{2013/08/25}{No longer loading the aux file at the end of the document}
+% 
+% \GetFileInfo{modules.sty}
+% 
+% \MakeShortVerb{\|}
+%\def\scsys#1{{{\sc #1}}\index{#1@{\sc #1}}}
+% \def\xml{\scsys{Xml}}
+% \def\mathml{\scsys{MathML}}
+% \def\omdoc{\scsys{OMDoc}}
+% \def\openmath{\scsys{OpenMath}}
+% \def\latexml{\scsys{LaTeXML}}
+% \def\perl{\scsys{Perl}}
+% \def\cmathml{Content-{\sc MathML}\index{Content {\sc MathML}}\index{MathML@{\sc MathML}!content}}
+% \def\activemath{\scsys{ActiveMath}}
+% \def\twin#1#2{\index{#1!#2}\index{#2!#1}}
+% \def\twintoo#1#2{{#1 #2}\twin{#1}{#2}}
+% \def\atwin#1#2#3{\index{#1!#2!#3}\index{#3!#2 (#1)}}
+% \def\atwintoo#1#2#3{{#1 #2 #3}\atwin{#1}{#2}{#3}}
+% \def\cT{\mathcal{T}}\def\cD{\mathcal{D}}
+% \title{{\texttt{modules.sty}}: Semantic Macros and Module Scoping   in {\stex}\thanks{Version {\fileversion} (last revised
+%        {\filedate})}}
+%    \author{Michael Kohlhase \& Deyan Ginev \& Rares Ambrus\\
+%            Jacobs University, Bremen\\
+%            \url{http://kwarc.info/kohlhase}}
+% \maketitle
+%
+% \begin{abstract}
+%   The |modules| package is a central part of the {\stex} collection, a version of
+%   {\TeX/\LaTeX} that allows to markup {\TeX/\LaTeX} documents semantically without
+%   leaving the document format, essentially turning {\TeX/\LaTeX} into a document format
+%   for mathematical knowledge management (MKM).
+%
+%   This package supplies a definition mechanism for semantic macros and a non-standard
+%   scoping construct for them, which is oriented at the semantic dependency relation
+%   rather than the document structure. This structure can be used by MKM systems for
+%   added-value services, either directly from the {\sTeX} sources, or after translation.
+% \end{abstract}
+%
+% \newpage\setcounter{tocdepth}{2}\tableofcontents\newpage
+%
+% \section{Introduction}\label{sec:intro}
+% 
+% Following general practice in the {\TeX/\LaTeX} community, we use the term ``semantic
+% macro'' for a macro whose expansion stands for a mathematical object, and whose name
+% (the command sequence) is inspired by the name of the mathematical object.  This can
+% range from simple definitions like |\def\Reals{\mathbb{R}}| for individual mathematical
+% objects to more complex (functional) ones object constructors like
+% |\def\SmoothFunctionsOn#1{\mathcal{C}^\infty(#1,#1)}|. Semantic macros are traditionally
+% used to make {\TeX/\LaTeX} code more portable. However, the {\TeX/\LaTeX} scoping model
+% (macro definitions are scoped either in the local group or until the rest of the
+% document), does not mirror mathematical practice, where notations are scoped by
+% mathematical environments like statements, theories, or such. For an in-depth discussion
+% of semantic macros and scoping we refer the reader~\cite{Kohlhase:ulsmf08}.
+% 
+% The |modules| package provides a {\LaTeX}-based markup infrastructure for defining
+% module-scoped semantic macros and {\latexml} bindings~\cite{Miller:latexml:online} to
+% create {\omdoc}~\cite{Kohlhase:omdoc1.2} from {\stex} documents. In the {\stex} world
+% semantic macros have a special status, since they allow the transformation of
+% {\TeX/\LaTeX} formulae into a content-oriented markup format like
+% {\openmath}~\cite{BusCapCar:2oms04} and (strict) content
+% {\mathml}~\cite{CarlisleEd:MathML3}; see Figure~\ref{fig:omsemmac} for an example, where
+% the semantic macros above have been defined by the |\symdef| macros (see
+% Section~\ref{sec:symdef}) in the scope of a |\begin{module}[id=calculus]| (see
+% Section~\ref{sec:modules}).
+% 
+% \begin{exfig}\lstset{basicstyle=\scriptsize,aboveskip=-.5em,belowskip=-1.5em}
+% \begin{tabular}{l|p{9.7cm}}
+% \LaTeX  & \verb|\SmoothFunctionsOn\Reals| \\\hline
+% PDF/DVI & ${\mathcal{C}^\infty(\mathbb{R},\mathbb{R})}$\\\hline
+%  {\openmath} & \lstset{morekeywords={OMA,OMS}}
+% \begin{lstlisting}
+% <OMA>
+%   <OMS cd="calculus" name="SmoothFunctionsOn"/>
+%   <OMS cd="calculus" name="Reals"/>
+% </OMA>\end{lstlisting}\\\hline
+% {\mathml}  & \lstset{morekeywords={apply,csymbol}}
+% \begin{lstlisting}
+% <apply>
+%   <csymbol cd="calculus">SmoothFunctionsOn</csymbol>
+%   <csymbol cd="calculus">Reals</csymbol>
+% </apply>\end{lstlisting}\\
+% \end{tabular}
+% \caption{{\openmath} and {\mathml} generated from Semantic Macros}\label{fig:omsemmac}
+% \end{exfig}
+% 
+% \section{The User Interface}
+%
+% The main contributions of the |modules| package are the |module| environment, which
+% allows for lexical scoping of semantic macros with inheritance and the |\symdef| macro
+% for declaration of semantic macros that underly the |module| scoping.
+% 
+% \subsection{Package Options}\label{sec:options}
+%
+% The |modules| package takes two options: If we set
+% \DescribeMacro{showmods}|showmods|\ednote{This mechanism does not work yet, since we
+% cannot disable it when importing modules and that leads to unwanted boxes. What we need
+% to do instead is to tweak the sms utility to use an internal version that never shows
+% anything during sms reading.}, then the views (see Section~\ref{sec:user:views}) are
+% shown. If we set the \DescribeMacro{qualifiedimports}|qualifiedimports| option, then
+% qualified imports are enabled. Qualified imports give more flexibility in module
+% inheritance, but consume more internal memory. As qualified imports are not fully
+% implemented at the moment, they are turned off by default see
+% Limitation~\ref{sec:limitations:qualified-imports}. The option
+% \DescribeMacro{noauxreq}|noauxreq| prohibits the registration of |\@requiremodules|
+% commands in the |aux| file. They are necessary for preloading the module signatures so
+% that entries in the table of contents can have semantic macros; but as they sometimes
+% cause trouble the option allows to turn off preloading.
+% 
+% If the \DescribeMacro{showmeta}|showmeta| is set, then the metadata keys are shown
+% (see~\cite{Kohlhase:metakeys:ctan} for details and customization options).
+% 
+% \subsection{Semantic Macros}\label{sec:symdef}
+%
+% The \DescribeMacro{\symdef} is the main constructor for semantic macros in {\sTeX}. A
+% call to the |\symdef| macro has the general form
+% \begin{quote}
+% |\symdef[|\meta{keys}|]{|\meta{cseq}|}[|\meta{args}|]{|\meta{definiens}|}|
+% \end{quote}
+% where {\meta{cseq}} is a control sequence (the name of the semantic macro) {\meta{args}}
+% is a number between 0 and 9 for the number of arguments {\meta{definiens}} is the token
+% sequence used in macro expansion for {\meta{cseq}}. Finally {\meta{keys}} is a keyword
+% list that further specifies the semantic status of the defined macro.
+% 
+% The two semantic macros in Figure~\ref{fig:omsemmac} would have been declared by
+% invocations of the |\symdef| macro of the form:
+% \begin{verbatim}
+% \symdef{Reals}{\mathbb{R}}
+% \symdef{SmoothFunctionsOn}[1]{\mathcal{C}^\infty(#1,#1)}
+% \end{verbatim}
+% 
+% Note that both semantic macros correspond to {\openmath} or {\mathml} ``symbols'',
+% i.e. named representations of mathematical concepts (the real numbers and the
+% constructor for the space of smooth functions over a set); we call these names the
+% {\textbf{symbol name}} of a semantic macro. Normally, the symbol name of a semantic
+% macro declared by a |\symdef| directive is just \meta{cseq}. The key-value pair
+% \DescribeMacro{name}|name=|\meta{symname} can be used to override this behavior and
+% specify a differing name. There are two main use cases for this. 
+% 
+% The first one is shown in Example~\ref{fig:symvariant}, where we define semantic macros
+% for the ``exclusive or'' operator. Note that we define two semantic macros: |\xorOp| and
+% |\xor| for the applied form and the operator. As both relate to the same mathematical
+% concept, their symbol names should be the same, so we specify |name=xor| on the
+% definition of |\xorOp|.
+% 
+% A key \DescribeMacro{local}|local| can be added to {\meta{keys}} to specify that the
+% symbol is local to the module and is invisible outside. Note that even though |\symdef|
+% has no advantage over |\def| for defining local semantic macros, it is still considered
+% good style to use |\symdef| and |\abbrdef|, if only to make switching between local and
+% exported semantic macros easier.
+% 
+% \DescribeMacro{\abbrdef}The |\abbrdef| macro is a variant of |\symdef| that is only
+% different in semantics, not in presentation. An abbreviative macro is like a semantic
+% macro, and underlies the same scoping and inheritance rules, but it is just an
+% abbreviation that is meant to be expanded, it does not stand for an atomic mathematical
+% object.
+%
+% We will use a simple module for natural number arithmetics as a running example. It
+% defines exponentiation and summation as new concepts while drawing on the basic
+% operations like $+$ and $-$ from {\LaTeX}. In our example, we will define a semantic
+% macro for summation |\Sumfromto|, which will allow us to express an expression like
+% $\sum{i=1}^nx^i$ as |\Sumfromto{i}1n{2i-1}| (see Example~\ref{fig:semmodule} for an
+% example). In this example we have also made use of a local semantic symbol for $n$,
+% which is treated as an arbitrary (but fixed) symbol.
+%
+%\begin{exfig}
+% \begin{verbatim}
+% \begin{module}[id=arith]
+%   \symdef{Sumfromto}[4]{\sum_{#1=#2}^{#3}{#4}}
+%   \symdef[local]{arbitraryn}{n}
+%   What is the sum of the first $\arbitraryn$ odd numbers, i.e.
+%   $\Sumfromto{i}1\arbitraryn{2i-1}?$
+% \end{module}
+% \end{verbatim}
+% \vspace*{-3.5ex}\hrule\vspace*{1ex}
+% \begin{module}[id=arith]
+% \symdef{Sumfromto}[4]{\sum_{#1=#2}^{#3}{#4}}
+% \symdef[local]{arbitraryn}{n}
+% What is the sum of the first $\arbitraryn$ odd numbers, i.e.
+% $\Sumfromto{i}1\arbitraryn{2i-1}?$
+% \end{module}
+% \caption{Semantic Markup in a {\texttt{module}} Context}\label{fig:semmodule}
+% \end{exfig}
+%
+% The \DescribeMacro{\symvariant}|\symvariant| macro can be used to define presentation
+% variants for semantic macros previously defined via the |\symdef| directive. In an
+% invocation 
+% \begin{quote}
+% |\symdef[|\meta{keys}|]{|\meta{cseq}|}[|\meta{args}|]{|\meta{pres}|}|\\
+% |\symvariant{|\meta{cseq}|}[|\meta{args}|]{|\meta{var}|}{|\meta{varpres}|}|
+% \end{quote}
+% the first line defines the semantic macro |\|\meta{cseq} that when applied to
+% \meta{args} arguments is presented as \meta{pres}. The second line allows the semantic
+% macro to be called with an optional argument \meta{var}: |\|\meta{cseq}|[var]| (applied
+% to \meta{args} arguments) is then presented as \meta{varpres}. We can define a variant
+% presentation for |\xor|; see Figure~\ref{fig:symvariant} for an example.
+%
+%\begin{exfig}
+% \begin{verbatim}
+% \begin{module}[id=xbool]
+%   \symdef[name=xor]{xorOp}{\oplus}
+%   \symvariant{xorOp}{uvee}{\underline{\vee}}
+%   \symdef{xor}[2]{#1\xorOp #2}
+%   \symvariant{xor}[2]{uvee}{#1\xorOp[uvee] #2}
+%   Exclusive disjunction is commutative: $\xor{p}q=\xor{q}p$\\
+%   Some authors also write exclusive or with the $\xorOp[uvee]$ operator, 
+%   then the formula above is $\xor[uvee]{p}q=\xor[uvee]{q}p$
+% \end{module}
+% \end{verbatim}
+% \vspace*{-3.5ex}\hrule\vspace*{1ex}
+% \begin{module}[id=xbool]
+%   \symdef[name=xor]{xorOp}{\oplus}
+%   \symvariant{xorOp}{uvee}{\underline{\vee}}
+%   \symdef{xor}[2]{#1\xorOp #2}
+%   \symvariant{xor}[2]{uvee}{#1\xorOp[uvee] #2}
+%   Exclusive disjunction is commutative: $\xor{p}q=\xor{q}p$\\
+%   Some authors also write exclusive or with the $\xorOp[uvee]$ operator, 
+%   then the formula above is $\xor[uvee]{p}q=\xor[uvee]{q}p$
+% \end{module}
+% \caption{Presentation Variants of a Semantic Macro}\label{fig:symvariant}
+% \end{exfig}
+%
+% Version 1.0 of the |modules| package had the \DescribeMacro{\resymdef}|\resymdef| macro
+% that allowed to locally redefine the presentation of a macro. But this did not interact
+% well with the |beamer| package and was less useful than the |\symvariant|
+% functionality. Therefore it is deprecated now and leads to an according error message.
+% 
+% \subsection{Testing Semantic Macros}\label{sec:user:testing}
+% 
+% One of the problems in managing large module graphs with many semantic macros, so the
+% |module| package gives an infrastructure for unit testing.  The first macro is
+% \DescribeMacro{\symtest}|\symtest|, which allows the author of a semantic macro to
+% generate test output (if the |symtest| option is set) see figure~\ref{fig:symtest} for a
+% ``tested semantic macro definition''.
+% \begin{exfig}
+% \begin{verbatim}
+% \symdef[name=setst]{SetSt}[2]{\{#1\,\vert\,#2\}}
+% \symtest[name=setst]{SetSt}{\SetSt{a}{a>0}}
+% \end{verbatim}
+% \vspace*{-2em} generates the output 
+% \begin{module}[id=foo]
+% \symdef[name=setst]{SetSt}[2]{\{#1\,\vert\,#2\}}
+% \symtest[name=setst]{SetSt}{\SetSt{a}{a>0}}
+% \end{module}
+% \caption{A Semantic Macro Definition with Test}\label{fig:symtest}
+% \end{exfig}
+% Note that the language in this purely generated, so that it can be adapted (tbd).
+% 
+% The \DescribeMacro{\abbrtest}|\abbrtest| macro gives the analogous functionality for
+% |\abbrdef|. 
+%
+% \subsection{Symbol and Concept Names}\label{sec:user:termdef}
+% 
+% Just as the |\symdef| declarations define semantic macros for mathematical symbols, the
+% |modules| package provides an infrastructure for {\emph{mathematical concepts}} that are
+% expressed in mathematical vernacular. The key observation here is that concept names
+% like ``finite symplectic group'' follow the same scoping rules as mathematical symbols,
+% i.e. they are module-scoped. The \DescribeMacro{\termdef}|\termdef| macro is an analogue
+% to |\symdef| that supports this: use
+% |\termdef[|\meta{keys}|]{|\meta{cseq}|}{|\meta{concept}|}| to declare the macro
+% |\|\meta{cseq} that expands to \meta{concept}. See Figure~\ref{fig:termref} for an
+% example, where we use the \DescribeMacro{\capitalize}|\capitalize| macro to adapt
+% \meta{concept} to the sentence beginning.\ednote{continue, describe \meta{keys}, they
+% will have to to with plurals,\ldots once implemented}. The main use of the
+% |\termdef|-defined concepts lies in automatic cross-referencing facilities via the
+% \DescribeMacro{\termref}|\termref| and \DescribeMacro{\symref}|\symref| macros provided
+% by the |statements| package~\ctancite{Kohlhase:smms}. Together with the |hyperref|
+% package~\cite{RahObe:hmlmh10}, this provide cross-referencing to the definitions of the
+% symbols and concepts. As discussed in section~\ref{sec:limitations:crossref}, the
+% |\symdef| and |\termdef| declarations must be on top-level in a module, so the
+% infrastructure provided in the |modules| package alone cannot be used to locate the
+% definitions, so we use the infrastructure for mathematical statements for that.
+%
+%\begin{exfig}
+% \begin{verbatim}
+%   \termdef[name=xor]{xdisjunction}{exclusive disjunction}
+%   \capitalize\xdisjunction is commutative: $\xor{p}q=\xor{q}p$
+% \end{verbatim}
+% \vspace*{-3.5ex}
+% \caption{Extending Example~\ref{fig:symvariant} with Term References}\label{fig:termref}
+% \end{exfig}
+%
+% \subsection{Modules and Inheritance}\label{sec:modules}
+%
+% The\DescribeEnv{module}|module| environment takes an optional |KeyVal|
+% argument. Currently, only the |id| key is supported for specifying the identifier of a
+% module (also called the {\twintoo{module}{name}}).  A module introduced by
+% |\begin{module}[id=foo]| restricts the scope the semantic macros defined by the
+%   |\symdef| form to the end of this module given by the corresponding |\end{module}|,
+% and to any other |module| environments that import them by a |\importmodule{foo}|
+% directive. If the module |foo| contains |\importmodule| directives of its own, these are
+% also exported to the importing module.
+%
+% Thus the \DescribeMacro{\importmodule}|\importmodule| declarations induce the
+% {\atwintoo{semantic}{inheritance}{relation}}. Figure~\ref{exf:importmodule} shows a
+% module that imports the semantic macros from three others. In the simplest form,
+% |\importmodule{|\meta{mod}|}| will activate the semantic macros and concepts declared by
+% |\symdef| and |\termdef| in module \meta{mod} in the current module\footnote{Actually,
+% in the current {\TeX} group, therefore \texttt{\textbackslash importmodule} should be
+% placed directly after the \texttt{\textbackslash begin\{module\}}.}. To understand the
+% mechanics of this, we need to understand a bit of the internals. The |module|
+% environment sets up an internal macro pool, to which all the macros defined by the
+% |\symdef| and |\termdef| declarations are added; |\importmodule| only activates this
+% macro pool. Therefore |\importmodule{|\meta{mod}|}| can only work, if the {\TeX} parser
+% --- which linearly goes through the {\sTeX} sources --- already came across the module
+% \meta{mod}. In many situations, this is not obtainable; e.g. for ``semantic forward
+% references'', where symbols or concepts are previewed or motivated to knowledgeable
+% readers before they are formally introduced or for modularizations of documents into
+% multiple files. To enable situations like these, the |module| package uses auxiliary
+% files called {\textbf{\sTeX module signatures}}. For any file, \meta{file}|.tex|, we
+% generate a corresponding \sTeX module signature \meta{file}|.sms| with the |sms| utility
+% (see also Limitation~\ref{sec:limitations:sms}), which contains (copies of) all
+% |\begin|/|\end{module}|, |\importmodule|, |\symdef|, and |\termdef| invocations in
+% \meta{file}|.tex|. The value of an \sTeX module signature is that it can be loaded
+% instead its corresponding \sTeX document, if we are only interested in the semantic
+% macros. So |\importmodule[|load=\meta{filepath}|]{|\meta{mod}|}| will load the \sTeX
+% module signature \meta{filepath}|.sms| (if it exists and has not been loaded before) and
+% activate the semantic macros from module \meta{mod} (which was supposedly defined in
+% \meta{filepath}|.tex|). Note that since \meta{filepath}|.sms| contains all
+% |\importmodule| statements that \meta{filepath}|.tex| does, an |\importmodule|
+% recursively loads all necessary files to supply the semantic macros inherited by the
+% current module.\ednote{MK: document the other keys of |module|}
+% 
+% The |\importmodule| macro has a variant
+% \DescribeMacro{importmodulevia}|\importmodulevia| that allows the specification of a
+% theory morphism to be applied.  |\importmodulevia{|\meta{thyid}|}{|\meta{assignments}|}|
+% specifies the ``source theory'' via its identifier \meta{thyid} and the morphism by
+% \meta{assignments}. There are three kinds:
+% \begin{compactdesc}
+% \item[symbol assignments] via
+%   \DescribeMacro{\vassign}|\vassign{|\meta{sym}|}{|\meta{exp}|}|, which defines the
+%   symbol \meta{sym} introduced in the current theory by an expression \meta{exp} in the
+%   source theory.
+% \item[term assignments] via
+%   \DescribeMacro{\tassign}|\tassign[|\meta{source-cd}|]{|\meta{tname}|}{|\meta{source-tname}|}|,
+%   which defines the term with name \meta{tname} in the current via a term with
+%   name\meta{source-tname} in the theory \meta{source-cd} whose default value is the
+%   source theory.
+% \item[term text assignments] via
+%   \DescribeMacro{\ttassign}|\tassign{|\meta{tname}|}{|\meta{text}|}|, which defines a
+%   term with name \meta{tname} in the current theory via a definitional text.
+% \end{compactdesc}
+% 
+%\begin{exfig}
+% \begin{verbatim}
+% \begin{module}[id=ring]
+% \begin{importmodulevia}{monoid}
+%   \vassign{rbase}\magbase
+%   \vassign{rtimesOp}\magmaop
+%   \vassign{rone}\monunit
+% \end{importmodulevia}
+% \symdef{rbase}{G}
+% \symdef[name=rtimes]{rtimesOp}{\cdot}
+% \symdef{rtimes}[2]{\infix\rtimesOp{#1}{#2}}
+% \symdef{rone}{1}
+% \begin{importmodulevia}{cgroup}
+%   \vassign{rplus}\magmaop
+%   \vassign{rzero}\monunit
+%   \vassign{rinvOp}\cginvOp
+% \end{importmodulevia}
+% \symdef[name=rplus]{rplusOp}{+}
+% \symdef{rplus}[2]{\infix\rplusOp{#1}{#2}}
+% \symdef[name=rminus]{rminusOp}{-}
+% \symdef{rminus}[1]{\infix\rminusOp{#1}{#2}}
+% ...
+% \end{module}
+% \end{verbatim}
+% \caption{A Module for Rings with inheritance from monoids and commutative groups}\label{fig:ring}
+% \end{exfig}
+%
+% The \DescribeMacro{\metalanguage}|\metalanguage| macro is a variant of
+% \lstinline|importmodule| that imports the meta language, i.e. the language in which the
+% meaning of the new symbols is expressed. For mathematics this is often first-order logic
+% with some set theory; see~\cite{RabKoh:WSMSML10} for discussion. 
+% 
+% \subsection{Dealing with multiple Files}\label{sec:user:multiple}
+%
+% The infrastructure presented above works well if we are dealing with small files or
+% small collections of modules. In reality, collections of modules tend to grow, get
+% re-used, etc, making it much more difficult to keep everything in one file. This general
+% trend towards increasing entropy is aggravated by the fact that modules are very
+% self-contained objects that are ideal for re-used. Therefore in the absence of a
+% content management system for {\LaTeX} document (fragments), module collections tend to
+% develop towards the ``one module one file'' rule, which leads to situations with lots
+% and lots of little files.
+%
+% Moreover, most mathematical documents are not self-contained, i.e. they do not build up
+% the theory from scratch, but pre-suppose the knowledge (and notation) from other
+% documents. In this case we want to make use of the semantic macros from these
+% prerequisite documents without including their text into the current document. One way
+% to do this would be to have {\LaTeX} read the prerequisite documents without producing
+% output. For efficiency reasons, {\stex} chooses a different route. It comes with a
+% utility |sms| (see Section~\ref{sec:limitations:sms}) that exports the modules and macros
+% defined inside them from a particular document and stores them inside |.sms| files. This
+% way we can avoid overloading LaTeX with useless information, while retaining the
+% important information which can then be imported in a more efficient way.
+%
+% \DescribeMacro{\importmodule} For such situations, the |\importmodule| macro can be
+% given an optional first argument that is a path to a file that contains a path to the
+% module file, whose module definition (the |.sms| file) is read. Note that the
+% |\importmodule| macro can be used to make module files truly self-contained. To arrive
+% at a file-based content management system, it is good practice to reuse the module
+% identifiers as module names and to prefix module files with corresponding
+% |\importmodule| statements that pre-load the corresponding module files.
+%
+%\begin{exfig}
+% \begin{verbatim}
+% \begin{module}[id=foo]
+% \importmodule[load=../other/bar]{bar}
+% \importmodule[load=../mycolleaguesmodules]{baz}
+% \importmodule[load=../other/bar]{foobar}
+%   ...
+% \end{module}
+% \end{verbatim}
+% \vspace{-1.7em}
+% \caption{Self-contained Modules via {\texttt{importmodule}}}\label{exf:importmodule}
+% \end{exfig}
+%
+% In Example~\ref{exf:importmodule}, we have shown the typical setup of a module
+% file. The |\importmodule| macro takes great care that files are only read once, as
+% {\sTeX} allows multiple inheritance and this setup would lead to an exponential (in the
+% module inheritance depth) number of file loads.
+%
+% Sometimes we want to import an existing {\omdoc} theory\footnote{{\omdoc} theories are
+%   the counterpart of {\stex} modules.} $\widehat\cT$ into (the {\omdoc} document
+% $\widehat\cD$ generated from) a {\stex} document $\cD$. Naturally, we have to provide an
+% {\stex} stub module $\cT$ that provides |\symdef| declarations for all symbols we use in
+% $\cD$. In this situation, we use\DescribeMacro{\importOMDocmodule}
+% |\importOMDocmodule[|\meta{spath}|]{|\meta{OURI}|}{|\meta{name}|}|, where \meta{spath}
+% is the file system path to $\cT$ (as in |\importmodule|, this argument must not contain
+% the file extension), \meta{OURI} is the URI to the {\omdoc} module (this time with
+% extension), and \meta{name} is the name of the theory $\widehat\cT$ and the module in
+% $\cT$ (they have to be identical for this to work). Note that since the \meta{spath}
+% argument is optional, we can make ``local imports'', where the stub $\cT$ is in $\cD$
+% and only contains the |\symdef|s needed there.
+%
+% Note that the recursive (depth-first) nature of the file loads induced by this setup is
+% very natural, but can lead to problems with the depth of the file stack in the {\TeX}
+% formatter (it is usually set to something like 15\footnote{If you have sufficient rights
+% to change your {\TeX} installation, you can also increase the variable
+% {\texttt{max\_in\_open}} in the relevant {\texttt{texmf.cnf}} file. Setting it to 50
+% usually suffices}). Therefore, it may be necessary to circumvent the recursive load
+% pattern providing (logically spurious) |\importmodule| commands. Consider for instance
+% module |bar| in Example~\ref{exf:importmodule}, say that |bar| already has load depth
+% 15, then we cannot naively import it in this way. If module |bar| depended say on a
+% module |base| on the critical load path, then we could add a statement
+% \DescribeMacro{\requiremodules} |\requiremodules{../base}| in the second line.  This
+% would load the modules from |../base.sms| in advance (uncritical, since it has load
+% depth 10) without activating them, so that it would not have to be re-loaded in the
+% critical path of the module |foo|. Solving the load depth problem.
+% 
+% \DescribeMacro{\sinput} In all of the above, we do not want to load an |sms| file, if
+% the corresponding file has already been loaded, since the semantic macros are already in
+% memory. Therefore the |modules| package supplies a semantic variant of the |\input|
+% macro, which records in an internal register that the modules in the file have already
+% been loaded. Thus if we consistently use |\sinput| instead of |\input| or |\include| for
+% files that contain modules\footnote{files without modules should be treated by the
+% regular {\LaTeX} input mechanism, since they do not need to be registered.}, we can
+% prevent double loading of files and therefore gain efficiency. The
+% \DescribeMacro{\sinputref} |\sinputref| macro behaves just like |\sinput| in the
+% {\LaTeX} workflow, but in the {\latexml} conversion process creates a reference to the
+% transformed version of the input file instead. \DescribeMacro{\inputref}|\inputref| and
+% \DescribeMacro{\includeref}|\sincluderef| also only create references in the {\latexml}
+% workflow but do not register loaded files or avoid duplicate loading.
+% 
+% Finally, the separation of documents into multiple modules often profits from a symbolic
+% management of file paths. To simplify this, the |modules| package supplies the
+% \DescribeMacro{\defpath}|\defpath| macro:
+% |\defpath[|\meta{baseURI}|]{|\meta{cname}|}{|\meta{path}|}| defines a command, so that
+% |\|\meta{csname}|{|\meta{name}|}| expands to \meta{path}|/|\meta{name}. So we could have
+% used
+% \begin{verbatim}
+% \defpath{OPaths}{../other}
+% \importmodule[load=\OPahts{bar}]{bar}
+% \end{verbatim}
+% instead of the second line in Example~\ref{exf:importmodule}. The variant |\OPaths| has
+% the big advantage that we can get around the fact that {\TeX/\LaTeX} does not set the
+% current directory in |\input|, so that we can use systematically deployed
+% |\defpath|-defined path macros to make modules relocatable by defining the path macros
+% locally. The optional parameter \meta{baseURI} is for the {\latexml} transformation,
+% which (if \meta{baseURI} is specified) resolves \meta{path} to an absolute URI according
+% to \cite[section 5.2]{BerFieMas:05}.
+% 
+% \subsection{Using Semantic Macros in Narrative Structures}\label{sec:user:using}
+% 
+% The |\importmodule| macro establishes the inheritance relation, a transitive relation
+% among modules that governs visibility of semantic macros. In particular, it can only be
+% used in modules (and has to be used at the top-level, otherwise it is hindered by
+% {\LaTeX} groups). In many cases, we only want to \emph{use} the semantic macros in an
+% environment (and not re-export them). Indeed, this is the normal situation for most
+% parts of mathematical documents. For that \sTeX provides the
+% \DescribeMacro{\usemodule}|\usemodule| macro, which takes the same arguments as
+% |\importmodule|, but is treated differently in the \sTeX module signatures. A typical
+% situation is shown in Figure~\ref{fig:use-ring}, where we open the module |ring| (see
+% Figure~\ref{fig:ring}) and use its semantic macros (in the |omtext| environment). In
+% earlier versions of \sTeX, we would have to wrap the |omtext| environment in an
+% anonymous |module| environment to prevent re-export. 
+% 
+%\begin{exfig}
+% \begin{verbatim}
+% \begin{omtext}
+%   \usemodule[../algebra/rings.tex]{ring}
+%   We $R$ be a ring $(\rbase,\rplus,\rzero,\rminusOp,\rtimes,\rone)$, ...
+% \end{omtext}
+% \end{verbatim}
+% \caption{Using Semantic Macros in Narrative Structures}\label{fig:use-ring}
+% \end{exfig}
+%
+% Still another import-like relation is the adoption of a module
+% (see~\cite{Kohlhase:osslepsdl13} for details). We use the
+% \DescribeMacro{\adoptmodule}|\adoptmodule| macro for that.\ednote{elaborate this, so
+% that the documentation becomes (more) self-contained.}
+%
+% \subsection{Including Externally Defined Semantic Macros }
+% 
+% In some cases, we use an existing {\LaTeX} macro package for typesetting objects that
+% have a conventionalized mathematical meaning. In this case, the macros are ``semantic''
+% even though they have not been defined by a |\symdef|. This is no problem, if we are
+% only interested in the {\LaTeX} workflow. But if we want to e.g. transform them to
+% {\omdoc} via {\latexml}, the {\latexml} bindings will need to contain references to an
+% {\omdoc} theory that semantically corresponds to the {\LaTeX} package. In particular,
+% this theory will have to be imported in the generated {\omdoc} file to make it
+% {\omdoc}-valid. 
+%
+% \DescribeMacro{\requirepackage} To deal with this situation, the |modules| package
+% provides the |\requirepackage| macro. It takes two arguments: a package name, and a URI
+% of the corresponding {\omdoc} theory. In the {\LaTeX} workflow this macro behaves like a
+% |\usepackage| on the first argument, except that it can --- and should --- be used
+% outside the {\LaTeX} preamble. In the {\latexml} workflow, this loads the {\latexml}
+% bindings of the package specified in the first argument and generates an appropriate
+% |imports| element using the URI in the second argument.
+%
+% \subsection{Views}\label{sec:user:views}
+% 
+% A view is a mapping between modules, such that all model assumptions (axioms) of the
+% source module are satisfied in the target module. \ednote{Document and make Examples}
+%
+% \section{Limitations \& Extensions}\label{sec:limitations}
+% 
+% In this section we will discuss limitations and possible extensions of the |modules|
+% package. Any contributions and extension ideas are welcome; please discuss ideas,
+% requests, fixes, etc on the {\sTeX} TRAC~\cite{sTeX:online}.
+% 
+% \subsection{Perl Utility \texttt{sms}}\label{sec:limitations:sms}
+% 
+% Currently we have to use an external perl utility |sms| to extract \sTeX module
+% signatures from \sTeX files. This considerably adds to the complexity of the \sTeX
+% installation and workflow. If we can solve security setting problems that allows us to
+% write to \sTeX module signatures outside the current directory, writing them from \sTeX
+% may be an avenue of future development see~\cite[issue \#1522]{sTeX:online} for a
+% discussion.
+% 
+% \subsection{Module Signatures loaded even if Modules are}\label{sec:limitations:sms2}
+% 
+% Currently, the module signature \meta{filepath}|.sms| is loaded even if
+% \meta{filepath}|.tex| has already been loaded. The Problem is that the |\input|
+% |\inputref| macros do not register the files. I guess, for |\input| we may not want
+% that, but for |\inputref| we should; and maybe we should also have a registering variant
+% |\rinput| that does, then we can leave the choice to the user. 
+%
+% \subsection{Only one level of path simplification}\label{sec:limitations:simpl}
+%
+% It seems that module simplification only covers one level, in particular |foo/bar/../..|
+% is only simplified to |foo/..|, which is not enough in practice. As a consequence,
+% module signatures are loaded unnecessary in the presence of relative paths. 
+%
+% \subsection{Qualified Imports}\label{sec:limitations:qualified-imports}
+% 
+% In an earlier version of the \texttt{modules} package we used the \texttt{usesqualified}
+% for importing macros with a disambiguating prefix (this is used whenever we have
+% conflicting names for macros inherited from different modules). This is not accessible
+% from the current interface. We need something like a |\importqualified| macro for this;
+% see~\cite[issue \#1505]{sTeX:online}. Until this is implemented the infrastructure is
+% turned off by default, but we have already introduced the
+% \DescribeMacro{qualifiedimports}|qualifiedimports| option for the future.
+% 
+% \subsection{Error Messages}\label{sec:limitations:errormsg}
+% 
+% The error messages generated by the |modules| package are still quite bad. For instance
+% if |thyA| does note exists we get the cryptic error message 
+% \begin{verbatim}
+% ! Undefined control sequence.
+% \module@defs@thyA ...hy 
+%                        \expandafter \mod@newcomma...
+% l.490 ...ortmodule{thyA}
+% \end{verbatim}
+% This should definitely be improved. 
+% 
+% \subsection{Crossreferencing}\label{sec:limitations:crossref}
+% 
+% Note that the macros defined by |\symdef| are still subject to the normal {\TeX} scoping
+% rules. Thus they have to be at the top level of a module to be visible throughout the
+% module as intended. As a consequence, the location of the |\symdef| elements cannot be
+% used as targets for crossreferencing, which is currently supplied by the |statement|
+% package~\ctancite{Kohlhase:smms}. A way around this limitation would be to import
+% the current module from the \sTeX module signature (see Section~\ref{sec:modules}) via
+% the |\importmodule| declaration.
+% 
+% \subsection{No Forward Imports}\label{sec:limitations:forward-imports}
+% 
+% {\sTeX} allows imports in the same file via |\importmodule{|\meta{mod}|}|, but due to
+% the single-pass linear processing model of {\TeX}, \meta{mod} must be the name of a
+% module declared {\emph{before}} the current point. So we cannot have forward imports as
+% in 
+% \begin{verbatim}
+% \begin{module}[id=foo]
+%   \importmodule{mod}
+%   ...
+% \end{module}
+% ... 
+% \begin{module}[id=mod]
+%   ... 
+% \end{module}
+% \end{verbatim}
+% a workaround, we can extract the module \meta{mod} into a file {{{mod.tex}}} and replace
+% it with |\sinput{mod}|, as in 
+% \begin{verbatim}
+% \begin{module}[id=foo]
+%   \importmodule[load=mod]{mod}
+%   ...
+% \end{module}
+% ... 
+% \sinput{mod}
+% \end{verbatim}
+% then the |\importmodule| command can read |mod.sms| (created via the |sms| utility)
+% without having to wait for the module \meta{mod} to be defined.
+% 
+% \StopEventually{\newpage\PrintIndex\newpage\PrintChanges\newpage\printbibliography}\newpage
+%
+% \section{The Implementation} 
+%
+% The |modules| package generates two files: the {\LaTeX} package (all the code between
+% {\textlangle\textsf{*package}\textrangle} and {\textsf{\textlangle/package\textrangle}})
+% and the {\latexml} bindings (between {\textsf{\textlangle*ltxml\textrangle}} and
+% {\textsf{\textlangle/ltxml\textrangle}}). We keep the corresponding code fragments
+% together, since the documentation applies to both of them and to prevent them from
+% getting out of sync.
+%
+% \subsection{Package Options}\label{sec:impl:options}
+% 
+% We declare some switches which will modify the behavior according to the package
+% options. Generally, an option |xxx| will just set the appropriate switches to true
+% (otherwise they stay false).
+%    \begin{macrocode}
+%<*package>
+\DeclareOption{showmeta}{\PassOptionsToPackage{\CurrentOption}{metakeys}}
+\newif\ifmod@show\mod@showfalse
+\DeclareOption{showmods}{\mod@showtrue}
+\newif\ifaux@req\aux@reqtrue
+\DeclareOption{noauxreq}{\aux@reqfalse}
+\newif\ifmod@qualified\mod@qualifiedfalse
+\DeclareOption{qualifiedimports}{\mod@qualifiedtrue}
+%    \end{macrocode}
+% Finally, we need to declare the end of the option declaration section to {\LaTeX}.
+%    \begin{macrocode}
+\ProcessOptions
+%    \end{macrocode}
+%
+% {\latexml} does not support module options yet, so we do not have to do anything here
+% for the {\latexml} bindings. We only set up the {\perl} packages (and tell {\texttt{emacs}}
+% about the appropriate mode for convenience  
+% 
+% The next measure is to ensure that the |sref| and |xcomment| packages are loaded (in the
+% right version). For {\latexml}, we also initialize the package inclusions.
+%    \begin{macrocode}
+\RequirePackage{sref}
+\RequirePackage{xspace}
+\RequirePackage{mdframed}
+%    \end{macrocode}
+% The next macros are not really an option\ednote{MK@DG, maybe it should be?} but serves
+% similar purposes.
+% \begin{macro}{\coolurion/off}
+%   \ednote{@DG: this needs to be documented somewhere in section 1}
+%    \begin{macrocode}
+\def\coolurion{}
+\def\coolurioff{}
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsection{Modules and Inheritance}\label{sec:impl:modules}
+% 
+% We define the keys for the |module| environment and the actions that are undertaken,
+% when the keys are encountered.
+%
+% \begin{macro}{module:cd}
+%    This |KeyVal| key is only needed for {\latexml} at the moment; use this to specify a
+%    content dictionary name that is different from the module name.
+%    \begin{macrocode}
+\addmetakey{module}{cd}
+\addmetakey*{module}{title}
+\addmetakey*{module}{creators}
+\addmetakey*{module}{contributors}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{module:id}
+%   For a module with |[id=|\meta{name}|]|, we have a macro |\module@defs@|\meta{name}
+%   that acts as a repository for semantic macros of the current module. I will be called
+%   by |\importmodule| to activate them. We will add the internal forms of the semantic
+%   macros whenever |\symdef| is invoked. To do this, we will need an unexpended form
+%   |\this@module| that expands to |\module@defs@|\meta{name}; we define it first and then
+%   initialize |\module@defs@|\meta{name} as empty. Then we do the same for qualified
+%   imports as well (if the |qualifiedimports| option was specified). Furthermore, we save
+%   the module name in |\mod@id| and the module path in |\|\meta{name}|@cd@file@base|
+%   which we add to |\module@defs@|\meta{name}, so that we can use it in the importing
+%   module.
+%    \begin{macrocode}
+\define@key{module}{id}{%
+\edef\this@module{\expandafter\noexpand\csname module@defs@#1\endcsname}%
+\global\@namedef{module@defs@#1}{}%
+\ifmod@qualified
+\edef\this@qualified@module{\expandafter\noexpand\csname module@defs@qualified@#1\endcsname}%
+\global\@namedef{module@defs@qualified@#1}{}%
+\fi
+\def\mod@id{#1}%
+\expandafter\edef\csname #1@cd@file@base\endcsname{\mod@path}%
+\expandafter\g@addto@macro\csname module@defs@#1\expandafter\endcsname\expandafter%
+{\expandafter\def\csname #1@cd@file@base\expandafter\endcsname\expandafter{\mod@path}}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{module@heading}
+%   Then we make a convenience macro for the module heading. This can be customized. 
+%    \begin{macrocode}
+\newcounter{module}[section]
+\newcommand\module@heading{\stepcounter{module}%
+\ifmod@show%
+\noindent{\textbf{Module} \thesection.\themodule [\mod@id]}%
+\sref@label@id{Module \thesection.\themodule [\mod@id]}%
+\ifx\module@title\@empty :\quad\else\quad(\module@title)\hfill\\\fi%
+\fi}%mod@show
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{environment}{module}
+%   Finally, we define the begin module command for the module environment. All the work
+%   has already been done in the keyval bindings, so this is very simple.
+%    \begin{macrocode}
+\newenvironment{module}[1][]{\begin{@module}[#1]\module@heading}{\end{@module}}
+\ifmod@show\surroundwithmdframed{module}\fi
+%    \end{macrocode}
+% \end{environment}
+%
+% \begin{environment}{@module}
+%   A variant of the |module| environment that does not create printed representations (in
+%   particular no frames) 
+%    \begin{macrocode}
+\newenvironment{@module}[1][]{\metasetkeys{module}{#1}}{}
+%    \end{macrocode}
+% \end{environment}
+%
+% \begin{macro}{\activate@defs}
+%   To activate the |\symdef|s from a given module \meta{mod}, we call the macro
+%   |\module@defs@|\meta{mod}. But to make sure that every module is activated only once,
+%   we only activate if the macro |\module@defs@|\meta{mod} is undefined, and define it
+%   directly afterwards to prohibit further activations.
+%    \begin{macrocode}
+\def\activate@defs#1{%
+\@ifundefined{module@#1@activated}{\csname module@defs@#1\endcsname}{}%
+\@namedef{module@#1@activated}{true}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\export@defs}
+%   |\export@defs{|\meta{mod}|}| exports all the |\symdef|s from module \meta{mod} to the
+%   current module (if it has the name \meta{currmod}), by adding a call to
+%   |\module@defs@|\meta{mod} to the registry |\module@defs@|\meta{currmod}.\ednote{MK: I
+%   have the feeling that we may be exporting modules multiple times here, is that a
+%   problem?}
+%    \begin{macrocode}
+\def\export@defs#1{\@ifundefined{mod@id}{}%
+{\expandafter\expandafter\expandafter\g@addto@macro\expandafter%
+\this@module\expandafter{\activate@defs{#1}}}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\importmodule} 
+%   The |\importmodule[|\meta{file}|]{|\meta{mod}|}| macro is an interface macro that
+%   loads \meta{file} and activates and re-exports the |\symdef|s from module
+%   \meta{mod}. It also remembers the file name in |\mod@path|. As we will need to keep a
+%   record of the currently imported modules (top-level only), we divide the functionality
+%   into a user-visible macro that records modules in the |\imported@modules| register and
+%   an internal one (|\@importmodule|) that does the actual work. 
+%    \begin{macrocode}
+\gdef\imported@modules{}
+\srefaddidkey{importmodule}
+\addmetakey{importmodule}{load}
+\newcommand\importmodule[2][]{\metasetkeys{importmodule}{#1}%
+\ifx\imported@modules\@empty\edef\imported@modules{#2}%
+\else\edef\imported@modules{#2,\imported@modules}\fi%
+\@importmodule[\importmodule@load]{#2}\ignorespaces}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\@importmodule} 
+%   |\@importmodule[|\meta{file}|]{|\meta{mod}|}| loads \meta{file} (if it is given) and
+%   activates the module \meta{mod}. There is a slight inefficiency in that modules can be
+%   recorded multiply, but since |\activate@defs| is efficient about not activating twice,
+%   this is OK.  Another thing |\@importmodule{|\meta{mod}|}| does is that it writes a
+%   |\requiremodules{|\meta{mod}|}| into the aux file, so that the table of contents can
+%   use semantic macros (the table of contents uses |\importmodules{\imported@modules}| in
+%   the titles, see \cite{Kohlhase:smomdl:ctan} for details).
+%    \begin{macrocode}
+\newcommand\@importmodule[2][]{%
+{\edef\@load{#1}\ifx\@load\@empty\else{\mod@showfalse\requiremodules\@load}\fi}%
+\activate@defs{#2}\export@defs{#2}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\usemodule} 
+%   |\usemodule| acts like |\importmodule| for the {\LaTeX} side, except that the |sms|
+%   utility does not transfer it to the module signatures. Thus we can implement it by a
+%   simple |\let|. On the {\latexml} side we just generate the |<uses>| element (all the
+%   work has been done in the subroutines.)
+%    \begin{macrocode}
+\let\usemodule=\importmodule
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\importmodules} 
+%   This variant just imports all the modules in a comma-separated list (usually
+%   |\imported@modules|)
+%    \begin{macrocode}
+\newcommand\importmodules[1]{\@for\@I:=#1\do{\importmodule\@I}}%
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\importmodulevia} 
+%   The |importmodulevia| environment just calls |\importmodule|, but to get around the
+%   group, we first define a local macro |\@@doit|, which does that and can be called with
+%   an |\aftergroup| to escape the environment groupling introduced by |importmodulevia|.
+%    \begin{macrocode}
+\newenvironment{importmodulevia}[2][]{\gdef\@@doit{\importmodule[#1]{#2}}%
+\ifmod@show\par\noindent importing module #2 via \@@doit\fi}
+{\aftergroup\@@doit\ifmod@show end import\fi}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{environment}{vassign}
+%    \begin{macrocode}
+\newcommand\vassign[3][]{\ifmod@show\ensuremath{#2\mapsto #3}, \fi}
+%    \end{macrocode}
+% \end{environment}
+% 
+% \begin{environment}{tassign}
+%    \begin{macrocode}
+\newcommand\tassign[3][]{\ifmod@show #2\ensuremath{\mapsto} #3, \fi}
+%    \end{macrocode}
+% \end{environment}
+% 
+% \begin{environment}{ttassign}
+%    \begin{macrocode}
+\newcommand\ttassign[3][]{\ifmod@show #2\ensuremath{\mapsto} ``#3'', \fi}
+%    \end{macrocode}
+% \end{environment}
+% 
+% \begin{macro}{\importOMDocmodule} 
+%   for the {\LaTeX} side we can just re-use |\importmodule|, for the {\latexml} side we
+%   have a full URI anyways. So things are easy.\ednote{MK@DG: this macro is seldom used,
+%   maybe I should just switch arguments.}
+%    \begin{macrocode}
+\newcommand\importOMDocmodule[3][]{\importmodule[#1]{#3}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\metalanguage} 
+%   |\metalanguage| behaves exactly like |\importmodule| for formatting. For {\latexml},
+%   we only add the |type| attribute.
+%    \begin{macrocode}
+\let\metalanguage=\importmodule
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\adoptmodule} 
+%   |\adoptmodule| macro behaves exactly like |\importmodule| for formatting. For
+%   {\latexml}.
+%    \begin{macrocode}
+\let\adoptmodule=\importmodule
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsection{Semantic Macros}\label{sec:impl:symdef}
+% 
+% \begin{macro}{\mod@newcommand}
+%   We first hack the {\LaTeX} kernel macros to obtain a version of the |\newcommand|
+%   macro that does not check for definedness. This is just a copy of the code from
+%   |latex.ltx| where I have removed the |\@ifdefinable| check.\footnote{Someone must have
+%     done this before, I would be very happy to hear about a package that provides this.}
+%    \begin{macrocode}
+\def\mod@newcommand{\@star@or@long\mod@new@command}
+\def\mod@new@command#1{\@testopt{\@mod@newcommand#1}0}
+\def\@mod@newcommand#1[#2]{\kernel@ifnextchar [{\mod@xargdef#1[#2]}{\mod@argdef#1[#2]}}
+\long\def\mod@argdef#1[#2]#3{\@yargdef#1\@ne{#2}{#3}}
+\long\def\mod@xargdef#1[#2][#3]#4{\expandafter\def\expandafter#1\expandafter{%
+\expandafter\@protected@testopt\expandafter #1\csname\string#1\endcsname{#3}}%
+\expandafter\@yargdef\csname\string#1\endcsname\tw@{#2}{#4}}
+%    \end{macrocode}
+% \end{macro}
+% 
+% Now we define the optional KeyVal arguments for the |\symdef| form and the actions that
+% are taken when they are encountered.
+%
+% \begin{environment}{conceptdef}
+%    \begin{macrocode}
+\srefaddidkey{conceptdef}
+\addmetakey*{conceptdef}{title}
+\addmetakey{conceptdef}{subject}
+\addmetakey*{conceptdef}{display}
+\def\conceptdef@type{Symbol}
+\newcommand\conceptdef[2][]{\metasetkeys{conceptdef}{#1}%
+\ifx\conceptdef@display\st@flow\else{\stDMemph{\conceptdef@type} #2:}\fi%
+\ifx\conceptdef@title\@empty~\else~(\stDMemph{\conceptdef@title})\par\fi}
+%    \end{macrocode}
+% \ednote{MK@DG: maybe we need to add DefKeyVals here?}
+% \end{environment}
+% 
+% \begin{macro}{symdef:keys}
+%   The optional argument local specifies the scope of the function to be defined. If
+%   local is not present as an optional argument then |\symdef| assumes the scope of the
+%   function is global and it will include it in the pool of macros of the current
+%   module. Otherwise, if local is present then the function will be defined only locally
+%   and it will not be added to the current module (i.e. we cannot inherit a local
+%   function).  Note, the optional key local does not need a value: we write
+%   |\symdef[local]{somefunction}[0]{some expansion}|. The other keys are not used in the
+%   {\LaTeX} part.
+%    \begin{macrocode}
+\newif\if@symdeflocal
+\srefaddidkey{symdef}
+\define@key{symdef}{local}[true]{\@symdeflocaltrue}
+\define@key{symdef}{assocarg}{}
+\define@key{symdef}{bvars}{}
+\define@key{symdef}{bargs}{}
+\addmetakey{symdef}{name}
+\addmetakey*{symdef}{title}
+\addmetakey*{symdef}{description}
+\addmetakey{symdef}{subject}
+\addmetakey*{symdef}{display}
+%    \end{macrocode}
+% \end{macro}
+% \ednote{MK@MK: we need to document the binder keys above.}
+% \begin{macro}{\symdef}
+%    The the |\symdef|, and |\@symdef| macros just handle optional arguments.
+%    \begin{macrocode}
+\def\symdef{\@ifnextchar[{\@symdef}{\@symdef[]}}
+\def\@symdef[#1]#2{\@ifnextchar[{\@@symdef[#1]{#2}}{\@@symdef[#1]{#2}[0]}}
+%    \end{macrocode}
+% next we locally abbreviate |\mod@newcommand| to simplify argument passing.
+%    \begin{macrocode}
+\def\@mod@nc#1{\mod@newcommand{#1}[1]}
+%    \end{macrocode}
+%    now comes the real meat: the |\@@symdef| macro does two things, it adds the macro
+%    definition to the macro definition pool of the current module and also provides it.
+%    \begin{macrocode}
+\def\@@symdef[#1]#2[#3]#4{%
+%    \end{macrocode}
+% We use a switch to keep track of the local optional argument. We initialize the switch
+% to false and set all the keys that have been provided as arguments: |name|, |local|.
+%    \begin{macrocode}
+\@symdeflocalfalse\metasetkeys{symdef}{#1}%
+%    \end{macrocode}
+% First, using |\mod@newcommand| we initialize the intermediate macro
+% |\module@|\meta{sym}|@pres@|, the one that can be extended with |\symvariant|
+%    \begin{macrocode}
+\expandafter\mod@newcommand\csname modules@#2@pres@\endcsname[#3]{#4}%
+%    \end{macrocode}
+% and then we define the actual semantic macro. Note that this can take an optional
+% argument, for which we provide with |\@ifnextchar| and an internal macro |\@|\meta{sym},
+% which when invoked with an optional argument \meta{opt} calls
+% |\modules@|\meta{sym}|@pres@|\meta{opt}.
+%    \begin{macrocode}
+\expandafter\def\csname #2\endcsname%
+{\@ifnextchar[{\csname modules@#2\endcsname}{\csname modules@#2\endcsname[]}}%
+\expandafter\def\csname modules@#2\endcsname[##1]%
+{\csname modules@#2@pres@##1\endcsname}%
+%    \end{macrocode}
+% Finally, we prepare the internal macro to be used in the |\symref| call.
+%    \begin{macrocode}
+\expandafter\@mod@nc\csname mod@symref@#2\expandafter\endcsname\expandafter%
+{\expandafter\mod@termref\expandafter{\mod@id}{#2}{##1}}%
+%    \end{macrocode}
+% We check if the switch for the local scope is set: if it is we are done, since this
+% function has a local scope. Similarly, if we are not inside a module, which we could
+% export from.  
+%    \begin{macrocode}
+\if@symdeflocal\else%
+\@ifundefined{mod@id}{}{%
+%    \end{macrocode}
+% Otherwise, we add three functions to the module's pool of defined macros using
+% |\g@addto@macro|. We first add the definition of the intermediate function
+% |\modules@|\meta{sym}|@pres@|.
+%    \begin{macrocode}
+\expandafter\g@addto@macro\this@module%
+{\expandafter\mod@newcommand\csname modules@#2@pres@\endcsname[#3]{#4}}%
+%    \end{macrocode}
+% Then we add add the definition of |\|\meta{sym} in terms of the function |\@|\meta{sym}
+% to handle the optional argument.
+%    \begin{macrocode}
+\expandafter\g@addto@macro\this@module%
+{\expandafter\def\csname#2\endcsname%
+{\@ifnextchar[{\csname modules@#2\endcsname}{\csname modules@#2\endcsname[]}}}%
+%    \end{macrocode}
+% We add add the definition of |\@|\meta{sym}, which calls the intermediate
+% function.
+%    \begin{macrocode}
+\expandafter\g@addto@macro\this@module%
+{\expandafter\def\csname modules@#2\endcsname[##1]%
+{\csname modules@#2@pres@##1\endcsname}}%
+%    \end{macrocode}
+% We also add |\mod@symref@|\meta{sym} macro to the macro pool so that the |\symref| macro
+% can pick it up.
+%    \begin{macrocode}
+\expandafter\g@addto@macro\csname  module@defs@\mod@id\expandafter\endcsname\expandafter%
+{\expandafter\@mod@nc\csname mod@symref@#2\expandafter\endcsname\expandafter%
+{\expandafter\mod@termref\expandafter{\mod@id}{#2}{##1}}}%
+%    \end{macrocode}
+% Finally, using |\g@addto@macro| we add the two functions to the qualified version of the
+% module if the |qualifiedimports| option was set.
+%    \begin{macrocode}
+\ifmod@qualified%
+\expandafter\g@addto@macro\this@qualified@module%
+{\expandafter\mod@newcommand\csname modules@#2@pres@qualified\endcsname[#3]{#4}}%
+\expandafter\g@addto@macro\this@qualified@module%
+{\expandafter\def\csname#2atqualified\endcsname{\csname modules@#2@pres@qualified\endcsname}}%
+\fi}% mod@qualified
+\fi% symdeflocal
+%    \end{macrocode}
+% So now we only need to show the data in the symdef, if the options allow. 
+%    \begin{macrocode}
+\ifmod@show
+\ifx\symdef@display\st@flow\else{\noindent\stDMemph{\symdef@type} #2:}\fi%
+\ifx\symdef@title\@empty~\else~(\stDMemph{\symdef@title})\par\fi
+\fi}% mod@show
+\def\symdef@type{Symbol}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\symvariant}
+%   |\symvariant{|\meta{sym}|}[|\meta{args}|]{|\meta{var}|}{|\meta{cseq}|}| just extends
+%   the internal macro |\modules@|\meta{sym}|@pres@| defined by
+%   |\symdef{|\meta{sym}|}[|\meta{args}|]{|\ldots|}| with a variant
+%   |\modules@|\meta{sym}|@pres@|\meta{var} which expands to \meta{cseq}. Recall that this
+%   is called by the macro |\|\meta{sym}|[|\meta{var}|]| induced by the
+%   |\symdef|.\ednote{MK@DG: this needs to be implemented in LaTeXML}
+%    \begin{macrocode}
+\def\symvariant#1{\@ifnextchar[{\@symvariant{#1}}{\@symvariant{#1}[0]}}
+\def\@symvariant#1[#2]#3#4{%
+\expandafter\mod@newcommand\csname modules@#1@pres@#3\endcsname[#2]{#4}%
+%    \end{macrocode}
+% and if we are in a named module, then we need to export the function
+% |\modules@|\meta{sym}|@pres@|\meta{opt} just as we have done that in |\symdef|.
+%    \begin{macrocode}
+\@ifundefined{mod@id}{}{%
+\expandafter\g@addto@macro\this@module%
+{\expandafter\mod@newcommand\csname modules@#1@pres@#3\endcsname[#2]{#4}}}}%
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\resymdef}
+%   This is now deprecated.
+%    \begin{macrocode}
+\def\resymdef{\@ifnextchar[{\@resymdef}{\@resymdef[]}}
+\def\@resymdef[#1]#2{\@ifnextchar[{\@@resymdef[#1]{#2}}{\@@resymdef[#1]{#2}[0]}}
+\def\@@resymdef[#1]#2[#3]#4{\PackageError{modules}
+  {The \protect\resymdef macro is deprecated,\MessageBreak
+    use the \protect\symvariant instead!}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\abbrdef}
+%   The |\abbrdef| macro is a variant of |\symdef| that does the same on the {\LaTeX}
+%   level.
+%    \begin{macrocode}
+\let\abbrdef\symdef
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsection{Defining Math Operators}\label{sec:impl:defmathop}
+%
+% \begin{macro}{\DefMathOp} 
+% \ednote{MK@MK,DG: DefMathOp needs to be documented above, what can we do with it? }
+%    \begin{macrocode}
+\define@key{DefMathOp}{name}{\def\defmathop@name{#1}}
+\newcommand\DefMathOp[2][]{%
+\setkeys{DefMathOp}{#1}%
+\symdef[#1]{\defmathop@name}{#2}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsection{Testing Semantic Macros}\label{sec:impl:testing}
+% \begin{macro}{\symtest}
+%    \begin{macrocode}
+\addmetakey{symtest}{name}
+\addmetakey{symtest}{variant}
+\newcommand\symtest[3][]{\metasetkeys{symtest}{#1}%
+\par\noindent \textbf{Symbol}~%
+\ifx\symtest@name\@empty\texttt{#2}\else\texttt{\symtest@name}\fi%
+\ifx\symtest@variant\@empty\else\ (variant \texttt{\symtest@variant})\fi%
+\ with semantic macro \texttt{\textbackslash #2}%
+: used e.g. in \ensuremath{#3}}
+%    \end{macrocode}
+% \end{macro}
+% 
+% \begin{macro}{\abbrtest}
+%    \begin{macrocode}
+\addmetakey{abbrtest}{name}
+\newcommand\abbrtest[3][]{\metasetkeys{abbrtest}{#1}%
+\par\noindent \textbf{Abbreviation}~%
+\ifx\abbrtest@name\@empty\texttt{#2}\else\texttt{\abbrtest@name}\fi%
+: used e.g. in \ensuremath{#3}}
+%    \end{macrocode}
+% \end{macro}
+% 
+% \subsection{Symbol and Concept Names}\label{sec:impl:concepts}
+%
+% \begin{macro}{\mod@path} 
+%   the |\mod@path| macro is used to remember the local path, so that the |module|
+%   environment can set it for later cross-referencing of the modules. If |\mod@path| is
+%   empty, then it signifies the local file.
+%    \begin{macrocode}
+\def\mod@path{}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\termdef} 
+%    \begin{macrocode}
+\def\mod@true{true}
+\addmetakey[false]{termdef}{local}
+\addmetakey{termdef}{name}
+\newcommand\termdef[3][]{\metasetkeys{termdef}{#1}%
+\expandafter\mod@newcommand\csname#2\endcsname[0]{#3\xspace}%
+\ifx\termdef@local\mod@true\else%
+\@ifundefined{mod@id}{}{\expandafter\g@addto@macro\this@module%
+{\expandafter\mod@newcommand\csname#2\endcsname[0]{#3\xspace}}}%
+\fi}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\capitalize} 
+%    \begin{macrocode}
+\def\@capitalize#1{\uppercase{#1}}
+\newcommand\capitalize[1]{\expandafter\@capitalize #1}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\mod@termref} 
+%   |\mod@termref{|\meta{module}|}{|\meta{name}|}{|\meta{nl}|}| determines whether the
+%   macro |\|\meta{module}|@cd@file@base| is defined. If it is, we make it the prefix of a
+%   URI reference in the local macro |\@uri|, which we compose to the hyper-reference,
+%   otherwise we give a warning.
+%    \begin{macrocode}
+\def\mod@termref#1#2#3{\def\@test{#3}%
+\@ifundefined{#1@cd@file@base}%
+{\protect\G@refundefinedtrue%
+\@latex@warning{\protect\termref with unidentified cd "#1": the cd key must reference an active module}%
+\def\@label{sref@#2 @target}}%
+{\def\@label{sref@#2@#1@target}}%
+\expandafter\ifx\csname #1@cd@file@base\endcsname\@empty% local reference
+\sref@hlink@ifh{\@label}{\ifx\@test\@empty #2\else #3\fi}\else%
+\def\@uri{\csname #1@cd@file@base\endcsname.pdf\#\@label}%
+\sref@href@ifh{\@uri}{\ifx\@test\@empty #2\else #3\fi}\fi}
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsection{Dealing with Multiple Files}\label{sec:impl:multiple}
+%
+% Before we can come to the functionality we want to offer, we need some auxiliary
+% functions that deal with path names. 
+% 
+% \subsubsection{Simplifying Path Names}
+% 
+% The |\mod@simplify| macro is used for simplifying
+% path names by removing \meta{xxx}|/..| from a string. eg:
+% \meta{aaa}|/|\meta{bbb}|/../|\meta{ddd} goes to \meta{aaa}|/|\meta{ddd} unless
+% \meta{bbb} is |..|. This is used to normalize relative path names below.
+%
+% \begin{macro}{\mod@simplify}
+%   The macro |\mod@simplify| recursively runs over the path collecting the result in the
+%   internal |\mod@savedprefix| macro.
+%    \begin{macrocode}
+\def\mod@simplify#1{\expandafter\mod@simpl#1/\relax}
+%    \end{macrocode}
+% It is based on the |\mod@simpl| macro\ednote{what does the mod@blaaa do?}
+%    \begin{macrocode}
+\def\mod@simpl#1/#2\relax{\def\@second{#2}%
+\ifx\mod@blaaaa\@empty\edef\mod@savedprefix{}\def\mod@blaaaa{aaa}\fi%
+\ifx\@second\@empty\edef\mod@savedprefix{\mod@savedprefix#1}%
+\else\mod@simplhelp#1/#2\relax\fi}
+%    \end{macrocode}
+%    which in turn is based on a helper macro
+%    \begin{macrocode}
+\def\mod@updir{..}
+\def\mod@simplhelp#1/#2/#3\relax{\def\@first{#1}\def\@second{#2}\def\@third{#3}%
+%\message{mod@simplhelp: first=\@first, second=\@second, third=\@third, result=\mod@savedprefix.}
+\ifx\@third\@empty% base case
+\ifx\@second\mod@updir\else%
+\ifx\mod@second\@empty\edef\mod@savedprefix{\mod@savedprefix#1}%
+\else\edef\mod@savedprefix{\mod@savedprefix#1/#2}%
+\fi%
+\fi%
+\else%
+\ifx\@first\mod@updir%
+\edef\mod@savedprefix{\mod@savedprefix#1/}\mod@simplhelp#2/#3\relax%
+\else%
+\ifx\@second\mod@updir\mod@simpl#3\relax%
+\else\edef\mod@savedprefix{\mod@savedprefix#1/}\mod@simplhelp#2/#3\relax%
+\fi%
+\fi%
+\fi}%
+%    \end{macrocode}
+% \end{macro}
+%
+% We directly test the simplification: \makeatletter
+% \def\mod@simpl@test#1{\def\mod@savedprefix{}\mod@simplify{#1}\mod@savedprefix}
+% \begin{center}
+% \begin{tabular}{|l|l|l|}\hline
+%   source       & result                          & should be \\\hline\hline
+% aaa            & \mod@simpl@test{aaa}            &  aaa\\\hline
+% ../../aaa      & \mod@simpl@test{../../aaa}      &  ../../aaa\\\hline
+% aaa/bbb        & \mod@simpl@test{aaa/bbb}        & aaa/bbb\\\hline
+% aaa/..         & \mod@simpl@test{aaa/..}         & \\\hline
+% ../../aaa/bbb  & \mod@simpl@test{../../aaa/bbb}  & ../../aaa/bbb\\\hline
+% ../aaa/../bbb  & \mod@simpl@test{../aaa/../bbb}  &  ../bbb\\\hline
+% ../aaa/bbb  & \mod@simpl@test{../aaa/bbb}  &  ../aaa/bbb\\\hline
+% aaa/bbb/../ddd & \mod@simpl@test{aaa/bbb/../ddd} & aaa/ddd\\\hline
+% aaa/bbb/../.. & \mod@simpl@test{aaa/bbb/../..} & \\\hline
+% \end{tabular}
+% \end{center}
+% \makeatother
+%
+% \begin{macro}{\defpath}
+%    \begin{macrocode}
+\newcommand\defpath[3][]{\expandafter\newcommand\csname #2\endcsname[1]{#3/##1}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsection{Loading Module Signatures}
+%
+% We will need a switch\ednote{explain why?}
+%    \begin{macrocode}
+\newif\ifmodules
+%    \end{macrocode}
+% and a ``registry'' macro whose expansion represents the list of added macros (or files)
+% \begin{macro}{\mod@reg}
+%    We initialize the |\mod@reg| macro with the empty string.
+%    \begin{macrocode}
+\gdef\mod@reg{}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\mod@update}
+%     This macro provides special append functionality. It takes a string and appends it
+%     to the expansion of the |\mod@reg| macro in the following way:  |string@\mod@reg|.
+%    \begin{macrocode}
+\def\mod@update#1{\ifx\mod@reg\@empty\xdef\mod@reg{#1}%
+\else\xdef\mod@reg{#1@\mod@reg}\fi}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\mod@check}
+%   The |\mod@check| takes as input a file path (arg 3), and searches the registry. If the
+%   file path is not in the registry it means it means it has not been already added, so
+%   we make |\ifmodules| true, otherwise make |\ifmodules| false. The macro |\mod@search|
+%   will look at |\ifmodules| and update the registry for |\modulestrue| or do nothing for
+%   |\modulesfalse|.
+%    \begin{macrocode}
+\def\mod@check#1@#2///#3\relax{%
+\def\mod@one{#1}\def\mod@two{#2}\def\mod@three{#3}%
+%    \end{macrocode}
+%    Define a few intermediate macros so that we can split the registry into separate file
+%    paths and compare to the new one
+%    \begin{macrocode}
+\expandafter%
+\ifx\mod@three\mod@one\modulestrue%
+\else%
+\ifx\mod@two\@empty\modulesfalse\else\mod@check#2///#3\relax\fi%
+\fi}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\mod@search}
+%    Macro for updating the registry after the execution of |\mod@check|
+%    \begin{macrocode}
+\def\mod@search#1{%
+%    \end{macrocode}
+%    We put the registry as the first argument for |\mod@check| and the other
+%    argument is the new file path.
+%    \begin{macrocode}
+\modulesfalse\expandafter\mod@check\mod@reg @///#1\relax%
+%    \end{macrocode}
+%    We run |\mod@check| with these arguments and the check |\ifmodules| for
+%    the result
+%    \begin{macrocode}
+\ifmodules\else\mod@update{#1}\fi}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\mod@reguse}
+%   The macro operates almost as the |mod@search| function, but it does not update the
+%   registry. Its purpose is to check whether some file is or not inside the registry but
+%   without updating it. Will be used before deciding on a new sms file
+%    \begin{macrocode}
+\def\mod@reguse#1{\modulesfalse\expandafter\mod@check\mod@reg @///#1\relax}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\mod@prefix}
+% This is a local macro for storing the path prefix, we initialize it as the empty
+% string.
+%    \begin{macrocode}
+\def\mod@prefix{}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\mod@updatedpre}
+%    This macro updates the path prefix |\mod@prefix| with the last word in the path given
+%    in its argument. 
+%    \begin{macrocode}
+\def\mod@updatedpre#1{%
+\edef\mod@prefix{\mod@prefix\mod@pathprefix@check#1/\relax}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\mod@pathprefix@check}
+%   |\mod@pathprefix@check| returns the last word in a string composed of words separated
+%   by slashes
+%    \begin{macrocode}
+\def\mod@pathprefix@check#1/#2\relax{%
+\ifx\\#2\\% no slash in string
+\else\mod@ReturnAfterFi{#1/\mod@pathprefix@help#2\relax}%
+\fi}
+%    \end{macrocode}
+% It needs two helper macros:
+%    \begin{macrocode}
+\def\mod@pathprefix@help#1/#2\relax{%
+\ifx\\#2\\% end of recursion
+\else\mod@ReturnAfterFi{#1/\mod@pathprefix@help#2\relax}%
+\fi}
+\long\def\mod@ReturnAfterFi#1\fi{\fi#1}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\mod@pathpostfix@check}
+%    |\mod@pathpostfix@check| takes a string composed of words separated by slashes and
+%    returns the part of the string until the last slash
+%    \begin{macrocode}
+\def\mod@pathpostfix@check#1/#2\relax{% slash
+\ifx\\#2\\%no slash in string
+#1\else\mod@ReturnAfterFi{\mod@pathpostfix@help#2\relax}%
+\fi}
+%    \end{macrocode}
+% Helper function for the |\pathpostfix@check| macro defined above
+%    \begin{macrocode}
+\def\mod@pathpostfix@help#1/#2\relax{%
+\ifx\\#2\\%
+#1\else\mod@ReturnAfterFi{\mod@pathpostfix@help#2\relax}%
+\fi}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\mod@updatedpost}
+%    This macro updates |\mod@savedprefix| with leading path (all but the last word) in the path given
+%    in its argument. 
+%    \begin{macrocode}
+\def\mod@updatedpost#1{%
+\edef\mod@savedprefix{\mod@savedprefix\mod@pathpostfix@check#1/\relax}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsubsection{Selective Inclusion}
+%
+% \begin{macro}{\requiremodules}
+%   this macro loads the modules in a file. It does quite a lot of work to make sure that
+%   they are only loaded once (actually this does not quite work so they are loaded only
+%   twice). |\requiremodules{|\meta{file}|}|The macro also deposits a call to
+%   |\@requiremodules{|\meta{file}|}| to the |aux| file to make sure that the semantic
+%   macros are already loaded for the table of contents. 
+%    \begin{macrocode}
+\newcommand\requiremodules[1]{%
+{\mod@showfalse% save state and ensure silence while reading sms
+\mod@updatedpre{#1}% add the new file to the already existing path
+\let\mod@savedprefix\mod@prefix% add the path to the new file to the prefix
+\mod@updatedpost{#1}%
+\def\mod@blaaaa{}% macro used in the simplify function (remove .. from the prefix)
+\mod@simplify{\mod@savedprefix}% remove |xxx/..| from the path (in case it exists)
+\mod@reguse{\mod@savedprefix}%
+\ifmodules\else%
+\let\newreg\mod@reg% use to compare, in case the .sms file was loaded before
+\mod@search{\mod@savedprefix}% update registry
+\ifx\newreg\mod@reg\else\input{\mod@savedprefix.sms}% load if not in registry
+\ifaux@req\protected@write\@auxout{}{\string\@requiremodules{\mod@savedprefix}}\fi%
+\fi% ifx
+\fi}}%  ifmodules
+% \end{macro}
+% 
+% \begin{macro}{\@requiremodules}
+% the internal macro that actually does the loading. We disable it at the end of the
+% document, so that when the aux file is read again, nothing is loaded. 
+%    \begin{macrocode}
+\newcommand\@requiremodules[1]{\if@tempswa\mod@showfalse\input{#1.sms}\fi}
+{\renewcommand\@requiremodules[1]{}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\sinput}
+%    \begin{macrocode}
+\def\sinput#1{
+{\mod@updatedpre{#1}% add the new file to the already existing path
+\let\mod@savedprefix\mod@prefix% add the path to the new file to the prefix
+\mod@updatedpost{#1}%
+\def\mod@blaaaa{}% macro used in the simplify function (remove .. from the prefix)
+\mod@simplify{\mod@savedprefix}% remove |xxx/..| from the path (in case it exists)
+\mod@reguse{\mod@savedprefix}%
+\let\newreg\mod@reg% use to compare, in case the .sms file was loaded before
+\mod@search{\mod@savedprefix}% update registry
+\ifx\newreg\mod@reg%\message{This file has been previously introduced}
+\else\input{\mod@savedprefix}%
+\fi}}
+%    \end{macrocode}
+% \end{macro}
+% \ednote{the sinput macro is just faked, it should be more like requiremodules, except
+% that the tex file is inputted; I wonder if this can be simplified.}
+%
+%    \begin{macrocode}
+\let\sinputref=\sinput
+\let\inputref=\input
+\let\includeref=\include
+%    \end{macrocode}
+% 
+% \subsection{Including Externally Defined Semantic Macros }\label{sec:impl:packages}
+% 
+% \begin{macro}{\requirepackage}
+%    \begin{macrocode}
+\def\requirepackage#1#2{\makeatletter\input{#1.sty}\makeatother}
+%    \end{macrocode}
+% \end{macro}
+% 
+% \subsection{Views}\label{sec:impl:views}
+% 
+% We first prepare the ground by defining the keys for the |view| environment.
+%    \begin{macrocode}
+\srefaddidkey{view}
+\addmetakey*{view}{title}
+\addmetakey{view}{display}
+\addmetakey{view}{from}
+\addmetakey{view}{to}
+\addmetakey{view}{creators}
+%    \end{macrocode}
+%
+% \begin{macro}{\view@heading}
+%   Then we make a convenience macro for the view heading. This can be customized. 
+%    \begin{macrocode} 
+\newcounter{view}[section]
+\newcommand\view@heading[2]{\stepcounter{view}%
+\ifx\view@display\st@flow\else
+{\textbf{View} {\thesection.\theview} from \textsf{#1} to \textsf{#2}}%
+\sref@label@id{View \thesection.\theview}%
+\ifx\view@title\@empty\quad\else\quad(\view@title)\fi%
+\par\noindent%
+\fi}%ifmod@show
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{environment}{view}
+%   The |view| environment relies on the |@view| environment (used also in the \sTeX
+%   module signatures) for module bookkeeping and adds presentation (a heading and a box)
+%   if the |showmods| option is set.
+%    \begin{macrocode}
+\newenvironment{view}[3][]{\begin{@view}[#1]{#2}{#3}\view@heading{#2}{#3}}{\end{@view}}
+\ifmod@show\surroundwithmdframed{view}\fi
+%    \end{macrocode}
+% \end{environment}
+%
+% \begin{environment}{@view}
+%   The |@view| does the actual bookkeeping at the module level.
+%    \begin{macrocode}
+\newenvironment{@view}[3][]{% keys, from, to
+\metasetkeys{view}{#1}\sref@target%
+\@importmodule[\view@from]{#3}\@importmodule[\view@to]{#3}}
+{}
+%    \end{macrocode}
+% \end{environment}
+% 
+% \begin{environment}{viewsketch}
+%   The |viewsketch| environment behaves like |view|, but only has text contents.
+%    \begin{macrocode}
+\newenvironment{viewsketch}[3][]{\begin{@view}[#1]{#2}{#3}\view@heading{#2}{#3}}{\end{@view}}
+\ifmod@show\surroundwithmdframed{viewsketch}\fi
+%    \end{macrocode}
+% \end{environment}
+%
+% \subsection{Deprecated Functionality}\label{sec:impl:deprecated}
+%
+% In this section we centralize old interfaces that are only partially supported any more. 
+% \begin{macro}{module:uses}
+%   For each the module name |xxx| specified in the |uses| key, we activate their symdefs
+%   and we export the local symdefs.\ednote{this issue is deprecated, it will be removed
+%     before 1.0.}
+%    \begin{macrocode}
+\define@key{module}{uses}{%
+\@for\module@tmp:=#1\do{\activate@defs\module@tmp\export@defs\module@tmp}}
+%    \end{macrocode}
+% \end{macro}
+% 
+% \begin{macro}{module:usesqualified}
+%   This option operates similarly to the module:uses option defined above. The only
+%   difference is that here we import modules with a prefix. This is useful when two
+%   modules provide a macro with the same name.
+%    \begin{macrocode}
+\define@key{module}{usesqualified}{%
+\@for\module@tmp:=#1\do{\activate@defs{qualified@\module@tmp}\export@defs\module@tmp}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsection{Providing IDs for {\omdoc} Elements}\label{sec:impl:ids}
+% 
+%   To provide default identifiers, we tag all {\omdoc} elements that allow |xml:id|
+%   attributes by executing the |numberIt| procedure below.
+% 
+%    \begin{macrocode}
+%    \end{macrocode}
+%
+% \subsection{Experiments}
+% In this section we develop experimental functionality. Currently support for complex
+% expressions, see
+% \url{https://svn.kwarc.info/repos/stex/doc/blue/comlex_semmacros/note.pdf} for details.
+%
+% \begin{macro}{\csymdef}
+% For the {\LaTeX} we use |\symdef| and forget the last argument. The code here is just
+% needed for parsing the (non-standard) argument structure. 
+%    \begin{macrocode}
+\def\csymdef{\@ifnextchar[{\@csymdef}{\@csymdef[]}}
+\def\@csymdef[#1]#2{\@ifnextchar[{\@@csymdef[#1]{#2}}{\@@csymdef[#1]{#2}[0]}}
+\def\@@csymdef[#1]#2[#3]#4#5{\@@symdef[#1]{#2}[#3]{#4}}
+%    \end{macrocode}
+% \end{macro}
+% 
+% \begin{macro}{\notationdef}
+% For the {\LaTeX} side, we just make |\notationdef| invisible.
+%    \begin{macrocode}
+\def\notationdef[#1]#2#3{}
+%</package>
+%    \end{macrocode}
+% \end{macro}
+% 
+% \Finale
+\endinput
+%%% Local Variables: 
+%%% mode: doctex
+%%% TeX-master: t
+%%% End: 
+% LocalWords:  GPL structuresharing STR dtx env envfalse idfalse displayfalse
+% LocalWords:  usesfalse usesqualified usesqualifiedfalse envtrue idtrue CPERL
+% LocalWords:  usestrue displaytrue usesqualifiedtrue RequirePackage keyval tmp
+% LocalWords:  defs foreach LookupValue activateScope DefEnvironment keyvals cd
+% LocalWords:  OptionalKeyVals getValue toString AssignValue openElement omdoc
+% LocalWords:  closeElement beforeDigest useTheoryItemizations afterDigestBegin
+% LocalWords:  whatsit setProperty getArg qw symdef  iffalse importOMDocmodule
+% LocalWords:  DefKeyVal Semiverbatim symdeflocal atqualified DefMacro STDERR
+% LocalWords:  args unlist DefPrimitive nargs Stringify eq attr omcd ltx XMTok
+% LocalWords:  DefConstructorI convertLaTeXArgs scriptpos XMApp OMA XMArg simpl
+% LocalWords:  DefMacroI blaaaa savedprefix aaa simplhelp tust tist tost reguse
+% LocalWords:  updatedpre ReturnAfterFi updateall updatedpost updatesms bgroup
+% LocalWords:  texclude tinclude getGullet requiredmodule tex sms egroup pmml
+% LocalWords:  toks mixfixi mixfixa mixfixii mixfixia mixfixai mixfixiii arg cr
+% LocalWords:  DefConstructor afterDigest setProperties undef tok PARAM thyid
+% LocalWords:  getString showfalse showtrue xcomment stex srcref KeyVal omext
+% LocalWords:  beginItemize getProperty introdcue afterOpen numberIt Tokenize
+% LocalWords:  OptionalSemiverbatim omdocmod PushValue assocarg getStomach prs
+% LocalWords:  begingroup beginMode endMode endgroup insertElement resymdef sym
+% LocalWords:  updir nargkey PresFormatters mixfixaii formatters argname expr
+% LocalWords:  getSymmdefProperties XMath mcdcr exprlist recurse texttt scsys
+% LocalWords:  textbackslash newcommand providecommand sc sc mathml openmath nx
+% LocalWords:  latexml cmathml activemath twintoo atwin atwintoo mathcal Deyan
+% LocalWords:  mathcal fileversion Ginev maketitle  newpage infty ulsmf08 exfig
+% LocalWords:  omsemmac lstset basicstyle scriptsize aboveskip belowskip hline
+% LocalWords:  morekeywords lstlisting csymbol showmods foo exf cseq mdframed
+% LocalWords:  qualifiedimports qualifiedimports termdef textbf filepath RabKoh
+% LocalWords:  symname varSmoothfunctionsOn ednote abbrdef Sumfromto semmodule
+% LocalWords:  vspace hrule vspace arith arbitraryn xbool oplus xdisjunction tw
+% LocalWords:  emph capitalize ldots termref termref symref symref ctancite nc
+% LocalWords:  smms hyperref RahObe hmlmh10 widehat texmf.cnf requiremodules cs
+% LocalWords:  sinput sinputref sinputref defpath defpath defpath cname csname
+% LocalWords:  OPhats usepackage importqualified Crossreferencing jobname ltxml
+% LocalWords:  jobname printbibliography textsf langle textsf langle textlangle
+% LocalWords:  textrangle textlangle newif ifmod qualifiedfalse qualifiedtrue
+% LocalWords:  sref xspace expandafter noexpand endcsname namedef setkeys ifx
+% LocalWords:  newenvironment parentmod usemodule ifundefined coolurion cooluri
+% LocalWords:  coolurioff cwd ouri ifdefinable testopt ifnextchar xargdef bvars
+% LocalWords:  argdef yargdef somefunction symdeflocaltrue bvar xpath assoc qr
+% LocalWords:  symdeflocalfalse localpres isbound symdefs COMPLEXTOKEN localp
+% LocalWords:  findnodes localname carg renewcommand bbb showmeta showmeta exp
+% LocalWords:  refundefinedtrue subsubsection blaaa makeatletter makeatother rm
+% LocalWords:  ifmodules gdef xdef xdef modulestrue modulesfalse pathpostfix
+% LocalWords:  updatedsms newreg xref texorpdfstring srefaddidkey newsavebox
+% LocalWords:  viewbox newcounter thesection theview theproblem hfill lrbox req
+% LocalWords:  stepcounter textwidth hbox noindent smallskip fbox vbox usebox
+% LocalWords:  smallskip newxcomment vassign ensuremath mapsto doctex tocdepth
+% LocalWords:  setcounter tableofcontents mathbb symvariant importmodulevia
+% LocalWords:  importmodulevia compactdesc tassign tassign tname source-tname
+% LocalWords:  ttassign metakeys addmetakey themodule metasetkeys aftergroup
+% LocalWords:  groupling requation IMPORTCD CURRENTCD bindargs defmathop cnode
+% LocalWords:  icvariant aftercounter prestok inputref oref loadfrom loadto
+% LocalWords:  csymdef notationdef noauxreq noauxreq rinput ifaux reqtrue bargs
+% LocalWords:  reqfalse currmod importmoduleenv conceptdef stDMemph  tempswa
+% LocalWords:  auxout omtext surroundwithmdframed ignorespaces

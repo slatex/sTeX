@@ -1,0 +1,34 @@
+omdoc:	sms $(filter-out all.omdoc,$(TARGET.omdoc))
+mods:	sms $(MODS.omdoc)
+
+############################ Running LaTeXML ############################# 
+$(TARGET.omdoc): %.omdoc: %.tex $(TARGET.parts) $(LTSTY) $(STEXOXSL) 
+		export STEXSTYDIR=$(STEXSTYDIR); $(STEXML) --profile stex $(LTXPATHS) $(LTXTIMEOUT) $< --destination=$@ --log=$(basename $<).ltxlog
+
+$(MODS.omdoc): %.omdoc: %.tex $(LTSTY) $(STEXOXSL) 
+		$(STEXML) --profile stex-module $(LTXPREPOST) $(LTXPATHS) $(LTXTIMEOUT) $<  --destination=$@ --log=$(basename $<).ltxlog
+
+$(LTARGET.xhtml): %.xhtml: %.tex $(TARGET.parts) $(LTSTY)
+		latexmlc --profile=stex-migration $< --destination=$@ --log=$(basename $<).ltxlog
+
+$(LTARGET.tex.xml): %.tex.xml: %.tex $(TARGET.parts)
+		$(LATEXML) $< --format=xml --nopost --destination=$@ --log=$@.log\
+
+
+###################### Running LaTeXML in parts ############################# 
+$(TARGET.xml): %.xml: %.tex $(LTSTY) $(STEXOXSL) 
+		$(STEXML) --profile=stexml $<  --destination=$@ --log=$(basename $<).ltxlog
+ 
+$(MODS.xml): %.xml: %.tex $(LTSTY) $(STEXOXSL) 
+		$(STEXML) --profile=stexml-module  $(LTXPREPOST) $<  --destination=$@ --log=$(basename $<).ltxlog
+ 
+#$(MODS.xml):	%.xml: %.tex.xml
+#		$(LATEXMLPOST)  --destination=$@ $< >& $@.log
+
+############################# Collecting Errors ############################# 
+
+errlog:		latexml.errlog
+
+latexml.errlog:	$(MODS.log)
+		grep -i -e error -e Fatal $(MODS.log) > $@ || echo "No errors found" > $@
+

@@ -1,0 +1,37 @@
+# -*- CPERL -*-
+package LaTeXML::Package::Pool;
+use strict;
+use LaTeXML::Global;
+use LaTeXML::Package;
+DefMacro('\declaration OptionalKeyVals:declaration {}', sub {
+ my ($self,@args)=@_;
+ my $name = ToString(KeyVal($args[0],'name')) if $args[0];
+ my $cseq = ToString(KeyVal($args[0],'cseq')) if $args[0];
+ DefConstructor("\\".$cseq,"<XMTok name='$name'/>",
+properties=>{mode=>'math',requiremath=>1})
+                if ($cseq && $name);
+ (Invocation(T_CS('\@declaration'),@args)->unlist);
+});
+DefConstructor('\@declaration OptionalKeyVals:declaration {}', sub {
+  my ($document, $keyval, $arg, %properties) = @_;
+  my $type = ToString(KeyVal($keyval,'type'));
+  my $name = ToString(KeyVal($keyval,'name'));
+  $document->openElement('owl:Declaration');
+  $document->insertElement('owl:'.$type,undef,(IRI=>$name)) if $type;
+  $document->closeElement('owl:Declaration');
+  if (defined $arg) {
+    $document->openElement('owl:AnnotationAssertion');
+    $document->insertElement('owl:AnnotationProperty',undef,(IRI=>'http://www.w3.org/2000/01/rdf-schema#comment'));
+    $document->insertElement('owl:IRI',$name);
+    $document->insertElement('owl:Literal',$arg);
+    $document->closeElement('owl:AnnotationAssertion');
+  }
+});#$
+DefConstructor('\axiom OptionalKeyVals:axiom {}{}',
+           "<owl:Axiom>#2"
+          ."?#3(<owl:Annotation>"
+          .      "<owl:AnnotationProperty IRI='http://www.w3.org/2000/01/rdf-schema#comment'/>"
+          .      "<owl:Literal>#3</owl:Literal>"
+          .    "</owl:Annotation>)()"
+          ."</owl:Axiom>");
+1;

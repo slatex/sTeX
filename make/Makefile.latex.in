@@ -1,0 +1,31 @@
+pdf: sms driver $(TARGET.pdf) $(LTARGET.pdf)
+mpdf: sms $(MODS.pdf)
+# LaTeX build rules: 
+#
+# 	use non-interactive PDFLATEX (see above)
+#
+# 	_always_ delete pdf on error (otherwise, we end up with a corrupt 
+# 	pdf file and make saying "nothing to do" on the next run )
+#
+# 	make will delete temporary files (toc,sms,aux) afterwards 
+# 	(FIXME: why? should this be disabled or kept like that?)
+#
+#       make pdf depend on its own .toc and .aux and global aux/sms files 
+$(TARGET.pdf) $(LTARGET.pdf): %.pdf: %.tex $(MODS) $(TARGET.parts) $(IMG)
+	$(PDFLATEX) $<  || $(RM) $@
+	@echo
+	@if (test -e $(patsubst %.tex, %.idx,  $<));\
+	    then makeindex $(patsubst %.tex, %.idx,  $<); fi
+	@echo
+	@if (grep "No file$(patsubst %.tex, %.bbl,  $<)" $(patsubst %.tex, %.log,  $<)> /dev/null);\
+	    then bibtex $(patsubst %.tex, %,  $<); fi
+	@echo   
+	$(PDFLATEX)  $< || $(RM) $@
+	@echo
+	@if (grep Rerun $(patsubst %.tex, %.log,  $<) > /dev/null);\
+	   then $(PDFLATEX)  $<  || $(RM) $@; fi
+	@if (grep Rerun $(patsubst %.tex, %.log,  $<) > /dev/null);\
+	    then $(PDFLATEX)  $<  || $(RM) $@; fi
+
+$(MODS.pdf): 	%.pdf: %.tex 
+		$(PDFLATEX) -jobname=$(basename $<) "\nonstopmode\input{$(MODS.pre)}\begin{document}\input{$<}\end{document}" || $(RM) $@

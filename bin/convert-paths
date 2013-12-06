@@ -1,0 +1,56 @@
+#!/usr/bin/perl -w
+# 
+# A script that converts paths in sTeX files from the old \Foosnipppath{bar}
+# to \snippets{foo/bar}, according to the definition of those path macros in
+# paths.sty.
+#
+# Syntax: convert-paths path/to/paths.sty FILES
+#
+# © 2008 Christoph Lange, KWARC, Jacobs University
+
+use File::Copy;
+
+my %map;
+
+my $SNIPPATHRE = '\\\\[[:alnum:]]+(?i:snip|pic)path';
+
+if (open(P, shift(@ARGV))) {
+    print STDERR "Mapping:\n";
+    while (<P>) {
+	if (/^\\def($SNIPPATHRE)#1\{(\\KWARCslides\{[^#]+)#1\}/o) {
+	    printf STDERR "\t%s -> %s\n", $1, $2;
+	    $map{$1} = $2;
+	}
+    }
+    close(P);
+}
+else {
+    die "Could not open paths.sty";
+}
+
+print STDERR "Processing files:\n";
+while ($#ARGV >= 0) {
+    my $filename = shift(@ARGV);
+    print STDERR "\t$filename\n";
+    copy($filename, "$filename~") || print STDERR "\t\tWARN: could not create backup\n";
+    if (open(T, $filename)) {
+	# slurp the file into a string
+	local $/;
+	$data = <T>;
+	$data =~ s/($SNIPPATHRE)\{([^}]+)\}/
+	    $map{$1} ? "$map{$1}$2\}"
+		: ((print STDERR "\t\tWARN: could not replace $1\n"), "$1\{$2}")
+	/oxge;
+	close T;
+	if (open(T, ">$filename")) {
+	    print T $data;
+	    close T;
+	}
+	else {
+	    print STDERR "\t\tWARN: could not save replacement\n";
+	}
+    }
+    else {
+	print STDERR "\t\tWARN: could not open file\n";
+    }
+}

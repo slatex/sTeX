@@ -1,0 +1,92 @@
+# A RelaxNG for Open Mathematical documents (OMDoc 1.3) Module PRES       
+# $Id: omdocpres.rnc 9259 2012-08-31 06:30:08Z kohlhase $
+# $HeadURL: https://svn.omdoc.org/repos/omdoc/branches/omdoc-1.3/schema/rnc/omdocpres.rnc $
+# See the documentation and examples at http://www.omdoc.org
+# Copyright (c) 2004-2008 Michael Kohlhase, released under the GNU Public License (GPL) 
+
+default namespace omdoc = "http://omdoc.org/ns"
+omdoc.class &= notation*
+
+## we first add the ic and ec attributes for notation contexts everywhere 
+ic.attrib = attribute ic {text}
+ec.attrib = attribute ec {text}
+idrest.attribs &= ic.attrib? & ec.attrib?
+
+prototype.attribs = empty
+prototype.model = protoexp
+prototype = element prototype {tref|(prototype.attribs & prototype.model)}
+
+protoexp = grammar {include "openmath2.rnc" 
+	               {start = omel
+			common.attributes = parent id.attribs}
+		    omel |= parent proto.class
+		    omvar |= parent proto.class
+		    common.attributes &= parent ntn.attrib}
+        | grammar {include "mathml3.rnc" {start = ContExp}
+	            ContExp |= parent proto.class
+		    ci |= parent proto.class
+		    CommonAtt &= parent ntn.attrib}
+
+precedence.att = attribute precedence {xsd:integer} | attribute argprec {xsd:integer}
+context.att = attribute xml:lang {text}? & 
+	              attribute context {text}? & 
+	              attribute variant {text}?
+
+format.att = attribute format {text}?
+
+rendering.attribs = precedence.att? & context.att & format.att &
+                              attribute ic {text}? & attribute ec {text}?
+rendering.model = renderexp
+
+rendering = element rendering {tref|(rendering.attribs & rendering.model)}
+
+renderexp = grammar {include "mathml3-common.rnc" {start = PresentationExpression}
+                                    include "mathml3-presentation.rnc" 
+      		                    PresentationExpression |= parent render.class | mtr | mtd
+		                    CommonAtt &= parent ntn.attrib
+	                            TableRowExpression |= parent render.class
+	                            TableCellExpression |= parent render.class}
+                    | (pdata|render.class)*
+
+pdata.attribs = empty
+pdata.model = text
+pdata = element pdata {pdata.attribs & pdata.model}		     
+
+iterexp = grammar {include "mathml3.rnc" 
+         {start = PresentationExpression|mtr|mlabeledtr|mtd}
+		   PresentationExpression |=  parent render.class
+		   MathML.Common.attrib &= parent ntn.attrib
+		   TableRowExpression |= parent render.class
+		   TableCellExpression |= parent render.class}
+
+ name.attrib = attribute name {xsd:NCName}?  
+ triple.att = attribute cdbase {xsd:anyURI}? & name.attrib & attribute cd {xsd:NCName}?
+
+notation.attribs = id.attribs & triple.att	      
+notation.model = metadata.class & CMP* & prototype+ & rendering*
+notation =  element notation {tref|(notation.attribs & notation.model)}
+
+# we extend the content and presentation models by metavariables
+proto.class = exprlist | expr 
+render.class = render | iterate
+ntn.attrib = attribute cr {text}? & attribute egroup {text}?
+
+exprlist.attribs = name.attrib
+exprlist.model = protoexp*
+exprlist = element exprlist {exprlist.attribs & exprlist.model}
+
+expr.attribs = name.attrib
+expr.model = empty
+expr = element expr {tref|(expr.attribs & expr.model)}
+
+iterate.attribs = name.attrib & precedence.att?
+iterate.model = separator & iterexp*
+iterate = element iterate {tref|(iterate.attribs & iterate.model)} 
+
+render.attribs = name.attrib & precedence.att?
+render.model = empty
+render = element render {tref|(render.attribs & render.model)}
+
+separator.attribs = empty
+separator.model = renderexp*
+separator = element separator {tref|(separator.attribs & separator.model)}

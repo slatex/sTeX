@@ -1,0 +1,352 @@
+% \iffalse meta-comment 
+% An Infrastructure for Presenting Semantic Macros in sTeX
+% Copyright (C) 2004-2007 Michael Kohlhase, all rights reserved
+% This file is released under the LaTeX Project Public License (LPPL)
+%
+% The development version of this file can be found at
+% $HeadURL: https://svn.kwarc.info/repos/stex/trunk/sty/cmath/cmath.dtx $
+% \fi
+% 
+% \iffalse
+%<package>\NeedsTeXFormat{LaTeX2e}[1999/12/01]
+%<package>\ProvidesPackage{cmath}[2012/09/23 v0.1 inline content math]
+%
+%<*driver>
+\documentclass{ltxdoc}
+\usepackage{url,array,float,amstext,alltt}
+\usepackage{modules,cmath,stex-logo}
+\usepackage[show]{ed}
+\usepackage[hyperref=auto,style=alphabetic,backend=bibtex]{biblatex}
+\bibliography{kwarc}
+\usepackage{../ctansvn}
+\usepackage{hyperref}
+\usepackage[eso-foot,today]{svninfo}
+\svnInfo $Id: cmath.dtx 2228 2013-01-13 12:52:32Z kohlhase $
+\svnKeyword $HeadURL: https://svn.kwarc.info/repos/stex/trunk/sty/cmath/cmath.dtx $
+\makeindex
+\floatstyle{boxed}
+\newfloat{exfig}{thp}{lop}
+\floatname{exfig}{Example}
+\def\tracissue#1{\cite{sTeX:online}, \hyperlink{http://trac.kwarc.info/sTeX/ticket/#1}{issue #1}}
+\begin{document}\DocInput{cmath.dtx}\end{document}
+%</driver>
+% \fi
+% 
+% \iffalse\CheckSum{81}\fi
+%
+% \changes{v0.1}{2011/01/24}{First Version with Documentation, extracted variables stuff
+% from \texttt{presentation.dtx}}
+% \GetFileInfo{cmath.sty}
+% 
+% \MakeShortVerb{\|}
+%\def\scsys#1{{{\sc #1}}\index{#1@{\sc #1}}}
+% \def\xml{\scsys{Xml}}
+% \def\mathml{\scsys{MathML}}
+% \def\omdoc{\scsys{OMDoc}}
+% \def\openmath{\scsys{OpenMath}}
+% \def\latexml{\scsys{LaTeXML}}
+% \def\perl{\scsys{Perl}}
+% \def\cmathml{Content-{\sc MathML}\index{Content {\sc MathML}}\index{MathML@{\sc MathML}!content}}
+% \def\activemath{\scsys{ActiveMath}}
+% \def\twin#1#2{\index{#1!#2}\index{#2!#1}}
+% \def\twintoo#1#2{{#1 #2}\twin{#1}{#2}}
+% \def\atwin#1#2#3{\index{#1!#2!#3}\index{#3!#2 (#1)}}
+% \def\atwintoo#1#2#3{{#1 #2 #3}\atwin{#1}{#2}{#3}}
+% \title{{\texttt{cmath.sty}}: An Infrastructure for building Inline Content Math in
+% {\stex}\thanks{Version {\fileversion} (last revised {\filedate})}} 
+%    \author{Michael Kohlhase \& Deyan Ginev\\
+%            Jacobs University, Bremen\\
+%            \url{http://kwarc.info/kohlhase}}
+% \date{\today}
+% \maketitle
+%
+% \begin{abstract}
+%   The |cmath| package is a central part of the {\stex} collection, a version of
+%   {\TeX/\LaTeX} that allows to markup {\TeX/\LaTeX} documents semantically without
+%   leaving the document format, essentially turning {\TeX/\LaTeX} into a document format
+%   for mathematical knowledge management (MKM).
+% 
+%   This package supplies an infrastructure that allows to build content math expresions
+%   (strict content MathML or OpenMath objects) in the text. This is needed whenever the
+%   head symbols of expressions are variables and can thus not be treated via the
+%   |\symdef| mechanism in \stex.
+% \end{abstract}
+%
+% \newpage\setcounter{tocdepth}{2}\tableofcontents\newpage
+%
+%\section{Introduction}\label{sec:intro}
+%
+% \stex allows to build content math expressions via the |\symdef|
+% mechanism~\cite{KohAmb:smmssl:ctan} if their heads are constants. For instance, if we
+% have defined |\symdef{lt}[2]{#1<#2}| in the module |relation1|, then an invocation of
+% |\lt3a| will be transformed to
+% \begin{verbatim} 
+% <OMA>
+%   <OMS cd="relation1" name="lt"/>
+%   <OMI>3</OMI>
+%   <OMV name="a"/>
+% </OMA>
+% \end{verbatim}
+% If the head of the expression (i.e. the function symbol in this case) is a variable,
+% then we cannot resort to a |\symdef|, since that would define the functional equivalent
+% of a logical constant. Sometimes, {\latexml} can figure out that when we write $f(a,b)$
+% that $f$ is a function (especially, if we declare them to be via the |functions=| key in
+% the dominating statement environment~\cite{Kohlhase:smmtf:ctan}). But sometimes, we want
+% to be explicit, especially for $n$-ary functions and in the presence of elided elements
+% in argument sequences. A related problem is markup for complex variable names, such as
+% $x_{\text{left}}$ or $ST^*$.
+% 
+% The |cmath| package supplies the {\LaTeX} bindings that allow us to
+% achieve this. 
+%
+% \section{The User Interface}\label{sec:user}
+% 
+% \subsection{Variable Names}\label{sec:inter:vname}
+% 
+% In mathematics we often use complex variable names like $x'$, $g_n$, $f^1$,
+% $\widetilde\phi_i^j$ or even $foo$; for presentation-oriented {\LaTeX}, this is not a
+% problem, but if we want to generate content markup, we must show
+% explicitly that those are complex identifiers (otherwise the
+% variable name $foo$ might be mistaken for the product $f\cdot 
+% o\cdot o$). In careful mathematical typesetting, |$sin$| is distinguished from |$\sin$|,
+% but we cannot rely on this effect for variable names.
+% 
+% \DescribeMacro{\vname} |\vname| identifies a token sequence as a name, and allows the
+% user to provide an ASCII ({\xml}-compatible) identifier for it. The optional argument is
+% the identifier, and the second one the LaTeX representation. The identifier can also be
+% used with \DescribeMacro{\vname} |\vnref| for referencing. So, if we have used
+% |\vnname[xi]{x_i}|, then we can later use |\vnref{xi}| as a short name for
+% |\vname{x_i}|. Note that in output formats that are capable of generating structure
+% sharing, |\vnref{xi}| would be represented as a
+% cross-reference.\ednote{DG: Do we know whether using the same name
+% in two vname invocations, would refer to two instances of the same variable? Presumably so, since the names are the same? We should make this explicit in the
+% text. A different variable would e.g. have a name ``xi2'', but the same body}
+%
+% Since indexed variable names make a significant special case of complex identifiers, we
+% provides the macros \DescribeMacro{\livar}|\livar| that allows to mark up variables with
+% lower indices. If |\livar| is given an optional first argument, this is taken as a
+% name. Thus |\livar[foo]{x}1| is ``short'' for |\vname[foo]{x_1}|. The macros
+% \DescribeMacro{\livar}|\livar|, serve the analogous purpose for variables with upper
+% indices, and \DescribeMacro{\ulivar}|\ulivar| for upper and lower indices. Finally,
+% \DescribeMacro{\primvar}|\primvar| and \DescribeMacro{\pprimvar}|\pprimvar| do the same
+% for variables with primes and double primes (triple primes are bad style).
+% 
+% \subsection{Applications}\label{sec:user:appl}
+% 
+% To construct a content math application of the form $f(a_1,\ldots,a_n)$ with concrete
+% arrugments $a_i$ (i.e. without elisions), then we can use the
+% \DescribeMacro{\nappa}|\nappa| maro.  If we have elisions in the arguments, then we have
+% to interpret the arguments as a sequence of argument constructors applied to the
+% respective positional indexes. We can mark up this situation with the
+% \DescribeMacro{\nappf}|\nappf| macro:
+% |\nappf{|\meta{fun}|}{|\meta{const}|}{|\meta{first}|}{|\meta{last}|}| where \meta{const}
+% is a macro for the constructor is presented as
+% $\meta{fun}(\meta{const}\meta{first},\ldots,\meta{const}\meta{last})$; see
+% Figure~\ref{fig:application} for a concrete example, and
+% Figure~\ref{fig:application-result}.\ednote{MK@MK: we need a meta-cd |cmath| with the
+% respective notation definition here. It is very frustrating that we cannot even really
+% write down the axiomatization of  }
+%
+% \begin{figure}\centering
+%   \begin{tabular}{|l|l|}\hline
+%     \verb|\nappa{f}{a_1,a_2,a_3}| & $\nappa{f}{a_1,a_2,a_3}$\\\hline
+%     \verb|\nappe{f}{a_1}{a_n}| &  $\nappe{f}{a_1}{a_n}$\\\hline
+%     \verb|\symdef{eph}[1]{e_{#1}^{\varphi(#1)}}\nappf{g}\eph14| 
+%     & $\def\foo#1{e_{#1}^{\varphi(#1)}}\nappf{g}\foo14$\\\hline
+%     \verb|\nappli{f}a1n| & $\nappli{f}a1n$\\\hline
+%   \end{tabular}
+%   \caption{Application Macros}\label{fig:application}
+% \end{figure}
+%
+% For a simple elision in the argument list, we can use \DescribeMacro{\nappe}|\nappe|
+% macro: |\nappe{|\meta{fun}|}{|\meta{firstarg}|}{|\meta{lastarg}|}| will be formatted as
+% $\meta{fun}(\meta{firstarg},\ldots,\meta{lastarg})$. Note that this is quite unsemantic
+% (we have to guess the sequence), so the use of |\nappe| is discouraged.
+% 
+% \begin{exfig}\centering
+% \begin{verbatim}
+% \symdef{eph}[1]{e_{#1}^{\phi(#1)}}
+% \nappf{g}\eph14
+% \end{verbatim}
+% currently generates
+% \begin{verbatim}
+% <OMA>
+%   <OMS cd="cmath" name="apply-from-to"/>
+%   <OMV name="g"/>
+%   <OMBIND>
+%     <OMS cd="fns1" name="lambda"/>
+%     <OMBVAR><OMV name="x"/></OMBVAR>
+%     <OMA><OMS cd="???" name="eph"/><OMV name="x"/></OMA>
+%   </OMBIND>
+%   <OMI>1</OMI>
+%   <OMI>4</OMI>
+% </OMA>
+% \end{verbatim}
+% \caption{Application Macros}\label{fig:application-result}
+% \end{exfig}
+%
+% \subsection{Binders}\label{sec:user:bind}
+%
+% \section{Limitations}\label{sec:limitations}
+% 
+% In this section we document known limitations. If you want to help alleviate them,
+% please feel free to contact the package author. Some of them are currently discussed in
+% the \sTeX TRAC~\cite{sTeX:online}. 
+% \begin{compactenum}
+% \item none reported yet
+% \end{compactenum}
+% 
+% \StopEventually{\newpage\PrintIndex\newpage\PrintChanges\printbibliography}
+%
+% \section{The Implementation}\label{sec:implementation}
+% 
+% The |cmath| package generates to files: the {\LaTeX} package (all the code
+% between {\textsf{$\langle$*package$\rangle$}} and {\textsf{$\langle$/package$\rangle$}}) and the
+% {\latexml} bindings (between {\textsf{$\langle$*ltxml$\rangle$}} and
+%     {\textsf{$\langle$/ltxml$\rangle$}}). We keep the corresponding code fragments together,
+% since the documentation applies to both of them and to prevent them from getting out of
+% sync.
+%
+% For {\latexml}, we initialize the package inclusions.
+%    \begin{macrocode}
+%<*ltxml>
+# -*- CPERL -*-
+package LaTeXML::Package::Pool;
+use strict;
+use LaTeXML::Package;
+%</ltxml>
+%    \end{macrocode}
+%
+% \subsection{Package Options}\label{sec:impl:options}
+%
+% We declare some switches which will modify the behavior according to the package
+% options. Generally, an option |xxx| will just set the appropriate switches to true
+% (otherwise they stay false).\ednote{we have no options at the moment}
+%
+%    \begin{macrocode}
+%<*package>
+\ProcessOptions
+%</package>
+%    \end{macrocode}
+%
+
+% \subsection{Variable Names}\label{sec:impl:vname}
+%
+% \begin{macro}{\vname}
+%   a name macro; the first optional argument is an identifier \meta{id}, this is standard
+%   for {\LaTeX}, but for {\latexml}, we want to generate attributes
+%   |xml:id="cvar.|\meta{id}|"| and |name="|\meta{id}|"|.  However, if no id was given in
+%   we default them to |xml:id="cvar.|\meta{count}|"| and
+%   |name="name.cvar.|\meta{count}|"|.
+%    \begin{macrocode}
+%<*package>
+\newcommand\vname[2][]{#2%
+\def\@opt{#1}%
+\ifx\@opt\@empty\else\expandafter\gdef\csname MOD@name@#1\endcsname{#2}\fi}
+%</package>
+%<*ltxml>
+# return: unique ID for variable
+sub cvar_id {
+  my ($id) = @_;
+  $id = ToString($id);
+  if (!$id) {
+    $id=LookupValue('cvar_id') || 0;
+    AssignValue('cvar_id', $id + 1, 'global'); }
+  "cvar.$id"; }#$
+DefConstructor('\vname[]{}',
+  "<ltx:XMWrap role='ID' xml:id='&cvar_id(#1)'>#2</ltx:XMWrap>",
+  requireMath=>1);
+%</ltxml>
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\vnref}
+%    \begin{macrocode}
+%<*package>
+\def\vnref#1{\csname MOD@name@#1\endcsname}
+%</package>
+%<*ltxml>
+# \vnref{<reference>}
+DefMacro('\vnref{}','\@XMRef{cvar.#1}');
+
+%</ltxml>
+%    \end{macrocode}
+% \end{macro}
+% \ednote{the following macros are just ideas, they need to be implemented and documented}
+% \begin{macro}{\uivar}
+%   constructors for variables.
+%    \begin{macrocode}
+%<*package>
+\newcommand\primvar[2][]{\vname[#1]{#2^\prime}}
+\newcommand\pprimvar[2][]{\vname[#1]{#2^{\prime\prime}}}
+\newcommand\uivar[3][]{\vname[#1]{{#2}^{#3}}}
+\newcommand\livar[3][]{\vname[#1]{{#2}_{#3}}}
+\newcommand\ulivar[4][]{\vname[#1]{{#2}^{#3}_{#4}}}
+%</package>
+%<*ltxml>
+# variants for declaring variables
+DefMacro('\uivar[]{}{}',    '\vname[#1]{{#2}^{#3}}');
+DefMacro('\livar[]{}{}',    '\vname[#1]{{#2}_{#3}}');
+DefMacro('\ulivar[]{}{}{}', '\vname[#1]{{#2}^{#3}_{#4}}');
+DefMacro('\primvar[]{}',    '\vname[#1]{#2^\prime}');
+DefMacro('\pprimvar[]{}',   '\vname[#1]{#2^{\prime\prime}}');
+
+%</ltxml>
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsection{Applications}\label{sec:impl:appl}
+% 
+% \begin{macro}{\napp*}
+%    \begin{macrocode}
+%<*package>
+\newcommand\nappa[2]{#1(#2)}
+\newcommand\nappe[3]{\nappa{#1}{#2,\ldots,#3}}
+\newcommand\nappf[4]{\nappe{#1}{#2{#3}}{#2{#4}}}
+\newcommand\nappli[4]{\nappe{#1}{#2_{#3}}{#2_{#4}}}
+\newcommand\nappui[4]{\nappe{#1}{#2^{#3}}{#2^{#4}}}
+%</package>
+%<*ltxml>
+# \nappa{<function>}{<(const)(,\1)*>}
+# @#1(#2)
+DefConstructor('\nappa{}{}',
+  "<ltx:XMApp>"
+    ."<ltx:XMTok meaning='#1' />"
+    ."<ltx:XMArg>#2</ltx:XMArg>"
+  ."</ltx:XMApp>");
+
+# \@napp@seq{<function>}{start <const>}{end <const>}
+# @#1(@sequence(#2,sequencefromto,#3))
+DefConstructor('\@napp@seq{}{}{}',
+  "<ltx:XMApp>"
+  ."<ltx:XMTok meaning='#1' />"
+  ."<ltx:XMArg>"
+    ."<ltx:XMApp>"
+      ."<ltx:XMTok meaning='sequence' />"
+      ."<ltx:XMArg>#2</ltx:XMArg>"
+      ."<ltx:XMArg><ltx:XMTok meaning='sequencefromto' /></ltx:XMArg>"
+      ."<ltx:XMArg>#3</ltx:XMArg>"
+    ."</ltx:XMApp>"
+  ."</ltx:XMArg>"
+  ."</ltx:XMApp>");
+
+DefMacro('\nappe{}{}{}',    '\@napp@seq{#1}{#2}{#3}');
+DefMacro('\nappf{}{}{}{}',  '\@napp@seq{#1}{#2{#3}}{#2{#4}}');
+DefMacro('\nappli{}{}{}{}', '\@napp@seq{#1}{#2_{#3}}{#2_{#4}}');
+DefMacro('\nappui{}{}{}{}', '\@napp@seq{#1}{#2^{#3}}{#2^{#4}}');
+
+%</ltxml>
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsection{Binders}\label{sec:impl:bind}
+%
+% \subsection{Finale}
+%
+% Finally, we need to terminate the file with a success mark for perl.
+%    \begin{macrocode}
+%<ltxml>1;
+%    \end{macrocode}
+% \Finale
+\endinput
+%

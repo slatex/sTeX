@@ -1,0 +1,64 @@
+# A RelaxNG schema for Open Mathematical documents (OMDoc 1.3) Module EXT 
+# $Id: omdocext.rnc 8958 2011-09-02 06:01:13Z kohlhase $
+# $HeadURL: https://svn.omdoc.org/repos/omdoc/branches/omdoc-1.3/schema/rnc/omdocext.rnc $
+# See the documentation and examples at http://www.omdoc.org
+# Copyright (c) 2004-2007 Michael Kohlhase, released under the GNU Public License (GPL) 
+
+default namespace omdoc = "http://omdoc.org/ns"
+
+plike.class &= omlet*
+omdoc.class &= private* & code*
+
+private.attribs = toplevel.attribs & 
+		for.attrib? &  
+		attribute requires {omdocref}?	&
+  	        attribute reformulates {omdocref}?
+private.model = metadata.class  & data+
+private = element private {tref|(private.attribs & private.model)}
+# reformulates is a URIref to the omdoc elements that are reformulated by the 
+# system-specific information in this element
+
+code.attribs = private.attribs
+code.model = metadata.class & data* & input* &  output* & effect*
+code = element code {tref|(code.attribs & code.model)}
+
+input.attribs = id.attribs
+input.model = mcf.class
+input  = element input  {tref|(input.attribs & input.model)}
+
+output.attribs = id.attribs
+output.model = mcf.class
+output = element output {tref|(output.attribs & output.model)}
+
+effect.attribs = id.attribs
+effect.model = mcf.class
+effect = element effect {tref|(effect.attribs & effect.model)}
+
+data.attribs = id.attribs &  
+                    attribute href {xsd:anyURI}? &  
+                     attribute size {xsd:string}? & 
+		     attribute pto {xsd:string}? & 
+                     attribute pto-version {xsd:string}? & 
+                     attribute original {"external" | "local"}?
+
+data.textformat = "TeX" 
+data.text = data.attribs & attribute format {data.textformat}? & text
+data.any =  data.attribs & attribute format {xsd:anyURI}? & Anything
+data.model = data.text | data.any
+data = element data {tref|data.model}
+
+omlet.attribs = id.attribs & 
+	   	       attribute action    {"display" | "execute" | "other"}? & 
+	   	       attribute show      {"new" | "replace" | "embed" | "other"}? & 
+	   	       attribute actuate  {"onPresent" | "onLoad" | "onRequest" | "other"}?
+omlet.param = text & inline.class & param*
+omlet.data = attribute data {xsd:anyURI}|(private|code)
+omlet.model = metadata.class &  omlet.param &  omlet.data
+omlet = element omlet {tref|(omlet.attribs & omlet.model)}
+
+param.attribs = id.attribs & 
+   attribute name      {xsd:string} & 
+   attribute value     {xsd:string}? & 
+   attribute valuetype {"data" | "ref" | "object"}?
+param.model =    mobj?
+param = element param {tref|(param.attribs & param.model)}

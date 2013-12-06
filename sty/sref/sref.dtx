@@ -1,0 +1,868 @@
+% \iffalse meta-comment
+% A LaTeX Class and Package for Semantic Cross-Referencing
+% Copyright (c) 2009 Michael Kohlhase, all rights reserved
+%               this file is released under the
+%               LaTeX Project Public License (LPPL)
+%
+% The development version of this file can be found at
+% $HeadURL: https://svn.kwarc.info/repos/stex/trunk/sty/sref/sref.dtx $
+% \fi
+%   
+% \iffalse
+%<*package>
+\NeedsTeXFormat{LaTeX2e}[1999/12/01]
+\ProvidesPackage{sref}[2013/10/15 v1.1 Semantic Cross-References]
+%</package>
+%<*driver>
+\documentclass{ltxdoc}
+\usepackage{url,array,float}
+\usepackage[show]{ed}
+\usepackage[hyperref=auto,style=alphabetic,backend=bibtex]{biblatex}
+\bibliography{kwarc}
+\usepackage{stex-logo,sref}
+\usepackage{../ctansvn}
+\usepackage{hyperref}
+\usepackage[eso-foot,today]{svninfo}
+\svnInfo $Id: sref.dtx 2428 2013-11-29 11:02:08Z kohlhase $
+\svnKeyword $HeadURL: https://svn.kwarc.info/repos/stex/trunk/sty/sref/sref.dtx $
+\makeindex
+\floatstyle{boxed}
+\newfloat{exfig}{thp}{lop}
+\floatname{exfig}{Example}
+\newcommand\tracissue[1]{\cite{sTeX:online}, \hyperlink{http://trac.kwarc.info/sTeX/ticket/#1}{issue #1}}
+\begin{document}\DocInput{sref.dtx}\end{document}
+%</driver>
+% \fi
+% 
+%\iffalse\CheckSum{315}\fi
+% 
+% \changes{v0.5}{2008/03/28}{split off from omdoc.sty}
+% \changes{v0.6}{2009/12/07}{introducing sequation}
+% \changes{v0.9}{2009/07/14}{using omd for metadata}
+% \changes{v1.0}{2011/12/20}{adding \texttt{\textbackslash sreflabel}}
+% \changes{v1.1}{2013/10/15}{adding fallback argument to \texttt{\textbackslash sref}}
+% 
+% \GetFileInfo{sref.sty}
+% 
+% \MakeShortVerb{\|}
+%
+% \def\omdoc{OMDoc}
+% \def\latexml{{\LaTeX}ML}
+% \title{{\texttt{sref.sty}}: Semantic Cross-Referencing in {\LaTeX}\thanks{Version {\fileversion} (last revised
+%        {\filedate})}}
+%    \author{Michael Kohlhase\\
+%            Jacobs University, Bremen\\
+%            \url{http://kwarc.info/kohlhase}}
+% \maketitle
+%
+% \begin{abstract}
+%   The |sref| package is part of the {\sTeX} collection, a version of {\TeX/\LaTeX} that
+%   allows to markup {\TeX/\LaTeX} documents semantically without leaving the document
+%   format, essentially turning {\TeX/\LaTeX} into a document format for mathematical
+%   knowledge management (MKM).
+%
+%   The |sref| package supplies an for semantic cross-referencing over multiple documents. 
+% \end{abstract}
+%
+%\tableofcontents\newpage
+% 
+% \section{Introduction}\label{sec:intro}
+%
+% The automatic computation of cross-references is one of the traditional strong points of
+% {\LaTeX}. However, cross-referencing is limited to labels in the current document
+% only. Cross-referencing between multiple documents in a jointly developed document
+% collection is not easy to achieve in the {\LaTeX} processing model, which reads files
+% sequentially and lacks a path concept. 
+%
+% The |sref| package is mainly aimed at package developers. It supplies the internal
+% macros that can be used to make document structuring elements cross-referencable. The
+% general strategy here is to equip the document structuring macros with an
+% \DescribeMacro{id}|id| key, so that the author can specify meaningful ones, but to let
+% the transformation give default ones if the author did not. The value of the |id| key
+% can also be used for cross-referencing like the |\label|/|\ref| mechanism in
+% {\LaTeX}. We implement an independent referencing mechanism, since the referencing model
+% is geared more towards referencing text fragments than text fragment labels like section
+% numbers. Therefore we let the referenced fragments define the reference text much like
+% the |\autoref| macro from |\hpyerref|.
+%
+% \section{The User Interface}\label{sec:user}
+% 
+% This package is currently mainly meaningful in the context of the {\sTeX} collection,
+% since all cross-referencable macros and environments must be extended to know about
+% their referencing mechanism. We explain the user interface in \sref{sucrossref}. To port
+% the functionality to other {\LaTeX} classes and packages, they have to be upgraded via
+% the API in \sref{supackage-authors}.
+%
+% \subsection{Package Options}\label{sec:user:options}
+% 
+% The |sref| package has the \DescribeMacro{extrefs}|extrefs| package option, which can be
+% set to activate multifile support (see \sref{suinterdoc}). If the
+% \DescribeMacro{showmeta}|showmeta| is set, then the metadata keys are shown
+% (see~\cite{Kohlhase:metakeys:ctan} for details and customization options).
+% 
+% \subsection{Cross-Referencing}\sreflabel{Section}{sucrossref}
+%
+% The \DescribeMacro{\sref}|\sref{|\meta{id}|}| macro is the main cross-referencing macro,
+% see Figure~\ref{fig:mysection} for an example. Depending on the whether macro or
+% environment marking up the respective document fragment carries the key/value pair
+% |id=|\meta{id} the cross-reference will expand to ``Section 2.1'' or ``this remark'',
+% both carrying hyper-references. The |\sref| macro takes optional arguments allows to
+% customize its behavior the full form of |\sref| is:
+% |\sref[|\meta{text}|]{|\meta{id}|}[|\meta{fallback}|]|, where \meta{link} can be used to
+% specify a link text that overrides the auto-generated one and \meta{fallback} gives the
+% fallback text when the label \meta{id} is not defined.
+% 
+% \begin{exfig}
+% \begin{verbatim}
+% \mysection[id=foo]{#2}
+% ... \sref{foo} ...
+% ... \sref[this section]{foo} ...
+% ... \sref{foo}[above] ...
+% \end{verbatim}
+% \vspace*{-1.5em}
+% \caption{Semantic Crossreferencing}\label{fig:mysection}
+% \end{exfig}
+% 
+% The \DescribeMacro{\sreflabel}|\sreflabel|\footnote{It would have been more natural to
+% name the macro \texttt{slabel}, but this is overwritten by other packages without
+% warning.} macro is a variant to the |\label| macro provided by {\LaTeX} proper. It takes
+% two arguments, the first one is a classification (used in |\sref|) and the second one
+% the identifier.
+%
+% The
+% \DescribeMacro{\srefs}|\srefl{|\meta{id\textsuperscript{1}}|}{|\meta{id\textsuperscript{2}}|}|
+% is a variant it |\sref|, only that it allows to reference two semantic objects and
+% expands to ``\meta{reference\textsuperscript{1}} and
+% \meta{reference\textsuperscript{2}}''. \DescribeMacro{\srefl}|\srefl{|\meta{id\textsuperscript{1}}|}{|\meta{id\textsuperscript{n}}|}|
+% is similar, but for ranges; it expands to ``\meta{reference\textsuperscript{1}} to
+% \meta{reference\textsuperscript{n}}''. Its use should be restricted to cases, where the
+% types of objects references are homogenous.
+% 
+% Finally, there is a variant \DescribeMacro{\spageref}|\spageref| that only outputs the
+% page number of the referenced object. It can be used in cases where no hyper-referencing
+% is present. It uses the macro \DescribeMacro{\sref@page@label}|\sref@page@label| for
+% styling the page reference. Redefining this will allows to customize this. The default
+% setting is
+% \begin{verbatim}
+% \newcommand\sref@page@label[1]{p.~{#1}}
+% \end{verbatim}
+%
+% \subsection{An API for Package Authors}\sreflabel{Section}{supackage-authors}
+%
+% To make use of the |sref| package, the package must define the document structuring
+% infrastructure using the |sref| internal macros. The {\sTeX} packages already does this,
+% so we make an example here for a slightly upgraded sectioning command in
+% Figure~\ref{fig:mysection:setup}. The first three lines define the keys for the keyval
+% attribute of the |\mysection| command using the infrastructure supplied by the |omd|
+% package~\ctancite{Kohlhase:metakeys} (remember the |\RequirePackage{metakeys}|).  The first two just
+% initialize the keys to save the key values in internal macros, and the |\metasetkeys|
+% activates the keys when reading the keyval argument. The
+% \DescribeMacro{\srefaddidkey}|\srefaddidkey| macro is a variant of |\addmetakey| macro
+% supplied by the |sref| package that sets up the keys to set the
+% \DescribeMacro{\sref@id}|\sref@id| register for later use by the |sref|
+% infrastructure. Note that the |\srefaddidkey| macro uses the |prefix| key to
+% systematically construct prefixed identifiers. This can be useful in particular for
+% sectioning commands. 
+% 
+% \begin{exfig}
+% \begin{verbatim}
+% \addmetakey{sec}{short}
+% \addmetakey[black]{sec}{color}
+% \srefaddidkey[prefix=sec.]{sec}
+% \newcommand\mysection[2][]{\metasetkeys{#1}\sref@target\color{\sec@color}
+% \section[\sec@short]{#2}\sref@label@id{Section \thesection}}
+% \end{verbatim}
+% \vspace*{-1.5em}
+% \caption{A slightly upgraded sectioning command}\label{fig:mysection:setup}
+% \end{exfig}
+% 
+% In this situation, the |\mysection| macro processes the optional argument with
+% |\metasetkeys| and then sets the color of the section. The
+% \DescribeMacro{\sref@target}|\sref@target| sets up the hypertarget for the |hyperref|
+% package to use. Then we use the regular |\section| command, and we use the
+% \DescribeMacro{\sref@label@id}|\sref@label@id| macro to define the label that the
+% |\sref| macro will use for cross-referencing.
+% 
+% Note that the use of the straight use of the label ``Section'', which will be written
+% into the auxiliary files is bad practice since it is not configurable. It would be much
+% better to make it configurable via a presentation macro like |\my@section@label| in
+% Figure~\ref{fig:mysection:configurable}. Then translators or even the user could redefine
+% the |\my@section@label| to adapt them to their needs.
+%
+% \begin{exfig}
+% \begin{verbatim}
+% \newcommand\my@section@label[1]{Section~{#1}}
+% \newcommand\mysection[2][]{\metasetkeys{#1}\sref@target\color{\sec@color}
+% \section[\sec@short]{#2}\sref@label@id{\my@section@label\thesection}}
+% \end{verbatim}
+% \vspace*{-1.5em}
+% \caption{A Sectioning Command with Configurable Label}\label{fig:mysection:configurable}
+% \end{exfig}
+% 
+% \subsection{Inter-Document Cross-Referencing}\sreflabel{Section}{suinterdoc}
+%
+% |sref.sty| provides inter-document cross-referencing. The use case is simple: we want to
+% have a document collection (e.g. a book with conference proceedings), but also want to
+% be able format the individual documents separately, and still have meaningful
+% cross-references. To show off the possibilities, let us assume that we have a book with
+% two separate papers, which we put into separate directories |idc| and |scr| to minimize
+% interference between the authors Jane Doe and John Bull. To achieve this, we would set
+% up paper driver files |main.tex| like the one in Figure~\ref{fig:paper-driver} in the
+% two directories. These use the \DescribeMacro{\makeextrefs}|\makeextrefs| macro, which
+% causes the |sref| package to generate a {\emph{external references file}}
+% |main.refs|. Note that the |\makeextrefs| macro reads the previous |main.refs| file so
+% that forward-referencing is possible (in the pass after a reference was labeled).
+% 
+% \begin{exfig}
+% \begin{verbatim}
+% \documentclass{article}
+% \usepackage[extrefs]{sref}
+% \makeextrefs{idc}
+% \inputrefs{scr}{../scr/main}
+% \extrefstyle{scr}{\cite[\protect{\theextref}]{Doe09}}
+% \title{Inter-Document Crossreferencing}
+% \author{John Bull\\...}
+% \begin{document}\maketitle\input{paper}\end{document}
+% \end{verbatim}
+% \vspace*{-2em}
+% \caption{A document driver {\texttt{idc/main.tex}} for a paper}\label{fig:paper-driver}
+% \end{exfig}
+% 
+% The external references file can be read by other documents; in
+% Figure~\ref{fig:paper-driver}, we read the references file of Jane Doe's paper via the
+% \DescribeMacro{\inputrefs}|\inputrefs| macro. This allows John Bull to use\footnote{Note
+%   that the external references file is updated every time {\LaTeX} is run, so that
+%   references may be off by one version.} references like
+% \DescribeMacro{\extref}|\extref{scr}{foo}| to reference document fragments in Jane Doe's
+% paper she has labeled with the {\emph{reference prefix}} |\sreflabel{foo}| (assuming that
+% she has added |\makeextrefs{scr}| in the preamble of her paper). Note that just as the
+% |\sref| macro |\extref| takes an optional first argument that allows to specify the link
+% text. Here, John Bull uses the \DescribeMacro{\extrefstyle}|\extrefstyle| macro to
+% specify how the externa references are to be formatted, in this case he decided to use a
+% {\LaTeX} citation. Generally, first argument of the |\extrefstyle| macro is the
+% reference prefix which should be configured, and the second is the format, where the
+% \DescribeMacro{\theextref}|\theextref| macro expands to the cross-reference. In this
+% case, John chose to use a bib{\TeX} citation (he has an entry |Doe09| in his database)
+% for the reference to the external paper.
+% 
+% As the content of the respective paper is input from a file |paper.tex| in the
+% individual papers, we can re-use these in the book. To do this we set up a book driver
+% file like the one in Figure~\ref{fig:book-driver}. This one does not use the |extrefs|
+% option, so the references are written to the |.aux| file. Furthermore |\extref| is
+% redefined to act like |\sref| disregarding the first required argument. Thus all
+% references work like they should.
+% \begin{exfig}
+% \begin{verbatim}
+% \documentclass{book}
+% \usepackage{sref}
+% \title{Cross-Referencing in {\LaTeX}}
+% \author{Elder Reseacher}
+% \begin{document}
+% \maketitle
+% \chapter{Semantic Crossreferencing (Jane Doe, ...)}
+% \input{scr/paper}\newpage
+% ...
+% \chapter{Inter-Document Crossreferencing (John Bull, ...)}
+% \input{idc/paper}\newpage
+% \end{document}
+% \end{verbatim}
+% \vspace*{-2em}
+% \caption{A document driver for the book assembling the papers}\label{fig:book-driver}
+% \end{exfig}
+% 
+% This example has been carried through (without the separation of chapters in to
+% subdirectories) in the files accompanying the source distribution of the |sref|
+% package. They are used for testing the package.
+% 
+% \subsection{Semantic Versions of Commonly used Referencing Commands}\label{sec:user:common}
+% 
+% The |sref| package defines semantically referencable versions of commonly used {\LaTeX}
+% environments and command sequences.\footnote{This section will be extended by need, so
+% if you miss some semantic environment, please contact the package author, or (better)
+% file an issue at~\cite{sTeX:online})}
+% 
+% The \DescribeEnv{sequation}|sequation| environment takes an optional key/value argument
+% that allows to specify an identifier and unifies the behavior of the |equation| (if an
+% |id| key is given) and |displaymath| (else) environments. So the markup
+% \begin{exfig}
+% \begin{verbatim}
+% A semantic equation with id
+% \begin{sequation}[id=foo]
+%   e^{mc}=-1
+% \end{sequation}
+% and another one without id
+% \begin{sequation}
+%   e^{mc}=-1
+% \end{sequation}
+% now, we reference the first equation: {\sref{foo}}
+% \end{verbatim}
+% \vspace*{-1.5em}\hrule
+% yields the result:\hrule
+% A semantic equation with id
+% \begin{sequation}[id=foo]
+%   e^{mc}=-1
+% \end{sequation}
+% and another one without id
+% \begin{sequation}
+%   e^{mc}=-1 
+% \end{sequation}
+% now, we reference the first equation: {\sref{foo}}
+% \caption{Semantic Equation}\label{fig:sequation}
+% \end{exfig}
+% 
+% \subsection{Semantic Citations}\label{sec:user:citations}
+%
+% \withcite{Patashnik:b88}{bib\TeX} and \withcite{Lehmann:biblatex10}{bib\LaTeX} provide a
+% semi-semantic way of referencing literature. If we look at the 
+% \begin{withcitation}{LasSwi:rdf99}
+%   current practice of citing from an RDF standpoint~\citeit which views links as
+%   subject/predicate/object triples,
+% \end{withcitation}
+% then the treatment of the predicate and object are semantic, but the subject is hinted
+% at by mere juxtaposition in the text. The |sref| package helps out here via the
+% \DescribeMacro{\withcite} macro for short subjects (in the second argument) that are
+% postfixed by the citation (key in the first argument). For instance the occurrence at
+% the beginning of this paragraph was created by
+% \begin{verbatim}
+% \withcite{Patashnik:b88}{bib\TeX} 
+% \end{verbatim}
+% The general case is covered by the \DescribeEnv{withcitation}|withcitation| environment
+% for long subjects. In the latter, the citation can be placed by the
+% \DescribeMacro{\citeit}. For instance, the second sentence was marked up as 
+% \begin{verbatim}
+% If we look at the 
+% \begin{withcitation}{LasSwi:rdf99}
+%   current practice of citing from an RDF standpoint which views links as
+%   subject/predicate/object triples,
+% \end{withcitation}
+% then the treatment of the predicate ...
+% \end{verbatim}
+% The advantage of this treatment is that the meaning of the reference is fully marked up
+% and can be taken advantage of in the \omdoc transformation, from which RDF triples can
+% then be harvested for a linked open data treatment. 
+%
+% \section{Limitations}\label{sec:limitations}
+% 
+% In this section we document known limitations. If you want to help alleviate them,
+% please feel free to contact the package author. Some of them are currently discussed in
+% the \sTeX TRAC~\cite{sTeX:online}. 
+% \begin{compactenum}
+% \item currently only the |\sref| macro has a fallback argument. The others |\srefs| and
+%   |\srefl| and their external variants should also have them, but I am not clear what
+%   the adequate invocation pattern would be.
+% \end{compactenum}
+% 
+% \StopEventually{\newpage\PrintIndex\newpage\PrintChanges\printbibliography}
+% \newpage
+%
+% \section{Implementation}\label{sec:impl}
+%
+% The |sref| package generates two files: the {\LaTeX} package (all the code between
+% {\textsf{$\langle$*package$\rangle$}} and {\textsf{$\langle$/package$\rangle$}}) and the
+% {\latexml} bindings (between {\textsf{$\langle$*ltxml$\rangle$ and
+%     $\langle$/ltxml$\rangle$}}). We keep the corresponding code fragments together,
+% since the documentation applies to both of them and to prevent them from getting out of
+% sync.
+%
+% We first set up header information for the {\latexml} binding file. 
+%    \begin{macrocode}
+%<*ltxml>
+package LaTeXML::Package::Pool;
+use strict;
+use LaTeXML::Package;
+%</ltxml>
+%    \end{macrocode}
+% 
+% \subsection{Package Options}\label{sec:impl:options}
+%
+% We declare some switches which will modify the behavior according to the package
+% options. Generally, an option |xxx| will just set the appropriate switches to true
+% (otherwise they stay false).\ednote{need an implementation for {\latexml}}
+%
+%    \begin{macrocode}
+%<*package>
+\DeclareOption{showmeta}{\PassOptionsToPackage{\CurrentOption}{metakeys}}
+\newif\ifextrefs\extrefsfalse
+\DeclareOption{extrefs}{\extrefstrue}
+\ProcessOptions
+%</package>
+%<*ltxml>
+DeclareOption('extrefs','');
+%</ltxml>
+%    \end{macrocode}
+%
+% Then we need to set up the packages by requiring the |metakeys| package~\ctancite{Kohlhase:metakeys}
+% to be loaded (in the right version).
+%
+%    \begin{macrocode}
+%<*package>
+\RequirePackage{metakeys}
+\RequirePackage{xspace}
+%</package>
+%<*ltxml>  
+RequirePackage('metakeys');
+%</ltxml> 
+%    \end{macrocode}
+% 
+% \subsection{Crossreferencing}\label{sec:impl:crossref}
+% 
+% The following user-level macros just use the |\sref@hlink| macros in various ways for
+% internal referencing.\ednote{they need implementation in LaTeXML, the ones here only are
+% stubs to make the error messages shut up.}
+% 
+% \begin{macro}{\sref}
+%    \begin{macrocode}
+%<*package>
+\def\sref{\@ifnextchar[{\@sref}{\@sref[]}}
+\def\@sref[#1]#2{\@ifnextchar[{\@@sref[#1]{#2}}{\@sref[#1]{#2}[]}}
+\def\@@sref[#1]#2[#3]{\@ifundefined{sref@part}{\sref@hlink[#1]{#2}{#3}}{\sref@hlink[#1]{\sref@part @#2}{#3}}\xspace}
+%</package>
+%<*ltxml>
+sub withhash {'#';}
+DefConstructor('\sref[]{}[]',
+ "<omdoc:oref href='&withhash()#2'/>");
+%</ltxml>
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\srefs}
+%    \begin{macrocode}
+%<*package>
+\newcommand\srefs[3][]{%
+\def\@test{#1}\ifx\@test\@empty\sref{#2} and \sref{#3}\else #1\fi}
+%</package>
+%<*ltxml>
+DefConstructor('\srefs[]{}',
+ "<omdoc:oref href='&withhash()#2'/>");
+%</ltxml>
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\srefl}
+%    \begin{macrocode}
+%<*package>
+\newcommand\srefl[3][]{%
+\def\@test{#1}\ifx\@test\@empty\sref{#2} to \sref{#3}\else #1\fi}
+%</package>
+%<*ltxml>
+DefConstructor('\srefl[]{}',
+ "<omdoc:oref href='&withhash()#2'/>");
+%</ltxml>
+%    \end{macrocode}
+% \end{macro}
+% \ednote{it is not clear what we want in the LaTeXML implementation of spageref}
+% \begin{macro}{\spageref}
+%    \begin{macrocode}
+%<*package>
+\newcommand\spageref[1]{%
+\@ifundefined{sref@part}{\sref@pageref{#1}}{\sref@pageref{\sref@part @#1}}}
+%</package>
+%<*ltxml>
+DefConstructor('\spageref{}',
+ "<omdoc:oref href='&withhash()#1'/>");
+%</ltxml>
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsection{An API for Package Authors}\label{sec:impl:package-authors}
+%
+% We find out whether the |hyperref| package is loaded, since we may want to use it for
+% cross-references, for which we set up some internal macros that gracefully degrade if
+% |hyperref| is not loaded. 
+% 
+% \begin{macro}{\sref@*@ifh}
+%    \begin{macrocode}
+%<*package>
+\newif\ifhref\hreffalse
+\AtBeginDocument{\@ifpackageloaded{hyperref}{\hreftrue}{\hreffalse}}
+\newcommand\sref@href@ifh[2]{\ifhref\href{#1}{#2}\else#2\fi}
+\newcommand\sref@hlink@ifh[2]{\ifhref\hyperlink{#1}{#2}\else#2\fi}
+\newcommand\sref@target@ifh[2]{\ifhref\hypertarget{#1}{#2}\else#2\fi}
+%    \end{macrocode}
+% \end{macro}
+% 
+% Then we provide some macros for {\sTeX}-specific crossreferencing 
+%
+% \begin{macro}{\sref@target}
+%   The next macro uses this and makes an target from the current |sref@id| declared by
+%   a |id| key.
+%    \begin{macrocode}
+\def\sref@target%
+{\ifx\sref@id\@empty\else%
+\edef\@target{sref@\@ifundefined{sref@part}{}{\sref@part @}\sref@id @target}
+\sref@target@ifh\@target{}\fi}
+%    \end{macrocode}
+% \end{macro}
+%
+% The next two macros are used for setting labels, it is mainly used for enabling forward
+% references, to do this, it is written into \meta{jobname}|.aux| or \meta{jobname}|.refs|.
+% 
+% \begin{macro}{\@sref@def}
+%   This macro stores the value of its last argument in a custom macro for reference.
+%    \begin{macrocode}
+\newcommand\@sref@def[3]{\expandafter\gdef\csname sref@#1@#2\endcsname{#3}}
+%    \end{macrocode}
+% \end{macro}
+%
+% The next step is to set up a file to which the references are written, this is normally
+% the |.aux| file, but if the |extref| option is set, we have to use an |.ref| file. 
+%    \begin{macrocode}
+\ifextrefs\newwrite\refs@file\else\def\refs@file{\@auxout}\fi
+%    \end{macrocode}
+%
+% \begin{macro}{\sref@def}
+%    This macro writes an |\@sref@def| command to the current aux file and also executes it. 
+%    \begin{macrocode}
+\newcommand\sref@def[3]{%\@sref@def{#1}{#2}{#3}%
+\protected@write\refs@file{}{\string\@sref@def{#1}{#2}{#3}}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\srefaddidkey}
+%   |\srefaddidkey[|\meta{keyval}|]{|\meta{group}|}| extends the metadata keys of the
+%   group \meta{group} with an |id| key. In the optional key/value pairs in \meta{keyval}
+%   the |prefix| key can be used to specify a prefix. Note that the |id| key defined by
+%   |\srefaddidkey[|\meta{keyval}|]{|\meta{group}|}| not only defines |\sref@id|, which is
+%   used for referencing by the |sref| package, but also |\|\meta{group}|@id|, which is
+%   used for showing metadata via the |showmeta| option of the |metakeys| package.
+%    \begin{macrocode}
+\addmetakey{srefaddidkey}{prefix}
+\newcommand\srefaddidkey[2][]{\metasetkeys{srefaddidkey}{#1}%
+\@metakeys@ext@clear@keys{#2}{sref@id}{}% id cannot have a default
+\metakeys@ext@clear@keys{#2}{id}{}%
+\metakeys@ext@showkeys{#2}{id}%
+\define@key{#2}{id}{\edef\sref@id{\srefaddidkey@prefix ##1}%
+\expandafter\edef\csname #2@id\endcsname{\srefaddidkey@prefix ##1}}}
+%</package>
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsection{Inter-Document Crossreferencing}\label{sec:impl:interdoc}
+%
+% \begin{macro}{\makeextrefs}
+%    \begin{macrocode}
+%<*package>
+\newcommand\makeextrefs[1]{\gdef\sref@part{#1}%
+\makeatletter
+\IfFileExists{\jobname.refs}{\input{\jobname.refs}}{}%
+\immediate\openout\refs@file=\jobname.refs
+\makeatother}
+%</package>
+%<ltxml>DefConstructor('\makeextrefs{}','');
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\sref@label}
+%   The |\sref@label| macro writes a label definition to the auxfile. 
+%    \begin{macrocode}
+%<*package>
+\newcommand\sref@label[2]{%
+\sref@def{\@ifundefined{sref@part}{}{\sref@part @}#2}{page}{\thepage}%
+\sref@def{\@ifundefined{sref@part}{}{\sref@part @}#2}{label}{#1}}
+%</package>
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\sreflabel}
+%   The |\sreflabel| macro is a semantic version of |\label|, it combines the categorization
+%   given in the first argument with {\LaTeX}'s |\@currentlabel|.
+%    \begin{macrocode}
+%<*package>
+\newcommand\sreflabel[2]{\sref@label{#1 \@currentlabel}{#2}}
+%</package>
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\sref@label@id}
+%   The |\sref@label@id| writes a label definition for the current |\sref@id| if it is
+%   defined.
+%    \begin{macrocode}
+%<*package>
+\newcommand\sref@label@id[1]{\ifx\sref@id\@empty\else\sref@label{#1}{\sref@id}\fi}
+%</package>
+%    \end{macrocode}
+% \end{macro}
+%
+% Finally we come to the user visible macro |\sref| which is used for
+% referencing.\ednote{The {\latexml} does not take into account the optional argument
+%   yet.}
+%
+% \begin{macro}{\sref@hlink}
+%   |\sref@hlink[|\meta{alt}|]{|\meta{label}|}{|\meta{fallback}|}| creates an error
+%   message if the target specified by \meta{label} is not defined (but uses
+%   \meta{fallback} if provided), and otherwise generates a hyperlinked reference whose
+%   link text is \meta{alt} (if the optional argument is given) and the label generated by
+%   object specified by \meta{label} otherwise.
+%    \begin{macrocode}
+%<*package>
+\newcommand\sref@hlink[3][]{\def\@test{#1}\def\sref@ifundef{#3}%
+\@ifundefined{sref@#2@label}%
+{\ifx\sref@ifundef\@empty%
+\protect\G@refundefinedtrue\@latex@warning{reference #2 undefined}?#2?%
+\else%
+\protect\G@refundefinedtrue\@latex@warning{using fallback for undefined reference #2}#3%
+\fi}%
+{\sref@hlink@ifh{sref@#2@target}{\ifx\@test\@empty\@nameuse{sref@#2@label}\else #1\fi}}}
+%</package> 
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\sref@page@label}
+%   This macro styles a page reference.
+%    \begin{macrocode}
+%<*package>
+\newcommand\sref@page@label[1]{p.~{#1}}
+%</package> 
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\sref@pageref}
+%   The next macro creates an error message if the target is not defined, and otherwise
+%   generates a page reference.
+%    \begin{macrocode}
+%<*package>
+\newcommand\sref@pageref[1]{\@ifundefined{sref@#1@page}%
+{\protect\G@refundefinedtrue\@latex@warning{reference #1 undefined}\sref@page@label{??}}%
+{\sref@hlink@ifh{sref@#1@target}{\sref@page@label{\@nameuse{sref@#1@page}}}}}
+%</package> 
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\sref@href}
+%   The next macro creates an error message if the target is not defined, and otherwise
+%   generates a hyperlinked reference.
+%    \begin{macrocode}
+%<*package>
+\newcommand\sref@href[3][]{\def\@test{#1}%
+\@ifundefined{sref@#2@label}%
+{\protect\G@refundefinedtrue\@latex@warning{reference #2 undefined}??}%
+{\@ifundefined{sref@#3@URI}%
+{\protect\G@refundefinedtrue\@latex@warning{external refs of type  #3 undefined}??}%
+{\edef\@uri{\@nameuse{sref@#3@URI}.pdf\#sref@#2@target}
+\edef\@label{\ifx\@test\@empty\@nameuse{sref@#2@label}\else #1\fi}
+\sref@href@ifh\@uri\@label}}}
+%</package> 
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\extref}
+%   The next macros use |\sref@href| with the respective prefix for external referencing
+%   if external references are used as indicated by the |extrefs| option; otherwise it
+%   disregards the first required macro and uses internal referencing.\ednote{This needs
+%     to be implemented on the LaTeXML side.}
+%    \begin{macrocode}
+%<*package>
+\ifextrefs
+\newcommand\extref[3][]{\def\theextref{\sref@href[#1]{#2@#3}{#2}}%
+\csname doextref@#2\endcsname}
+\else
+\newcommand\extref[3][]{\sref[#1]{#3}}
+\fi
+%</package>
+%<*ltxml>
+DefConstructor('\extref[]{}{}',
+  "<omdoc:oref href='#2@#3'/>");
+DefConstructor('\theextref','');
+%</ltxml>
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\extpageref}
+%   The next macros use |\sref@pagref| with the respective prefix for external referencing
+%   if external references are used as indicated by the |extrefs| option; otherwise it
+%   disregards the first required macro and uses internal referencing.\ednote{This needs
+%   to be implemented on the LaTeXML side.}
+%    \begin{macrocode}
+%<*package>
+\ifextrefs
+\newcommand\extpageref[3][]{\def\theextref{\sref@pageref{#2@#3}}%
+\csname doextpageref@#2\endcsname}
+\else
+\newcommand\extpageref[3][]{\spageref{#3}}
+\fi
+%</package>
+%<*ltxml>
+DefConstructor('\extpageref[]{}{}',
+  "<omdoc:oref href='#2@#3'/>");
+DefConstructor('\theextref','');
+%</ltxml>
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\extrefstyle}
+%   This user macro defines an internal macro that is used for internal styling; for
+%   instance |\extrefstyle{foo}{\theextref in bar}| defines the macro |\doextref@foo|
+%   which evaluates to \meta{the reference} |in bar|. This is used in the |\extref| macro.
+%    \begin{macrocode}
+%<*package>
+\newcommand\extrefstyle[2]{\expandafter\gdef\csname doextref@#1\endcsname{#2}}
+%</package>
+%<*ltxml>
+DefConstructor('\extrefstyle{}{}',"");
+%</ltxml>
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\extpagerefstyle}
+%   This is analogous to |\extrefstyle|
+%    \begin{macrocode}
+%<*package>
+\newcommand\extpagerefstyle[2]{\expandafter\gdef\csname doextpageref@#1\endcsname{#2}}
+%</package>
+%<*ltxml>
+DefConstructor('\extrefstyle{}{}',"");
+%</ltxml>
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\inputrefs}
+%   If the external references file exists, it is read (under the protection of
+%   |\makeatother|) otherwise an error message is displayed.
+%    \begin{macrocode}
+%<*package>
+\newcommand\inputrefs[2]{%
+\@namedef{sref@#1@URI}{#2}%
+\extrefstyle{#1}{\theextref}\extpagerefstyle{#1}{\theextref}%
+\makeatletter%
+\IfFileExists{#2.refs}{\message{Reading external references: #2.refs}\input{#2.refs}}
+             {\PackageError{sref}{Reference file #2.refs does not exist}
+                                 {Maybe you have to run LaTeX on #2.tex first}}
+\makeatother}
+%</package>
+%<*ltxml>
+DefConstructor('\inputrefs{}{}','');
+%</ltxml>
+%    \end{macrocode}
+% \end{macro}
+% 
+% \subsection{Semantic Versions of Commonly used Referencing Commands}\label{sec:impl:common}
+% 
+% \begin{environment}{sequation}
+%    \begin{macrocode}
+%<*package>
+\srefaddidkey{sequation}
+\def\sref@sequation@heading{equation}
+\newenvironment{sequation}[1][]{\metasetkeys{sequation}{#1}% 
+\ifx\sref@id\@empty\begin{displaymath}\else% no id, using equation*
+\begin{equation}\sref@target\sref@label@id{\sref@sequation@heading~(\theequation)}\fi}
+{\ifx\sref@id\@empty\end{displaymath}\else\end{equation}\fi}
+%</package>
+%<*ltxml>
+DefEnvironment('{sequation} OptionalKeyVals',
+	       "<ltx:equation "
+             .     "?&KeyVal(#1,'id')(xml:id='&KeyVal(#1,'id')' "
+             .     "refnum='#refnum')(xml:id='#id')>"
+	     .   "<ltx:Math mode='display'>"
+	     .     "<ltx:XMath>#body</ltx:XMath>"
+	     .   "</ltx:Math>"
+	     . "</ltx:equation>",
+	       mode=>'display_math',
+	       properties=> sub { RefStepCounter('equation') },
+	       locked=>1);
+%</ltxml>
+%    \end{macrocode}
+% \end{environment}
+%
+% \begin{environment}{seqnarray}
+%    \begin{macrocode}
+%<*package>
+\newenvironment{seqnarray}[1][]%
+{\metasetkeys{sequation}{#1}\begin{eqnarray*}\sref@target%
+\sref@label@id{\sref@sequation@heading~(\theequation)}}
+{\end{eqnarray*}}
+%</package>
+%<*ltxml>
+DefMacro('\seqnarray OptionalKeyVals','\begin{eqnarray*}');
+DefMacro('\endseqnarray','\end{eqnarray*}');
+%</ltxml>
+%    \end{macrocode}
+% \end{environment}
+%
+% \subsection{Semantic Citations}\label{sec:impl:citations}
+%
+% \begin{macro}{withcite}
+%    \begin{macrocode}
+%<*package>
+\newcommand\withcite[2]{#2~\cite{#1}}
+%</package>
+%<*ltxml>
+DefMacro('\withcite{}{}','\begin{withcitation}{#1}#2\citeit\end{withcitation}');
+%</ltxml>
+%    \end{macrocode}
+% \end{macro}
+% 
+% \begin{environment}{withcitation}
+%    \begin{macrocode}
+%<*package>
+\newenvironment{withcitation}[1]{\def\citeit{\cite{#1}}}{}
+%</package>
+%<*ltxml>
+DefConstructor('\citeit',"<omdoc:citation/> ",
+afterConstruct => sub {
+  my ($document,$whatsit) = @_;
+  # LibXML acrobatics, since we can't talk about the xml:id prior to construction's end
+  # (and please do correct me if this is inaccurate)
+  my $node = $document->getNode;
+  my ($citenode) = $document->findnodes('preceding-sibling::omdoc:citation',$node);
+ my ($phrase_parent) = $document->findnodes('ancestor::ltx:text[@xml:id]',$node);
+  return unless (defined $phrase_parent) && (defined $citenode);
+  my $id = $phrase_parent->getAttribute('xml:id');
+  my $refs = $phrase_parent->getAttribute('citeit-refs');
+  $phrase_parent->removeAttribute('citeit-refs');
+  $citenode->setAttribute('for',$id);
+  $citenode->setAttribute('refs',$refs);
+});#$
+DefEnvironment('{withcitation}{}',
+   "<ltx:text citeit-refs='#1'>#body</ltx:text>");
+%</ltxml>
+%    \end{macrocode}
+% \end{environment}
+% 
+% \subsection{Finale}\label{sec:common}
+%
+% Finally, we need to terminate the file with a success mark for perl.
+%    \begin{macrocode}
+%<*ltxml>
+1;
+%</ltxml>
+%    \end{macrocode}
+% \Finale
+\endinput
+% \iffalse
+%%% Local Variables: 
+%%% mode: doctex
+%%% TeX-master: t
+%%% End: 
+% \fi
+
+% LocalWords:  GPL structuresharing STR omdoc dtx stex CPERL LoadClass url dc
+% LocalWords:  RequirePackage RegisterNamespace namespace xsl DocType ltxml dtd
+% LocalWords:  ltx DefEnvironment beforeDigest AssignValue inPreamble getGullet
+% LocalWords:  afterDigest keyval omgroup DefKeyVal Semiverbatim KeyVal iffalse
+% LocalWords:  OptionalKeyVals DefParameterType IfBeginFollows skipSpaces CMP
+% LocalWords:  ifNext DefMacro needwrapper unlist DefConstructor omtext bgroup
+% LocalWords:  useCMPItemizations RefStepItemCounter egroup beginItemize li di
+% LocalWords:  beforeDigestEnd useTheoryItemizations dt autoclose ul ol dl env
+% LocalWords:  afterOpen LastSeenCMP autoClose proto ToString textsuperscript
+% LocalWords:  addAttribute nlex nlcex omdocColorMacro args tok MergeFont qw
+% LocalWords:  TokenizeInternal toString isMath foreach maybeCloseElement id'd
+% LocalWords:  autoOpen minipage footnotesize scriptsize numberIt whatsit href
+% LocalWords:  getAttribute setAttribute OMDoc RelaxNGSchema noindex xml lec
+% LocalWords:  Subsubsection useDefaultItemizations refundefinedtrue blockquote
+% LocalWords:  DefCMPConstructor inlinequote idx idt ide idp emph  sref extrefs
+% LocalWords:  flushleft flushright DeclareOption hyperref LaTeX tex pdf hlink
+% LocalWords:  sequation omd def texorpdfstring raisebox latexml texttt newpage
+% LocalWords:  fileversion maketitle tableofcontents autoref hpyerref mysection
+% LocalWords:  exfig vspacesrefaddidkey srefaddidkey scr vspace withcite LasSwi
+% LocalWords:  makeextrefs inputrefs extref foo Patashnik withcite biblatex10
+% LocalWords:  extrefstyle theextref theextref displaymath hrule impl ednote
+% LocalWords:  printbibliography newif ifextrefs extrefsfalse extrefstrue srefs
+% LocalWords:  Crossreferencing newcommand ifundefined ifx srefl xref ifh gdef
+% LocalWords:  ifhref hreffalse ifpackageloaded hreftrue expandafter jobname
+% LocalWords:  jobname csname endcsname newwrite auxout makeatletter openout
+% LocalWords:  makeatother auxfile nameuse doextref namedef newenvironment
+% LocalWords:  theequation refnum refnum seqnarray eqnarray endseqnarray doctex
+% LocalWords:  textsuperscript spageref spageref thepage pageref ctancite rdf99
+% LocalWords:  cross-referencable showmeta showmeta metakeys metasetkeys textsf
+% LocalWords:  addmetakey referencable langle textsf langle withcitation citeit
+% LocalWords:  compactenum

@@ -1,0 +1,62 @@
+# A RelaxNG for Open Mathematical documents (OMDoc 1.3) Module DOC         
+# $Id: omdocdoc.rnc 8972 2011-09-09 11:36:34Z kohlhase $
+# $HeadURL: https://svn.omdoc.org/repos/omdoc/branches/omdoc-1.3/schema/rnc/omdocdoc.rnc $
+# See the documentation and examples at http://www.omdoc.org
+# Copyright (c) 2004-2007 Michael Kohlhase, released under the GNU Public License (GPL) 
+
+default namespace omdoc = "http://omdoc.org/ns"
+# extend the stuff that can go into a mathematical text
+
+omdoc.class &= ignore* & tableofcontents* 
+
+ignore.attribs = id.attribs & 
+	                  attribute type {xsd:string}? &
+                          attribute comment {xsd:string}?
+ignore.model = Anything 
+ignore = element ignore {tref|(ignore.attribs & ignore.model)}
+
+tableofcontents.attribs = attribute level {xsd:nonNegativeInteger}?
+tableofcontents.model = empty
+tableofcontents = element tableofcontents {tref|(tableofcontents.attribs & tableofcontents.model)}
+
+index.attribs = id.attribs
+index.model = empty
+index = element index {tref|(index.attribs & index.model)}
+
+bibliography.attribs = id.attribs, attribute files {text}
+bibliography.model = empty
+bibliography = element bibliography {tref|(bibliography.attribs & bibliography.model)}
+
+
+group.attribs = id.attribs, 
+	                 attribute type {xsd:anyURI}?, 
+			 attribute modules {xsd:anyURI}?, 
+			 attribute layout {text}?
+
+## The <omdoc> and <omgroup> elements allow frontmatter and backmatter, 
+## which we will now  define
+frontmatter = metadata.class & tableofcontents?
+backmatter = index? & bibliography?
+docstruct.class = omgroup*
+omdoc.class &= docstruct.class
+mainmatter = omdoc.class
+
+omgroup.attribs = toplevel.attribs & group.attribs
+omgroup.model = frontmatter,mainmatter,backmatter
+omgroup = element omgroup {tref|(omgroup.attribs & omgroup.model)}
+
+## the model of the document root only differs from <omgroup> in the version attribute
+omdoc.attribs = toplevel.attribs & group.attribs & 
+                          attribute version {xsd:string {pattern = "1.3"}}?
+omdoc.model =frontmatter,mainmatter,backmatter
+omdoc = element omdoc {tref|(omdoc.attribs & omdoc.model)}
+
+
+############################## deprecated ################################
+# the following is for legacy only, and will be removed soon. 
+ref.attribs = id.attribs & xref.attrib & attribute type {"include" | "cite"}
+ref.model = empty
+ref = element ref{ref.attribs & ref.model}
+
+omdoc.class &= ref*
+inline.class &= ref*

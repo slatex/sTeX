@@ -1,0 +1,906 @@
+% \iffalse meta-comment
+% An Infrastructure for Structural Markup for Proofs
+% Copyright (C) 2004-2011 Michael Kohlhase, all rights reserved
+%               this file is released under the
+%               LaTeX Project Public License (LPPL)
+%
+% The development version of this file can be found at
+% $URL: https://svn.kwarc.info/repos/stex/trunk/sty/sproof/sproof.dtx $ 
+% $Rev: 2380 $; last modified by $Author: kohlhase $ 
+% $Date: 2013-10-12 07:12:25 +0200 (Sat, 12 Oct 2013) $
+% \fi
+% 
+% \iffalse
+%<package>\NeedsTeXFormat{LaTeX2e}[1999/12/01]
+%<package>\ProvidesPackage{sproof}[2013/09/29 v1.1 Semantic Markup for Proofs]
+%
+%<*driver>
+\documentclass{ltxdoc}
+\usepackage{url,array,stex,float,moreverb}
+\usepackage[show]{ed}
+\usepackage[hyperref=auto,style=alphabetic,backend=bibtex]{biblatex}
+\bibliography{kwarc}
+\usepackage{../ctansvn}
+\usepackage{hyperref}
+\usepackage[eso-foot,today]{svninfo}
+\svnInfo $Id: sproof.dtx 2380 2013-10-12 05:12:25Z kohlhase $
+\svnKeyword $HeadURL: https://svn.kwarc.info/repos/stex/trunk/sty/sproof/sproof.dtx $
+\makeindex
+\floatstyle{boxed}
+\newfloat{exfig}{thp}{lop}
+\floatname{exfig}{Example}
+\def\tracissue#1{\cite{sTeX:online}, \hyperlink{http://trac.kwarc.info/sTeX/ticket/#1}{issue #1}}
+\begin{document}\DocInput{sproof.dtx}\end{document}
+%</driver>
+% \fi
+% 
+% \iffalse\CheckSum{356}\fi
+%
+% \changes{v0.9}{2005/06/14}{First Version with Documentation}
+% \changes{v0.9a}{2005/07/01}{Completed Documentation}
+% \changes{v0.9b}{2005/08/06}{Complete functionality and Updated Documentation}
+% \changes{v0.9c}{2006/01/13}{more packaging}
+% \changes{v0.9d}{2006/10/31}{made sproof.dtx independent of statements.dtx}
+% \changes{v0.9d}{2006/10/31}{revamped the proof end mark management}
+% \changes{v0.9e}{2008/10/11}{taking type seriously}
+% \changes{v0.9f}{2009/12/14}{changing to omd metadata framework}
+% \changes{v0.9f}{2008/12/14}{first steps to sref}
+% \changes{v1.0}{2011/01/23}{making proof step labels stylable}
+% \changes{v1.1}{2013/09/29}{subproof now more like proof (takes comment arg)}
+% 
+% \GetFileInfo{sproof.sty}
+% 
+% \MakeShortVerb{\|}
+%\def\scsys#1{{{\sc #1}}\index{#1@{\sc #1}}}
+% \def\xml{\scsys{Xml}}
+% \def\mathml{\scsys{MathML}}
+% \def\omdoc{\scsys{OMDoc}}
+% \def\openmath{\scsys{OpenMath}}
+% \def\latexml{\scsys{LaTeXML}}
+% \def\perl{\scsys{Perl}}
+% \def\cmathml{Content-{\sc MathML}\index{Content {\sc MathML}}\index{MathML@{\sc MathML}!content}}
+% \def\activemath{\scsys{ActiveMath}}
+% \def\twin#1#2{\index{#1!#2}\index{#2!#1}}
+% \def\twintoo#1#2{{#1 #2}\twin{#1}{#2}}
+% \def\atwin#1#2#3{\index{#1!#2!#3}\index{#3!#2 (#1)}}
+% \def\atwintoo#1#2#3{{#1 #2 #3}\atwin{#1}{#2}{#3}}
+% \title{{\texttt{sproof.sty}}: Structural Markup for Proofs\thanks{Version {\fileversion} (last revised
+%        {\filedate})}}
+%    \author{Michael Kohlhase\\
+%            Jacobs University, Bremen\\
+%            \url{http://kwarc.info/kohlhase}}
+% \maketitle
+%
+% \begin{abstract}
+%   The |sproof| package is part of the {\stex} collection, a version of {\TeX/\LaTeX} that
+%   allows to markup {\TeX/\LaTeX} documents semantically without leaving the document
+%   format, essentially turning {\TeX/\LaTeX} into a document format for mathematical
+%   knowledge management (MKM).
+%
+%   This package supplies macros and environment that allow to annotate the structure of
+%   mathematical proofs in {\stex} files. This structure can be used by MKM systems for
+%   added-value services, either directly from the {\sTeX} sources, or after translation.
+% \end{abstract}
+%
+% \newpage\tableofcontents\newpage
+%
+%\section{Introduction}\label{sec:sproof}
+%
+% The |sproof| ({\twintoo{semantic}{proofs}}) package supplies macros and environment that
+% allow to annotate the structure of mathematical proofs in {\stex} files. This structure
+% can be used by MKM systems for added-value services, either directly from the {\sTeX}
+% sources, or after translation. Even though it is part of the {\stex} collection, it can
+% be used independently, like it's sister package |statements|.
+%
+% {\stex} is a version of {\TeX/\LaTeX} that allows to markup {\TeX/\LaTeX} documents
+% semantically without leaving the document format, essentially turning {\TeX/\LaTeX} into
+% a document format for mathematical knowledge management (MKM).
+%
+% \begin{exfig}\scriptsize
+% \begin{verbatim}
+% \begin{sproof}[id=simple-proof,for=sum-over-odds]
+%    {We prove that $\sum_{i=1}^n{2i-1}=n^{2}$ by induction over $n$}
+%   \begin{spfcases}{For the induction we have to consider the following cases:}
+%    \begin{spfcase}{$n=1$}
+%     \begin{spfstep}[display=flow] then we compute $1=1^2$\end{spfstep}
+%    \end{spfcase}
+%    \begin{spfcase}{$n=2$}
+%       \begin{sproofcomment}[display=flow]
+%         This case is not really necessary, but we do it for the
+%         fun of it (and to get more intuition).
+%       \end{sproofcomment}
+%       \begin{spfstep}[display=flow] We compute $1+3=2^{2}=4$.\end{spfstep}
+%    \end{spfcase}
+%    \begin{spfcase}{$n>1$}
+%       \begin{spfstep}[type=assumption,id=ind-hyp]
+%         Now, we assume that the assertion is true for a certain $k\geq 1$,
+%         i.e. $\sum_{i=1}^k{(2i-1)}=k^{2}$.
+%       \end{spfstep}
+%       \begin{sproofcomment}
+%         We have to show that we can derive the assertion for $n=k+1$ from
+%         this assumption, i.e. $\sum_{i=1}^{k+1}{(2i-1)}=(k+1)^{2}$.
+%       \end{sproofcomment}
+%       \begin{spfstep}
+%         We obtain $\sum_{i=1}^{k+1}{2i-1}=\sum_{i=1}^k{2i-1}+2(k+1)-1$
+%         \begin{justification}[method=arith:split-sum]
+%           by splitting the sum.
+%         \end{justification}
+%       \end{spfstep}
+%       \begin{spfstep}
+%         Thus we have $\sum_{i=1}^{k+1}{(2i-1)}=k^2+2k+1$
+%         \begin{justification}[method=fertilize]
+%           by inductive hypothesis.
+%         \end{justification}
+%       \end{spfstep}
+%       \begin{spfstep}[type=conclusion]
+%         We can \begin{justification}[method=simplify]simplify\end{justification} 
+%         the right-hand side to ${k+1}^2$, which proves the assertion.
+%       \end{spfstep}
+%    \end{spfcase}
+%     \begin{spfstep}[type=conclusion]
+%       We have considered all the cases, so we have proven the assertion.
+%     \end{spfstep}
+%   \end{spfcases}
+% \end{sproof}
+% \end{verbatim}
+% \vspace*{-.5cm}
+% \caption{A very explicit proof, marked up semantically}\label{fig:proof:src}
+% \end{exfig}
+%
+% We will go over the general intuition by way of our running example (see
+% Figure~\ref{fig:proof:src} for the source and Figure~\ref{fig:proof:result} for the
+% formatted result).\ednote{talk a bit more about proofs and their structure,... maybe
+%   copy from OMDoc spec. }
+%
+% \section{The User Interface}
+% 
+% \subsection{Package Options}\label{sec:user:options}
+% 
+% The |sproof| package takes a single option: \DescribeMacro{showmeta}|showmeta|. If
+% this is set, then the metadata keys are shown (see~\cite{Kohlhase:metakeys:ctan} for details
+% and customization options).
+%
+% \subsection{Proofs and Proof steps}
+%
+% \DescribeEnv{sproof} The |proof| environment is the main container for proofs. It takes
+% an optional |KeyVal| argument that allows to specify the |id| (identifier) and |for|
+% (for which assertion is this a proof) keys. The regular argument of the |proof|
+% environment contains an introductory comment, that may be used to announce the proof
+% style. The |proof| environment contains a sequence of |\step|, |proofcomment|, and
+% |pfcases| environments that are used to markup the proof steps. The |proof| environment
+% has a variant |Proof|, which does not use the proof end marker. This is convenient, if a
+% proof ends in a case distinction, which brings it's own proof end marker with it.
+% \DescribeEnv{sProof} The |Proof| environment is a variant of |proof| that does not mark
+% the end of a proof with a little box; presumably, since one of the subproofs already has
+% one and then a box supplied by the outer proof would generate an otherwise empty line.
+% \DescribeMacro{\spfidea} The |\spfidea| macro allows to give a one-paragraph
+% description of the proof idea.
+% 
+% For one-line proof sketches, we use the \DescribeMacro{spfsketch}|\spfsketch| macro,
+% which takes the |KeyVal| argument as |sproof| and another one: a natural language text
+% that sketches the proof.
+%
+% \DescribeEnv{spfstep} Regular proof steps are marked up with the |step| environment, which
+% takes an optional |KeyVal| argument for annotations. A proof step usually contains a
+% local assertion (the text of the step) together with some kind of evidence that this can
+% be derived from already established assertions.
+%
+% Note that both |\premise| and |\justarg| can be used with an empty second argument to
+% mark up premises and arguments that are not explicitly mentioned in the text.
+%
+% \begin{exfig}
+% \begin{sproof}[id=simple-proof,for=sum-over-odds]
+%   {We prove that $\sum_{i=1}^n{2i-1}=n^{2}$ by induction over $n$}
+%   \begin{spfcases}{For the induction we have to consider the following cases:}
+%     \begin{spfcase}{$n=1$}
+%       \begin{spfstep}[display=flow] then we compute $1=1^2$\end{spfstep}
+%     \end{spfcase}
+%     \begin{spfcase}{$n=2$}
+%       \begin{sproofcomment}[display=flow]
+%          This case is not really necessary, but we do it for the fun
+%          of it (and to get more intuition).
+%       \end{sproofcomment}
+%       \begin{spfstep}[display=flow]
+%          We compute $1+3=2^{2}=4$
+%       \end{spfstep}
+%     \end{spfcase}
+%     \begin{spfcase}{$n>1$}
+%       \begin{spfstep}[type=hypothesis,id=ind-hyp]
+%         Now, we assume that the assertion is true for a certain $k\geq 1$, i.e.
+%         $\sum_{i=1}^k{(2i-1)}=k^{2}$.
+%       \end{spfstep}
+%       \begin{sproofcomment}
+%         We have to show that we can derive the assertion for $n=k+1$ from this
+%         assumption, i.e.  $\sum_{i=1}^{k+1}{(2i-1)}=(k+1)^{2}$.
+%       \end{sproofcomment}
+%       \begin{spfstep}[id=splitit]
+%         We obtain $\sum_{i=1}^{k+1}{(2i-1)}=\sum_{i=1}^k{(2i-1)}+2(k+1)-1$
+%        \begin{justification}[method=arith:split-sum]
+%          by splitting the sum
+%        \end{justification}
+%      \end{spfstep}
+%      \begin{spfstep}[id=byindhyp]
+%        Thus we have $\sum_{i=1}^{k+1}{(2i-1)}=k^2+2k+1$
+%        \begin{justification}[method=fertilize]
+%          by \premise[ind-hyp]{inductive hypothesis}.
+%        \end{justification}
+%      \end{spfstep}
+%      \begin{spfstep}[type=conclusion]
+%        We can \begin{justification}[method=simplify-eq]
+%          simplify the {\justarg[rhs]{right-hand side}}
+%        \end{justification} to $(k+1)^2$, which proves the assertion.
+%      \end{spfstep}
+%    \end{spfcase}
+%    \begin{spfstep}[type=conclusion]
+%      We have considered all the cases, so we have proven the assertion.
+%    \end{spfstep}
+%   \end{spfcases}
+% \end{sproof}
+% \caption{The formatted result of the proof in Figure~\ref{fig:proof:src}}\label{fig:proof:result}
+% \end{exfig}
+%
+% \subsection{Justifications}
+% 
+% \DescribeEnv{justification} This evidence is marked up with the |justification|
+% environment in the |sproof| package. This environment totally invisible to the formatted
+% result; it wraps the text in the proof step that corresponds to the evidence. The
+% environment takes an optional |KeyVal| argument, which can have the |method| key, whose
+% value is the name of a proof method (this will only need to mean something to the
+% application that consumes the semantic annotations). Furthermore, the justification can
+% contain ``premises'' (specifications to assertions that were used justify the step) and
+% ``arguments'' (other information taken into account by the proof method).
+%
+% \DescribeMacro{\premise} The |\premise| macro allows to mark up part of the text as
+% reference to an assertion that is used in the argumentation. In the example in
+% Figure~\ref{fig:proof:src} we have used the |\premise| macro to identify the inductive
+% hypothesis.
+%
+% \DescribeMacro{\justarg} The |\justarg| macro is very similar to |\premise| with the
+% difference that it is used to mark up arguments to the proof method. Therefore the
+% content of the first argument is interpreted as a mathematical object rather than as an
+% identifier as in the case of |\premise|. In our example, we specified that the
+% simplification should take place on the right hand side of the equation. Other examples
+% include proof methods that instantiate. Here we would indicate the substituted object in
+% a |\justarg| macro.
+%
+% \subsection{Proof Structure}
+% 
+% \DescribeEnv{subproof} The |pfcases| environment is used to mark up a subproof. This
+% environment takes an optional |KeyVal| argument for semantic annotations and a second
+% argument that allows to specify an introductory comment (just like in the |proof|
+% environment). The \DescribeMacro{method}|method| key can be used to give the name of the
+% proof method executed to make this subproof.
+% 
+% \DescribeEnv{spfcases} The |pfcases| environment is used to mark up a proof by
+% cases. Technically it is a variant of the |subproof| where the |method| is
+% |by-cases|. Its contents are |spfcase| environments that mark up the cases one by one.
+%
+% \DescribeEnv{spfcase} The content of a |pfcases| environment are a sequence of case
+% proofs marked up in the |pfcase| environment, which takes an optional |KeyVal| argument
+% for semantic annotations. The second argument is used to specify the the description of
+% the case under consideration. The content of a |pfcase| environment is the same as that
+% of a |proof|, i.e. |step|s, |proofcomment|s, and |pfcases|
+% environments. \DescribeMacro{\spfcasesketch}|\spfcasesketch| is a variant of the |spfcase|
+% environment that takes the same arguments, but instead of the |spfstep|s in the body
+% uses a third argument for a proof sketch.
+%
+% \DescribeEnv{sproofcomment} The |proofcomment| environment is much like a |step|, only
+% that it does not have an object-level assertion of its own. Rather than asserting some
+% fact that is relevant for the proof, it is used to explain where the proof is going,
+% what we are attempting to to, or what we have achieved so far. As such, it cannot be the
+% target of a |\premise|.
+% 
+% \subsection{Proof End Markers}
+% 
+% Traditionally, the end of a mathematical proof is marked with a little box at the end of
+% the last line of the proof (if there is space and on the end of the next line if there
+% isn't), like so:\sproofend
+% 
+% The |sproof| package provides the \DescribeMacro{\sproofend}|\sproofend| macro for
+% this. If a different symbol for the proof end is to be used (e.g. {\sl{q.e.d}}), then
+% this can be obtained by specifying it using the
+% \DescribeMacro{\sProofEndSymbol}|\sProofEndSymbol| configuration macro (e.g. by specifying
+% |\sProofEndSymbol{q.e.d}|).
+% 
+% Some of the proof structuring macros above will insert proof end symbols for sub-proofs,
+% in most cases, this is desirable to make the proof structure explicit, but sometimes
+% this wastes space (especially, if a proof ends in a case analysis which will supply its
+% own proof end marker). To suppress it locally, just set |proofend={}| in them or use use
+% |\sProofEndSymbol{}|.
+% 
+% \subsection{Configuration of the Presentation}\label{sec:user:conf}
+%
+% Finally, we provide configuration hooks in Figure~\ref{fig:hooks} for the keywords in
+% proofs. These are mainly intended for package authors building on |statements|, e.g. for
+% multi-language support.\ednote{we might want to develop an extension
+% \texttt{sproof-babel} in the future.}.
+%\begin{figure}[ht]\centering
+% \begin{tabular}{|lll|}\hline
+% Environment & configuration macro & value\\\hline\hline
+% \texttt{sproof} & \texttt{\textbackslash spf@proof@kw} & \makeatletter\spf@proof@kw\\\hline
+% \texttt{sketchproof} & \texttt{\textbackslash spf@sketchproof@kw} & \makeatletter\spf@proofsketch@kw\\\hline
+% \end{tabular}
+% \caption{Configuration Hooks for Semantic Proof Markup}\label{fig:hooks}
+% \end{figure}
+% The proof step labels can be customized via the
+% \DescribeMacro{\pstlabelstyle}|\pstlabelstyle| macro: |\pstlabelstyle{|\meta{style}|}|
+% sets the style; see Figure~\ref{fig:pstlabel} for an overview of styles. Package writers
+% can add additional styles by adding a macro |\pst@make@label@|\meta{style} that takes
+% two arguments: a comma-separated list of ordinals that make up the prefix and the current
+% ordinal. Note that comma-separated lists can be conveniently iterated over by the
+% {\LaTeX} |\@for|\ldots|:=|\ldots|\do{|\ldots|}| macro; see Figure~\ref{fig:pstlabel} for
+% examples.
+%
+%\begin{figure}[ht]\centering\makeatletter\small
+% \begin{tabular}{|lll|}\hline
+% style & example& configuration macro\\\hline\hline
+% \texttt{long} &  \pst@make@label@long{0,8,1}{5} & \verb|\def\pst@make@label@long#1#2{\@for\@I:=#1\do{\@I.}#2}|\\\hline
+% \texttt{angles} & \pst@make@label@angles{0,8,1}{5} & \verb|\def\pst@make@label@angles#1#2|\\
+% &&\quad\verb|{\ensuremath{\@for\@I:=#1\do{\rangle}}#2}|\\\hline
+% \texttt{short} & \pst@make@label@short{0,8,1}{5} & \verb|\def\pst@make@label@short#1#2{#2}|\\\hline
+% \texttt{empty} & \pst@make@label@empty{0,8,1}{5} & \verb|\def\pst@make@label@empty#1#2{}|\\\hline
+% \end{tabular} 
+% \caption{Configuration Proof Step Label Styles}\label{fig:pstlabel}
+% \end{figure}
+%
+% \section{Limitations}\label{sec:limitations}
+% 
+% In this section we document known limitations. If you want to help alleviate them,
+% please feel free to contact the package author. Some of them are currently discussed in
+% the TRAC. 
+% \begin{compactenum}
+% \item The numbering scheme of proofs cannot be changed. It is more geared for teaching
+%   proof structures (the author's main use case) and not for writing papers.\lec{reported
+%   by Tobias Pfeiffer; see \tracissue{1658}} (fixed)
+% \item currently proof steps are formatted by the {\LaTeX} |description| environment. We
+%   would like to configure this, e.g. to use the |inparaenum| environment for more
+%   condensed proofs. I am just not sure what the best user interface would be I can
+%   imagine redefining an internal environment |spf@proofstep@list| or adding a key
+%   |prooflistenv| to the |proof| environment that allows to specify the environment
+%   directly. Maybe we should do both. 
+% \end{compactenum}
+% 
+% 
+% \StopEventually{\newpage\PrintIndex\newpage\PrintChanges\printbibliography}
+% \newpage
+%
+% \section{The Implementation} 
+% 
+% The |sproof| package generates to files: the {\LaTeX} package (all the code between
+% {\textsf{$\langle$*package$\rangle$}} and {\textsf{$\langle$/package$\rangle$}}) and the
+% {\latexml} bindings (between {\textsf{$\langle$*ltxml$\rangle$}} and
+% {\textsf{$\langle$/ltxml$\rangle$}}). We keep the corresponding code fragments together,
+% since the documentation applies to both of them and to prevent them from getting out of
+% sync.
+%
+% We first set up the Perl Packages for {\latexml}
+%
+%    \begin{macrocode}
+%<*ltxml>
+# -*- CPERL -*-
+package LaTeXML::Package::Pool;
+use strict;
+use LaTeXML::Package;
+RequirePackage('sref');
+%</ltxml>
+%    \end{macrocode}
+%
+% \subsection{Package Options}\label{sec:impl:options}
+%
+% We declare some switches which will modify the behavior according to the package
+% options. Generally, an option |xxx| will just set the appropriate switches to true
+% (otherwise they stay false).\ednote{need an implementation for {\latexml}}
+%
+%    \begin{macrocode}
+%<*package>
+\DeclareOption{showmeta}{\PassOptionsToPackage{\CurrentOption}{metakeys}}
+\ProcessOptions
+%</package>
+%<*ltxml>
+DeclareOption('showmeta','');
+%</ltxml>
+%    \end{macrocode}
+%
+% Then we make sure that the |sref| package is loaded~\ctancite{Kohlhase:sref}.
+%    \begin{macrocode}
+%<*package>
+\RequirePackage{sref}
+%</package>
+%    \end{macrocode}
+%
+% \subsection{Proofs}\label{sec:impl:proofs}
+% 
+% We first define some keys for the |proof| environment.
+%    \begin{macrocode}
+%<*package>
+\srefaddidkey{spf}
+\addmetakey*{spf}{display}
+\addmetakey{spf}{for}
+\addmetakey{spf}{from}
+\addmetakey*[\sproof@box]{spf}{proofend}
+\addmetakey{spf}{type}
+\addmetakey*{spf}{title}
+\addmetakey{spf}{continues}
+\addmetakey{spf}{functions}
+\addmetakey{spf}{method}
+%</package>
+%    \end{macrocode}
+%
+% \begin{macro}{\spf@flow}
+% We define this macro, so that we can test whether the |display| key has the value |flow|
+%    \begin{macrocode}
+%<*package>
+\def\spf@flow{flow}
+%</package>
+%    \end{macrocode}
+% \end{macro}
+%
+% For proofs, we will have to have deeply nested structures of enumerated list-like
+% environments. However, {\LaTeX} only allows |enumerate| environments up to nesting depth
+% 4 and general list environments up to listing depth 6. This is not enough for us.
+% Therefore we have decided to go along the route proposed by Leslie Lamport to use a
+% single top-level list with dotted sequences of numbers to identify the position in the
+% proof tree. Unfortunately, we could not use his |pf.sty| package directly, since it does
+% not do automatic numbering, and we have to add keyword arguments all over the place, to
+% accomodate semantic information.
+%
+% \begin{environment}{pst@with@label}
+%   This environment manages\footnote{This gets the labeling right but only works 8 levels
+%   deep} the path labeling of the proof steps in the description environment of the
+%   outermost |proof| environment. The argument is the label prefix up to now; which we
+%   cache in |\pst@label| (we need evaluate it first, since are in the right place
+%   now!). Then we increment the proof depth which is stored in |\count10| (lower counters
+%   are used by {\TeX} for page numbering) and initialize the next level counter
+%   |\count\count10| with 1. In the end call for this environment, we just decrease the
+%   proof depth counter by 1 again.
+%    \begin{macrocode}
+%<*package>
+\newenvironment{pst@with@label}[1]%
+{\edef\pst@label{#1}\advance\count10 by 1\count\count10=1}
+{\advance\count10 by -1}
+%    \end{macrocode}
+% \end{environment}
+%
+% \begin{macro}{\the@pst@label}
+% |\the@pst@label| evaluates to the current step label.
+%    \begin{macrocode}
+\def\the@pst@label{\pst@make@label\pst@label{\number\count\count10}}
+%    \end{macrocode}
+%\end{macro}
+%
+% \begin{macro}{\pstlabelstyle}
+% |\pstlabelstyle| just sets the |\pst@make@label| macro according to the style. 
+%    \begin{macrocode}
+\def\pst@make@label@long#1#2{\@for\@I:=#1\do{\@I.}#2}
+\def\pst@make@label@angles#1#2{\ensuremath{\@for\@I:=#1\do{\rangle}}#2}
+\def\pst@make@label@short#1#2{#2}
+\def\pst@make@label@empty#1#2{}
+\def\pstlabelstyle#1{\def\pst@make@label{\@nameuse{pst@make@label@#1}}}
+\pstlabelstyle{long}
+%    \end{macrocode}
+%\end{macro}
+%
+% \begin{macro}{\next@pst@label}
+% |\next@pst@label| increments the step label at the current level.
+%    \begin{macrocode}
+\def\next@pst@label{\global\advance\count\count10 by 1}
+%    \end{macrocode}
+%\end{macro}
+%
+%\begin{macro}{\sproofend}
+%    This macro places a little box at the end of the line if there is space, or at the
+%    end of the next line if there isn't
+%    \begin{macrocode}
+\def\sproof@box{\hbox{\vrule\vbox{\hrule width 6 pt\vskip 6pt\hrule}\vrule}}
+\def\spf@proofend{\sproof@box}
+\def\sproofend{\ifx\spf@proofend\@empty\else\hfil\null\nobreak\hfill\spf@proofend\par\smallskip\fi}
+\def\sProofEndSymbol#1{\def\sproof@box{#1}}
+%</package>
+%<*ltxml>
+DefConstructor('\sproofend',"");
+DefConstructor('\sProofEndSymbol{}','');
+%</ltxml>
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{spf@*@kw}
+%    \begin{macrocode}
+%<*package>
+\def\spf@proofsketch@kw{Proof Sketch}
+\def\spf@proof@kw{Proof}
+\def\spf@step@kw{Step}
+%</package>
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{spfsketch}
+%    \begin{macrocode}
+%<*package>
+\newcommand\spfsketch[2][]{\metasetkeys{spf}{#1}\sref@target%
+\ifx\spf@display\spf@flow\else%
+{\stDMemph{\ifx\spf@type\@empty\spf@proofsketch@kw\else\spf@type\fi}:}\fi{ #2}%
+\sref@label@id{this \ifx\spf@type\@empty\spf@proofsketch@kw\else\spf@type\fi}\sproofend}
+%</package>
+%<*ltxml>
+DefConstructor('\spfsketch OptionalKeyVals:pf{}',
+	       "<omdoc:proof "
+               .  "?&defined(&KeyVal(#1,'id'))(xml:id='&KeyVal(#1,'id')')()>\n"
+	       . "?#2(<omdoc:omtext><omdoc:CMP>#2\n)()"
+               . "</omdoc:proof>\n");
+%</ltxml>
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{spfeq}
+%   This is very similar to |\spfsketch|, but uses a computation array\ednote{This should
+%   really be more like a tabular with an ensuremath in it. or invoke text on the last
+%   column}\ednote{document above}
+%    \begin{macrocode}
+%<*package>
+\newenvironment{spfeq}[2][]%
+{\metasetkeys{spf}{#1}\sref@target%
+\ifx\spf@display\spf@flow\else%
+{\stDMemph{\ifx\spf@type\@empty\spf@proof@kw\else\spf@type\fi}:} #2%
+\fi% display=flow
+\begin{displaymath}\begin{array}{rcll}}
+{\end{array}\end{displaymath}}
+%</package>
+%<*ltxml>
+RawTeX('
+\newenvironment{spfeq}[2][]%
+{\begin{sproof}[#1]{#2}\begin{displaymath}\begin{array}{rcll}}
+{\end{array}\end{displaymath}\end{sproof}}
+');
+%</ltxml>
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{environment}{sproof}
+%    In this environment, we initialize the proof depth counter |\count10| to 10, and set
+%    up the description environment that will take the proof steps. At the end of the
+%    proof, we position the proof end into the last line.
+%    \begin{macrocode}
+%<*package>
+\newenvironment{spf@proof}[2][]{\metasetkeys{spf}{#1}\sref@target%
+\count10=10%
+\par\noindent%
+\ifx\spf@display\spf@flow\else%
+\stDMemph{\ifx\spf@type\@empty\spf@proof@kw\else\spf@type\fi}:\fi{ #2}%
+\sref@label@id{this \ifx\spf@type\@empty\spf@proof@kw\else\spf@type\fi}%
+\def\pst@label{}\newcount\pst@count% initialize the labeling mechanism
+\begin{description}\begin{pst@with@label}{P}}
+{\end{pst@with@label}\end{description}}
+\newenvironment{sproof}[2][]{\begin{spf@proof}[#1]{#2}}{\sproofend\end{spf@proof}}
+\newenvironment{sProof}[2][]{\begin{spf@proof}[#1]{#2}}{\end{spf@proof}}
+%</package>
+%<*ltxml>
+DefEnvironment('{sproof} OptionalKeyVals:pf{}',
+	       "<omdoc:proof "
+               . "?&KeyVal(#1,'for')(for='&hash_wrapper(&KeyVal(#1,'for'))')()"
+               .  "?&defined(&KeyVal(#1,'id'))(xml:id='&KeyVal(#1,'id')')()>\n"
+	       . "?#2(<omdoc:omtext>"
+              .       "<omdoc:CMP>#2</omdoc:CMP>"
+               .     "</omdoc:omtext>\n)()"
+               . "#body"
+             . "</omdoc:proof>\n");
+DefMacro('\sProof','\sproof');
+DefMacro('\endsProof','\endsproof');
+%</ltxml>
+%    \end{macrocode}
+% \end{environment}
+% 
+% \begin{environment}{spfidea}
+%    \begin{macrocode}
+%<*package>
+\newcommand\spfidea[2][]{\metasetkeys{spf}{#1}%
+\stDMemph{\ifx\spf@type\@empty{Proof Idea}\else\spf@type\fi:} #2\sproofend}
+%</package>
+%<*ltxml>
+DefConstructor('\spfidea OptionalKeyVals:pf {}',
+	       "<omdoc:proof "
+             .      "?&defined(&KeyVal(#1,'id'))(xml:id='&KeyVal(#1,'id')')()"
+             . "?&KeyVal(#1,'for')(for='&hash_wrapper(&KeyVal(#1,'for'))')()>\n"
+	     .   "<omdoc:omtext><omdoc:CMP>#2</omdoc:omtext>\n"
+	     . "</omdoc:proof>\n");
+%</ltxml>
+%    \end{macrocode}
+% \end{environment}
+%
+% The next two environments (proof steps) and comments, are mostly semantical, they take
+% |KeyVal| arguments that specify their semantic role. In draft mode, they read these
+% values and show them. If the surrounding proof had |display=flow|, then no new |\item| is
+% generated, otherwise it is. In any case, the proof step number (at the current level) is
+% incremented.
+% \begin{environment}{spfstep}
+% \ednote{MK: labeling of steps does not work yet.}
+%    \begin{macrocode}
+%<*package>
+\newenvironment{spfstep}[1][]{\metasetkeys{spf}{#1}%
+\ifx\spf@display\spf@flow\else\item[\the@pst@label]\fi%
+\ifx\spf@title\@empty\else{(\stDMemph{\spf@title})}\fi%
+\sref@label@id{\pst@label}\ignorespaces}%
+{\next@pst@label\ignorespaces}
+%</package>
+%<*ltxml>
+DefEnvironment('{spfstep} OptionalKeyVals:pf',
+             "<omdoc:derive "
+                 .   "?&defined(&KeyVal(#1,'id'))(xml:id='&KeyVal(#1,'id')')()>"
+        .  "<omdoc:CMP>#body</omdoc:derive>\n",
+         beforeConstruct=>sub {
+          $_[0]->maybeCloseElement('omdoc:CMP');
+         });#$
+%</ltxml>
+%    \end{macrocode}
+% \end{environment}
+%
+% \begin{environment}{sproofcomment}
+%    \begin{macrocode}
+%<*package>
+\newenvironment{sproofcomment}[1][]{\metasetkeys{spf}{#1}%
+\ifx\spf@display\spf@flow\else\item[\the@pst@label]\fi}
+{\next@pst@label}
+%</package>
+%<*ltxml>
+DefEnvironment('{sproofcomment} OptionalKeyVals:pf',
+	       "<omdoc:omtext "
+               .   "?&defined(&KeyVal(#1,'id'))(xml:id='&KeyVal(#1,'id')')()>"
+	       . "<omdoc:CMP>#body</omdoc:CMP>"
+	     . "</omdoc:omtext>");
+%</ltxml>
+%    \end{macrocode}
+% \end{environment}
+%
+% The next two environments also take a |KeyVal| argument, but also a regular one, which
+% contains a start text. Both environments start a new numbered proof level.
+%
+% \begin{environment}{subproof}
+%   In the |subproof| environment, a new (lower-level) proof environment is started.
+%    \begin{macrocode}
+%<*package>
+\newenvironment{subproof}[2][]{\metasetkeys{spf}{#1}%
+\def\@test{#2}\ifx\@test\empty\else%
+\ifx\spf@display\spf@flow {#2}\else\item[\the@pst@label]{#2} \fi\fi%
+\begin{pst@with@label}{\pst@label,\number\count\count10}}
+{\end{pst@with@label}\next@pst@label}
+%</package>
+%<*ltxml>
+DefEnvironment('{subproof} OptionalKeyVals:pf {}',
+	       "<omdoc:derive "
+              .     "?&defined(&KeyVal(#1,'id'))(xml:id='&KeyVal(#1,'id')')()>\n"
+	      .  "<omdoc:CMP>#2</omdoc:CMP>\n"
+	      .  "<omdoc:method ?&defined(&KeyVal(#1,'method'))(xref='&KeyVal(#1,'method')')>"
+              .    "<omdoc:proof>#body</omdoc:proof>"
+              .  "</omdoc:method>"
+	     . "</omdoc:derive>\n");
+%</ltxml>
+%    \end{macrocode}
+% \end{environment}
+%
+% \begin{environment}{spfcases}
+%   In the |pfcases| environment, the start text is displayed as the first comment of the
+%   proof.
+%    \begin{macrocode}
+%<*package>
+\newenvironment{spfcases}[2][]{\def\@test{#1}%
+\ifx\@test\empty\begin{subproof}[method=by-cases]{#2}%
+\else\begin{subproof}[#1,method=by-cases]{#2}\fi}
+{\end{subproof}}
+%</package>
+%<*ltxml>
+DefEnvironment('{spfcases} OptionalKeyVals:pf {}',
+	       "<omdoc:derive "
+              .     "?&defined(&KeyVal(#1,'id'))(xml:id='&KeyVal(#1,'id')')()>\n"
+	      .  "<omdoc:CMP>#2</omdoc:CMP>\n"
+	      .  "<omdoc:method ?&defined(&KeyVal(#1,'method'))(xref='&KeyVal(#1,'method')')>"
+              .    "#body"
+              .  "</omdoc:method>"
+	     . "</omdoc:derive>\n");
+%</ltxml>
+%    \end{macrocode}
+% \end{environment}
+%
+% \begin{environment}{spfcase}
+%    In the |pfcase| environment, the start text is displayed specification of the case
+%    after the |\item|
+%    \begin{macrocode}
+%<*package>
+\newenvironment{spfcase}[2][]{\metasetkeys{spf}{#1}%
+\ifx\spf@display\spf@flow\else\item[\the@pst@label]\fi%
+\def\@test{#2}\ifx\@test\@empty\else{\stDMemph{#2}: }\fi% need blank here
+\begin{pst@with@label}{\pst@label,\number\count\count10}}
+{\ifx\spf@display\spf@flow\else\sproofend\fi\end{pst@with@label}\next@pst@label}
+%</package>
+%<*ltxml>
+DefEnvironment('{spfcase} OptionalKeyVals:pf{}',
+	       "<omdoc:proof "
+               .  "?&defined(&KeyVal(#1,'id'))(xml:id='&KeyVal(#1,'id')')()>\n"
+	       .  "?#2(<omdoc:omtext>"
+              .        "<omdoc:CMP>#2</omdoc:CMP>"
+               .      "</omdoc:omtext>\n)()"
+	       . "#body"
+	     . "</omdoc:proof>\n");
+%</ltxml>
+%    \end{macrocode}
+% \end{environment}
+%
+% \begin{environment}{spfcase}
+%    similar to |spfcase|, takes a third argument. 
+%    \begin{macrocode}
+%<*package>
+\newcommand\spfcasesketch[3][]{\metasetkeys{spf}{#1}%
+\ifx\spf@display\spf@flow\else\item[\the@pst@label]\fi%
+\def\@test{#2}\ifx\@test\@empty\else{\stDMemph{#2}: }\fi#3%
+\next@pst@label}
+%</package>
+%<*ltxml>
+DefConstructor('\spfcasesketch OptionalKeyVals:pf{}{}',
+	       "<omdoc:proof "
+               .  "?&defined(&KeyVal(#1,'id'))(xml:id='&KeyVal(#1,'id')')()>\n"
+	       .  "?#2(<omdoc:omtext>"
+              .        "<omdoc:CMP>#2</omdoc:CMP>"
+               .      "</omdoc:omtext>\n)()"
+	       . "#3"
+	     . "</omdoc:proof>\n");
+%</ltxml>
+%    \end{macrocode}
+% \end{environment}
+%
+% \subsection{Justifications}
+%
+% We define the actions that are undertaken, when the keys for justifications are
+% encountered. Here this is very simple, we just define an internal macro with the value,
+% so that we can use it later.
+%    \begin{macrocode}
+%<*package>
+\srefaddidkey{just}
+\addmetakey{just}{method}
+\addmetakey{just}{premises}
+\addmetakey{just}{args}
+%</package>
+%<*ltxml>
+DefKeyVal('just','id','Semiverbatim');
+DefKeyVal('just','method','Semiverbatim');
+DefKeyVal('just','premises','Semiverbatim');
+DefKeyVal('just','args','Semiverbatim');
+%</ltxml>
+%    \end{macrocode}
+%
+% The next three environments and macros are purely semantic, so we ignore the keyval
+% arguments for now and only display the content.\ednote{need to do something about the
+% premise in draft mode.}
+%
+% \begin{environment}{justification}
+%    \begin{macrocode}
+%<*package>
+\newenvironment{justification}[1][]{}{}
+%</package>
+%<*ltxml>
+sub extractBodyText {
+  my ($box, $remove) = @_;
+  my $str = '';
+  my @boxes = $box->unlist;
+  foreach my $b(@boxes) {
+    my $s = '';
+    if ($b =~ /LaTeXML::Whatsit/) {
+      my $body = $b->getBody;
+      $s = $body ? extractBodyText($body, $remove) : '';
+    } elsif ($b =~ /LaTeXML::Box/) {
+      $s = $b->toString || '';
+      @{$b}[0] = '' if $remove; }
+    $str .= $s; }
+  $str =~ s/\s+/ /g;
+  $str; }
+
+DefEnvironment('{justification} OptionalKeyVals:just', sub {
+		 my ($doc, $keys, %props) = @_;
+		 my $text = extractBodyText($props{body}, 1);
+		 my $node = LookupValue('_LastSeenCMP');
+		 #$node->appendText($text) if $node;
+		 my $method = $keys ? $keys->getValue('method') : undef;
+		 $doc->openElement("omdoc:method", $method ? (xref => $method) : ());
+		 $doc->absorb($props{body}) if $props{body};
+		 $doc->closeElement("omdoc:method");
+		 return; });
+%</ltxml>
+%    \end{macrocode}
+% \end{environment}
+%
+% \begin{macro}{\premise}
+%    \begin{macrocode}
+%<*package>
+\newcommand\premise[2][]{#2}
+%</package>
+%<*ltxml>
+DefMacro('\premise[]{}', sub {
+	   my ($xref, $text) = ($_[1], $_[2]);
+	   my @res = (T_CS('\premise@content'));
+	   push(@res, T_OTHER('['), $xref->unlist, T_OTHER(']')) if $xref;
+	   push(@res, T_SPACE, $text->unlist) if $text;
+	   @res; });
+DefConstructor('\premise@content[]', 
+               "<omdoc:premise xref='#1'/>");
+%</ltxml>
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\justarg}
+% the |\justarg| macro is purely semantic, so we ignore the keyval arguments for now and
+% only display the content.
+%    \begin{macrocode}
+%<*package>
+\newcommand\justarg[2][]{#2}
+%</package>
+%<*ltxml>
+DefMacro('\justarg[]{}', sub { (($_[1] ? $_[1]->unlist : ()),
+				T_SPACE, $_[2]->unlist, T_SPACE); });
+Tag('omdoc:derive', afterClose=>sub {
+      my ($doc, $node) = @_;
+      my @children = grep($_->nodeType == XML_ELEMENT_NODE, $node->childNodes);
+      my $firstCMP = undef;
+      foreach my $child(@children) {
+        next unless ($child->localname || '') eq 'CMP';
+        if ($child->hasChildNodes()) {
+          next unless $#{$child->childNodes} == 0;
+          next unless $child->firstChild->nodeType == XML_TEXT_NODE; } 
+
+        if ($firstCMP) {
+          $firstCMP->appendText($child->textContent);
+          $node->removeChild($child);
+        } else { $firstCMP = $child; }
+      }
+    });#$
+%</ltxml>
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsection{Providing IDs for {\omdoc} Elements}\label{sec:impl:ids}
+%
+% To provide default identifiers, we tag all {\omdoc}
+% elements that allow |xml:id| attributes by executing the |numberIt| procedure from |omdoc.sty.ltxml|.
+% 
+%    \begin{macrocode}
+%<*ltxml>
+Tag('omdoc:proof',afterOpen=>\&numberIt,afterClose=>\&locateIt);
+Tag('omdoc:derive',afterOpen=>\&numberIt,afterClose=>\&locateIt);
+Tag('omdoc:method',afterOpen=>\&numberIt,afterClose=>\&locateIt);
+Tag('omdoc:premise',afterOpen=>\&numberIt,afterClose=>\&locateIt);
+Tag('omdoc:derive',afterOpen=>\&numberIt,afterClose=>\&locateIt);
+%</ltxml>
+%    \end{macrocode}
+% 
+% \section{Finale}
+%
+% Finally, we need to terminate the file with a success mark for perl.
+%    \begin{macrocode}
+%<ltxml>1;
+%    \end{macrocode}
+% \Finale
+\endinput
+
+%%% Local Variables: 
+%%% mode: doctex
+%%% TeX-master: t
+%%% End: 
+% LocalWords:  GPL structuresharing STR sproof dtx CPERL keyval methodfalse env
+% LocalWords:  methodtrue envtrue medhodtrue DefKeyVal Semiverbatim omdoc args
+% LocalWords:  DefEnvironment OptionalKeyVals KeyVal omtext DefConstructor str
+% LocalWords:  proofidea KeyVal pfstep DefCMPEnvironment KeyVal proofcomment eq
+% LocalWords:  KeyVal pfcases KeyVal pfcase KeyVal extractBodyText unlist elsif
+% LocalWords:  foreach getBody toString str str str LookupValue LastSeenCMP Thu
+% LocalWords:  appendText getValue undef openElement closeElement DefMacro omd
+% LocalWords:  afterClose nodeType childNodes firstCMP localname hasChildNodes
+% LocalWords:  firstChild textContent removeChild iffalse kohlhase sref scsys
+% LocalWords:  sproofs.sty sc sc mathml openmath latexml cmathml activemath geq
+% LocalWords:  twintoo atwin atwintoo texttt fileversion maketitle stex newpage
+% LocalWords:  tableofcontents newpage exfig scriptsize vspace ednote spfidea
+% LocalWords:  spfidea spfsketch spfsketch spfstep justarg spfcases spfcase rhs
+% LocalWords:  sproofcomment ind-hyp splitit arith byindhyp sproofend proofend
+% LocalWords:  printbibliography textsf langle textsf langle ltxml ctancite spf
+% LocalWords:  srefaddidkey pf.sty newenvironment hbox vrule vbox ifx showmeta
+% LocalWords:  hrule vskip hrule vrule hfil nobreak hfill smallskip newcommand
+% LocalWords:  stDMemph newcount endsproof xref doctex showmeta hline lec ldots
+% LocalWords:  textbackslash makeatletter sketchproof compactenum tracissue
+% LocalWords:  metakeys addmetakey metasetkeys stylable pstlabelstyle pstlabel
+% LocalWords:  pstlabelstyle pstlabelstyle ldots ldots ensuremath inparaenum
+% LocalWords:  nameuse prooflistenv spfcasesketch spfcasesketch spfeq rcll
+% LocalWords:  displaymath noindent ignorespaces

@@ -1,0 +1,146 @@
+#!/usr/bin/perl -w
+#######################################################################################
+# A tool for creating STeX Module Signatures (SMS) files.                             #
+# Copyright (c) 2005, Ioan Sucan; (c) 2010, Deyan Ginev,
+#                                 released under the Gnu General Public License (GPL) #
+#                                 see http://www.gnu.org/copyleft/gpl.html            #
+# $URL: svn://kwarc.eecs.iu-bremen.de/repos/kwarc/projects/content/bin/sms$           # 
+# $Date: 2006-10-22 20:01:47 +0200 (Sun, 22 Oct 2006) $ $Rev: 10669 $                  #
+#######################################################################################
+
+use strict;
+use File::Spec::Functions qw(rel2abs);
+use File::Basename;
+use lib dirname(rel2abs($0)); #Assumption: Modparse is in the same folder as the sms binary.
+use Getopt::Long;
+use Modparse;
+use Pod::Usage;
+
+my $input = "-", my $verbose=0, my $stop_at_end=0; my $follow=0;
+my %arg_snippath; my @snippathList;
+
+# match {,} brackets that are not comments or special characters
+sub match{
+    my $data = shift;
+    my $b = 0, my $i = 0, my $ignore = 0 ;    
+    foreach (split('',$data)){	
+	$i++;
+	if ($ignore == 1){
+	    $ignore = 0;
+	    next;
+	}
+	if ($ignore == 2){
+	    next if $_ ne "\n";
+	    $ignore = 0;
+	    next;
+	}
+	if ($_ eq "\\"){
+	    $ignore = 1; 
+	    next;
+	}
+	if ($_ eq '%'){
+	    $ignore = 2;
+	    next;
+	}
+	$b++ if $_ eq '{';
+	$b-- if $_ eq '}';
+        return (substr($data,0,$i),substr($data,$i,length($data)-$i+1)) if !$b;
+    }
+    return ('',$data);
+}
+
+
+####### start of program #######
+
+GetOptions("verbose" => sub { $verbose=1; },
+	   "stop" => sub { $stop_at_end=1; },
+	   "path=s" => \%arg_snippath,
+	   "defpath=s" => \@snippathList,
+	   "help" => sub { pod2usage(2)},
+           "follow" => sub { $follow=1; });
+
+$input = $ARGV[0] if ($#ARGV>=0);
+
+my $mp = Modparse->new(snippathList=>\@snippathList,
+		       snippath=>\%arg_snippath,
+		       stopAtEnd=>$stop_at_end,
+		       verbose=>$verbose,
+                       follow=>$follow,
+		       recursion=>0,
+		       onBeginFile=>sub { @{$_[0]->{'sms'.$_[0]->{depth}}}=(); },
+		       onBeginModule=>sub { push(@{$_[0]->{'sms'.$_[0]->{depth}}}, $_[0]->{original});
+                                            @{$_[0]->{'sms'.$_[0]->{depth}}}[-1] =~ s/\n$/%\n/; },
+		       onEndModule=>sub { push(@{$_[0]->{'sms'.$_[0]->{depth}}}, $_[0]->{original});
+                                          @{$_[0]->{'sms'.$_[0]->{depth}}}[-1] =~ s/\n$/%\n/ },
+		       onRecurse=>sub { 
+			   my $recurse = $_[0]->{original};
+			   $recurse =~ s/include/exclude/g;
+			   push(@{$_[0]->{'sms'.$_[0]->{depth}}}, $recurse); },
+		       onEndFile=>sub {
+			   my $file = $_[0]->{pack}->new_ext($_[0]->{filename},'.sms');
+			   open(FOUT, ">$file") or die "Cannot write $file\n";
+			   print FOUT @{$_[0]->{'sms'.$_[0]->{depth}}};
+			   close(FOUT);
+			   `touch $file` unless @{$_[0]->{'sms'.$_[0]->{depth}}};
+			   print "Wrote $file\n" if $verbose; },
+		       onEveryLine=>sub {
+                           my @lines = @{$_[0]->{'sms'.$_[0]->{depth}}};
+			   if ($_[0]->{in_module}){
+			       push(@{$_[0]->{'sms'.$_[0]->{depth}}}, $_[0]->{original})
+				   if ($_[0]->{simple_tex} =~ /\\(symvariant|(sym|abbr|ell|key|listkey)def)\{([^\}]+)\}/ ||
+				       $_[0]->{simple_tex} =~ /\\symdef\[([^\]]+)\]/);
+			       push(@{$_[0]->{'sms'.$_[0]->{depth}}}, $_[0]->{original})
+				   if ($_[0]->{simple_tex} =~ /\\(importmodule|gimport|adoptmodule)/);
+                               if ($_[0]->{simple_tex} =~ /\\begin{importmodulevia}/) {
+                                 my $impvia = $_[0]->{original};
+                                 $impvia =~ s/\\begin\{importmodulevia\}/\\importmodule/g;
+                                 push(@{$_[0]->{'sms'.$_[0]->{depth}}}, $impvia);
+                               }
+			       push(@{$_[0]->{'sms'.$_[0]->{depth}}}, $_[0]->{original})
+				   if ($_[0]->{simple_tex} =~ /\\importOMDocmodule/);
+			       push(@{$_[0]->{'sms'.$_[0]->{depth}}}, $_[0]->{original})
+				   if ($_[0]->{simple_tex} =~ /\\requiremodules/);
+			       push(@{$_[0]->{'sms'.$_[0]->{depth}}}, $_[0]->{original})
+				   if ($_[0]->{simple_tex} =~ /\\requirepackage/);
+			       if ((/\\STRlabel\{([^\}]+)\}(\{.*)/) || (/\\STRsemantics\[([^\]]+)\](\{.*)/)){
+				   my ($label, $line) = ($1, "$2 $_[0]->{comment}");
+				   my ($matched, $rest) = (undef, undef);
+				   while (1) {
+				       ($matched, $rest) = match($line);
+				       last if $matched;
+				       $line.=$_[0]->{nextline}(); }
+				   $_[0]->{rewriteline}($rest) if $rest;
+				   $line = "\\STRlabeldef{$label}$matched"; chomp($line);
+				   map(push(@{$_[0]->{'sms'.$_[0]->{depth}}},"$_\n"),split("\n",$line));
+			       }
+                               @{$_[0]->{'sms'.$_[0]->{depth}}}[-1] =~ s/\n$/%\n/
+                               if (@lines < @{$_[0]->{'sms'.$_[0]->{depth}}});
+			   }} );
+
+$mp->execute($input);
+
+print "Done.\n" if $verbose;
+
+
+__END__
+
+
+=head1 SYNOPSIS
+
+sms <input filename> [options]
+
+Options:
+
+    --verbose            verbose on
+    --stop               stop when \end{document} is found; default is to go on
+    --follow             demands following \input|include|require statements (default:off)
+    --path XXX=somePath  specify the value of \XXX (some snippath) in case it is 
+                         not defined in the processed .tex file
+    --defpath XXX        specify which \XXX (snippath definitions) to look for
+    --help               this screen
+    
+Purpose:
+    Generate .sms files (STeX Module Signatures) from .tex files
+
+Example:
+    sms slides.tex -v

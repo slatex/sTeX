@@ -1,0 +1,151 @@
+#   A RelaxNG for Open Mathematical documents (OMDoc 1.2) with LaTeXML
+# $Id: omdoc+ltxml.rnc 2396 2013-11-06 05:54:37Z kohlhase $
+# $HeadURL: https://svn.kwarc.info/repos/stex/trunk/schema/rnc/omdoc+ltxml.rnc $
+#   See the documentation and examples at http://omdoc.org
+#   (c) 2010 Michael Kohlhase, released under the GNU Public License (GPL)
+
+default namespace omdoc = "http://omdoc.org/ns"
+
+## we include the OMDoc Schema, but we allow the sectioning elements defined below
+## as document structuring elements as well. 
+include "omdoc/omdoc.rnc" {docstruct.class = omgroup* & lechapter*}
+
+## we extend the Math Objects by the ones introduced by LaTeXML
+mobj |= grammar {
+    include "LaTeXML/LaTeXML-common.rnc"
+    include "LaTeXML/LaTeXML-math.rnc" 
+    start = Math}
+
+## we extend the metadata with the LaTeXML frontmatter
+frontmatter &= grammar {include "LaTeXML.rnc" {start=FrontMatter.class & SectionalFrontMatter.class}}
+
+## we extend the model of rendering elements by XMath, and we extend the XMath there, so
+## that we can cope with piecewise and friends at the intermediate level. 
+render.class |= grammar {
+    include "LaTeXML.rnc" {start = Math | \text}
+    XMArray_model |= XMTok | XMWrap
+    XMRow_model |= XMTok | XMWrap
+    XMTok_attributes &= parent ntn.attrib
+ XMath.class &= XMRow* & XMCell*}
+
+## we extend the core structural classes of OMDoc with various LaTeXML counterparts. These
+## are usful, since sTeX defers to LaTeXML to generate these, and in a later pass (the
+## XSLTs) replaces them by their OMDoc counterparts. The rules below, have another
+## purpose: in the OMDoc schema (which is the primary one here, we use the & operator for
+## making classes, whereas the LaTeXML schema uses the less flexible | operator. Therefore
+## we need to construct conjunctive extensions in start macro. 
+
+inline.class &=  grammar {
+    include "LaTeXML.rnc" 
+         {Common.attributes &=parent id.attribs
+	  Inline.class = parent inline.class
+	  text_model = parent inline.model
+	  start=bibref* & break* & ref* & cite* & \text* & emph*}}
+
+plike.class  &=  grammar {
+    include "LaTeXML.rnc" 
+         {Common.attributes =parent id.attribs
+	  Inline.class = parent inline.class
+	  Block.class = parent plike.class
+#	  Flow.class = parent flow.class
+	  text_model = parent inline.model
+	  listingblock_model = parent plike.class
+	  start = p* & tabular* & quote* & 
+	            equation* & equationgroup* & 
+		    figure* & graphics* & verbatim* & listingblock* & listing* & 
+		    itemize* & enumerate* & description*}}
+
+
+tikz = element tikz {text}	
+
+## we allow various LaTeXML elements as a top-level elements, 
+## they will be converted by XSLT later
+omdoc.class &=  grammar {include "LaTeXML.rnc" {
+	    Common.attributes &=parent id.attribs
+	    Inline.class = parent inline.class
+	    Block.class = parent plike.class
+	    Para.class = parent omdoc.class 
+#	    Flow.class = parent flow.class
+	    text_model = parent inline.model
+	    listingblock_model = parent plike.class
+	    start= para* & figure* & table* & listing* &
+                       itemize* & enumerate* & description*}}
+
+backmatter &= grammar {include "LaTeXML.rnc" {
+	    Common.attributes &=parent id.attribs
+	    Inline.class = parent inline.class
+	    Block.class = parent plike.class
+	    Para.class = parent omdoc.class 
+#	    Flow.class = parent flow.class
+	    text_model = parent inline.model
+	    listingblock_model = parent plike.class
+	    start= bibliography*}}
+
+
+## we prepare some nested content models for sectioning elements
+lesubparagraph =  subparagraph*
+leparagraph =        paragraph*  &  lesubparagraph 
+lesubsubsection = subsubsection* & leparagraph
+lesubsection =      subsection* & lesubsubsection
+lesection =            section* & lesubsection
+lechapter =            chapter* & lesection
+
+## they need to be able to nest theories transparently
+theory.chapter = element theory {theory.attribs & 
+	                                            metadata.class & 
+						    omdoc.class  & 
+						    constitutive.class & 
+						    lesection}
+theory.section = element theory {theory.attribs & 
+	                                            metadata.class & 
+						    omdoc.class &  
+						    constitutive.class & 
+						    lesubsection}
+theory.subsection = element theory {theory.attribs & 
+                                                          metadata.class &
+							  omdoc.class  & 
+							  constitutive.class & 
+							  lesubsubsection}
+theory.subsubsection = element theory {theory.attribs & 
+		                                                metadata.class &  
+								omdoc.class & 
+								constitutive.class & 
+								leparagraph}
+theory.paragraph = element theory {theory.attribs & 
+		                                        metadata.class &  
+							omdoc.class & 
+							constitutive.class & 
+							lesubparagraph}
+theory.subparagraph = element theory {theory.attribs & 
+		                                              metadata.class &
+							      omdoc.class &
+							      constitutive.class}
+
+sectional.attribs = id.attribs
+
+## and now the elemens themselves
+chapter = element chapter {sectional.attribs & 
+	                                   metadata.class & 
+					   omdoc.class  &  
+					   theory.chapter*}
+section= element section{sectional.attribs & 
+	                                 metadata.class  & 
+					 omdoc.class &  
+					 theory.section*}
+subsection= element subsection {sectional.attribs & 
+	                                             metadata.class & 
+						     omdoc.class & 
+						     theory.subsection*}
+subsubsection= element subsubsection {sectional.attribs & 
+	                                                        metadata.class &  
+								omdoc.class & 
+								theory.subsubsection*}
+paragraph= element paragraph {sectional.attribs & 
+                                                  metadata.class & 
+						  omdoc.class & 
+						  theory.paragraph*}
+subparagraph= element subparagraph {sectional.attribs & 
+	                                                      metadata.class & 
+							      omdoc.class &
+							      theory.subparagraph*}
+

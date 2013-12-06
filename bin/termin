@@ -1,0 +1,279 @@
+#!/usr/bin/perl -w
+
+#######################################################################################
+# A tool for automatized replacement of plain words with their \termin macros.        #
+# Copyright (c) 2005, Ioan Sucan, released under the Gnu General Public License (GPL) #
+#                                 see http://www.gnu.org/copyleft/gpl.html            #
+# $URL: svn://kwarc.eecs.iu-bremen.de/repos/kwarc/projects/content/bin/termin$        # 
+# $Date: 2005-10-04 17:47:41 +0200 (Tue, 04 Oct 2005) $ $Rev: 4371 $                  #
+#######################################################################################
+
+use strict;
+
+use Getopt::Long;
+use Term::ANSIColor;
+use Pod::Usage;
+
+my $verbose = 0;
+my $wordDefs={}, my $twinDefs={}, my $atwinDefs={};
+
+use constant twin => 'T';
+use constant word => 'W';
+use constant atwin => 'A';
+
+my $before_chars = 128;
+my $after_chars = 128;
+
+sub loadDefs{
+    my ($tex_file) = @_;
+    
+    # read file
+    open(FIN, $tex_file) or die "Cannot read $tex_file\n";
+    my @contentLines = <FIN>;
+    close(FIN);
+    
+    my $content = join('',@contentLines);
+    $content =~ s/\s+//g;
+    $content =~ s/%[^\n]*\n//g;
+    pos($content) = 0;
+    
+    my %modules = ();
+    while ($content =~ m/\\begin\{module\}\[([^\]]+)\]/g){
+	next unless $1 =~ /id=([^\],]+)/;
+	$modules{pos($content)} = $1;
+    }
+    my @posList = keys %modules;
+    my $modIndex, my $current_module;
+
+    # see definiens of form \definiens[bar]{foobar}
+    # word 'foobar', concept 'bar', within module 'foo'
+    pos($content) = 0; $modIndex = 0; $current_module = $modules{$posList[0]};
+    while ($content =~ m/\\definiens\[([^\]\-]+)\]\{([^\}]+)\}/g){
+	my $p = pos($content);
+	while ($modIndex < $#posList && $p > $posList[$modIndex+1]) { 
+	    $modIndex++; $current_module = $modules{$posList[$modIndex]}; }
+	push(@{$wordDefs->{modules}}, $current_module);
+	push(@{$wordDefs->{concepts}}, $1);
+	push(@{$wordDefs->{words}}, $2);
+	print word, " ==> $current_module: $1: $2\n" if $verbose>=2;
+    }
+    
+    # see definiens of form \definiens[aaa-bbb]{\twin{ccc}{ddd}}
+    # words 'ccc ddd', concept 'aaa-bbb', within module 'foo'
+    pos($content) = 0; $modIndex = 0; $current_module = $modules{$posList[0]};
+    while ($content =~ m/\\definiens\[([^\-\]]+)\-([^\]]+)\]\{\\twin\{([^\}]+)\}\{([^\}]+)\}\}/g){
+	my $p = pos($content);
+	while ($modIndex < $#posList && $p > $posList[$modIndex+1]) { 
+	    $modIndex++; $current_module = $modules{$posList[$modIndex]}; }
+	push(@{$twinDefs->{modules}}, $current_module);
+	push(@{$twinDefs->{concepts}}, "$1-$2");
+	push(@{$twinDefs->{words}}, $3);
+	push(@{$twinDefs->{twins}}, $4);
+	print twin, " ==> $current_module: $1-$2: $3 $4\n" if $verbose>=2;
+    }
+
+    # \twindef{aaa}{bbb}
+    pos($content) = 0; $modIndex = 0; $current_module = $modules{$posList[0]};
+    while ($content =~ m/\\twindef\{([^\}]+)\}\{([^\}]+)\}/g){
+	my $p = pos($content);
+	while ($modIndex < $#posList && $p > $posList[$modIndex+1]) { 
+	    $modIndex++; $current_module = $modules{$posList[$modIndex]}; }
+	push(@{$twinDefs->{modules}}, $current_module);
+	push(@{$twinDefs->{concepts}}, "$1-$2");
+	push(@{$twinDefs->{words}}, $1);
+	push(@{$twinDefs->{twins}}, $2);
+	print twin, " ==> $current_module: $1-$2: $1 $2\n" if $verbose>=2;
+    }
+
+    # see definiens of form \definiens[aaa-bbb-ccc]{\twin{ddd}{eee}{fff}}
+    # words 'ddd eee fff', concept 'aaa-bbb-ccc', within module 'foo'
+    pos($content) = 0; $modIndex = 0; $current_module = $modules{$posList[0]};
+    while ($content =~ m/\\definiens\[([^\-\]]+)\-([^\-\]]+)\-([^\]]+)\]\{\\atwin\{([^\}]+)\}\{([^\}]+)\}\{([^\}]+)\}\}/g){
+	my $p = pos($content);
+	while ($modIndex < $#posList && $p > $posList[$modIndex+1]) { 
+	    $modIndex++; $current_module = $modules{$posList[$modIndex]}; }
+	push(@{$atwinDefs->{modules}}, $current_module);
+	push(@{$atwinDefs->{concepts}}, "$1-$2-$3");
+	push(@{$atwinDefs->{words}}, $4);
+	push(@{$atwinDefs->{twins}}, $5);
+	push(@{$atwinDefs->{adjs}}, $6);
+	print atwin, " ==> $current_module: $1-$2-$3: $4 $5 $6\n" if $verbose>=2;
+    }
+    
+    # \atwindef{aaa}{bbb}{ccc}
+    pos($content) = 0; $modIndex = 0; $current_module = $modules{$posList[0]};
+    while ($content =~ m/\\atwindef\{([^\}]+)\}\{([^\}]+)\}\{([^\}]+)\}/g){
+	my $p = pos($content);
+	while ($modIndex < $#posList && $p > $posList[$modIndex+1]) { 
+	    $modIndex++; $current_module = $modules{$posList[$modIndex]}; }
+	push(@{$atwinDefs->{modules}}, $current_module);
+	push(@{$atwinDefs->{concepts}}, "$1-$2-$3");
+	push(@{$atwinDefs->{words}}, $1);
+	push(@{$atwinDefs->{twins}}, $2);
+	push(@{$atwinDefs->{adjs}}, $3);
+	print atwin, " ==> $current_module: $1-$2-$3: $1 $2 $3\n" if $verbose>=2;
+    }
+
+}
+
+sub max{
+    my ($max, @values) = @_;
+    foreach (@values) { $max = $_ if $_ gt $max;}
+    return $max;
+}
+
+sub nospace{
+    my ($str) = @_;
+    $str =~ s/\s+/ /g;
+    $str =~ s/^\s//;
+    $str =~ s/\s$//;
+    return $str;
+}
+
+sub replaceDefs{
+    my ($in_tex_file, $out_tex_file) = @_;
+    
+    open(FIN, $in_tex_file) or die "Cannot read $in_tex_file\n";
+    my @content_lines = <FIN>;
+    close(FIN);
+
+    my $content = join('',@content_lines);
+    my $lcont = length($content);
+    
+    local *go_word = sub {
+	
+	my ($word, $new_word1_ex, $new_word2_ex) = @_;
+	$new_word2_ex = $new_word1_ex unless defined $new_word2_ex;
+	
+	while ($content =~ m/([^\{\s]?)(\s*$word\s*)[^\}\s]?/gi){
+	    my $p = pos($content);
+	    my $ahead_len = length($1); my $matched_word = $2;
+	    my $wlen = length($matched_word);
+	    my $trail_len = length($&) - $wlen - $ahead_len;
+	    
+	    if (($ahead_len != 0 || $trail_len != 0) || 
+		($ahead_len == 0 && $trail_len == 0 && ($p == $wlen || $p == $lcont))){
+		my $start_pos = max(0, $p - $wlen - $trail_len - $before_chars);
+		my $new_word1 = $new_word1_ex; my $new_word2 = $new_word2_ex;
+		
+		my $word_count = 0; 
+		while ($matched_word =~ /\s*([^\s]+)\s*/g){
+		    my $replace = $1;
+		    $new_word1 =~ s/W%$word_count/$replace/g;
+		    $new_word2 =~ s/W%$word_count/$replace/g;
+		    $word_count++;
+		}
+	
+		print "\nAnnotate '";
+		print color 'bold blue'; print nospace($matched_word); print color 'reset';
+		print "' with \n Y = '"; print color 'red bold'; print $new_word2;
+		print color 'reset'; print "'\n y = '"; print color 'red bold';
+		print $new_word1; print color 'reset'; print "'\n in: \n<<< ";
+		print color 'green';
+		print substr($content, $start_pos, $before_chars);
+		print color 'bold blue';
+		print substr($content, $start_pos + $before_chars, $wlen);
+		print color 'reset green';
+		print substr($content, $start_pos + $before_chars + $wlen, $after_chars);
+		print color 'reset';
+		print " >>> ?\n";
+		print "Options: <Y, y, [n]> ";
+
+		my $answer = <STDIN>;
+		chomp($answer);
+		
+		if ($answer eq 'y'){
+		    substr($content, $p - $wlen - $trail_len, $wlen) = $new_word1;
+		    $lcont = length($content);
+		    pos($content) = $p + length($new_word1) - $wlen;
+		    print "PROGRESS: Matched text was replaced with '$new_word1'\n" if $verbose;
+		} elsif ($answer eq 'Y'){
+		    substr($content, $p - $wlen - $trail_len, $wlen) = $new_word2;
+		    $lcont = length($content);
+		    pos($content) = $p + length($new_word2) - $wlen;
+		    print "PROGRESS: Matched text was replaced with '$new_word2'\n" if $verbose;
+		}
+		
+	    }
+	    pos($content) = $p - $trail_len;
+	}
+    };
+
+    my $we = "(s|(ing))?"; # word endings
+    if (defined $wordDefs->{words}){
+	my $wordDefsCount = $#{$wordDefs->{words}} + 1;
+	for (my $j = 0 ; $j < $wordDefsCount; $j++){
+	    my $word = "${$wordDefs->{words}}[$j]$we";
+	    my $new_word = " {\\termin[cd=${$wordDefs->{modules}}[$j],name=${$wordDefs->{concepts}}[$j]]".
+		"{W%0} ";
+	    go_word($word, $new_word);
+	}
+    }
+
+    if (defined $twinDefs->{words}){
+	my $twinDefsCount = $#{$twinDefs->{words}} + 1;
+	for (my $j = 0 ; $j < $twinDefsCount; $j++){
+	    my $word = "${$twinDefs->{words}}[$j]$we\\s+${$twinDefs->{twins}}[$j]$we";
+	    my $new_word1 = " {\\termin[cd=${$twinDefs->{modules}}[$j],name=${$twinDefs->{concepts}}[$j]]".
+		"{W%0 W%1}} ";
+	    my $new_word2 = " {\\termin[cd=${$twinDefs->{modules}}[$j],name=${$twinDefs->{concepts}}[$j]]".
+		"{\\twin{W%0}{W%1}}} ";
+	    go_word($word, $new_word1, $new_word2);
+	}
+    }
+
+    if (defined $atwinDefs->{words}){
+	my $atwinDefsCount = $#{$atwinDefs->{words}} + 1;
+	for (my $j = 0 ; $j < $atwinDefsCount; $j++){
+	    my $word = "${$atwinDefs->{words}}[$j]$we\\s+${$atwinDefs->{twins}}[$j]$we\\s+${$atwinDefs->{adjs}}[$j]$we";
+	    my $new_word1 = " {\\termin[cd=${$atwinDefs->{modules}}[$j],name=${$atwinDefs->{concepts}}[$j]]".
+		"{W%0 W%1 W%2}} ";
+	    my $new_word2 = " {\\termin[cd=${$atwinDefs->{modules}}[$j],name=${$atwinDefs->{concepts}}[$j]]".
+		"{\\atwin{W%0}{W%1}{W%2}}} ";
+	    go_word($word, $new_word1, $new_word2);
+	}
+    }
+
+    open(FOUT, ">$out_tex_file") or die "Cannot write $out_tex_file\n";
+    print FOUT $content;
+    close(FOUT);
+
+}
+
+my @background, my @main, my @output;
+
+GetOptions("verbose" => sub {$verbose++;},
+	   "background=s" => \@background,
+	   "main=s" => \@main,
+	   "output=s" => \@output,
+	   "help" => sub { pod2usage(2)});
+
+foreach (@background) { loadDefs($_); }
+
+for (my $i = 0 ; $i <= $#main; $i++) {
+    replaceDefs($main[$i], $output[$i] || $main[$i]);
+}
+
+
+__END__
+
+=head1 SYNOPSIS
+
+termin [options]
+
+Options:
+
+    --verbose            verbose on
+    --background         background file to read \termin{} definitions from
+    --main               main file to process
+    --output             output file; the modified content of the main file will
+                         be written here
+    --help               this screen
+    
+Purpose:
+    Read the \termin definitions from a background file and update a specific main file;
+    output will be written to the specified the output file.
+    Note: multiple background/main/output files may be specified.
+
+Example:
+    termin --background a.tex --background b.tex --main slides.tex --output new_slides.tex

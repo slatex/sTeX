@@ -1,0 +1,69 @@
+# -*- CPERL -*-
+package LaTeXML::Package::Pool;
+use strict;
+use LaTeXML::Package;
+use LaTeXML::Util::Pathname;
+use Cwd qw(abs_path);
+DeclareOption('report',sub {PassOptions('omdoc','sty',ToString(Digest(T_CS('\CurrentOption')))); });
+DeclareOption('book',sub {PassOptions('omdoc','sty',ToString(Digest(T_CS('\CurrentOption')))); });
+DeclareOption('showignores',sub {PassOptions('omdoc','sty',ToString(Digest(T_CS('\CurrentOption')))); });
+DeclareOption('extrefs',sub {PassOptions('sref','sty',ToString(Digest(T_CS('\CurrentOption')))); });
+DeclareOption(undef,sub {PassOptions('article','cls',ToString(Digest(T_CS('\CurrentOption')))); });
+ProcessOptions();
+LoadClass('article');
+RequirePackage('sref');
+RegisterNamespace('omdoc'=>"http://omdoc.org/ns");
+RegisterNamespace('om'=>"http://www.openmath.org/OpenMath");
+RegisterNamespace('m'=>"http://www.w3.org/1998/Math/MathML");
+RegisterNamespace('dc'=>"http://purl.org/dc/elements/1.1/");
+RegisterNamespace('cc'=>"http://creativecommons.org/ns");
+RegisterNamespace('stex'=>"http://kwarc.info/ns/sTeX");
+RegisterNamespace('ltx'=>"http://dlmf.nist.gov/LaTeXML");
+RelaxNGSchema('omdoc+ltxml',
+        '#default'=>"http://omdoc.org/ns",
+        'om'=>"http://www.openmath.org/OpenMath",
+        'm'=>"http://www.w3.org/1998/Math/MathML",
+        'dc'=>"http://purl.org/dc/elements/1.1/",
+        'cc'=>"http://creativecommons.org/ns",
+       'stex'=>"http://kwarc.info/ns/sTeX",
+       'ltx'=>"http://dlmf.nist.gov/LaTeXML");
+RequirePackage('omdoc');
+sub xmlBase {
+  my $baseuri = LookupValue('URLBASE');
+  $baseuri =~ s/\/$//g; # No trailing slashes
+  my $baselocal = LookupValue('BASELOCAL');
+  my $name = LookupValue('SOURCEFILE');
+  my ($d,$f,$t);
+  if ($name) {
+    if ( pathname_is_url($name) ) {
+      $name =~ s/^(\w+):\///;
+    }
+    ($d, $f,$t) = pathname_split($name);
+    $t = LookupValue('cooluri') ? '' : ".$t";
+  }
+  else {
+    #Error("expected","SOURCEFILE",undef,"Couldn't locate the current source being processed, SOURCEFILE was not set in \$STATE );
+    #Tokenize('');
+    # TODO: What is really the right way to work with xml:base?
+    $f = ''; $t='';
+  }
+  my $cdir=q{};
+  if (!pathname_is_url($baselocal)) { # Local conversion
+$cdir = pathname_relative(abs_path(pathname_cwd()),abs_path($baselocal)) if defined $baselocal;
+    $cdir .= '/';
+  }
+  Tokenize($baseuri.'/'.$cdir.$f.$t);
+}
+DefEnvironment('{document} OptionalKeyVals:omdoc',
+       "<omdoc:omdoc "
+      .    "?&KeyVal(#1,'id')(xml:id='&KeyVal(#1,'id')')"
+      .     "(?&Tokenize(&LookupValue('SOURCEBASE'))"
+      .      "(xml:id='&Tokenize(&LookupValue('SOURCEBASE')).omdoc')()) "
+      .    "?&Tokenize(&LookupValue('URLBASE'))"
+      .    "(xml:base='&xmlBase()')()>"
+     .  "#body"
+      ."</omdoc:omdoc>",
+  beforeDigest=> sub { AssignValue(inPreamble=>0); },
+  afterDigest=> sub { $_[0]->getGullet->flush; return; });
+Tag('omdoc:omdoc', 'afterOpen:late'=>\&insertFrontMatter);
+1;

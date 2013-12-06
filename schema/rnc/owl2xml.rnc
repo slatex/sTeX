@@ -1,0 +1,138 @@
+#   A simplified RelaxNG for OWL2 (so that we can generate OWL from sTeX
+#   https://kwarc.info/repos/kwarc/repos/stex/rnc/omdoc+ltxml.rnc
+#   (c) 2010 Michael Kohlhase, released under the GNU Public License (GPL)
+
+default namespace owl = "http://www.w3.org/2002/07/owl#"
+namespace local = ""
+
+nonlocal-attribs = attribute * - (local:* | owl:*) {xsd:string} 
+
+start = Ontology
+
+base.attrib = element xml:base {xsd:anyURI}
+ontologyIRI.attrib = attribute ontologyIRI {xsd:anyURI}
+IRI.attrib = attribute IRI {text}  |  attribute abbreviatedIRI {text}
+datatypeIRI.attrib = attribute datatypeIRI {text}
+name.attrib = attribute name {text}
+facet.attrib = attribute facet {xsd:anyURI}
+cardinality.attrib = attribute cardinality {xsd:integer}
+
+Ontology.attribs = ontologyIRI.attrib? & base.attrib?
+Ontology.model = Prefix* & Declaration* & Import* & Axioms*
+
+Axioms = AnnotationAssertion* 
+	      & DatatypeDefinition* & HasKey* & SubClassOf* & EquivalentClasses*
+  	      & ObjectProperties* & DataProperties* 
+	      & DisjointClasses* & DifferentIndividuals* & SameIndividual*
+	      & ObjectPropertyAssertion* & DataPropertyAssertion* & ClassAssertion*
+	      & NegativeObjectPropertyAssertion* & NegativeDataPropertyAssertion* & NegativeClassAssertion*
+
+Ontology = element Ontology {Ontology.attribs & Ontology.model}
+
+Prefix = element Prefix {name.attrib & IRI.attrib}
+Import = element Import {xsd:anyURI}
+ObjectProperties =  SymmetricObjectProperty* & AsymmetricObjectProperty* & ReflexiveObjectProperty* 
+		  & IrreflexiveObjectProperty* &  FunctionalObjectProperty* &  InverseObjectProperty*
+		  & DisjointObjectProperties* &  InverseFunctionalObjectProperty* &  TransitiveObjectProperty*
+		  & TransitiveObjectProperty* & ObjectPropertyDomain* & ObjectPropertyRange*
+		  &  InverseObjectProperties*  &  SubObjectPropertyOf* & EquivalentObjectProperties*
+DataProperties =  SymmetricDataProperty* & AsymmetricDataProperty* & ReflexiveDataProperty* 
+		  & IrreflexiveDataProperty* &  FunctionalDataProperty* &  InverseDataProperty*
+		  & DisjointDataProperties* &  InverseFunctionalDataProperty* &  TransitiveDataProperty*
+		  & TransitiveDataProperty* & DataPropertyDomain* & DataPropertyRange*
+		  &  InverseDataProperties*  &  SubDataPropertyOf* & EquivalentDataProperties*
+
+Declaration.model = Class.model | Data.model
+Declaration = element Declaration {Declaration.model}
+NamedIndividual = element NamedIndividual {IRI.attrib}
+ClassAssertion = element ClassAssertion {Class.model,Ind.class}
+NegativeClassAssertion = element NegativeClassAssertion {Class.model,Ind.class}
+
+ObjectProperty = element ObjectProperty {IRI.attrib}
+SymmetricObjectProperty = element SymmetricObjectProperty {ObjectProperty*}
+AsymmetricObjectProperty = element AsymmetricObjectProperty {ObjectProperty*}
+DisjointObjectProperties = element DisjointObjectProperties {ObjectProperty*}
+ReflexiveObjectProperty = element ReflexiveObjectProperty {ObjectProperty}
+IrreflexiveObjectProperty = element IrreflexiveObjectProperty {ObjectProperty}
+FunctionalObjectProperty = element FunctionalObjectProperty {ObjectProperty}
+InverseFunctionalObjectProperty = element InverseFunctionalObjectProperty {ObjectProperty}
+InverseObjectProperty = element InverseObjectProperty {ObjectProperty}
+InverseObjectProperties = element InverseObjectProperties {ObjectProperty*}
+TransitiveObjectProperty = element TransitiveObjectProperty {ObjectProperty*}
+EquivalentObjectProperties = element EquivalentObjectProperties {ObjectProperty*}
+ObjectPropertyDomain = element ObjectPropertyDomain {ObjectProperty,Class}
+ObjectPropertyRange = element ObjectPropertyRange {ObjectProperty,Class}
+SubObjectPropertyOf = element SubObjectPropertyOf {(ObjectProperty|ObjectPropertyChain),ObjectProperty}
+ObjectPropertyChain = element ObjectPropertyChain {ObjectProperty*}
+ObjectPropertyAssertion = element ObjectPropertyAssertion {ObjectProperty*,Ind.class,Ind.class}
+NegativeObjectPropertyAssertion = element NegativeObjectPropertyAssertion {ObjectProperty*,Ind.class,Ind.class}
+
+SymmetricDataProperty = element SymmetricDataProperty {DataProperty*}
+AsymmetricDataProperty = element AsymmetricDataProperty {DataProperty*}
+DisjointDataProperties = element DisjointDataProperties {DataProperty*}
+ReflexiveDataProperty = element ReflexiveDataProperty {DataProperty}
+IrreflexiveDataProperty = element IrreflexiveDataProperty {DataProperty}
+FunctionalDataProperty = element FunctionalDataProperty {DataProperty}
+InverseFunctionalDataProperty = element InverseFunctionalDataProperty {DataProperty}
+InverseDataProperty = element InverseDataProperty {DataProperty}
+InverseDataProperties = element InverseDataProperties {DataProperty*}
+TransitiveDataProperty = element TransitiveDataProperty {DataProperty*}
+EquivalentDataProperties = element EquivalentDataProperties {DataProperty*}
+DataPropertyDomain = element DataPropertyDomain {DataProperty,Class}
+DataPropertyRange = element DataPropertyRange {DataProperty,Datatype}
+SubDataPropertyOf = element SubDataPropertyOf {(DataProperty|DataPropertyChain),DataProperty}
+DataPropertyChain = element DataPropertyChain {DataProperty*}
+DataPropertyAssertion = element DataPropertyAssertion {DataProperty*,Ind.class,Literal}
+NegativeDataPropertyAssertion = element NegativeDataPropertyAssertion {DataProperty*,Ind.class,Literal}
+
+
+DataProperty = element DataProperty {IRI.attrib} 
+Datatype = element Datatype {IRI.attrib} 
+Class= element Class{IRI.attrib}
+
+Annotation = element Annotation {AnnotationProperty & Literal} 
+AnnotationAssertion= element AnnotationAssertion {AnnotationProperty,IRI,Literal} 
+AnnotationProperty= element AnnotationProperty {IRI.attrib} 
+IRI = element IRI {xsd:anyURI}
+Literal = element Literal {datatypeIRI.attrib? & text}
+
+DatatypeDefinition.model = Datatype* &  DatatypeRestriction* & DataComplementOf* & DataIntersectionOf* & DataOneOf*
+DatatypeDefinition = element DatatypeDefinition {DatatypeDefinition.model}
+DatatypeRestriction = element DatatypeRestriction {Datatype &  FacetRestriction*}
+FacetRestriction = element FacetRestriction {facet.attrib & Literal}
+DataIntersectionOf = element DataIntersectionOf {Data.model*}
+DataComplementOf = element DataComplementOf {Data.model*}
+DataOneOf = element DataOneOf {Literal*}
+DataSomeValuesFrom = element DataSomeValuesFrom {Data.model*}
+DataAllValuesFrom = element DataAllValuesFrom {Data.model*}
+Data.model =  DataProperty |  Datatype | DataOneOf | DataSomeValuesFrom 
+	            |  DataAllValuesFrom | DataComplementOf | DatatypeRestriction
+
+
+HasKey = element HasKey {Class, ObjectProperty}
+SubClassOf = element SubClassOf {Annotation*,Class.model,(Data.model | Class.model)}
+EquivalentClasses = element EquivalentClasses{Class.model*}
+
+ObjectIntersectionOf = element ObjectIntersectionOf {Class.model*}
+ObjectComplementOf = element ObjectComplementOf {Class.model*}
+ObjectSomeValuesFrom = element ObjectSomeValuesFrom {Class.model*}
+ObjectAllValuesFrom = element ObjectAllValuesFrom {Class.model*}
+ObjectOneOf = element ObjectOneOf {Class.model*}
+ObjectInverseOf = element ObjectInverseOf {Class.model*}
+ObjectMaxCardinality = element ObjectMaxCardinality{cardinality.attrib & Class.model*}
+ObjectMinCardinality = element ObjectMinCardinality{cardinality.attrib & Class.model*}
+ObjectExactCardinality = element ObjectExactCardinality{cardinality.attrib & Class.model*}
+ObjectHasValue = element ObjectHasValue {ObjectProperty,Ind.class}
+ObjectHasSelf = element ObjectHasSelf {ObjectProperty}
+ObjectUnionOf = element ObjectUnionOf {Class.model*}
+Class.model = Class | ObjectIntersectionOf  | ObjectComplementOf 
+	             | ObjectSomeValuesFrom | ObjectAllValuesFrom
+	             | ObjectOneOf | Ind.class| ObjectInverseOf | ObjectProperty
+		     | ObjectMaxCardinality | ObjectMinCardinality | ObjectExactCardinality 
+		     | ObjectHasValue | ObjectHasSelf | ObjectUnionOf
+
+DisjointClasses = element DisjointClasses {Annotation?,Class.model*}
+DifferentIndividuals = element DifferentIndividuals {Ind.class*}
+SameIndividual = element SameIndividual {Ind.class*}
+
+Ind.class = NamedIndividual

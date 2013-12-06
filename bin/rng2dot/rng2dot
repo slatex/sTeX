@@ -1,0 +1,37 @@
+#!/usr/bin/perl -w
+
+use ModelRNC;
+
+die "No input file\n" unless $ARGV[0];
+my $opt = $ARGV[1] || '';
+
+my $rnc = ModelRNC->new();
+$rnc->process($ARGV[0]);
+print STDERR 'Unable to properly parse ('.$rnc->data.")\n" if $rnc->data;
+
+my %seen = ();
+sub make_graph {
+    my ($node) = @_;
+    my @children = $rnc->tagChildren($node);
+    my $pnode = $node;
+    $pnode =~ s/^\{[^\}]*\}://; $pnode =~ s/\-|\+|\*|\s/_/g;
+    my @pchildren = @children;
+    for (my $i = 0 ; $i < @pchildren; $i++) {
+	$pchildren[$i] =~ s/^\{[^\}]*\}://; 
+	$pchildren[$i] =~ s/\-|\+|\*|\s/_/g; }
+    if ($opt eq 'txt') {
+	print "$pnode: ".join(', ', @pchildren)."\n\n"; }
+    else {
+	for (my $i = 0 ; $i < @pchildren; $i++) {
+	    print "$pnode -> ".$pchildren[$i].";\n"; }}
+    return 0 if $seen{$node};
+    $seen{$node} = 1;
+    foreach my $child(@children) {
+	make_graph($child); }
+    1; }
+
+print "digraph RNC {\n" unless $opt eq 'txt';
+make_graph('_Document_');
+print "}\n" unless $opt eq 'txt';
+
+__END__
