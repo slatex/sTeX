@@ -7,7 +7,7 @@
 %% hwexam.dtx  (with options: `cls')
 %% 
 \NeedsTeXFormat{LaTeX2e}[1999/12/01]
-\ProvidesClass{hwexam}[2012/09/23 v0.9b assignment and exam documents]
+\ProvidesClass{hwexam}[2013/12/12 v1.0 assignment and exam documents]
 \DeclareOption{test}{\PassOptionsToPackage{\CurrentOption}{hwexam}}
 \DeclareOption{multiple}{\PassOptionsToPackage{\CurrentOption}{hwexam}}
 \DeclareOption{showmeta}{\PassOptionsToPackage{\CurrentOption}{metakeys}}
