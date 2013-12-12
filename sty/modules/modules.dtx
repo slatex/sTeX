@@ -10,7 +10,7 @@
 %  
 % \iffalse
 %<package>\NeedsTeXFormat{LaTeX2e}[1999/12/01]
-%<package>\ProvidesPackage{modules}[2013/08/25 v1.2 Semantic Markup]
+%<package>\ProvidesPackage{modules}[2013/12/12 v1.3 Semantic Markup]
 %
 %<*driver>
 \documentclass{ltxdoc}
@@ -60,6 +60,7 @@
 % \changes{v1.1}{2012/11/09}{Moving LaTeXML bindings into \texttt{modules.sty.ltxml} and
 % disabling generation}
 % \changes{v1.2}{2013/08/25}{No longer loading the aux file at the end of the document}
+% \changes{v1.3}{2013/12/12}{adding MathHub support}
 % 
 % \GetFileInfo{modules.sty}
 % 
@@ -594,6 +595,52 @@
 % 
 % A view is a mapping between modules, such that all model assumptions (axioms) of the
 % source module are satisfied in the target module. \ednote{Document and make Examples}
+%
+% \subsection{Support for \textsf{MathHub}}
+% 
+% Much of the \sTeX content is hosed on \textsf{MathHub} (\url{http://MathHub.info}), a
+% portal and archive for flexiformal mathematics. \textsf{MathHub} offers GIT repositories
+% (public and private escrow) for mathematical documentation projects, online and offline
+% authoring and document development infrastructure, and a rich, interactive reading
+% interface. The |modules| package supports repository-sensitive operations on
+% \textsf{MathHub}. 
+% 
+% Note that \textsf{MathHub} has two-level repository names of the form
+% \meta{group}|/|\meta{repo}, where \meta{group} is a \textsf{MathHub}-unique repository
+% group and \meta{repo} a repository name that is \meta{group}-unique. The file and
+% directory structure of a repository is arbitrary -- except that it starts with the
+% directory |source| because they are Math Archives in the sense
+% of~\cite{HorIacJuc:cscpnrr11}. But this structure can be hidden from the \sTeX author
+% with \textsf{MathHub}-enabled versions of the |modules| macros.
+% 
+% The \DescribeMacro{\importmhmodule}|importmhmodule| macro is a variant of
+% |\importmodule| with repository support. Instead of writing 
+% \begin{verbatim}
+% \defpath{MathHub}{/user/foo/lmh/MathHub}
+% \importmodule[load=\MathHub{fooMH/bar/source/baz/foobar}]{foobar}
+% \end{verbatim}
+% we can simply write (assuming that |\MathHub| is defined as above)
+% \begin{verbatim}
+% \importmhmodule[fooMH/bar]{baz/foobar}{foobar}
+% \end{verbatim}
+% Note that the |\importmhmodule| form is more semantic, which allows more advanced
+% document management features in \textsf{MathHub}. 
+% 
+% If |baz/foobar| is the ``current module'', i.e. if we are on the \textsf{MathHub} path
+% \ldots|MathHub/fooMH/bar|\ldots, then stating the repository in the first optional
+% argument is redundant, so we can just use
+% \begin{verbatim}
+% \importmhmodule{baz/foobar}{foobar}
+% \end{verbatim}
+% Of course, neither {\LaTeX} nor \latexml know about the repositories when they are
+% called from a file system, so the \DescribeMacro{\mhcurrentrepos}|\mhcurrentrepos|
+% macro. But this is only needed to initialize the infrastructure in the driver file. In
+% particular, we do not need to set it in in each module, since the |\importmhmodule|
+% macro sets the current repository automatically.
+% 
+% The \DescribeMacro{\usemhmodule}|\usemhmodule| and
+% \DescribeMacro{\adoptmhmodule}|\adoptmhmodule| macros are the analogs to |\usemodule|
+% and |\adoptmodule|.
 %
 % \section{Limitations \& Extensions}\label{sec:limitations}
 % 
@@ -1548,6 +1595,42 @@
 %    \end{macrocode}
 % \end{environment}
 %
+% \subsection{Support for \textsf{MathHub}}\label{sec:impl:mathhub}
+%
+% \begin{macro}{\importmhmodule}
+%   The |\importmhmodule| saves the current value of |\mh@currentrepos| in a local macro
+%   |\mh@@repos|, resets |\mh@currentrepos| to the new value if one is given in the
+%   optional argument, and after importing resets |\mh@currentrepos| to the old value in
+%   |\mh@@repos|.
+%    \begin{macrocode}
+\newcommand\importmhmodule[3][]{\def\@repos{#1}%
+\edef\mh@@repos{\mh@currentrepos}%
+\ifx\@repos\@empty\else\mhcurrentrepos{#1}\fi%
+\importmodule[load=\MathHub{\mh@currentrepos/source/#2}]{#3}%
+\mhcurrentrepos\mh@@repos}
+%    \end{macrocode}
+% \end{macro}
+% and now the analogs
+% \begin{macro}{\usemhmodule}
+%    \begin{macrocode}
+\newcommand\usemhmodule[3][]{\def\@repos{#1}%
+\edef\mh@@repos{\mh@currentrepos}%
+\ifx\@repos\@empty\else\mhcurrentrepos{#1}\fi%
+\usemodule[load=\MathHub{\mh@currentrepos/source/#2}]{#3}%
+\mhcurrentrepos\mh@@repos}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\adoptmhmodule}
+%    \begin{macrocode}
+\newcommand\adoptmhmodule[3][]{\def\@repos{#1}%
+\edef\mh@@repos{\mh@currentrepos}%
+\ifx\@repos\@empty\else\mhcurrentrepos{#1}\fi%
+\adoptmodule[load=\MathHub{\mh@currentrepos/source/#2}]{#3}%
+\mhcurrentrepos\mh@@repos}
+%    \end{macrocode}
+% \end{macro}
+%
 % \subsection{Deprecated Functionality}\label{sec:impl:deprecated}
 %
 % In this section we centralize old interfaces that are only partially supported any more. 
@@ -1608,32 +1691,32 @@
 %%% mode: doctex
 %%% TeX-master: t
 %%% End: 
-% LocalWords:  GPL structuresharing STR dtx env envfalse idfalse displayfalse
-% LocalWords:  usesfalse usesqualified usesqualifiedfalse envtrue idtrue CPERL
-% LocalWords:  usestrue displaytrue usesqualifiedtrue RequirePackage keyval tmp
-% LocalWords:  defs foreach LookupValue activateScope DefEnvironment keyvals cd
-% LocalWords:  OptionalKeyVals getValue toString AssignValue openElement omdoc
-% LocalWords:  closeElement beforeDigest useTheoryItemizations afterDigestBegin
-% LocalWords:  whatsit setProperty getArg qw symdef  iffalse importOMDocmodule
-% LocalWords:  DefKeyVal Semiverbatim symdeflocal atqualified DefMacro STDERR
-% LocalWords:  args unlist DefPrimitive nargs Stringify eq attr omcd ltx XMTok
-% LocalWords:  DefConstructorI convertLaTeXArgs scriptpos XMApp OMA XMArg simpl
-% LocalWords:  DefMacroI blaaaa savedprefix aaa simplhelp tust tist tost reguse
-% LocalWords:  updatedpre ReturnAfterFi updateall updatedpost updatesms bgroup
-% LocalWords:  texclude tinclude getGullet requiredmodule tex sms egroup pmml
-% LocalWords:  toks mixfixi mixfixa mixfixii mixfixia mixfixai mixfixiii arg cr
-% LocalWords:  DefConstructor afterDigest setProperties undef tok PARAM thyid
-% LocalWords:  getString showfalse showtrue xcomment stex srcref KeyVal omext
-% LocalWords:  beginItemize getProperty introdcue afterOpen numberIt Tokenize
-% LocalWords:  OptionalSemiverbatim omdocmod PushValue assocarg getStomach prs
-% LocalWords:  begingroup beginMode endMode endgroup insertElement resymdef sym
-% LocalWords:  updir nargkey PresFormatters mixfixaii formatters argname expr
-% LocalWords:  getSymmdefProperties XMath mcdcr exprlist recurse texttt scsys
-% LocalWords:  textbackslash newcommand providecommand sc sc mathml openmath nx
-% LocalWords:  latexml cmathml activemath twintoo atwin atwintoo mathcal Deyan
-% LocalWords:  mathcal fileversion Ginev maketitle  newpage infty ulsmf08 exfig
+% LocalWords:  GPL structuresharing STR dtx env envfalse idfalse displayfalse filedate nl
+% LocalWords:  usesfalse usesqualified usesqualifiedfalse envtrue idtrue CPERL Rares pres
+% LocalWords:  usestrue displaytrue usesqualifiedtrue RequirePackage keyval tmp 2oms04 eg
+% LocalWords:  defs foreach LookupValue activateScope DefEnvironment keyvals cd varpres
+% LocalWords:  OptionalKeyVals getValue toString AssignValue openElement omdoc uvee vee
+% LocalWords:  closeElement beforeDigest useTheoryItemizations afterDigestBegin symtest
+% LocalWords:  whatsit setProperty getArg qw symdef  iffalse importOMDocmodule symtest
+% LocalWords:  DefKeyVal Semiverbatim symdeflocal atqualified DefMacro STDERR setst spath
+% LocalWords:  args unlist DefPrimitive nargs Stringify eq attr omcd ltx XMTok abbrtest
+% LocalWords:  DefConstructorI convertLaTeXArgs scriptpos XMApp OMA XMArg simpl abbrtest
+% LocalWords:  DefMacroI blaaaa savedprefix aaa simplhelp tust tist tost reguse spath baz
+% LocalWords:  updatedpre ReturnAfterFi updateall updatedpost updatesms bgroup includeref
+% LocalWords:  texclude tinclude getGullet requiredmodule tex sms egroup pmml sincluderef
+% LocalWords:  toks mixfixi mixfixa mixfixii mixfixia mixfixai mixfixiii arg cr OPaths
+% LocalWords:  DefConstructor afterDigest setProperties undef tok PARAM thyid BerFieMas
+% LocalWords:  getString showfalse showtrue xcomment stex srcref KeyVal omext osslepsdl13
+% LocalWords:  beginItemize getProperty introdcue afterOpen numberIt Tokenize adoptmodule
+% LocalWords:  OptionalSemiverbatim omdocmod PushValue assocarg getStomach prs HorIacJuc
+% LocalWords:  begingroup beginMode endMode endgroup insertElement resymdef sym cscpnrr11
+% LocalWords:  updir nargkey PresFormatters mixfixaii formatters argname expr adoptmodule
+% LocalWords:  getSymmdefProperties XMath mcdcr exprlist recurse texttt scsys foobar
+% LocalWords:  textbackslash newcommand providecommand sc sc mathml openmath nx st@flow
+% LocalWords:  latexml cmathml activemath twintoo atwin atwintoo mathcal Deyan viewsketch
+% LocalWords:  mathcal fileversion Ginev maketitle  newpage infty ulsmf08 exfig endinput
 % LocalWords:  omsemmac lstset basicstyle scriptsize aboveskip belowskip hline
-% LocalWords:  morekeywords lstlisting csymbol showmods foo exf cseq mdframed
+% LocalWords:  morekeywords lstlisting csymbol showmods foo exf cseq mdframed usemhmodule
 % LocalWords:  qualifiedimports qualifiedimports termdef textbf filepath RabKoh
 % LocalWords:  symname varSmoothfunctionsOn ednote abbrdef Sumfromto semmodule
 % LocalWords:  vspace hrule vspace arith arbitraryn xbool oplus xdisjunction tw
@@ -1642,7 +1725,7 @@
 % LocalWords:  sinput sinputref sinputref defpath defpath defpath cname csname
 % LocalWords:  OPhats usepackage importqualified Crossreferencing jobname ltxml
 % LocalWords:  jobname printbibliography textsf langle textsf langle textlangle
-% LocalWords:  textrangle textlangle newif ifmod qualifiedfalse qualifiedtrue
+% LocalWords:  textrangle textlangle newif ifmod qualifiedfalse qualifiedtrue usemhmodule
 % LocalWords:  sref xspace expandafter noexpand endcsname namedef setkeys ifx
 % LocalWords:  newenvironment parentmod usemodule ifundefined coolurion cooluri
 % LocalWords:  coolurioff cwd ouri ifdefinable testopt ifnextchar xargdef bvars
@@ -1650,16 +1733,18 @@
 % LocalWords:  symdeflocalfalse localpres isbound symdefs COMPLEXTOKEN localp
 % LocalWords:  findnodes localname carg renewcommand bbb showmeta showmeta exp
 % LocalWords:  refundefinedtrue subsubsection blaaa makeatletter makeatother rm
-% LocalWords:  ifmodules gdef xdef xdef modulestrue modulesfalse pathpostfix
-% LocalWords:  updatedsms newreg xref texorpdfstring srefaddidkey newsavebox
+% LocalWords:  ifmodules gdef xdef xdef modulestrue modulesfalse pathpostfix abbreviative
+% LocalWords:  updatedsms newreg xref texorpdfstring srefaddidkey newsavebox importmodule
 % LocalWords:  viewbox newcounter thesection theview theproblem hfill lrbox req
 % LocalWords:  stepcounter textwidth hbox noindent smallskip fbox vbox usebox
 % LocalWords:  smallskip newxcomment vassign ensuremath mapsto doctex tocdepth
-% LocalWords:  setcounter tableofcontents mathbb symvariant importmodulevia
+% LocalWords:  setcounter tableofcontents mathbb symvariant importmodulevia adoptmhmodule
 % LocalWords:  importmodulevia compactdesc tassign tassign tname source-tname
 % LocalWords:  ttassign metakeys addmetakey themodule metasetkeys aftergroup
 % LocalWords:  groupling requation IMPORTCD CURRENTCD bindargs defmathop cnode
-% LocalWords:  icvariant aftercounter prestok inputref oref loadfrom loadto
+% LocalWords:  icvariant aftercounter prestok inputref oref loadfrom loadto adoptmhmodule
 % LocalWords:  csymdef notationdef noauxreq noauxreq rinput ifaux reqtrue bargs
 % LocalWords:  reqfalse currmod importmoduleenv conceptdef stDMemph  tempswa
-% LocalWords:  auxout omtext surroundwithmdframed ignorespaces
+% LocalWords:  auxout omtext surroundwithmdframed ignorespaces NeedsTeXFormat
+%  LocalWords:  importmhmodule importmhmodule mhcurrentrepos mhcurrentrepos importmodules
+%  LocalWords:  mh@currentrepos
