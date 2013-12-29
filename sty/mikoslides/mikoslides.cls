@@ -82,9 +82,9 @@
     {\setlength{\labelsep}{.3em}\setlength{\labelwidth}{.5em}\setlength{\leftmargin}{1.5em}}%
   \edef\itemize@level{\itemize@inner}}%
 {\end{list}}
-\begin{minipage}{\slidewidth}\sf}
-{\medskip\miko@slidelabel\end{minipage}}
-\surroundwithmdframed[linewidth=\slideframewidth,skipabove=1ex,skipbelow=1ex]{frame}
+\begin{mdframed}[linewidth=\slideframewidth,skipabove=1ex,skipbelow=1ex,
+userdefinedwidth=\slidewidth,align=center]\sf}
+{\medskip\miko@slidelabel\end{mdframed}}
 \renewcommand{\frametitle}[1]{{\Large\bf\sf\color{blue}{#1}}\medskip}
 \fi
 \makeindex
