@@ -7,7 +7,7 @@
 %% mikoslides.dtx  (with options: `cls')
 %% 
 \NeedsTeXFormat{LaTeX2e}[1999/12/01]
-\ProvidesClass{mikoslides}[2012/11/29 v0.9 Jacobs slides]
+\ProvidesClass{mikoslides}[2014/01/07 v1.0 Jacobs slides]
 \DeclareOption{showmeta}{\PassOptionsToPackage{\CurrentOption}{metakeys}}
 \newif\ifnotes\notesfalse
 \newif\ifsectocframes\sectocframesfalse
@@ -19,7 +19,8 @@
 \newif\if@part\@partfalse
 \DeclareOption{report}{\@parttrue\PassOptionsToClass{\CurrentOption}{omdoc}}
 \DeclareOption{book}{\@parttrue\PassOptionsToClass{\CurrentOption}{omdoc}}
-\DeclareOption*{\PassOptionsToClass{\CurrentOption}{omdoc}\PassOptionsToClass{\CurrentOption}{beamer}}
+\DeclareOption*{\PassOptionsToClass{\CurrentOption}{omdoc}
+                \PassOptionsToClass{\CurrentOption}{beamer}}
 \ProcessOptions
 \ifnotes
 \LoadClass{omdoc}
@@ -87,8 +88,9 @@ userdefinedwidth=\slidewidth,align=center]\sf}
 {\medskip\miko@slidelabel\end{mdframed}}
 \renewcommand{\frametitle}[1]{{\Large\bf\sf\color{blue}{#1}}\medskip}
 \fi
-\makeindex
-\ifproblems\newenvironment{problems}{}{}\else\excludecomment{problems}\fi
+\newcommand\frameimage[2][]{\def\Gin@ewidth{}\setkeys{Gin}{#1}%
+\ifx\Gen@ewidth\@empty\mycgraphics[#1]{#2}\else\mycgraphics[width=\slidewidth,#1]{#2}\fi}
+
 \newlength{\slidelogoheight}
 \ifnotes\setlength{\slidelogoheight}{.4cm}\else\setlength{\slidelogoheight}{1cm}\fi
 \newsavebox{\slidelogo}\sbox{\slidelogo}{\includegraphics[height=\slidelogoheight]{jacobs-logo}}
@@ -158,6 +160,12 @@ userdefinedwidth=\slidewidth,align=center]\sf}
 {\begin{lrbox}{\columnbox}\begin{minipage}{#1}}%
 {\end{minipage}\end{lrbox}\usebox\columnbox}
 \fi
+\ifproblems\newenvironment{problems}{}{}\else\excludecomment{problems}\fi
+\addmetakey{Gin}{mhrepos}
+\newcommand\mhframeimage[2][]{\metasetkeys{Gin}{#1}%
+\edef\mh@@repos{\mh@currentrepos}%
+\ifx\Gin@mhrepos\@empty\frameimage[#1]{\MathHub{\mh@currentrepos/source/#2}}%
+\else\frameimage[#1]{\MathHub{\Gin@mhrepos/source/#2}}\fi}
 \ifnotes\else\sf\fi
 \endinput
 %%

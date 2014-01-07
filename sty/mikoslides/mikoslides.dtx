@@ -10,11 +10,11 @@
 % 
 % \iffalse
 %<cls>\NeedsTeXFormat{LaTeX2e}[1999/12/01]
-%<cls>\ProvidesClass{mikoslides}[2012/11/29 v0.9 Jacobs slides]
+%<cls>\ProvidesClass{mikoslides}[2014/01/07 v1.0 Jacobs slides]
 %
 %<*driver>
 \documentclass{ltxdoc}
-\usepackage{url,array,float}
+\usepackage{url,array,float,xspace}
 \usepackage[show]{ed}
 \usepackage{graphicx}
 \usepackage[hyperref=auto,style=alphabetic,backend=bibtex]{biblatex}
@@ -24,7 +24,7 @@
 \newfloat{exfig}{thp}{lop}
 \floatname{exfig}{Example}
 \def\tracissue#1{\cite{sTeX:online},
-  \hyperlink{http://trac.kwarc.info/sTeX/ticket/#1}{issue #1}}
+\hyperlink{http://trac.kwarc.info/sTeX/ticket/#1}{issue #1}}
 \usepackage{hyperref}
 \begin{document}\DocInput{mikoslides.dtx}\end{document}
 %</driver>
@@ -42,6 +42,7 @@
 % \changes{v0.9}{2012/09/17}{basic options handling for the \texttt{frame} environment in
 % notes mode}
 % \changes{v0.9}{2013/08/23}{numbered sectocframes}
+% \changes{v1.0}{2014/01/07}{adding \texttt{\textbackslash frameimage}}
 % 
 % \GetFileInfo{mikoslides.cls}
 % \MakeShortVerb{\|}
@@ -51,18 +52,19 @@
 % \def\atwin#1#2#3{\index{#1!#2!#3}\index{#3!#2 (#1)}}
 % \def\atwintoo#1#2#3{{#1 #2 #3}\atwin{#1}{#2}{#3}}
 %
-%\def\scsys#1{{{\sc #1}}\index{#1@{\sc #1}}}
+% \def\scsys#1{{{\sc #1}}\index{#1@{\sc #1}}}
 % \def\stex{\hbox{\raisebox{-.5ex}S\kern-.5ex\TeX}}
 % \def\sTeX{\stex}
 % \def\cnxml{\scshape{CNXml}}
 % \def\connexions{\scshape{Connexions}}
 % \def\element#1{{\ttfamily{#1}}}
 % \def\snippet#1{{\ttfamily{#1}}}
-% \def\cnxlatex{CNX\LaTeX}
-% \def\mathml{{\scshape{MathML}}}
-% \def\latexml{\hbox{{\LaTeX}ML}}
-% \def\omdoc{OMDoc}
-% \def\activemath{{\scshape{ActiveMath}}}
+% \def\cnxlatex{CNX\LaTeX\xspace}
+% \def\mathml{{\scshape{MathML}}\xspace}
+% \def\latexml{\hbox{{\LaTeX}ML}\xspace}
+% \def\omdoc{OMDoc\xspace}
+% \def\activemath{{\scshape{ActiveMath}}\xspace}
+% \def\textwarning{\includegraphics[width=1.2em]{dangerous-bend}\xspace}
 % 
 % \title{Slides and Course Notes for Jacobs University\thanks{Version {\fileversion}
 % (last revised {\filedate})}}
@@ -77,37 +79,147 @@
 %   these, so that we can also generate {\omdoc}-based course materials, e.g. for
 %   inclusion in the {\activemath} system.
 % \end{abstract}
+%
 % \tableofcontents\newpage
+%
 %\section{Introduction}
-% This Document class is derived from |beamer.cls|, specializes it with Jacobs stuff and
-% adds a notes version that is more suited to printing than the one supplied by
-% |beamer.cls|.
+%
+% This Document class is derived from |beamer.cls|~\cite{beamerclass:on}, specializes it
+% with Jacobs stuff and adds a notes version that is more suited to printing than the one
+% supplied by |beamer.cls|.
+%
 % 
 %\section{The User Interface}\label{sec:user}
+%
+% The |mikoslides| class takes the notion of a slide frame from Till Tantau's excellent
+% |beamer| class and adapts its notion of frames for use in the \sTeX and \omdoc. To
+% support semantic course notes, it extends the notion of mixing frames and explanatory
+% text, but rather than treating the frames as images (or integrating their contents into
+% the flowing text), the |mikoslides| package displays the slides as such in the course
+% notes to give students a visual anchor into the slide presentation in the course (and to
+% distinguish the different writing styles in slides and course notes).
+% 
+% In practice we want to generate two documents from the same source: the slides for
+% presentation in the lecture and the course notes as a narrative document for home
+% study. To achieve this, the |mikoslides| class has two modes: \emph{slides mode} and
+% \emph{notes mode} which are determined by the package option. 
 %
 % \subsection{Package Options}\label{sec:user:options}
 % 
 % The |mikoslides| class takes a variety of class options:\ednote{leaving out noproblems
 % for the moment until we decide what to do with it.}
 % \begin{compactitem}
-% \item q\DescribeMacro{showmeta}|showmeta|. If this is set, then the metadata keys are shown
-% (see~\cite{Kohlhase:metakeys:ctan} for details and customization options).
 % \item The options \DescribeMacro{slides}|slides|\DescribeMacro and {notes}|notes| switch
-%   between slides mode and notes mode (see Section~\ref{sec:user:notesslides}). 
+%   between slides mode and notes mode (see Section~\ref{sec:user:notesslides}).
 % \item If the option \DescribeMacro{sectocframes}|sectocframes| is given, then special
 %   frames with section table of contents are produced headers \ednote{document the functionality}
+% \item \DescribeMacro{showmeta}|showmeta|. If this is set, then the metadata keys are
+%   shown (see~\cite{Kohlhase:metakeys:ctan} for details and customization options).
 % \end{compactitem}
 % 
 % \subsection{Notes and Slides}\label{sec:user:notesslides}
+% 
+% Slides are represented with the \DescribeEnv{frame}|frame| just like in the |beamer|
+% class, see~\cite{Tantau:ugbc} for details. The |mikoslides| class adds the
+% \DescribeEnv{note}|note| environment for encapsulating the course note
+% fragments.\footnote{MK: it would be very nice, if we did not need this environment, and
+% this should be possible in principle, but not without intensive LaTeX trickery. Hints to
+% the author are welcome.} 
 %
+% \textwarning Note that it is essential to start and end the |notes| environment at the
+% start of the line -- in particular, there may not be leading blanks -- else {\LaTeX}
+% becomes confused and throws error messages that are difficult to decipher.
+%
+% \begin{exfig}
+% \begin{verbatim}
+% \begin{note}
+%   We start this course with ...
+% \end{note}
+%
+% \begin{frame}
+%   \frametitle{The first slide}
+%   ...
+% \end{frame}
+% \begin{note}
+%   ... and more explanatory text
+% \end{note}
+%
+% \begin{frame}
+%   \frametitle{The second slide}
+%   ...
+% \end{frame}
+% ...
+% \end{verbatim}
+% \caption{A typical Course Notes File}\label{fig:notesfile}
+% \end{exfig}
+% 
+% By interleaving the |frame| and |note| environments, we can build course notes as shown
+% in Figure~\ref{fig:notesfile}. 
+% 
+% Sometimes, we want to integrate slides as images after all -- e.g. because we already
+% have a PowerPoint presentation, to which we want to add \sTeX notes. In this case we can
+% use \DescribeMacro{\frameimage}|\frameimage[|\meta{opt}|]{|\meta{path}|}|, where
+% \meta{opt} are the options of |\includegraphics| from the |graphicx|
+% package~\cite{CarRah:tpp99} and \meta{path} is the file path (extension can be left off
+% like in |\includegraphics|).
+% 
 % \subsection{Header and Footer Lines}\label{sec:user:headfootlines}
 %
 % \subsection{Colors and Highlighting}\label{sec:user:highlighting}
 % The \DescribeMacro{\textwarning}|\textwarning| macro generates a warning
-% sign: \includegraphics[width=1.2em]{dangerous-bend}
+% sign: \textwarning
+%
 % \subsection{Front Matter, Titles, etc}\label{sec:user:matter}
 %
 % \subsection{Miscellaneous}\label{sec:user:misc}
+%
+% \subsection{Support for \textsf{MathHub}}\label{sec:user:mathhub}
+% 
+% Much of the \sTeX content is hosed on \textsf{MathHub} (\url{http://MathHub.info}), a
+% portal and archive for flexiformal mathematics. \textsf{MathHub} offers GIT repositories
+% (public and private escrow) for mathematical documentation projects, online and offline
+% authoring and document development infrastructure, and a rich, interactive reading
+% interface. The |modules| package supports repository-sensitive operations on
+% \textsf{MathHub}.
+% 
+% Note that \textsf{MathHub} has two-level repository names of the form
+% \meta{group}|/|\meta{repo}, where \meta{group} is a \textsf{MathHub}-unique repository
+% group and \meta{repo} a repository name that is \meta{group}-unique. The file and
+% directory structure of a repository is arbitrary -- except that it starts with the
+% directory |source| because they are Math Archives in the sense
+% of~\cite{HorIacJuc:cscpnrr11}. But this structure can be hidden from the \sTeX author
+% with \textsf{MathHub}-enabled versions of the |modules| macros.
+% 
+% The \DescribeMacro{\mhframeimage}|\mhframeimage| macro is a variant of |\frameimage|
+% with repository support. Instead of writing
+% \begin{verbatim}
+% \defpath{MathHub}{/user/foo/lmh/MathHub}
+% \frameimage{\MathHub{fooMH/bar/source/baz/foobar}}
+% \end{verbatim}
+% we can simply write (assuming that |\MathHub| is defined as above)
+% \begin{verbatim}
+% \mhframeimage[fooMH/bar]{baz/foobar}
+% \end{verbatim}
+% Note that the |\mhframeimage| form is more semantic, which allows more advanced document
+% management features in \textsf{MathHub}.
+% 
+% If |baz/foobar| is the ``current module'', i.e. if we are on the \textsf{MathHub} path
+% \ldots|MathHub/fooMH/bar|\ldots, then stating the repository in the first optional
+% argument is redundant, so we can just use
+% \begin{verbatim}
+% \mhframeimage{baz/foobar}
+% \end{verbatim}
+% Of course, neither {\LaTeX} nor \latexml know about the repositories when they are
+% called from a file system, so we can use the |\mhcurrentrepos| macro from the |modules|
+% package to tell them. But this is only needed to initialize the infrastructure in the
+% driver file. In particular, we do not need to set it in in each module, since the
+% |\importmhmodule| macro sets the current repository automatically.
+% 
+% \paragraph{Caveat} if you want to use the \textsf{MathHub} support macros (let's call
+% them mh-variants), then every time a module is imported or a document fragment is
+% included from another repos, the mh-variant |\importmhmodule| must be used, so that the
+% ``current repository'' is set accordingly. To be exact, we only need to use mh-variants,
+% if the imported module or included document fragment use mh-variants.
 %
 % \section{Limitations}\label{sec:limitations}
 % 
@@ -165,7 +277,8 @@ use LaTeXML::Package;
 \newif\if@part\@partfalse
 \DeclareOption{report}{\@parttrue\PassOptionsToClass{\CurrentOption}{omdoc}}
 \DeclareOption{book}{\@parttrue\PassOptionsToClass{\CurrentOption}{omdoc}}
-\DeclareOption*{\PassOptionsToClass{\CurrentOption}{omdoc}\PassOptionsToClass{\CurrentOption}{beamer}}
+\DeclareOption*{\PassOptionsToClass{\CurrentOption}{omdoc}
+                \PassOptionsToClass{\CurrentOption}{beamer}}
 \ProcessOptions
 %</cls>
 %<*ltxml>
@@ -254,10 +367,11 @@ DefRegister('\slideheight'     => Dimension('9cm'));
 %</ltxml>
 %    \end{macrocode}
 % 
-% For course notes, we define the |note| environment to be a no-operation otherwise we declare the |note| environment as
-% a comment via the |comment| package. 
-% 
 % \begin{environment}{note}
+% The |note| environment is used to leave out text in the |slides| mode. It does not have
+% a counterpart in OMDoc. So for course notes, we define the |note| environment to be a
+% no-operation otherwise we declare the |note| environment as a comment via the |comment|
+% package.
 %    \begin{macrocode}
 %<*cls>
 \ifnotes\renewenvironment{note}{\ignorespaces}{}\else\excludecomment{note}\fi
@@ -269,32 +383,39 @@ DefEnvironment('{note}','#body');
 % \end{environment}
 % 
 %
-% the next step is to set up the slide boxes in |article| mode. We set up sizes and
-% provide a box register for the frames and a counter for the slides.
+% We start by giving the {\latexml} binding for the |frame| environment from the |beamer|
+% class. We first set up the slide boxes in |article| mode. We set up sizes and provide a
+% box register for the frames and a counter for the slides.
 % 
 %    \begin{macrocode}
 %<*cls>
 \ifnotes
 \newlength{\slideframewidth}\setlength{\slideframewidth}{1.5pt}
-%</cls>
 %    \end{macrocode}
 % 
 % \begin{environment}{frame}
-%   We redefine the |itemize| environment so that it looks more like the one in |beamer|
-%   with |Jacobs| theme. We create the box around the frame with a later
-%   |\surroundwithmdframed|.
+%   We first define the keys. 
 %    \begin{macrocode}
-%<*cls>
 \addmetakey{frame}{label}
 \addmetakey[yes]{frame}{allowframebreaks}
 \addmetakey{frame}{allowdisplaybreaks}
 \addmetakey[yes]{frame}{fragile}
 \addmetakey[yes]{frame}{shrink}
 \addmetakey[yes]{frame}{squeeze}
+%    \end{macrocode}
+%   We redefine the |itemize| environment so that it looks more like the one in |beamer|
+%   with |Jacobs| theme. We create the box with the |mdframed| environment from the
+%   equinymous package.
+%   Then we define the environment, read them, and construct the slide number and label. 
+%    \begin{macrocode}
 \renewenvironment{frame}[1][]%
 {\metasetkeys{frame}{#1}%
 \stepcounter{slide}\def\@currentlabel{\theslide}%
 \ifx\frame@label\@empty\else\label{\frame@label}\fi
+%    \end{macrocode}
+%   We redefine the |itemize| environment so that it looks more like the one in |beamer|
+%   with |Jacobs| theme. 
+%    \begin{macrocode}
 \def\itemize@level{outer}%
 \def\itemize@outer{outer}%
 \def\itemize@inner{inner}%
@@ -308,6 +429,9 @@ DefEnvironment('{note}','#body');
     {\setlength{\labelsep}{.3em}\setlength{\labelwidth}{.5em}\setlength{\leftmargin}{1.5em}}%
   \edef\itemize@level{\itemize@inner}}%
 {\end{list}}
+%    \end{macrocode}
+% We create the box with the |mdframed| environment from the equinymous package.
+%    \begin{macrocode}
 \begin{mdframed}[linewidth=\slideframewidth,skipabove=1ex,skipbelow=1ex,
 userdefinedwidth=\slidewidth,align=center]\sf}
 {\medskip\miko@slidelabel\end{mdframed}}
@@ -323,35 +447,36 @@ DefEnvironment('{frame}[]',
 %    \end{macrocode}
 % \end{environment}
 % 
-% the next step is to set up the slide boxes in |article| mode.
-% 
+% Now, we need to redefine the frametitle (we are still in course notes mode). 
+% \begin{macro}{\frametitle}
 %    \begin{macrocode}
 %<*cls>
 \renewcommand{\frametitle}[1]{{\Large\bf\sf\color{blue}{#1}}\medskip}
 \fi
-\makeindex
 %</cls>
 %<*ltxml>
 DefConstructor('\frametitle{}',
   "\n<omdoc:metadata><dc:title>#1</dc:title></omdoc:metadata>");
 %</ltxml>
 %    \end{macrocode}
+% \end{macro}
 % 
-% We start by giving the {\latexml} binding for the |frame| environment from the |beamer|
-% class. The |note| environment is used to blend out text in the |slides| mode. It does
-% not have a counterpart in OMDoc.
-%
+% \begin{macro}{\frameimage}
+%   We have to make sure that the width is overwritten\ednote{MK@DG; we need to do that in
+%   the LaTeXML binding as well!} 
 %    \begin{macrocode}
 %<*cls>
-\ifproblems\newenvironment{problems}{}{}\else\excludecomment{problems}\fi
+\newcommand\frameimage[2][]{\def\Gin@ewidth{}\setkeys{Gin}{#1}%
+\ifx\Gen@ewidth\@empty\mycgraphics[#1]{#2}\else\mycgraphics[width=\slidewidth,#1]{#2}\fi}
 %</cls>
 %<*ltxml>
-DefEnvironment('{problems}','#body');
+DefMacro('\frameimage[]{}','\@frameimage{\includegrahics[#1,width=\slidewidth]{#2}});
+DefConstructor('\@frameimage{}',"<omdoc:omgroup layout='slide'>#1</omdoc:omgroup>\n");
 %</ltxml>
 %    \end{macrocode}
-%\ednote{subtitle is difficult to model in DC metadata. I guess that we want to collect
-%the subtitle into dc:title}
-%
+% \end{macro}
+
+% 
 % \subsection{Header and Footer Lines}\label{sec:impl:headfootlines}
 %
 % Now, we set up the infrastructure for the footer line of the slides, we use boxes for
@@ -387,7 +512,6 @@ DefEnvironment('{problems}','#body');
 \newcommand\miko@slidelabel%
 {\vbox to \slidelogoheight{\vss\hbox to \slidewidth%
 {\licensing\hfill\copyrightnotice\hfill\arabic{slide}\hfill\usebox{\slidelogo}}}}
-%</cls>
 %    \end{macrocode}
 % \end{macro}
 % 
@@ -397,7 +521,6 @@ DefEnvironment('{problems}','#body');
 % content-oriented macros for highlighting rather than directly using color markup. 
 % The first thing to to is to adapt the green so that it is dark enough for most beamers
 %    \begin{macrocode}
-%<*cls>
 \AtBeginDocument{\definecolor{green}{rgb}{0,.5,0}\definecolor{purple}{cmyk}{.3,1,0,.17}}
 %    \end{macrocode}
 %
@@ -430,7 +553,7 @@ DefEnvironment('{problems}','#body');
 \def\textwarning{\raisebox{-.05cm}{\pgfuseimage{miko@dbend}}\xspace}
 \pgfdeclareimage[width=2.5em]{miko@big@dbend}{dangerous-bend}
 \def\bigtextwarning{\raisebox{-.05cm}{\pgfuseimage{miko@big@dbend}}\xspace}
-%</cls>b
+%</cls>
 %<*ltxml>
 DefMacro('\textwarning','\@textwarning\xspace');
 DefConstructor('\@textwarning',"");
@@ -599,6 +722,34 @@ DefMacro('\putat{}{}','#2');
 %</ltxml>
 %    \end{macrocode}
 % 
+%
+%    \begin{macrocode}
+%<*cls>
+\ifproblems\newenvironment{problems}{}{}\else\excludecomment{problems}\fi
+%</cls>
+%<*ltxml>
+DefEnvironment('{problems}','#body');
+%</ltxml>
+%    \end{macrocode}
+%
+% \subsection{Support for \textsf{MathHub}}\label{sec:user:mathhub}
+% 
+% \begin{macro}{\mhframeimage}
+%   Use the current value of |\mh@currentrepos| or the value of the |mhrepos| key if it is
+%   given in |\frameimage|.
+%    \begin{macrocode}
+%<ltxml>RawTeX('
+%<*ltxml|cls>
+\addmetakey{Gin}{mhrepos}
+\newcommand\mhframeimage[2][]{\metasetkeys{Gin}{#1}%
+\edef\mh@@repos{\mh@currentrepos}%
+\ifx\Gin@mhrepos\@empty\frameimage[#1]{\MathHub{\mh@currentrepos/source/#2}}%
+\else\frameimage[#1]{\MathHub{\Gin@mhrepos/source/#2}}\fi}
+%</ltxml|cls>
+%<ltxml>');
+%    \end{macrocode}
+% \end{macro}
+%
 % \subsection{Finale}
 %
 % Finally, we set the slide body font to the sans serif, and we terminate the {\latexml}
@@ -617,35 +768,36 @@ DefMacro('\putat{}{}','#2');
 %%% End: 
 % \fi
 
-% LocalWords:  mikoslides dtx beamer omdoc notheorems noamsthm beamerarticle sc
-% LocalWords:  graphicx slidelabel stex latexml amssymb tikz url CPERL  amsmath
-% LocalWords:  LoadClass RequirePackage DefRegister DefEnvironment omgroup rgb
-% LocalWords:  afterDigestBegin setProperty LookupValue DefConstructor hyperref
-% LocalWords:  cmyk lec DefMacro titleslide ttitle RawTeX metadata etoolbox cls
-% LocalWords:  noproblems linkcolor bookmarksopen citecolor urlcolor colorlinks
-% LocalWords:  breaklinks plainpages pdfpagelabels srcref iffalse texttt atwin
-% LocalWords:  mytwocolumns twintoo atwintoo scsys sc hbox raisebox cnxml impl
-% LocalWords:  scshape ttfamily cnxlatex mathml activemath fileversion newpage
-% LocalWords:  maketitle tableofcontents ednote compactitem showmeta showmeta
-% LocalWords:  sectocframes sectocframes textwarning textwarning compactenum eq
-% LocalWords:  includegraphics tracissue printbibliography textsf langle textsf
-% LocalWords:  langle ltxml metakeys newif ifnotes notesfalse ifsectocframes
-% LocalWords:  sectocframesfalse ifproblems problemstrue notestrue marginnote
-% LocalWords:  problemsfalse sectocframestrue mdframed noxcolor newcounter ifx
-% LocalWords:  Hfootnote usetheme tikzinput usepgflibrary usetikzlibrary rhd
-% LocalWords:  tikzmark textcomp newlength slidewidth setlength slidewidth miko
-% LocalWords:  slideheight slideheight renewenvironment excludecomment itenize
-% LocalWords:  slideframewidth slideframewidth surroundwithmdframed addmetakey
-% LocalWords:  allowframebreaks allowdisplaybreaks metasetkeys stepcounter sbox
-% LocalWords:  currentlabel theslide renewcommand scriptsize scriptstyle hspace
-% LocalWords:  medskip linewidth skipabove skipbelow frametitle newenvironment
-% LocalWords:  slidelogoheight newsavebox slidelogo slidelogo jacobs-logo vbox
-% LocalWords:  Attribuition-ShareAlike copyrightnotice footnotesize cclogo vss
-% LocalWords:  cclogo somerights ifcchref cchreffalse ifpackageloaded usebox
-% LocalWords:  cchreftrue usebox newcommand hfill hfill definecolor definecolor
+% LocalWords:  mikoslides dtx beamer omdoc notheorems noamsthm beamerarticle sc Licences
+% LocalWords:  graphicx slidelabel stex latexml amssymb tikz url CPERL  amsmath filedate
+% LocalWords:  LoadClass RequirePackage DefRegister DefEnvironment omgroup rgb frameimage
+% LocalWords:  afterDigestBegin setProperty LookupValue DefConstructor hyperref Tantau's
+% LocalWords:  cmyk lec DefMacro titleslide ttitle RawTeX metadata etoolbox cls emph ugbc
+% LocalWords:  noproblems linkcolor bookmarksopen citecolor urlcolor colorlinks Tantau di
+% LocalWords:  breaklinks plainpages pdfpagelabels srcref iffalse texttt atwin exfig dt
+% LocalWords:  mytwocolumns twintoo atwintoo scsys sc hbox raisebox cnxml impl notesfile
+% LocalWords:  scshape ttfamily cnxlatex mathml activemath fileversion newpage tpp99 dd
+% LocalWords:  maketitle tableofcontents ednote compactitem showmeta showmeta beamerclass
+% LocalWords:  sectocframes sectocframes textwarning textwarning compactenum eq omgroups
+% LocalWords:  includegraphics tracissue printbibliography textsf langle textsf rangle
+% LocalWords:  langle ltxml metakeys newif ifnotes notesfalse ifsectocframes rangle putat
+% LocalWords:  sectocframesfalse ifproblems problemstrue notestrue marginnote frontmatter
+% LocalWords:  problemsfalse sectocframestrue mdframed noxcolor newcounter ifx equinymous
+% LocalWords:  Hfootnote usetheme tikzinput usepgflibrary usetikzlibrary rhd ignorespaces
+% LocalWords:  tikzmark textcomp newlength slidewidth setlength slidewidth miko setkeys
+% LocalWords:  slideheight slideheight renewenvironment excludecomment itenize Gin@ewidth
+% LocalWords:  slideframewidth slideframewidth surroundwithmdframed addmetakey Gen@ewidth
+% LocalWords:  allowframebreaks allowdisplaybreaks metasetkeys stepcounter sbox mpart
+% LocalWords:  currentlabel theslide renewcommand scriptsize scriptstyle hspace mchapter
+% LocalWords:  medskip linewidth skipabove skipbelow frametitle newenvironment msection
+% LocalWords:  slidelogoheight newsavebox slidelogo slidelogo jacobs-logo vbox ifcase
+% LocalWords:  Attribuition-ShareAlike copyrightnotice footnotesize cclogo vss minipage
+% LocalWords:  cclogo somerights ifcchref cchreffalse ifpackageloaded usebox mycgraphics
+% LocalWords:  cchreftrue usebox newcommand hfill hfill definecolor definecolor endinput
 % LocalWords:  defemph notemph stDMemph STpresent textcolor textwarigrening ltx
-% LocalWords:  pgfdeclareimage dbend pgfuseimage xspace titleframe titlepage
-% LocalWords:  titleframewith hline vspace ttitlejoint newbox boxwith boxwith
+% LocalWords:  pgfdeclareimage dbend pgfuseimage xspace titleframe titlepage mycgraphics
+% LocalWords:  titleframewith hline vspace ttitlejoint newbox boxwith boxwith msubsection
 % LocalWords:  putgraphicsat beginomgroup ifnum vfill vfill noindent leavevmode
-% LocalWords:  columnbox lrbox needwrapper unlist omtext bgroup autoclose pgf
-% LocalWords:  mygraphics doctex
+% LocalWords:  columnbox lrbox needwrapper unlist omtext bgroup autoclose pgf readXToken
+% LocalWords:  mygraphics doctex NeedsTeXFormat textbackslash userdefinedwidth
+%  LocalWords:  includegrahics smalltextwarning msubsubsection msubsubsubsection
