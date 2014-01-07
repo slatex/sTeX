@@ -88,8 +88,10 @@ userdefinedwidth=\slidewidth,align=center]\sf}
 {\medskip\miko@slidelabel\end{mdframed}}
 \renewcommand{\frametitle}[1]{{\Large\bf\sf\color{blue}{#1}}\medskip}
 \fi
-\newcommand\frameimage[2][]{\def\Gin@ewidth{}\setkeys{Gin}{#1}%
-\ifx\Gen@ewidth\@empty\mycgraphics[#1]{#2}\else\mycgraphics[width=\slidewidth,#1]{#2}\fi}
+\newcommand\frameimage[2][]{\stepcounter{slide}%
+\def\Gin@ewidth{}\setkeys{Gin}{#1}%
+\ifx\Gen@ewidth\@empty\mycgraphics[#1]{#2}\else\mycgraphics[width=\slidewidth,#1]{#2}\fi
+\par\strut\hfill{\footnotesize Slide \arabic{slide}}}
 
 \newlength{\slidelogoheight}
 \ifnotes\setlength{\slidelogoheight}{.4cm}\else\setlength{\slidelogoheight}{1cm}\fi
