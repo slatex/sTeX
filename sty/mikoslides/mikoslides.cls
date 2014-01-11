@@ -55,7 +55,7 @@
 \RequirePackage{standalone}
 \RequirePackage{textcomp}
 \newcounter{slide}
-\newlength{\slidewidth}\setlength{\slidewidth}{12.5cm}
+\newlength{\slidewidth}\setlength{\slidewidth}{12.3cm}
 \newlength{\slideheight}\setlength{\slideheight}{9cm}
 \ifnotes\renewenvironment{note}{\ignorespaces}{}\else\excludecomment{note}\fi
 \ifnotes
@@ -90,8 +90,10 @@ userdefinedwidth=\slidewidth,align=center]\sf}
 \fi
 \newcommand\frameimage[2][]{\stepcounter{slide}%
 \def\Gin@ewidth{}\setkeys{Gin}{#1}%
+\ifnotes\else\vfill\fi%
 \ifx\Gen@ewidth\@empty\mycgraphics[#1]{#2}\else\mycgraphics[width=\slidewidth,#1]{#2}\fi
-\par\strut\hfill{\footnotesize Slide \arabic{slide}}}
+\par\strut\hfill{\footnotesize Slide \arabic{slide}}%
+\ifnotes\else\vfill\fi}
 
 \newlength{\slidelogoheight}
 \ifnotes\setlength{\slidelogoheight}{.4cm}\else\setlength{\slidelogoheight}{1cm}\fi
