@@ -7,7 +7,7 @@
 %% omdoc.dtx  (with options: `cls')
 %% 
 \NeedsTeXFormat{LaTeX2e}[1999/12/01]
-\ProvidesClass{omdoc}[2012/12/10 v1.1 OMDoc Documents]
+\ProvidesClass{omdoc}[2014/01/12 v1.2 OMDoc Documents]
 \DeclareOption{showmeta}{\PassOptionsToPackage{\CurrentOption}{metakeys}}
 \def\omdoc@class{article}
 \DeclareOption{report}{\def\omdoc@class{report}\PassOptionsToPackage{\CurrentOption}{omdoc}}
