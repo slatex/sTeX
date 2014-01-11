@@ -11,11 +11,13 @@
 \DeclareOption{showmeta}{\PassOptionsToPackage{\CurrentOption}{metakeys}}
 \newif\ifnotes\notesfalse
 \newif\ifsectocframes\sectocframesfalse
+\newif\ifframeimages\frameimagesfalse
 \newif\ifproblems\problemstrue
 \DeclareOption{notes}{\notestrue}
 \DeclareOption{slides}{\notesfalse}
 \DeclareOption{noproblems}{\problemsfalse}
 \DeclareOption{sectocframes}{\sectocframestrue}
+\DeclareOption{frameimages}{\frameimagestrue}
 \newif\if@part\@partfalse
 \DeclareOption{report}{\@parttrue\PassOptionsToClass{\CurrentOption}{omdoc}}
 \DeclareOption{book}{\@parttrue\PassOptionsToClass{\CurrentOption}{omdoc}}
@@ -89,11 +91,13 @@ userdefinedwidth=\slidewidth,align=center]\sf}
 \renewcommand{\frametitle}[1]{{\Large\bf\sf\color{blue}{#1}}\medskip}
 \fi
 \newcommand\frameimage[2][]{\stepcounter{slide}%
+\ifframeimages%
 \def\Gin@ewidth{}\setkeys{Gin}{#1}%
 \ifnotes\else\vfill\fi%
 \ifx\Gen@ewidth\@empty\mycgraphics[#1]{#2}\else\mycgraphics[width=\slidewidth,#1]{#2}\fi
 \par\strut\hfill{\footnotesize Slide \arabic{slide}}%
-\ifnotes\else\vfill\fi}
+\ifnotes\else\vfill\fi%
+\fi}%ifframeimages
 
 \newlength{\slidelogoheight}
 \ifnotes\setlength{\slidelogoheight}{.4cm}\else\setlength{\slidelogoheight}{1cm}\fi

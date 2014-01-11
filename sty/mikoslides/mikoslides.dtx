@@ -115,6 +115,8 @@
 %   frames with section table of contents are produced headers \ednote{document the functionality}
 % \item \DescribeMacro{showmeta}|showmeta|. If this is set, then the metadata keys are
 %   shown (see~\cite{Kohlhase:metakeys:ctan} for details and customization options).
+% \item If the option \DescribeMacro{frameimages}|frameimages| is set, then slide mode
+%   also shows the |\frameimage|-generated frames. 
 % \end{compactitem}
 % 
 % \subsection{Notes and Slides}\label{sec:user:notesslides}
@@ -264,12 +266,14 @@ use LaTeXML::Package;
 %<*cls>
 \DeclareOption{showmeta}{\PassOptionsToPackage{\CurrentOption}{metakeys}}
 \newif\ifnotes\notesfalse
-\newif\ifsectocframes\sectocframesfalse
+\newif\ifsectocframes\sectocframesfalse 
+\newif\ifframeimages\frameimagesfalse 
 \newif\ifproblems\problemstrue
 \DeclareOption{notes}{\notestrue}
 \DeclareOption{slides}{\notesfalse}
 \DeclareOption{noproblems}{\problemsfalse}
 \DeclareOption{sectocframes}{\sectocframestrue}
+\DeclareOption{frameimages}{\frameimagestrue}
 %    \end{macrocode}
 % the next two define the |frontmatter| environment so that the later |\renewcommand| does
 % not lead to trouble.
@@ -467,11 +471,13 @@ DefConstructor('\frametitle{}',
 %    \begin{macrocode}
 %<*cls>
 \newcommand\frameimage[2][]{\stepcounter{slide}%
+\ifframeimages%
 \def\Gin@ewidth{}\setkeys{Gin}{#1}%
 \ifnotes\else\vfill\fi%
 \ifx\Gen@ewidth\@empty\mycgraphics[#1]{#2}\else\mycgraphics[width=\slidewidth,#1]{#2}\fi
 \par\strut\hfill{\footnotesize Slide \arabic{slide}}%
-\ifnotes\else\vfill\fi}
+\ifnotes\else\vfill\fi%
+\fi}%ifframeimages
 %</cls>
 %<*ltxml>
 DefMacro('\frameimage[]{}','\@frameimage{\includegrahics[#1,width=\slidewidth]{#2}}');
@@ -567,15 +573,15 @@ DefConstructor('\@textwarning',"");
 % 
 % \subsection{Front Matter, Titles, etc}
 %
-% We need to redefine the frontmatter macros inherited from the |beamer| class, since
-% there they take an optional argument. 
+% We need to redefine the frontmatter macros inherited from the |beamer| class for
+% LaTeXML, since there they take an optional argument.
 %    \begin{macrocode}
 %<*ltxml>
 DefMacro('\title[]{}', '\@add@frontmatter{ltx:title}{#1}');
 DefMacro('\date[]{}', '\@add@frontmatter{ltx:date}[role=creation]{#1}');
 DefMacro('\author[]{}', sub { andSplit(T_CS('\@author'),$_[1]); });#$
-%    \end{macrocode}
 %</ltxml>
+%    \end{macrocode}
 %
 % Now, we specialize the slide environment that we have implemented above or inherited
 % from |seminar.cls| for some abbreviations, e.g. separator slides and title slides.
