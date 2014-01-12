@@ -159,6 +159,7 @@ userdefinedwidth=\slidewidth,align=center]\sf}
 \end{frame}}
 \fi% ifnotes
 \fi% ifsectocframes
+\expandafter\def\csname Parent2\endcsname{}
 \ifnotes
 \renewenvironment{columns}%
 {\par\noindent\begin{minipage}\slidewidth\centering\leavevmode}%
