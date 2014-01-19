@@ -94,7 +94,7 @@ userdefinedwidth=\slidewidth,align=center]\sf}
 \ifframeimages%
 \def\Gin@ewidth{}\setkeys{Gin}{#1}%
 \ifnotes\else\vfill\fi%
-\ifx\Gin@ewidth\@empty\mycgraphics[#1]{#2}\else\mycgraphics[width=\slidewidth,#1]{#2}\fi
+\ifx\Gin@ewidth\@empty\mycgraphics[width=\slidewidth,#1]{#2}\else\mycgraphics[#1]{#2}\fi
 \par\strut\hfill{\footnotesize Slide \arabic{slide}}%
 \ifnotes\else\vfill\fi%
 \fi}%ifframeimages
