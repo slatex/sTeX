@@ -14,6 +14,7 @@
 \RequirePackage{amstext}
 \RequirePackage{modules}
 \RequirePackage{statements}
+\RequirePackage{sproof}
 \RequirePackage{cmath}
 \RequirePackage{presentation}
 \RequirePackage{amsfonts}
