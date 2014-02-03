@@ -31,9 +31,8 @@
 \RequirePackage{mdframed}
 \RequirePackage[notheorems,noamsthm,noxcolor]{beamerarticle}
 \else
-\if@part% report or book class
-\renewenvironment{frontmatter}{}{}
-\fi
+\newenvironment{frontmatter}{}{}
+\newenvironment{backmatter}{}{}
 \LoadClass[notheorems,noamsthm,10pt]{beamer}
 \newcounter{Item}
 \newcounter{paragraph}
