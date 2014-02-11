@@ -31,8 +31,6 @@
 \RequirePackage{mdframed}
 \RequirePackage[notheorems,noamsthm,noxcolor]{beamerarticle}
 \else
-\newenvironment{frontmatter}{}{}
-\newenvironment{backmatter}{}{}
 \LoadClass[notheorems,noamsthm,10pt]{beamer}
 \newcounter{Item}
 \newcounter{paragraph}
