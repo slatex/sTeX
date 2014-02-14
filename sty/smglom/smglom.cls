@@ -20,6 +20,7 @@
 \RequirePackage{presentation}
 \RequirePackage{amsfonts}
 \RequirePackage[english,ngerman]{babel}
+\RequirePackage{smglom}
 \newcommand\hypernym[3][]{#2 is a hypernym of #3}
 \newcommand\hyponym[3][]{#2 is a hyponym of  #3}
 \newcommand\meronym[3][]{#2 is a meronym of #3}
