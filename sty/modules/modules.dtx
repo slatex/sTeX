@@ -821,6 +821,8 @@
 %   module.
 %    \begin{macrocode}
 \define@key{module}{id}{%
+% \@ifundefined{module@defs@#1}{}{\PackageError{modules}%
+%   {The module name #1 has already been used in this scope; please rename it!}}%
 \edef\this@module{\expandafter\noexpand\csname module@defs@#1\endcsname}%
 \global\@namedef{module@defs@#1}{}%
 \ifmod@qualified
@@ -1295,7 +1297,8 @@
 %    \begin{macrocode}
 \def\mod@simplify#1{\expandafter\mod@simpl#1/\relax}
 %    \end{macrocode}
-% It is based on the |\mod@simpl| macro\ednote{what does the mod@blaaa do?}
+% It is based on the |\mod@simpl| macro\ednote{what does the mod@blaaa do?; it seems to be
+% a switch that checks if mod@savedprefix has been saved.}
 %    \begin{macrocode}
 \def\mod@simpl#1/#2\relax{\def\@second{#2}%
 \ifx\mod@blaaaa\@empty\edef\mod@savedprefix{}\def\mod@blaaaa{aaa}\fi%
@@ -1309,19 +1312,19 @@
 %\message{mod@simplhelp: first=\@first, second=\@second, third=\@third, result=\mod@savedprefix.}
 \ifx\@third\@empty% base case
 \ifx\@second\mod@updir\else%
-\ifx\mod@second\@empty\edef\mod@savedprefix{\mod@savedprefix#1}%
+\ifx\@second\@empty\edef\mod@savedprefix{\mod@savedprefix#1}%
 \else\edef\mod@savedprefix{\mod@savedprefix#1/#2}%
-\fi%
-\fi%
-\else%
+\fi% @second empty
+\fi% @second = ..
+\else% non-base case: @third non-empty
 \ifx\@first\mod@updir%
 \edef\mod@savedprefix{\mod@savedprefix#1/}\mod@simplhelp#2/#3\relax%
-\else%
+\else% @first != ..
 \ifx\@second\mod@updir\mod@simpl#3\relax%
 \else\edef\mod@savedprefix{\mod@savedprefix#1/}\mod@simplhelp#2/#3\relax%
-\fi%
-\fi%
-\fi}%
+\fi% @first
+\fi% @first = ..
+\fi}% non-base case
 %    \end{macrocode}
 % \end{macro}
 %
@@ -1364,8 +1367,9 @@
 % \end{macro}
 %
 % \begin{macro}{\mod@update}
-%     This macro provides special append functionality. It takes a string and appends it
-%     to the expansion of the |\mod@reg| macro in the following way:  |string@\mod@reg|.
+%   This macro provides special append functionality. |\mod@update{|\meta{string}|}| takes
+%   appends \meta{string} to the expansion of the |\mod@reg| macro in the following way:
+%   \meta{string}|@\mod@reg|.
 %    \begin{macrocode}
 \def\mod@update#1{\ifx\mod@reg\@empty\xdef\mod@reg{#1}%
 \else\xdef\mod@reg{#1@\mod@reg}\fi}
@@ -1487,14 +1491,14 @@
 % \begin{macro}{\requiremodules}
 %   this macro loads the modules in a file. It does quite a lot of work to make sure that
 %   they are only loaded once (actually this does not quite work so they are loaded only
-%   twice). |\requiremodules{|\meta{file}|}|The macro also deposits a call to
+%   twice). |\requiremodules{|\meta{file}|}| also deposits a call to
 %   |\@requiremodules{|\meta{file}|}| to the |aux| file to make sure that the semantic
-%   macros are already loaded for the table of contents. 
+%   macros are already loaded for the table of contents.
 %    \begin{macrocode}
 \newcommand\requiremodules[1]{%
 {\mod@showfalse% save state and ensure silence while reading sms
 \mod@updatedpre{#1}% add the new file to the already existing path
-\let\mod@savedprefix\mod@prefix% add the path to the new file to the prefix
+\let\mod@savedprefix\mod@prefix% add the path of the new file to the prefix
 \mod@updatedpost{#1}%
 \def\mod@blaaaa{}% macro used in the simplify function (remove .. from the prefix)
 \mod@simplify{\mod@savedprefix}% remove |xxx/..| from the path (in case it exists)
@@ -1506,6 +1510,7 @@
 \ifaux@req\protected@write\@auxout{}{\string\@requiremodules{\mod@savedprefix}}\fi%
 \fi% ifx
 \fi}}%  ifmodules
+%    \end{macrocode}
 % \end{macro}
 % 
 % \begin{macro}{\@requiremodules}
@@ -1581,7 +1586,9 @@
 %   module signatures) for module bookkeeping and adds presentation (a heading and a box)
 %   if the |showmods| option is set.
 %    \begin{macrocode}
-\newenvironment{view}[3][]{\begin{@view}[#1]{#2}{#3}\view@heading{#2}{#3}}{\end{@view}\ignorespaces}
+\newenvironment{view}[3][]%
+{\begin{@view}[#1]{#2}{#3}\view@heading{#2}{#3}}
+{\end{@view}\ignorespaces}
 \ifmod@show\surroundwithmdframed{view}\fi
 %    \end{macrocode}
 % \end{environment}
@@ -1590,7 +1597,7 @@
 %   The |@view| does the actual bookkeeping at the module level.
 %    \begin{macrocode}
 \newenvironment{@view}[3][]{% keys, from, to
-\metasetkeys{view}{#1}\sref@target%
+metasetkeys{view}{#1}\sref@target%
 \@importmodule[\view@from]{#2}\@importmodule[\view@to]{#3}}
 {}
 %    \end{macrocode}
@@ -1599,7 +1606,9 @@
 % \begin{environment}{viewsketch}
 %   The |viewsketch| environment behaves like |view|, but only has text contents.
 %    \begin{macrocode}
-\newenvironment{viewsketch}[3][]{\begin{@view}[#1]{#2}{#3}\view@heading{#2}{#3}}{\end{@view}}
+\newenvironment{viewsketch}[3][]%
+{\begin{@view}[#1]{#2}{#3}\view@heading{#2}{#3}}
+{\end{@view}}
 \ifmod@show\surroundwithmdframed{viewsketch}\fi
 %    \end{macrocode}
 % \end{environment}
@@ -1708,10 +1717,30 @@
 % For the {\LaTeX} side, we just make |\notationdef| invisible.
 %    \begin{macrocode}
 \def\notationdef[#1]#2#3{}
-%</package>
 %    \end{macrocode}
 % \end{macro}
 % 
+% The code for avoiding duplicate loading is very very complex and brittle (and does not
+% uite work). Therefore I would like to replace it with something better. It has two
+% parts: 
+% \begin{itemize}
+% \item keeping a registry of file paths, and only loading when the file path has not been
+%   mentioned in that, and
+% \item dealing with relative paths (for that we have to string together prefixes and pass
+%   them one)
+% \end{itemize}
+% For the first problem, there is a ery nice and efficient solution using |etoolbox| which
+% I document below. If I decide to do away with relative paths, this would be it.
+% 
+% \begin{macro}{\reqmodules}
+%   We keep a file path registry |\@register| and only load a module signature, if it is
+%   not in there.
+%    \begin{macrocode}
+\newcommand\requmodules[1]{\ifinlist{#1}{\@register}{}{\listadd\@register{#1}\input{#1.sms}}}
+%</package>
+%    \end{macrocode}
+% \end{macro}
+% for the 
 % \Finale
 \endinput
 %%% Local Variables: 
