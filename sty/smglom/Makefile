@@ -1,8 +1,8 @@
 PREFIX = ..
-DTX.cls.base = smglo
+DTX.cls.base = smglom
 TDSCOLL = stex
 CTANPREFIX = /sty
-PACKAGE = smglo
+PACKAGE = smglom
 
 include $(PREFIX)/make/Makefile.vars
 include $(PREFIX)/make/Makefile.in
