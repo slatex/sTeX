@@ -1737,10 +1737,51 @@ metasetkeys{view}{#1}\sref@target%
 %   not in there.
 %    \begin{macrocode}
 \newcommand\requmodules[1]{\ifinlist{#1}{\@register}{}{\listadd\@register{#1}\input{#1.sms}}}
+%    \end{macrocode}
+% \end{macro}
+% for the relative paths, I have to find out the directory prefix and the file name. Here
+% are two helper functions, which work well, but do not survive being called in an
+% |\edef|, which is what we would need. First some preparation: we set up a path parser
+%    \begin{macrocode}
+\newcounter{@pl}
+\DeclareListParser*{\forpathlist}{/}
+%    \end{macrocode}
+%
+% \begin{macro}{\file@name}
+%   |\file@name| selects the filename of the file path: |\file@name{/foo/bar/baz.tex}| is
+%   |baz.tex|.
+%    \begin{macrocode}
+\def\file@name#1{\setcounter{@pl}{0}%
+\forpathlist{\stepcounter{@pl}\listadd\@pathlist}{#1}
+\def\do##1{\ifnumequal{\value{@pl}}{1}{##1}{\addtocounter{@pl}{-1}}}
+\dolistloop{\@pathlist}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\file@path}
+%   |\file@path| selects the path of the file path |\file@path{/foo/bar/baz.tex}| is
+%   |/foo/bar|
+%    \begin{macrocode}
+\def\file@path#1{\setcounter{@pl}{0}%
+\forpathlist{\stepcounter{@pl}\listadd\@pathlist}{#1}
+\def\do##1{\ifnumequal{\value{@pl}}{1}{}{\addtocounter{@pl}{-1}%
+\ifnumequal{\value{@pl}}{1}{##1}{##1/}}}
+\dolistloop{\@pathlist}}
 %</package>
 %    \end{macrocode}
 % \end{macro}
-% for the 
+% what I would really like to do in this situation is 
+% \begin{macro}{\requiremodules}
+%   this does not work, since the |\file@name| and |\file@path| do not survive the
+%   |\edef|.
+%    \begin{macrocode}
+\def\@currentprefix{}
+\def\requiremodules#1{\def\@pref{\file@path{#1}}%
+\ifx\@pref\@empty\else\xdef\@currentprefix{\@currentprefix/\@pref}\fi%
+\edef\@input@me{\@currentprefix/\file@name{#1}}
+\message{requiring \@input@me}\reqmodule{\@input@me}}
+%    \end{macrocode}
+% \end{macro}
 % \Finale
 \endinput
 %%% Local Variables: 

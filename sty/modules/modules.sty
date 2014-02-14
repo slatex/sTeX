@@ -191,19 +191,19 @@
 \def\mod@simplhelp#1/#2/#3\relax{\def\@first{#1}\def\@second{#2}\def\@third{#3}%
 \ifx\@third\@empty% base case
 \ifx\@second\mod@updir\else%
-\ifx\mod@second\@empty\edef\mod@savedprefix{\mod@savedprefix#1}%
+\ifx\@second\@empty\edef\mod@savedprefix{\mod@savedprefix#1}%
 \else\edef\mod@savedprefix{\mod@savedprefix#1/#2}%
-\fi%
-\fi%
-\else%
+\fi% @second empty
+\fi% @second = ..
+\else% non-base case: @third non-empty
 \ifx\@first\mod@updir%
 \edef\mod@savedprefix{\mod@savedprefix#1/}\mod@simplhelp#2/#3\relax%
-\else%
+\else% @first != ..
 \ifx\@second\mod@updir\mod@simpl#3\relax%
 \else\edef\mod@savedprefix{\mod@savedprefix#1/}\mod@simplhelp#2/#3\relax%
-\fi%
-\fi%
-\fi}%
+\fi% @first
+\fi% @first = ..
+\fi}% non-base case
 \newcommand\defpath[3][]{\expandafter\newcommand\csname #2\endcsname[1]{#3/##1}}
 \newif\ifmodules
 \gdef\mod@reg{}
@@ -245,7 +245,7 @@
 \newcommand\requiremodules[1]{%
 {\mod@showfalse% save state and ensure silence while reading sms
 \mod@updatedpre{#1}% add the new file to the already existing path
-\let\mod@savedprefix\mod@prefix% add the path to the new file to the prefix
+\let\mod@savedprefix\mod@prefix% add the path of the new file to the prefix
 \mod@updatedpost{#1}%
 \def\mod@blaaaa{}% macro used in the simplify function (remove .. from the prefix)
 \mod@simplify{\mod@savedprefix}% remove |xxx/..| from the path (in case it exists)
@@ -289,13 +289,17 @@
 \ifx\view@title\@empty\quad\else\quad(\view@title)\fi%
 \par\noindent%
 \fi\ignorespaces}%ifmod@show
-\newenvironment{view}[3][]{\begin{@view}[#1]{#2}{#3}\view@heading{#2}{#3}}{\end{@view}\ignorespaces}
+\newenvironment{view}[3][]%
+{\begin{@view}[#1]{#2}{#3}\view@heading{#2}{#3}}
+{\end{@view}\ignorespaces}
 \ifmod@show\surroundwithmdframed{view}\fi
 \newenvironment{@view}[3][]{% keys, from, to
-\metasetkeys{view}{#1}\sref@target%
+metasetkeys{view}{#1}\sref@target%
 \@importmodule[\view@from]{#2}\@importmodule[\view@to]{#3}}
 {}
-\newenvironment{viewsketch}[3][]{\begin{@view}[#1]{#2}{#3}\view@heading{#2}{#3}}{\end{@view}}
+\newenvironment{viewsketch}[3][]%
+{\begin{@view}[#1]{#2}{#3}\view@heading{#2}{#3}}
+{\end{@view}}
 \ifmod@show\surroundwithmdframed{viewsketch}\fi
 \newcommand\importmhmodule[3][]{\def\@repos{#1}%
 \edef\mh@@repos{\mh@currentrepos}%
@@ -328,6 +332,23 @@
 \def\@csymdef[#1]#2{\@ifnextchar[{\@@csymdef[#1]{#2}}{\@@csymdef[#1]{#2}[0]}}
 \def\@@csymdef[#1]#2[#3]#4#5{\@@symdef[#1]{#2}[#3]{#4}}
 \def\notationdef[#1]#2#3{}
+\newcommand\requmodules[1]{\ifinlist{#1}{\@register}{}{\listadd\@register{#1}\input{#1.sms}}}
+\newcounter{@pl}
+\DeclareListParser*{\forpathlist}{/}
+\def\file@name#1{\setcounter{@pl}{0}%
+\forpathlist{\stepcounter{@pl}\listadd\@pathlist}{#1}
+\def\do##1{\ifnumequal{\value{@pl}}{1}{##1}{\addtocounter{@pl}{-1}}}
+\dolistloop{\@pathlist}}
+\def\file@path#1{\setcounter{@pl}{0}%
+\forpathlist{\stepcounter{@pl}\listadd\@pathlist}{#1}
+\def\do##1{\ifnumequal{\value{@pl}}{1}{}{\addtocounter{@pl}{-1}%
+\ifnumequal{\value{@pl}}{1}{##1}{##1/}}}
+\dolistloop{\@pathlist}}
+\def\@currentprefix{}
+\def\requiremodules#1{\def\@pref{\file@path{#1}}%
+\ifx\@pref\@empty\else\xdef\@currentprefix{\@currentprefix/\@pref}\fi%
+\edef\@input@me{\@currentprefix/\file@name{#1}}
+\message{requiring \@input@me}\reqmodule{\@input@me}}
 \endinput
 %%
 %% End of file `modules.sty'.
