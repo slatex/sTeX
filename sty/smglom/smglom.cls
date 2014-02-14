@@ -13,6 +13,7 @@
 \LoadClass{omdoc}
 \RequirePackage{amstext}
 \RequirePackage{modules}
+\RequirePackage{dcm}
 \RequirePackage{statements}
 \RequirePackage{sproof}
 \RequirePackage{cmath}
