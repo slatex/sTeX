@@ -32,7 +32,7 @@
 <xsl:strip-space elements="*"/>
 
 <!-- these parameters set the paths to the special latexml cds. The default is made so that it works for GenCS -->
-<xsl:param name="smglom" select="'smglom/smglom/source"/>
+<xsl:param name="smglom" select="'smglom/smglom/source'"/>
 <xsl:param name="latexmlcds" select="'../../../slides/extcds/stex'"/>
 
 <!-- get rid of the list OMAs LaTeXML uses -->
