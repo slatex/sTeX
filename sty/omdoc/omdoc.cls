@@ -23,6 +23,22 @@
 \let\orig@document=\document
 \srefaddidkey{document}
 \renewcommand{\document}[1][]{\metasetkeys{document}{#1}\orig@document}
+\ifclass@book
+\renewenvironment{frontmatter}
+{\@frontmattertrue\cleardoublepage\@mainmatterfalse\pagenumbering{roman}}
+{\@frontmatterfalse\setcounter{page}{1}\pagenumbering{arabic}}
+\else
+\newenvironment{frontmatter}
+{\@frontmattertrue\pagenumbering{roman}}
+{\@frontmatterfalse\setcounter{page}{1}\pagenumbering{arabic}}
+\fi
+\ifclass@book
+\renewenvironment{backmatter}
+{\cleardoublepage\@mainmatterfalse\@backmattertrue}
+{\@backmatterfalse}
+\else
+\newenvironment{backmatter}{\@backmattertrue}{\@backmatterfalse}
+\fi
 \endinput
 %%
 %% End of file `omdoc.cls'.
