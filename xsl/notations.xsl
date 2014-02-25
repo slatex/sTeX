@@ -45,7 +45,7 @@
 </xsl:template>
 
 <xsl:template match="ltx:text" mode="rendering">
-  <text><xsl:value-of select="text()"/></text>
+  <omdoc:text><xsl:value-of select="text()"/></omdoc:text>
 </xsl:template>
 
 <!-- Template to recover the appropriate argument precedence" -->
@@ -74,7 +74,7 @@
       <xsl:with-param name="precattr" select="ancestor::omdoc:rendering[1]/@argprec"/>
     </xsl:call-template>
   </xsl:variable>
-  <render name="arg{substring-after(.,'arg:')}">
+  <omdoc:render name="arg{substring-after(.,'arg:')}">
     <xsl:choose>
       <xsl:when test="string($precedence)">
 	<xsl:attribute name="precedence"><xsl:value-of select="$precedence"/></xsl:attribute>
@@ -84,7 +84,7 @@
       </xsl:when>
       <xsl:otherwise/>
     </xsl:choose>
-  </render>
+  </omdoc:render>
 </xsl:template>
 
 
@@ -92,9 +92,9 @@
 <xsl:template match="omdoc:style[@format='pmml']">
     <xsl:copy>
       <xsl:apply-templates select="@*"/>
-      <element name="mrow" ns="http://www.w3.org/1998/Math/MathML">
+      <omdoc:element name="mrow" ns="http://www.w3.org/1998/Math/MathML">
 	<xsl:apply-templates/>
-      </element>
+      </omdoc:element>
     </xsl:copy>
 </xsl:template>
 
@@ -109,22 +109,22 @@
 
 
 <xsl:template match="text()" mode="elementize">
-  <text><xsl:value-of select="."/></text>
+  <omdoc:text><xsl:value-of select="."/></omdoc:text>
 </xsl:template>
 
 <xsl:template match="ltx:text" mode="elementize">
-  <element name="mtext" ns="http://www.w3.org/1998/Math/MathML">
+  <omdoc:element name="mtext" ns="http://www.w3.org/1998/Math/MathML">
     <xsl:value-of select="."/>
-  </element>
+  </omdoc:element>
 </xsl:template>
 
 <xsl:template match="m:*" mode="elementize">
-  <element name="{local-name()}" ns="{namespace-uri()}">
+  <omdoc:element name="{local-name()}" ns="{namespace-uri()}">
     <xsl:for-each select="@*">
       <attribute name="{local-name()}" select="'{.}'"/>
     </xsl:for-each>
     <xsl:apply-templates mode="elementize"/>
-  </element>
+  </omdoc:element>
 </xsl:template>
 
 </xsl:stylesheet>

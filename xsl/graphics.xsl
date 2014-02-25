@@ -22,8 +22,8 @@
      Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 -->
 <xsl:stylesheet version="1.0"
-  xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
   xmlns="http://omdoc.org/ns"
+  xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
   xmlns:omdoc="http://omdoc.org/ns"
   xmlns:xhtml="http://www.w3.org/1999/xhtml"
   xmlns:ltx="http://dlmf.nist.gov/LaTeXML"
@@ -43,13 +43,13 @@
 </xsl:template> -->
 
 <xsl:template match="omdoc:tikz">
-  <omlet action="display" data="#{generate-id()}" show="embed" style="{translate(@options,'=',':')}">
+  <omdoc:omlet action="display" data="#{generate-id()}" show="embed" style="{translate(@options,'=',':')}">
     <xsl:apply-templates select="@*"/>
-  </omlet>
+  </omdoc:omlet>
 </xsl:template>
 
 <xsl:template match="ltx:figure[ltx:graphics]">
-  <omlet action="display" data="#{generate-id(ltx:graphics)}" show="embed" class="float-figure-{@placement}">
+  <omdoc:omlet action="display" data="#{generate-id(ltx:graphics)}" show="embed" class="float-figure-{@placement}">
    <xsl:if test="@label">
      <xsl:attribute name="xml:id"><xsl:value-of select="@label"/></xsl:attribute> 
    </xsl:if>
@@ -57,13 +57,13 @@
      <xsl:attribute name="style"><xsl:value-of select="translate(ltx:graphics/@options,'=',':')"/></xsl:attribute> 
    </xsl:if>
    <xsl:if test="ltx:caption/*|ltx:caption/text()">
-     <metadata><dc:title><xsl:apply-templates select="ltx:caption/*|ltx:caption/text()"/></dc:title></metadata>
+     <omdoc:metadata><dc:title><xsl:apply-templates select="ltx:caption/*|ltx:caption/text()"/></dc:title></omdoc:metadata>
    </xsl:if>
-  </omlet>
+  </omdoc:omlet>
 </xsl:template>
 
 <xsl:template match="ltx:graphics" mode="extract-data">
-  <private>
+  <omdoc:private>
     <xsl:attribute name="xml:id"><xsl:value-of select="generate-id()"/></xsl:attribute>
     <xsl:variable name="candidates" select="str:tokenize(@candidates,',')"/>
     <xsl:variable name="graphic" select="@graphic"/>
@@ -100,9 +100,9 @@
 	  </xsl:otherwise>
 	</xsl:choose>
       </xsl:variable>
-      <data format="{$type}" href="{$graphic}.{.}"/>
+      <omdoc:data format="{$type}" href="{$graphic}.{.}"/>
     </xsl:for-each>
-  </private>
+  </omdoc:private>
 </xsl:template>
 
 <!--  we do not need to special-case this any more
@@ -115,9 +115,9 @@
 -->
 
 <xsl:template match="omdoc:tikz|ltx:tikz" mode="extract-data">
-  <private>
+  <omdoc:private>
     <xsl:attribute name="xml:id"><xsl:value-of select="generate-id()"/></xsl:attribute>
-    <data format="tikz"><xsl:value-of select="."/></data>
-  </private>
+    <omdoc:data format="tikz"><xsl:value-of select="."/></omdoc:data>
+  </omdoc:private>
 </xsl:template>
 </xsl:stylesheet>

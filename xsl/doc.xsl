@@ -41,11 +41,11 @@
 <xsl:template match="omdoc:omdoc">
   <xsl:copy>
     <xsl:apply-templates select="@*"/>
-    <metadata>
+    <omdoc:metadata>
       <xsl:apply-templates select="ltx:title|ltx:creator|
 				   ltx:subtitle|ltx:date|
 				   ltx:abstract" mode="frontmatter"/>
-    </metadata>
+    </omdoc:metadata>
     <xsl:apply-templates select="*[local-name()!='title' and 
 				   local-name()!='creator' and 
 				   local-name()!='subtitle' and 
@@ -78,20 +78,20 @@
 <!-- we directly access the content of titles -->
 <xsl:template match="ltx:title"/>
 <xsl:template match="ltx:part|ltx:chapter|ltx:part|ltx:section|ltx:subsection|ltx:subsubsection|ltx:paragraph|ltx:subparagraph">
-  <omgroup layout="sectioning" class="{local-name()}">
+  <omdoc:omgroup layout="sectioning" class="{local-name()}">
     <xsl:apply-templates select="@*"/>
-    <metadata>
+    <omdoc:metadata>
       <dc:title><xsl:apply-templates select="ltx:title/*|ltx:title/text()"/></dc:title>
-    </metadata>
+    </omdoc:metadata>
     <xsl:apply-templates/>
-  </omgroup>
+  </omdoc:omgroup>
 </xsl:template>
 
 <!-- get rid of the mock-omdoc sectioning commands -->
 <xsl:template match="omdoc:part|omdoc:chapter|omdoc:section|omdoc:subsection|omdoc:subsubsection|omdoc:paragraph|omdoc:subparagraph">
-  <omgroup class="{local-name()}">
+  <omdoc:omgroup class="{local-name()}">
     <xsl:apply-templates select="@*|*"/>
-  </omgroup>
+  </omdoc:omgroup>
 </xsl:template>
 
 <xsl:template match="ltx:para[omdoc:omtext]">
@@ -99,7 +99,7 @@
 </xsl:template>
 
 <xsl:template match="ltx:para">
-  <omtext><xsl:apply-templates select="@*"/><CMP><xsl:apply-templates/></CMP></omtext>
+  <omdoc:omtext><xsl:apply-templates select="@*"/><omdoc:CMP><xsl:apply-templates/></omdoc:CMP></omdoc:omtext>
 </xsl:template>
 
 <!-- not needed any more
@@ -116,20 +116,20 @@
 <!-- for citations we just extract the bibrefs at the moment. -->
 <xsl:template match="ltx:cite"><xsl:apply-templates select="ltx:bibref"/></xsl:template>
 <xsl:template match="ltx:bibref">
-  <citation><xsl:copy-of select="@bibrefs"/></citation>
+  <omdoc:citation><xsl:copy-of select="@bibrefs"/></omdoc:citation>
 </xsl:template>
 
 <xsl:template match="ltx:break"><xhtml:br/></xsl:template>
 
 <!-- for LaTeXML references from \url -->
 <xsl:template match="ltx:ref[@class='url']">
-  <link href="{@href}" class="url">
+  <omdoc:link href="{@href}" class="url">
     <xsl:value-of select="ltx:text"/>
-  </link>
+  </omdoc:link>
 </xsl:template>
 
 <xsl:template match="ltx:ref[@labelref]">
-  <ref type="cite" xref="{@labelref}"/>
+  <omdoc:ref type="cite" xref="{@labelref}"/>
 </xsl:template>
 
 </xsl:stylesheet>

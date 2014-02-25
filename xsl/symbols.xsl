@@ -32,7 +32,7 @@
 <xsl:strip-space elements="*"/>
 
 <!-- these parameters set the paths to the special latexml cds. The default is made so that it works for GenCS -->
-<xsl:param name="smglom" select="'../../../smglo/sTeX'"/>
+<xsl:param name="smglom" select="'smglom/smglom/source"/>
 <xsl:param name="latexmlcds" select="'../../../slides/extcds/stex'"/>
 
 <!-- get rid of the list OMAs LaTeXML uses -->
@@ -44,32 +44,32 @@
 <!-- we have a set of special CDs that correspond to the ones latexml postulates -->
 <!-- they need to be imported whereever necessary -->
 <xsl:template match="omdoc:theory">
-  <theory>
+  <omdoc:theory>
     <xsl:apply-templates select="@*"/>
     <xsl:if test="//om:OMS[@cd='latexml' and @name='multirelation']">
-      <imports from="{$latexmlcds}/multirel.omdoc#multirel"/>
+      <omdoc:imports from="{$latexmlcds}/multirel#multirel"/>
     </xsl:if>
     <xsl:if test="//om:OMS[@cd='latexml' and 
 		            (@name='times' or
 		             @name='divide' or
 		             @name='plus' or
 		             @name='minus')]">
-      <imports from="{$smglom}/arithmetics.omdoc#arithmetics"/>
+      <omdoc:imports from="{$smglom}/arithmetics#arithmetics"/>
     </xsl:if>
     <xsl:if test="//om:OMS[@cd='latexml' and 
 		            (@name='greater-than' or
  		             @name='less-than' or
 		             @name='greater-than-or-equals' or
 		             @name='less-than-or-equals')]">
-      <imports from="{$smglom}/numbers-orders.omdoc#numbers-orders"/>
+      <omdoc:imports from="{$smglom}/numbers-orders#numbers-orders"/>
     </xsl:if>
     <xsl:if test="//om:OMS[@cd='latexml' and 
 		            (@name='not-equals' or
  		             @name='equals')]">
-      <imports from="{$smglom}/equal.omdoc#equal"/>
+      <omdoc:imports from="{$smglom}/equal#equal"/>
     </xsl:if>
     <xsl:apply-templates/>
-  </theory>
+  </omdoc:theory>
 </xsl:template>
 
 <!-- and we need to convert the symbols -->
