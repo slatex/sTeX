@@ -33,7 +33,6 @@
 
 <!-- these parameters set the paths to the special latexml cds. The default is made so that it works for GenCS -->
 <xsl:param name="smglom" select="'smglom/smglom/source'"/>
-<xsl:param name="latexmlcds" select="'../../../slides/extcds/stex'"/>
 
 <!-- get rid of the list OMAs LaTeXML uses -->
 <xsl:template match="om:OMA[om:OMS[position()=1 and @name='list' and @cd='latexml']]">
@@ -47,7 +46,7 @@
   <omdoc:theory>
     <xsl:apply-templates select="@*"/>
     <xsl:if test="//om:OMS[@cd='latexml' and @name='multirelation']">
-      <omdoc:imports from="{$latexmlcds}/multirel#multirel"/>
+      <omdoc:imports from="{$smglom}/multirel#multirel"/>
     </xsl:if>
     <xsl:if test="//om:OMS[@cd='latexml' and 
 		            (@name='times' or
