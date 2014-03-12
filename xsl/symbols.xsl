@@ -33,6 +33,7 @@
 
 <!-- these parameters set the paths to the special latexml cds. The default is made so that it works for GenCS -->
 <xsl:param name="smglom" select="'smglom/smglom/source'"/>
+<xsl:param name="mv" select="'smglom/mv/source'"/>
 
 <!-- get rid of the list OMAs LaTeXML uses -->
 <xsl:template match="om:OMA[om:OMS[position()=1 and @name='list' and @cd='latexml']]">
@@ -65,7 +66,7 @@
     <xsl:if test="//om:OMS[@cd='latexml' and 
 		            (@name='not-equals' or
  		             @name='equals')]">
-      <omdoc:imports from="{$smglom}/equal#equal"/>
+      <omdoc:imports from="{$mv}/equal#equal"/>
     </xsl:if>
     <xsl:apply-templates/>
   </omdoc:theory>
