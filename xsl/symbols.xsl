@@ -46,26 +46,29 @@
 <xsl:template match="omdoc:theory">
   <omdoc:theory>
     <xsl:apply-templates select="@*"/>
-    <xsl:if test="//om:OMS[@cd='latexml' and @name='multirelation']">
+    <xsl:if test="//om:OMS[@cd='latexml' and @name='multirelation' and
+		                           not(ancestor::omdoc:notation)]">
       <omdoc:imports from="{$smglom}/multirel#multirel"/>
     </xsl:if>
     <xsl:if test="//om:OMS[@cd='latexml' and 
 		            (@name='times' or
 		             @name='divide' or
 		             @name='plus' or
-		             @name='minus')]">
+		             @name='minus')
+			     and not(ancestor::omdoc:notation)]">
       <omdoc:imports from="{$smglom}/arithmetics#arithmetics"/>
     </xsl:if>
     <xsl:if test="//om:OMS[@cd='latexml' and 
 		            (@name='greater-than' or
  		             @name='less-than' or
 		             @name='greater-than-or-equals' or
-		             @name='less-than-or-equals')]">
+		             @name='less-than-or-equals')
+			      and not(ancestor::omdoc:notation)]">
       <omdoc:imports from="{$smglom}/numbers-orders#numbers-orders"/>
     </xsl:if>
     <xsl:if test="//om:OMS[@cd='latexml' and 
 		            (@name='not-equals' or
- 		             @name='equals')]">
+ 		             @name='equals') and not(ancestor::omdoc:notation)]">
       <omdoc:imports from="{$mv}/equal#equal"/>
     </xsl:if>
     <xsl:apply-templates/>
