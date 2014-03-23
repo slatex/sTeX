@@ -71,13 +71,20 @@ DefConstructor('\includeproblem OptionalKeyVals:prob Semiverbatim',
 Tag('omdoc:exercise',afterOpen=>\&numberIt);
 Tag('omdoc:solution',afterOpen=>\&numberIt);
 Tag('omdoc:hint',afterOpen=>\&numberIt);
-RawTeX('
-\newcommand\includemhproblem[2][]{\metasetkeys{inclprob}{#1}%
-\edef\mh@@repos{\mh@currentrepos}%
-\ifx\inclprob@mhrepos\@empty\else\mhcurrentrepos\inclprob@mhrepos\fi%
-\input{\MathHub{\mh@currentrepos/source/#2}}%
-\mhcurrentrepos\mh@@repos\clear@inclprob@keys}
-');
+sub includemhproblem {
+  my ($gullet,$keyval,$arg2) = @_;
+  my $repo_path;
+  if ($keyval) {
+    $repo_path = ToString(GetKeyVal($keyval,'mhrepos')); }
+  if (! $repo_path) {
+    $repo_path = ToString(Digest(T_CS('\mh@currentrepos'))); }
+  else {
+    $keyval->setValue('mhrepos',undef); }
+  my $mathhub_base = ToString(Digest('\MathHub{}'));
+  my $finalpath = $mathhub_base.$repo_path.'/source/'.ToString($arg2);
+  return Invocation(T_CS('\includeproblem'), $keyval, T_OTHER($finalpath)); }#$
+DefKeyVal('inclprob','mhrepos','Semiverbatim');
+DefMacro('\includemhproblem OptionalKeyVals:inclprob {}', \&includemhproblem);
 Tag('omdoc:exercise',afterOpen=>\&numberIt,afterClose=>\&locateIt);
 Tag('omdoc:solution',afterOpen=>\&numberIt,afterClose=>\&locateIt);
 Tag('omdoc:hint',afterOpen=>\&numberIt,afterClose=>\&locateIt);

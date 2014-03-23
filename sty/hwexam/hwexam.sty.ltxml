@@ -8,7 +8,7 @@ RegisterDocumentNamespace('assig'=>"http://omdoc.org/ontology/assignments#");
 DefEnvironment('{assignment} OptionalKeyVals:assig',
   "<omdoc:omgroup ?&GetKeyVal(#1,'id')(xml:id='&GetKeyVal(#1,'id')')() "
   .  "assig:dummy='for the namespace'>"
- .  "<omdoc:metadata>"
+  .  "<omdoc:metadata>"
   .    "<dc:title>"
   .       "Assignment ?&GetKeyVal(#1,'num')(&GetKeyVal(#1,'num').)()"
   .       "?&GetKeyVal(#1,'title')((&GetKeyVal(#1,'title')))"
@@ -18,15 +18,16 @@ DefEnvironment('{assignment} OptionalKeyVals:assig',
   .    "?&GetKeyVal(#1,'pts')(<omdoc:meta property='assig:pts'>&GetKeyVal(#1,'pts')</omdoc:meta>)()"
   .  "</omdoc:metadata>"
   .  "#body"
-  ."</omdoc:omgroup>\n",
-  afterDigest=> sub {
-    my ($stomach, $kv) = @_;
-    my $kvi = LookupValue('inclassig');
-    my @keys = qw(id num title pts given due);
-    my @vals = $kvi && map($kvi->getValue($_), @keys);
-    foreach my $i(0..$#vals) {
-       $kv->setValue($keys[$i],$vals[$i]) if $vals[$i];
-     }});#$
+  ."</omdoc:omgroup>\n"#,
+#  afterDigest=> sub {
+#    my ($stomach, $kv) = @_;
+#    my $kvi = LookupValue('inclassig');
+#    my @keys = qw(id num title pts given due);
+#    my @vals = $kvi && map($kvi->getValue($_), @keys);
+#    foreach my $i(0..$#vals) {
+#       $kv->setValue($keys[$i],$vals[$i]) if $vals[$i];
+#     }}
+);#$
 DefMacro('\includeassignment [] {}', sub {
   my ($stomach, $arg1, $arg2) = @_;
   AssignValue('inclassig',$arg1) if $arg1;
@@ -37,16 +38,31 @@ DefEnvironment('{testheading}OptionalKeyVals:omdoc','');
 DefConstructor('\testspace{}','');
 DefConstructor('\testnewpage','');
 DefConstructor('\testemptypage','');
-RawTeX('
-\newcommand\includemhassignment[2][]{\metasetkeys{inclassig}{#1}%
-\edef\mh@@repos{\mh@currentrepos}%
-\ifx\inclassig@mhrepos\@empty\else\mhcurrentrepos\inclassig@mhrepos\fi%
-\includeassignment[#1]{\MathHub{\mh@currentrepos/source/#2}}%
-\mhcurrentrepos\mh@@repos\clear@inclassig@keys}
-\newcommand\inputmhassignment[2][]{\metasetkeys{inclassig}{#1}%
-\edef\mh@@repos{\mh@currentrepos}%
-\ifx\inclassig@mhrepos\@empty\else\mhcurrentrepos\inclassig@mhrepos\fi%
-\inputassignment[#1]{\MathHub{\mh@currentrepos/source/#2}}%
-\mhcurrentrepos\mh@@repos\clear@inclassig@keys}
-');
+sub includemhassignment {
+  my ($gullet,$keyval,$arg2) = @_;
+  my $repo_path;
+  if ($keyval) {
+    $repo_path = ToString(GetKeyVal($keyval,'mhrepos')); }
+  if (! $repo_path) {
+    $repo_path = ToString(Digest(T_CS('\mh@currentrepos'))); }
+  else {
+    $keyval->setValue('mhrepos',undef); }
+  my $mathhub_base = ToString(Digest('\MathHub{}'));
+  my $finalpath = $mathhub_base.$repo_path.'/source/'.ToString($arg2);
+  return Invocation(T_CS('\includeassignment'), $keyval, T_OTHER($finalpath)); }#$
+DefKeyVal('inclprob','mhrepos','Semiverbatim');
+DefMacro('\includemhassignment OptionalKeyVals:inclprob {}', \&includemhassignment);
+sub inputmhassignment {
+  my ($gullet,$keyval,$arg2) = @_;
+  my $repo_path;
+  if ($keyval) {
+    $repo_path = ToString(GetKeyVal($keyval,'mhrepos')); }
+  if (! $repo_path) {
+    $repo_path = ToString(Digest(T_CS('\mh@currentrepos'))); }
+  else {
+    $keyval->setValue('mhrepos',undef); }
+  my $mathhub_base = ToString(Digest('\MathHub{}'));
+  my $finalpath = $mathhub_base.$repo_path.'/source/'.ToString($arg2);
+  return Invocation(T_CS('\inputassignment'), $keyval, T_OTHER($finalpath)); }#$
+DefMacro('\inputmhassignment OptionalKeyVals:inclprob {}', \&inputmhassignment);
 1;
