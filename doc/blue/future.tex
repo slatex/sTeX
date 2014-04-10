@@ -1,4 +1,5 @@
 \documentclass{bluenote}
+\usepackage[show]{ed}
 \usepackage[hyperref=auto,style=alphabetic,isbn=false]{biblatex}
 \usepackage{bibtweaks}
 \addbibresource{kwarcpubs.bib}
@@ -7,12 +8,16 @@
 \addbibresource{extcrossrefs.bib}
 \usepackage{stex-logo}
 \usepackage{xspace}
-\usepackage{lststex}
+\usepackage{lstomdoc}
+\usepackage{lststex}\lstset{language=[sTeX]TeX}
 
 \title{Rethinking Modules and Semantic Macros in \protect\sTeX}
 \author{Michael Kohlhase\\Computer Science, Jacobs University.de}
 
 \def\smglom{\textsf{SMGloM}\xspace}
+\def\omdoc{\textsf{OMDoc}\xspace}
+\def\latexml{{\LaTeX}ML\xspace}
+
 \blueProject{\sTeX}\blueURI{http://github.com/KWARC/sTeX}
 
 \begin{document}
@@ -28,8 +33,79 @@ the representational capabilities of \sTeX with respect to multilingual support 
 verbalization definitions; see~\cite{Kohlhase:dmesmgm14}, which we assume as background
 reading for this note.
 
+\section{Mixed Presentation/Content Markup}
+Currently, \sTeX produces content markup in the OpenMath encoding. But often \sTeX
+formulae often contain bits of presentational {\LaTeX}, which \latexml has to convert into
+OpenMath heuristically, which often leads to non-optimal results. Therefore we want to
+rethink the representation of formulae, instead of insisting on homogeneous content markup
+in OpenMath, we switch to MathML allow mixed presentation/content MathML, which conforms
+much more closely to user input (preserving presentational bits) and postpones full
+semantification to later stages of processing. Let us make an example: consider the
+formula $(a+b)^n$ encoded das \lstinline|\exp{a+b}n|, where we have a semantic macro
+\lstinline|\exp| defined by \lstinline|\symdef{exp}[2]{#1^{#2}}| in module
+\lstinline|arith| Then we should create
+\begin{lstlisting}[language=MathML]
+<math>
+  <apply>
+     <csymbol cd="arith">exp</csymbol>
+     <mrow><ci>a</ci><mo>+</mo><ci>b</ci></mrow>
+     <ci>n</ci>
+  </apply>
+</math>
+\end{lstlisting}
+Note that MathML does indeed allow to freely mix content and presentation MathML, here we
+have an application produced by the semantic macro \lstinline|\exp| applied to the
+presentational $a+b$, where $a$ and $b$ are ``content identifiers''. 
+
+A side effect of the switch to MathML is that complex variable names are much nicer in
+MathML: $x_5$ is just 
+\begin{lstlisting}[language=MathML]
+<ci name="x5"><msub><mi>x</mi><mn>5</mn></msub></ci>
+\end{lstlisting}
+
 \section{\protect\sTeX Module Signatures}
 
+(monolingual) \sTeX had the intuition that the symbol definitions (\lstinline|\symdef| and
+\lstinline|symvariant|) are interspersed with the text and we generate \sTeX module
+signatures (SMS \lstinline|*.sms| files) from the \sTeX files. The SMS duplicate
+``formal'' information from the ``narrative'' \sTeX files. In the \smglom, we extend this
+idea by making the the SMS primary objects\footnote{Thanks to Deyan Ginev for realizing
+  this.} that contain the language-independent part of the formal structure conveyed by
+the \sTeX documents and there may be multiple narrative ``language bindings'' that are
+translations of each other -- and as we do not want to duplicate the formal parts, those
+are inherited from the SMS rather than written down in the language binding itself. So instead of 
+\begin{lstlisting}[caption=Old-Style \protect\sTeX,label=lst:oldmods]
+\begin{module}[id=foo]
+\symdef{bar}{BAR}
+\begin{definition}[for=bar]
+  A \defiii{big}{array}{raster} ($\bar$) is a\ldots
+\end{definition}
+\end{module}
+\end{lstlisting}
+
+we now advocate the divided style in Listing~\ref{lst:newmods}\ednote{MK: the names of the
+  environments are still very much in the air. ``modsig'' I rather like, but ``langbind''
+  is terrible}. There the \lstinline|modsig| environment works exactly like the old
+\lstinline|module| environment, only that the \lstinline|id| attribute has moved into the
+required argument -- anonymous module signatures do not make sense. The
+\lstinline|langbind| environment takes two arguments the first is the name of the module
+signature it provides language bindings for and the second the ISO 639 language specifier
+of the content language. We add the \lstinline|primary| key to the optional argument of
+\lstinline|langbind|, which can specify the primary language binding (the one the others
+translate from; and which serves as the reference in case of translation conflicts).
+
+\begin{lstlisting}[caption=New-Style \protect\sTeX,label=lst:newmods]
+\begin{modsig}{foo}
+\symdef{bar}{BAR}
+\end{modsig}
+
+\begin{langbind}[creators=miko,primary]{foo}{en}
+\begin{definition}[for=bar]
+  A \defiii{big}{array}{raster} ($\bar$) is a\ldots
+\end{definition}
+\end{langbind}
+\end{lstlisting}
+We retain the old \lstinline|module| environment as an intermediate stage (during the ) 
 
 \section{Conclusion}
 \printbibliography
