@@ -19,8 +19,10 @@
 \RequirePackage{cmath}
 \RequirePackage{presentation}
 \RequirePackage{amsfonts}
-\RequirePackage[english,ngerman]{babel}
 \RequirePackage{smglom}
+
+\newcommand\noun[2]{}
+\newcommand\qualifier[3]{}
 \endinput
 %%
 %% End of file `smglom.cls'.
