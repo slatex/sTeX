@@ -792,7 +792,8 @@
 %    This |KeyVal| key is only needed for {\latexml} at the moment; use this to specify a
 %    content dictionary name that is different from the module name.
 %    \begin{macrocode}
-\addmetakey{module}{cd}
+\addmetakey{module}{cd}% no longer used
+\addmetakey{module}{load}% ignored
 \addmetakey*{module}{title}
 \addmetakey*{module}{creators}
 \addmetakey*{module}{contributors}
@@ -893,25 +894,27 @@
 \gdef\imported@modules{}
 \srefaddidkey{importmodule}
 \addmetakey{importmodule}{load}
+\addmetakey[sms]{importmodule}{ext}
 \newif\if@export
 \newcommand\importmodule[2][]{\metasetkeys{importmodule}{#1}%
 \ifx\imported@modules\@empty\edef\imported@modules{#2}%
 \else\edef\imported@modules{#2,\imported@modules}\fi%
-\@exporttrue\@importmodule[\importmodule@load]{#2}\ignorespaces}
+\@exporttrue\@importmodule[\importmodule@load]{#2}{\@importmodule@ext}\ignorespaces}
 %    \end{macrocode}
 % \end{macro}
 %
 % \begin{macro}{\@importmodule} 
-%   |\@importmodule[|\meta{file}|]{|\meta{mod}|}| loads \meta{file} (if it is given) and
-%   activates the module \meta{mod}. There is a slight inefficiency in that modules can be
-%   recorded multiply, but since |\activate@defs| is efficient about not activating twice,
-%   this is OK.  Another thing |\@importmodule{|\meta{mod}|}| does is that it writes a
+%   |\@importmodule[|\meta{file}|]{|\meta{mod}|}{|\meta{ext}|}| loads
+%   \meta{file}|.|\meta{ext} (if it is given) and activates the module \meta{mod}. There
+%   is a slight inefficiency in that modules can be recorded multiply, but since
+%   |\activate@defs| is efficient about not activating twice, this is OK.  Another thing
+%   |\@importmodule{|\meta{mod}|}| does is that it writes a
 %   |\requiremodules{|\meta{mod}|}| into the aux file, so that the table of contents can
 %   use semantic macros (the table of contents uses |\importmodules{\imported@modules}| in
 %   the titles, see \cite{Kohlhase:smomdl:ctan} for details).
 %    \begin{macrocode}
-\newcommand\@importmodule[2][]{%
-{\edef\@load{#1}\ifx\@load\@empty\else{\mod@showfalse\requiremodules\@load}\fi}%
+\newcommand\@importmodule[3][]{%
+{\edef\@load{#1}\ifx\@load\@empty\else{\mod@showfalse\requiremodules\@load{#3}}\fi}%
 \activate@defs{#2}\if@export\export@defs{#2}\fi}
 %    \end{macrocode}
 % \end{macro}
@@ -1486,7 +1489,7 @@
 %   |\@requiremodules{|\meta{file}|}| to the |aux| file to make sure that the semantic
 %   macros are already loaded for the table of contents.
 %    \begin{macrocode}
-\newcommand\requiremodules[1]{%
+\newcommand\requiremodules[2]{%
 {\mod@showfalse% save state and ensure silence while reading sms
 \mod@updatedpre{#1}% add the new file to the already existing path
 \let\mod@savedprefix\mod@prefix% add the path of the new file to the prefix
@@ -1497,7 +1500,7 @@
 \ifmodules\else%
 \let\newreg\mod@reg% use to compare, in case the .sms file was loaded before
 \mod@search{\mod@savedprefix}% update registry
-\ifx\newreg\mod@reg\else\input{\mod@savedprefix.sms}% load if not in registry
+\ifx\newreg\mod@reg\else\input{\mod@savedprefix.#2}% load if not in registry
 \ifaux@req\protected@write\@auxout{}{\string\@requiremodules{\mod@savedprefix}}\fi%
 \fi% ifx
 \fi}}%  ifmodules
@@ -1589,7 +1592,7 @@
 %    \begin{macrocode}
 \newenvironment{@view}[3][]{% keys, from, to
 metasetkeys{view}{#1}\sref@target%
-\@importmodule[\view@from]{#2}\@importmodule[\view@to]{#3}}
+\@importmodule[\view@from]{#2}\@importmodule[\view@to]{#3}{\view@ext}}
 {}
 %    \end{macrocode}
 % \end{environment}

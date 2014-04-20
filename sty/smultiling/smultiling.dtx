@@ -72,10 +72,12 @@
 % 
 % \StopEventually{\newpage\PrintIndex\newpage\PrintChanges\printbibliography}\newpage
 %
-% \begin{omgroup}[id=sec:impl:cls]{Implementation: The Smultiling Class}
+% \begin{omgroup}[id=sec:impl:cls]{Implementation}
 %
 % \begin{omgroup}[id=sec:impl:cls:options]{Class Options}
-% To initialize the |smultiling| class, we pass on all options to |omdoc.cls|
+%   To initialize the |smultiling| class, we pass on all options to |babel.cls| and record
+%   which languages are loaded by defining |\smul@|\meta{language}|@loaded|
+%   macros.\ednote{@DG: We also want to do that in \latexml}
 % 
 %    \begin{macrocode}
 %<*sty>
@@ -106,7 +108,7 @@ RequirePackage('babel');
 %    \end{macrocode}
 % \end{omgroup}
 %
-% \begin{omgroup}[id=sec:langbindings]{For Language Bindings}
+% \begin{omgroup}[id=sec:langbindings]{Handling Languages}
 %
 % \begin{macro}{\smg@select@language}
 %   This macro selects one of the registered languages by its langauage code by setting
@@ -173,9 +175,49 @@ RequirePackage('babel');
 \smg@register@language{vi}{vietnamese}
 \smg@register@language{cy}{welsh}
 \smg@register@language{hi}{hindi}
-%</sty|ltxml>
-%<ltxml>');
 %    \end{macrocode}
+% \end{omgroup}
+% 
+% \begin{omgroup}[id=sec:langbindings]{Language Bindings}
+% 
+% \begin{macro}{modsig:*}
+%    \begin{macrocode}
+\addmetakey*{modsig}{title}
+\addmetakey*{modsig}{creators}
+\addmetakey*{modsig}{contributors}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{environment}{modsig}
+%   The |modsig| environment is just a layer over the |module| environment.
+%    \begin{macrocode}
+\newenvironment{modsig}[2][]{\metasetkeys{modsig}{#1}% to check
+\def\@test{#1}\ifx\@test\@empty\begin{module}[id=#2]\else\begin{module}[id=#2,#1]\fi}
+{\end{module}}
+%    \end{macrocode}
+% \end{environment}
+%
+% \begin{macro}{modnl:*}
+%    \begin{macrocode}
+\addmetakey{modnl}{load}
+\addmetakey*{modnl}{title}
+\addmetakey*{modnl}{creators}
+\addmetakey*{modnl}{contributors}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{environment}{modnl}
+%   The |modnl| environment is just a layer over the |module| environment with the keys
+%   and language suitably adapted.
+%    \begin{macrocode}
+\newenvironment{modnl}[3][]{\def\@test{#1}%
+\ifx\@test\@empty\begin{module}[id=#2.#3]\else\begin{module}[id=#2.#3,#1]\fi%
+\ifx\modnl@load\@empty\importmodule{#2}\else\importmodule[load=\modnl@load]{#2}%
+\smg@select@language{#3}}
+{\end{module}}
+%    \end{macrocode}
+% \end{environment}
+%
 % \end{omgroup}
 % \end{omgroup} 
 % \Finale
