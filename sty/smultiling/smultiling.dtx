@@ -79,8 +79,16 @@
 %   which languages are loaded by defining |\smul@|\meta{language}|@loaded|
 %   macros.\ednote{@DG: We also want to do that in \latexml}
 % 
+%   The \DescribeMacro{langfiles}|langfiles| option specifies that for a module
+%   \meta{mod}, the module signature file has the name \meta{mod}|.tex| and the language
+%   bindings of language with the ISO 639 language specifier \meta{lang} have the file
+%   name \meta{mod}|.|\meta{lang}|.tex|.\ednote{implement other schemes, e.g. the onefile
+%   scheme.}
+% 
 %    \begin{macrocode}
 %<*sty>
+\newif\if@langfiles\@langfilesfalse
+\DeclareOption{langfiles}{\@langfilestrue}
 \DeclareOption*{\PassOptionsToPackage{\CurrentOption}{babel}
 \@namedef{smul@\CurrentOption @loaded}{yes}}
 \ProcessOptions
@@ -189,10 +197,13 @@ RequirePackage('babel');
 % \end{macro}
 %
 % \begin{environment}{modsig}
-%   The |modsig| environment is just a layer over the |module| environment.
+%   The |modsig| environment is just a layer over the |module| environment. We also
+%   redefine macros that may occur in module signatures so that they do not create markup.
 %    \begin{macrocode}
 \newenvironment{modsig}[2][]{\metasetkeys{modsig}{#1}% to check
-\def\@test{#1}\ifx\@test\@empty\begin{module}[id=#2]\else\begin{module}[id=#2,#1]\fi}
+\def\@test{#1}\ifx\@test\@empty\begin{module}[id=#2]\else\begin{module}[id=#2,#1]\fi
+\renewcommand\symtest[3][]{}
+\renewcommand\abbrtest[3][]{}}
 {\end{module}}
 %    \end{macrocode}
 % \end{environment}
@@ -210,11 +221,16 @@ RequirePackage('babel');
 %   The |modnl| environment is just a layer over the |module| environment with the keys
 %   and language suitably adapted.
 %    \begin{macrocode}
-\newenvironment{modnl}[3][]{\def\@test{#1}%
-\ifx\@test\@empty\begin{module}[id=#2.#3]\else\begin{module}[id=#2.#3,#1]\fi%
-\ifx\modnl@load\@empty\importmodule{#2}\else\importmodule[load=\modnl@load]{#2}%
-\smg@select@language{#3}}
+\newenvironment{modnl}[3][]{\metasetkeys{modnl}{#1}%
+\smg@select@language{#3}%
+\def\@test{#1}\ifx\@test\@empty\begin{module}[id=#2.#3]\else\begin{module}[id=#2.#3,#1]\fi%
+\if@langfiles\importmodule[load=#2,ext=tex]{#2}\else
+\ifx\modnl@load\@empty\importmodule{#2}\else\importmodule[ext=tex,load=\modnl@load]{#2}\fi%
+\fi}
 {\end{module}}
+%<*sty|ltxml>
+%<ltxml>');
+%<ltxml>1;
 %    \end{macrocode}
 % \end{environment}
 %

@@ -11,18 +11,7 @@
 \DeclareOption*{\PassOptionsToClass{\CurrentOption}{omdoc}}
 \ProcessOptions
 \LoadClass{omdoc}
-\RequirePackage{amstext}
-\RequirePackage{modules}
-\RequirePackage{dcm}
-\RequirePackage{statements}
-\RequirePackage{sproof}
-\RequirePackage{cmath}
-\RequirePackage{presentation}
-\RequirePackage{amsfonts}
 \RequirePackage{smglom}
-
-\newcommand\noun[2]{}
-\newcommand\qualifier[3]{}
 \endinput
 %%
 %% End of file `smglom.cls'.
