@@ -677,18 +677,25 @@ DefEnvironment('{viewsketchenv} OptionalKeyVals:view {}{}',
   .  "#body"
   ."</omdoc:theory-inclusion>");
 
-# DefConstructor('\importmhmodule OptionalKeyvals:importmhmodule {} {}',
-#  "<omdoc:imports from='?&GetKeyVal(#1,'load')(&canonical_omdoc_path(&GetKeyVal(#1,'load')))()\##2'/>"
+DefConstructor('\importmhmodule OptionalKeyVals:importmodule {}{}',
+   "<omdoc:imports from='?&GetKeyVal(#1,'load')(&canonical_omdoc_path(&GetKeyVal(#1,'load')))()\##2'/>",
+   afterDigest=> sub {
+    my ($stomach, $whatsit) = @_;
+    my $keyval = $whatsit->getArg(1);
+    my $id = $whatsit->getArg(3);
+    if (! $keyval) { Fatal(":importmhmodule Currently can't handle missing the KeyVal argument!"); }
+    my $repos = ToString($keyval->getValue('repos'));
+    if (!$repos) { # Use the implicit current repository
+      $repos = ToString($STATE->getStomach->digest(Tokens(T_CS('\mh@currentrepos')))); }
+    my $defpaths = LookupValue('defpath');
+    my $name = ToString($whatsit->getArg(2));
+    my $load_path = $$defpaths{MathHub}.$repos.'/source/'.$name;
+    $keyval->setValue('load',$load_path);
+    $whatsit->setArgs($keyval,$id);
+    importmoduleI($stomach,$whatsit);});
 
 RawTeX('
-\newcommand\importmhmodule[3][]{\metasetkeys{importmhmodule}{#1}%
-\edef\mh@@repos{\mh@currentrepos}%
-\ifx\importmhmodule@repos\@empty\else\mhcurrentrepos{\importmhmodule@repos}\fi%
-\message{importmhmodule2: currentrepos=\mh@currentrepos}
-\importmodule[load=\MathHub{\mh@currentrepos/source/#2},
-              ext=\importmhmodule@ext,id=\importmhmodule@id]{#3}%
-\mhcurrentrepos\mh@@repos\ignorespaces}
-\newcommand\usemhmodule[3][]{\metasetkeys{importmhmodule}{#1}%
+\newcommand\usemhmodule[3][]{\def\@repos{#1}%
 \edef\mh@@repos{\mh@currentrepos}%
 \ifx\importmhmodule@repos\@empty\else\mhcurrentrepos{\importmhmodule@repos}\fi%
 \usemodule[load=\MathHub{\mh@currentrepos/source/#2},
