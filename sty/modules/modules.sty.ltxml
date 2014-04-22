@@ -679,20 +679,30 @@ DefEnvironment('{viewsketchenv} OptionalKeyVals:view {}{}',
 
 DefConstructor('\importmhmodule OptionalKeyVals:importmodule {}{}',
    "<omdoc:imports from='?&GetKeyVal(#1,'load')(&canonical_omdoc_path(&GetKeyVal(#1,'load')))()\##2'/>",
-   afterDigest=> sub {
+   afterDigest => sub {
     my ($stomach, $whatsit) = @_;
     my $keyval = $whatsit->getArg(1);
+    my $name = ToString($whatsit->getArg(2));
     my $id = $whatsit->getArg(3);
     if (! $keyval) { Fatal(":importmhmodule Currently can't handle missing the KeyVal argument!"); }
     my $repos = ToString($keyval->getValue('repos'));
+    my $current_repos = LookupValue('current_repos');
     if (!$repos) { # Use the implicit current repository
-      $repos = ToString($STATE->getStomach->digest(Tokens(T_CS('\mh@currentrepos')))); }
+      $repos = $current_repos; }
     my $defpaths = LookupValue('defpath');
-    my $name = ToString($whatsit->getArg(2));
-    my $load_path = $$defpaths{MathHub}.$repos.'/source/'.$name;
+    my $load_path = ($$defpaths{MathHub}).$repos.'/source/'.$name;
     $keyval->setValue('load',$load_path);
     $whatsit->setArgs($keyval,$id);
-    importmoduleI($stomach,$whatsit);});
+    AssignValue('current_repos' => $repos, 'global');
+    importmoduleI($stomach,$whatsit);
+    AssignValue('current_repos' => $current_repos, 'global');
+    return;
+  });
+
+DefMacro('\mhcurrentrepos{}','\@mhcurrentrepos{#1}');
+DefMacro('\@mhcurrentrepos{}','\def\mh@currentrepos{#1}\@@mhcurrentrepos{#1}');
+DefConstructor('\@@mhcurrentrepos{}','',
+  afterDigest => sub{ AssignValue('current_repos',ToString($_[1]->getArg(1)),'global'); } );
 
 RawTeX('
 \newcommand\usemhmodule[3][]{\def\@repos{#1}%
@@ -707,9 +717,6 @@ RawTeX('
 \adoptmodule[load=\MathHub{\mh@currentrepos/source/#2},
              ext=\importmhmodule@ext,id=\importmhmodule@id]{#3}%
 \mhcurrentrepos\mh@@repos\ignorespaces}
-
-\newcommand\mhcurrentrepos[1]{\@mhcurrentrepos{#1}}
-\newcommand\@mhcurrentrepos[1]{\def\mh@currentrepos{#1}}
 
 \newcommand\mhinputref[2][]{\def\@repos{#1}%
 \edef\mh@@repos{\mh@currentrepos}%
