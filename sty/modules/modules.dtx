@@ -885,6 +885,23 @@
 %    \end{macrocode}
 % \end{macro}
 %
+% Now we come to the implementation of |\importmodule|, but before we do, we define two
+% conditionals: 
+% \begin{macro}{\if@export} 
+%   |\if@export| distinguishes the |\importmodule| and |\usemodule| macros defined below,
+%   they differ in whether they re-export macros they import.
+%    \begin{macrocode}
+\newif\if@export 
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\if@importing} 
+%   |\if@importing| can be used to shut up macros in an import situation. 
+%    \begin{macrocode}
+\newif\if@importing\@importingfalse
+%    \end{macrocode}
+% \end{macro}
+%
 % \begin{macro}{\importmodule} 
 %   The |\importmodule[|\meta{file}|]{|\meta{mod}|}| macro is an interface macro that
 %   loads \meta{file} and activates and re-exports the |\symdef|s from module
@@ -897,7 +914,6 @@
 \srefaddidkey{importmodule}
 \addmetakey{importmodule}{load}
 \addmetakey[sms]{importmodule}{ext}
-\newif\if@export
 \newcommand\importmodule[2][]{\metasetkeys{importmodule}{#1}%
 \ifx\imported@modules\@empty\edef\imported@modules{#2}%
 \else\edef\imported@modules{#2,\imported@modules}\fi%
@@ -916,7 +932,8 @@
 %   the titles, see \cite{Kohlhase:smomdl:ctan} for details).
 %    \begin{macrocode}
 \newcommand\@importmodule[3][]{%
-{\edef\@load{#1}\ifx\@load\@empty\else{\mod@showfalse\requiremodules\@load{#3}}\fi}%
+{\@importingtrue% to shut up macros
+\edef\@load{#1}\ifx\@load\@empty\else{\mod@showfalse\requiremodules\@load{#3}}\fi}%
 \activate@defs{#2}\if@export\export@defs{#2}\fi}
 %    \end{macrocode}
 % \end{macro}
@@ -1201,26 +1218,32 @@
 % \end{macro}
 %
 % \subsection{Testing Semantic Macros}\label{sec:impl:testing}
+%
 % \begin{macro}{\symtest}
+%   Allows to test a |\symdef| in place, this shuts up when being imported.
 %    \begin{macrocode}
 \addmetakey{symtest}{name}
 \addmetakey{symtest}{variant}
-\newcommand\symtest[3][]{\metasetkeys{symtest}{#1}%
+\newcommand\symtest[3][]{\if@importing\else%
+\metasetkeys{symtest}{#1}%
 \par\noindent \textbf{Symbol}~%
 \ifx\symtest@name\@empty\texttt{#2}\else\texttt{\symtest@name}\fi%
 \ifx\symtest@variant\@empty\else\ (variant \texttt{\symtest@variant})\fi%
 \ with semantic macro \texttt{\textbackslash #2}%
-: used e.g. in \ensuremath{#3}}
+: used e.g. in \ensuremath{#3}%
+\fi}
 %    \end{macrocode}
 % \end{macro}
 % 
 % \begin{macro}{\abbrtest}
 %    \begin{macrocode}
 \addmetakey{abbrtest}{name}
-\newcommand\abbrtest[3][]{\metasetkeys{abbrtest}{#1}%
+\newcommand\abbrtest[3][]{\if@importing\else%
+\metasetkeys{abbrtest}{#1}%
 \par\noindent \textbf{Abbreviation}~%
 \ifx\abbrtest@name\@empty\texttt{#2}\else\texttt{\abbrtest@name}\fi%
-: used e.g. in \ensuremath{#3}}
+: used e.g. in \ensuremath{#3}%
+\fi}
 %    \end{macrocode}
 % \end{macro}
 % 
@@ -1513,7 +1536,7 @@
 % the internal macro that actually does the loading. We disable it at the end of the
 % document, so that when the aux file is read again, nothing is loaded. 
 %    \begin{macrocode}
-\newcommand\@requiremodules[2]{\if@tempswa\mod@showfalse\input{#1.#2}\fi}
+\newcommand\@requiremodules[2]{\if@tempswa\mod@showfalse\@importingtrue\input{#1.#2}\fi}
 {\renewcommand\@requiremodules[2]{}}
 %    \end{macrocode}
 % \end{macro}
@@ -1569,14 +1592,15 @@
 %   Then we make a convenience macro for the view heading. This can be customized. 
 %    \begin{macrocode} 
 \newcounter{view}[section]
-\newcommand\view@heading[4]{\stepcounter{view}%
+\newcommand\view@heading[4]{\if@importing\else%
+\stepcounter{view}%
 \edef\@display{#3}\edef\@title{#4}%
 \noindent\ifx\@display\st@flow\else
 {\textbf{View} {\thesection.\theview} from \textsf{#1} to \textsf{#2}}%
 \sref@label@id{View \thesection.\theview}%
 \ifx\@title\@empty\quad\else\quad(\@title)\fi%
 \par\noindent%
-\fi\ignorespaces}%ifmod@show
+\fi\ignorespaces\fi}%ifmod@show
 %    \end{macrocode}
 % \end{macro}
 %
@@ -1742,6 +1766,14 @@
 \ifmod@show\surroundwithmdframed{mhviewsketch}\fi
 %    \end{macrocode}
 % \end{environment}
+%
+% \begin{macro}{\obligation}
+%   The |\obligation| element does not do anything yet on the latexml
+%   side.\ednote{document above}
+%    \begin{macrocode}
+\newcommand\obligation[3][]{\if@importing\else Axiom #1 is proven by \sref{#2}\fi}
+%    \end{macrocode}
+% \end{macro}
 %
 % \subsection{Deprecated Functionality}\label{sec:impl:deprecated}
 %

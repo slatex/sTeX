@@ -51,17 +51,19 @@
 \def\export@defs#1{\@ifundefined{mod@id}{}%
 {\expandafter\expandafter\expandafter\g@addto@macro\expandafter%
 \this@module\expandafter{\activate@defs{#1}}}}
+\newif\if@export
+\newif\if@importing\@importingfalse
 \gdef\imported@modules{}
 \srefaddidkey{importmodule}
 \addmetakey{importmodule}{load}
 \addmetakey[sms]{importmodule}{ext}
-\newif\if@export
 \newcommand\importmodule[2][]{\metasetkeys{importmodule}{#1}%
 \ifx\imported@modules\@empty\edef\imported@modules{#2}%
 \else\edef\imported@modules{#2,\imported@modules}\fi%
 \@exporttrue\@importmodule[\importmodule@load]{#2}{\importmodule@ext}\ignorespaces}
 \newcommand\@importmodule[3][]{%
-{\edef\@load{#1}\ifx\@load\@empty\else{\mod@showfalse\requiremodules\@load{#3}}\fi}%
+{\@importingtrue% to shut up macros
+\edef\@load{#1}\ifx\@load\@empty\else{\mod@showfalse\requiremodules\@load{#3}}\fi}%
 \activate@defs{#2}\if@export\export@defs{#2}\fi}
 \newcommand\usemodule[2][]{\@exportfalse\importmodule[#1]{#2}}
 \newcommand\importmodules[1]{\@for\@I:=#1\do{\importmodule\@I}}%
@@ -149,17 +151,21 @@
 \symdef[#1]{\defmathop@name}{#2}}
 \addmetakey{symtest}{name}
 \addmetakey{symtest}{variant}
-\newcommand\symtest[3][]{\metasetkeys{symtest}{#1}%
+\newcommand\symtest[3][]{\if@importing\else%
+\metasetkeys{symtest}{#1}%
 \par\noindent \textbf{Symbol}~%
 \ifx\symtest@name\@empty\texttt{#2}\else\texttt{\symtest@name}\fi%
 \ifx\symtest@variant\@empty\else\ (variant \texttt{\symtest@variant})\fi%
 \ with semantic macro \texttt{\textbackslash #2}%
-: used e.g. in \ensuremath{#3}}
+: used e.g. in \ensuremath{#3}%
+\fi}
 \addmetakey{abbrtest}{name}
-\newcommand\abbrtest[3][]{\metasetkeys{abbrtest}{#1}%
+\newcommand\abbrtest[3][]{\if@importing\else%
+\metasetkeys{abbrtest}{#1}%
 \par\noindent \textbf{Abbreviation}~%
 \ifx\abbrtest@name\@empty\texttt{#2}\else\texttt{\abbrtest@name}\fi%
-: used e.g. in \ensuremath{#3}}
+: used e.g. in \ensuremath{#3}%
+\fi}
 \def\mod@path{}
 \def\mod@true{true}
 \addmetakey[false]{termdef}{local}
@@ -257,7 +263,7 @@
 \ifaux@req\protected@write\@auxout{}{\string\@requiremodules{\mod@savedprefix}{#2}}\fi%
 \fi% ifx
 \fi}}%  ifmodules
-\newcommand\@requiremodules[2]{\if@tempswa\mod@showfalse\input{#1.#2}\fi}
+\newcommand\@requiremodules[2]{\if@tempswa\mod@showfalse\@importingtrue\input{#1.#2}\fi}
 {\renewcommand\@requiremodules[2]{}}
 \def\sinput#1{
 {\mod@updatedpre{#1}% add the new file to the already existing path
@@ -284,14 +290,15 @@
 \addmetakey{view}{contributors}
 \addmetakey[sms]{view}{ext}
 \newcounter{view}[section]
-\newcommand\view@heading[4]{\stepcounter{view}%
+\newcommand\view@heading[4]{\if@importing\else%
+\stepcounter{view}%
 \edef\@display{#3}\edef\@title{#4}%
 \noindent\ifx\@display\st@flow\else
 {\textbf{View} {\thesection.\theview} from \textsf{#1} to \textsf{#2}}%
 \sref@label@id{View \thesection.\theview}%
 \ifx\@title\@empty\quad\else\quad(\@title)\fi%
 \par\noindent%
-\fi\ignorespaces}%ifmod@show
+\fi\ignorespaces\fi}%ifmod@show
 \newenvironment{view}[3][]%
 {\metasetkeys{view}{#1}\sref@target%
 \begin{@view}{#2}{#3}\view@heading{#2}{#3}{\view@display}{\view@title}}
@@ -369,6 +376,7 @@
 \begin{@mhview}{#2}{#3}\view@heading{#2}{#3}{\mhview@display}{\mhview@title}}
 {\end{@mhview}\ignorespaces}
 \ifmod@show\surroundwithmdframed{mhviewsketch}\fi
+\newcommand\obligation[3][]{\if@importing\else Axiom #1 is proven by \sref{#2}\fi}
 \define@key{module}{uses}{%
 \@for\module@tmp:=#1\do{\activate@defs\module@tmp\export@defs\module@tmp}}
 \define@key{module}{usesqualified}{%
