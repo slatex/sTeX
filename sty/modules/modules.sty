@@ -281,49 +281,59 @@
 \addmetakey{view}{from}
 \addmetakey{view}{to}
 \addmetakey{view}{creators}
+\addmetakey{view}{contributors}
 \addmetakey[sms]{view}{ext}
 \newcounter{view}[section]
-\newcommand\view@heading[2]{\stepcounter{view}%
-\noindent\ifx\view@display\st@flow\else
+\newcommand\view@heading[4]{\stepcounter{view}%
+\edef\@display{#3}\edef\@title{#4}%
+\noindent\ifx\@display\st@flow\else
 {\textbf{View} {\thesection.\theview} from \textsf{#1} to \textsf{#2}}%
 \sref@label@id{View \thesection.\theview}%
-\ifx\view@title\@empty\quad\else\quad(\view@title)\fi%
+\ifx\@title\@empty\quad\else\quad(\@title)\fi%
 \par\noindent%
 \fi\ignorespaces}%ifmod@show
 \newenvironment{view}[3][]%
-{\begin{@view}[#1]{#2}{#3}\view@heading{#2}{#3}}
+{\metasetkeys{view}{#1}\sref@target%
+\begin{@view}{#2}{#3}\view@heading{#2}{#3}{\view@display}{\view@title}}
 {\end{@view}\ignorespaces}
 \ifmod@show\surroundwithmdframed{view}\fi
-\newenvironment{@view}[3][]{% keys, from, to
-\metasetkeys{view}{#1}\sref@target%
-\@importmodule[\view@from]{#2}{\view@ext}%
-\@importmodule[\view@to]{#3}{\view@ext}}
+\newenvironment{@view}[2]{%from, to
+\@importmodule[\view@from]{#1}{\view@ext}%
+\@importmodule[\view@to]{#2}{\view@ext}}
 {}
 \newenvironment{viewsketch}[3][]%
-{\begin{@view}[#1]{#2}{#3}\view@heading{#2}{#3}}
+{\metasetkeys{view}{#1}\sref@target%
+\begin{@view}{#2}{#3}\view@heading{#2}{#3}{\view@display}{\view@title}}
 {\end{@view}}
 \ifmod@show\surroundwithmdframed{viewsketch}\fi
 \srefaddidkey{importmhmodule}
 \addmetakey{importmhmodule}{repos}
+\addmetakey{importmhmodule}{path}
 \addmetakey[sms]{importmhmodule}{ext}
-\newcommand\importmhmodule[3][]{\metasetkeys{importmhmodule}{#1}%
+\newcommand\importmhmodule[2][]{\metasetkeys{importmhmodule}{#1}%
+\expandafter\ifx\importmhmodule@path\@empty
+\importmodule[ext=\importmhmodule@ext,id=\importmhmodule@id]{#2}\else
 \edef\mh@@repos{\mh@currentrepos}%
-\ifx\importmhmodule@repos\@empty\else\mhcurrentrepos{\importmhmodule@repos}\fi%
-\importmodule[load=\MathHub{\mh@currentrepos/source/#2},
-              ext=\importmhmodule@ext,id=\importmhmodule@id]{#3}%
-\mhcurrentrepos\mh@@repos\ignorespaces}
-\newcommand\usemhmodule[3][]{\metasetkeys{importmhmodule}{#1}%
+\expandafter\ifx\importmhmodule@repos\@empty\else\mhcurrentrepos{\importmhmodule@repos}\fi%
+\importmodule[load=\MathHub{\mh@currentrepos/source/\importmhmodule@path},
+              ext=\importmhmodule@ext,id=\importmhmodule@id]{#2}%
+\mhcurrentrepos\mh@@repos\fi\ignorespaces}
+\newcommand\usemhmodule[2][]{\metasetkeys{importmhmodule}{#1}%
+\expandafter\ifx\importmhmodule@path\@empty
+\usemodule[ext=\importmhmodule@ext,id=\importmhmodule@id]{#2}\else
 \edef\mh@@repos{\mh@currentrepos}%
-\ifx\importmhmodule@repos\@empty\else\mhcurrentrepos{\importmhmodule@repos}\fi%
-\usemodule[load=\MathHub{\mh@currentrepos/source/#2},
-           ext=\importmhmodule@ext,id=\importmhmodule@id]{#3}%
-\mhcurrentrepos\mh@@repos\ignorespaces}
-\newcommand\adoptmhmodule[3][]{\metasetkeys{importmhmodule}{#1}%
+\expandafter\ifx\importmhmodule@repos\@empty\else\mhcurrentrepos{\importmhmodule@repos}\fi%
+\usemodule[load=\MathHub{\mh@currentrepos/source/\importmhmodule@path},
+           ext=\importmhmodule@ext,id=\importmhmodule@id]{#2}%
+\mhcurrentrepos\mh@@repos\fi\ignorespaces}
+\newcommand\adoptmhmodule[2][]{\metasetkeys{importmhmodule}{#1}%
+\expandafter\ifx\importmhmodule@path\@empty
+\adoptmodule[ext=\importmhmodule@ext,id=\importmhmodule@id]{#2}\else
 \edef\mh@@repos{\mh@currentrepos}%
-\ifx\importmhmodule@repos\@empty\else\mhcurrentrepos{\importmhmodule@repos}\fi%
-\adoptmodule[load=\MathHub{\mh@currentrepos/source/#2},
-             ext=\importmhmodule@ext,id=\importmhmodule@id]{#3}%
-\mhcurrentrepos\mh@@repos\ignorespaces}
+\expandafter\ifx\importmhmodule@repos\@empty\else\mhcurrentrepos{\importmhmodule@repos}\fi%
+\adoptmodule[load=\MathHub{\mh@currentrepos/source/\importmhmodule@path},
+             ext=\importmhmodule@ext,id=\importmhmodule@id]{#2}%
+\mhcurrentrepos\mh@@repos\fi\ignorespaces}
 \newcommand\mhinputref[2][]{\def\@repos{#1}%
 \edef\mh@@repos{\mh@currentrepos}%
 \ifx\@repos\@empty\else\mhcurrentrepos{#1}\fi%
@@ -335,6 +345,30 @@
 \newenvironment{importmhmodulevia}[3][]{\gdef\@@doit{\importmhmodule[#1]{#2}{#3}}%
 \ifmod@show\par\noindent importing module #2 via \@@doit\fi}
 {\aftergroup\@@doit\ifmod@show end import\fi}
+\srefaddidkey{mhview}
+\addmetakey{mhview}{display}
+\addmetakey{mhview}{creators}
+\addmetakey{mhview}{contributors}
+\addmetakey*{mhview}{title}
+\addmetakey{mhview}{fromrepos}
+\addmetakey{mhview}{torepos}
+\addmetakey{mhview}{frompath}
+\addmetakey{mhview}{topath}
+\addmetakey[sms]{mhview}{ext}
+\newenvironment{mhview}[3][]%
+{\metasetkeys{mhview}{#1}\sref@target%
+\begin{@mhview}{#2}{#3}\view@heading{#2}{#3}{\mhview@display}{\mhview@title}}
+{\end{@mhview}\ignorespaces}
+\ifmod@show\surroundwithmdframed{mhview}\fi
+\newenvironment{@mhview}[2]{%from, to
+\importmhmodule[repos=\mhview@fromrepos,path=\mhview@frompath,ext=\mhview@ext]{#1}%
+\importmhmodule[repos=\mhview@torepos,path=\mhview@topath,ext=\mhview@ext]{#2}}
+{}
+\newenvironment{mhviewsketch}[3][]%
+{\metasetkeys{mhview}{#1}\sref@target%
+\begin{@mhview}{#2}{#3}\view@heading{#2}{#3}{\mhview@display}{\mhview@title}}
+{\end{@mhview}\ignorespaces}
+\ifmod@show\surroundwithmdframed{mhviewsketch}\fi
 \define@key{module}{uses}{%
 \@for\module@tmp:=#1\do{\activate@defs\module@tmp\export@defs\module@tmp}}
 \define@key{module}{usesqualified}{%
