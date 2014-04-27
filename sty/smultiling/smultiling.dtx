@@ -130,7 +130,7 @@
 %   The |smultiling| package accepts all options of the |babel.sty| and just passes them
 %   on to it. The options specify which languages can be used in the \sTeX language
 %   bindings.
-%
+% \begin{omgroup}{Multilingual Modules}
 %   There the \DescribeEnv{modsig}|modsig| environment works exactly like the old |module|
 %   environment, only that the |id| attribute has moved into the required argument --
 %   anonymous module signatures do not make sense.
@@ -148,7 +148,37 @@
 %   an argument and reserves that name. The variant
 %   \DescribeMacro{\symbol*}|\symbol*{|\meta{name}|}| declares \meta{name} to be a primary
 %   symbol; see~\cite{Kohlhase:dmesmgm14} for a discussion.
+% \end{omgroup}
 % 
+% \begin{omgroup}{Multilingual Views}
+%   Views receive a similar treatment as modules in the |smultiling| package. A
+%   multilingual view consists of a view signature marked up with the
+%   \DescribeMacro{viewsig}|viewsig| environment. This takes three required arguments: a
+%   view name, the source module, and the target module. The optional first argument is
+%   for metadata (|display|, |title|, |creators|, and |contributors|) and load information
+%   (|frompath|, |fromrepos|, |topath|, and |torepos|).\ednote{MK: that does not work yet,
+%   what we describe here is \texttt{mhviewig}; we need to refactor further.}
+% \begin{verbatim}
+% \begin{viewsig}[creators=miko,]{norm-metric}{metric-space}{norm}
+%   \vassign{base-set}{base-set}
+%   \vassign{metric}{\funcdot{x,y}{\norm{x-y}}}
+% \end{viewsig}
+% \end{verbatim}
+%   Views have language bindings just as modules do, in our case, we have 
+% \begin{verbatim}
+% \begin{gviewnl}[creators=miko]{norm-metric}{en}{norm}{metric-space}
+%   \obligation{metric-space}{obl.norm-metric.en}
+%   \begin{assertion}[type=obligation,id=obl.norm-metric.en]
+%     $\defeq{d(x,y)}{\norm{x-y}}$ is a \trefii[metric-space]{distance}{function}
+%   \end{assertion}
+%   \begin{sproof}[for=obl.norm-metric.en]{we prove the three conditions for a distance function:}
+%     ...
+%   \end{sproof}
+% \end{gviewnl}
+% \end{verbatim}
+%   
+% 
+% \end{omgroup}
 % \end{omgroup}
 % 
 % \StopEventually{\newpage\PrintIndex\newpage\PrintChanges\printbibliography}\newpage
@@ -284,10 +314,20 @@ RequirePackage('babel');
 % \end{environment}
 %
 % \begin{environment}{viewsig}
-%   The |viewsig| environment is just a layer over the |mhview| environment with the keys
+%   The |viewsig| environment is just a layer over the |view| environment with the keys
 %   suitably adapted.
 %    \begin{macrocode}
 \newenvironment{viewsig}[4][]{\def\@test{#1}\ifx\@test\@empty%
+\begin{view}[id=#2,ext=tex]{#3}{#4}\else\begin{view}[id=#2,#1,ext=tex]{#3}{#4}\fi}
+{\end{view}}
+%    \end{macrocode}
+% \end{environment}
+%
+% \begin{environment}{mhviewsig}
+%   The |mhviewsig| environment is just a layer over the |mhview| environment with the keys
+%   suitably adapted.
+%    \begin{macrocode}
+\newenvironment{mhviewsig}[4][]{\def\@test{#1}\ifx\@test\@empty%
 \begin{mhview}[id=#2,ext=tex]{#3}{#4}\else\begin{mhview}[id=#2,#1,ext=tex]{#3}{#4}\fi}
 {\end{mhview}}
 %<*sty|ltxml>
@@ -333,8 +373,8 @@ DefKeyVal('modnl','primary','Semiverbatim');
 % \end{macro}
 %
 % \begin{environment}{modnl}
-%   The |modnl| environment is just a layer over the |module| environment with the keys
-%   and language suitably adapted.
+%   The |modnl| environment is just a layer over the |module| environment and the
+%   |\importmodule| macro with the keys and language suitably adapted.
 %    \begin{macrocode}
 %<*sty>
 \newenvironment{modnl}[3][]{\metasetkeys{modnl}{#1}%
@@ -370,8 +410,74 @@ DefEnvironment('{modnl} OptionalKeyVals:modnl {}{}',
 %    \end{macrocode}
 % \end{environment}
 %
+% \begin{macro}{mhmodnl:*}
+%    \begin{macrocode}
+%<*sty>
+\addmetakey{mhmodnl}{repos}
+\addmetakey{mhmodnl}{path}
+\addmetakey*{mhmodnl}{title}
+\addmetakey*{mhmodnl}{creators}
+\addmetakey*{mhmodnl}{contributors}
+\addmetakey{primary}{contributors}[yes]
+%</sty>
+%<*ltxml>
+DefKeyVal('mhmodnl','title','Semiverbatim');
+DefKeyVal('mhmodnl','repos','Semiverbatim'); 
+DefKeyVal('mhmodnl','path','Semiverbatim'); 
+DefKeyVal('mhmodnl','creators','Semiverbatim');
+DefKeyVal('mhmodnl','contributors','Semiverbatim');
+DefKeyVal('mhmodnl','primary','Semiverbatim');
+%</ltxml>
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{environment}{mhmodnl}
+%   The |mhmodnl| environment is just a layer over the |module| environment and the
+%   |\importmhmodule| macro with the keys and language suitably adapted.
+%    \begin{macrocode}
+%<*sty>
+\newenvironment{mhmodnl}[3][]{\metasetkeys{mhmodnl}{#1}%
+\smg@select@language{#3}%
+\def\@test{#1}\ifx\@test\@empty\begin{module}[id=#2.#3]\else\begin{module}[id=#2.#3,#1]\fi%
+\edef\@repos{\ifx\mhmodnl@repos\@empty\mh@currentrepos\else\mhmodnl@repos}
+\if@langfiles\importmhmodule[repos=\@repos,load=#2,ext=tex]{#2}\else
+\ifx\mhmodnl@load\@empty\importmodule{#2}\else\importmodule[ext=tex,load=\mhmodnl@load]{#2}\fi%
+\fi}
+{\end{module}}
+%</sty>
+%<*ltxml>
+DefEnvironment('{mhmodnl} OptionalKeyVals:mhmodnl {}{}',
+         "<omdoc:theory "
+         . 'xml:id="#2.#3">'
+         .   "?&defined(&GetKeyVal(#1,'creators'))(<dc:creator>&GetKeyVal(#1,'creators')</dc:creator>)()"
+         .   "?&defined(&GetKeyVal(#1,'title'))(<dc:title>&GetKeyVal(#1,'title')</dc:title>)()"
+         .   "?&defined(&GetKeyVal(#1,'contributors'))(<dc:contributor>&GetKeyVal(#1,'contributors')</dc:contributor>)()"
+         .   "#body"
+         . "</omdoc:theory>",
+  afterDigestBegin=>sub {
+    my ($stomach, $whatsit) = @_;
+    my $keyval = $whatsit->getArg(1);
+    my $signature = ToString($whatsit->getArg(2));
+    my $repos = ToString(GetKeyVal($keyval,'torepos'));
+    my $current_repos = LookupValue('current_repos');
+    if (!$repos) { $repos = $current_repos; }
+    my $defpaths = LookupValue('defpath');
+    my $load_path = ($$defpaths{MathHub}).$repos.'/source/'.$signature;
+
+    if ($keyval) {
+      # If we're not given load, AND the langfiles option is in effect,
+      # default to #2
+      if ((! $keyval->getValue('path')) && (LookupValue('smultiling_langfiles'))) {
+        $keyval->setValue('load',$load_path); }
+      # Always load a TeX file
+      $keyval->setValue('ext','tex'); }
+    importmoduleI($stomach,$whatsit)});
+%</ltxml>%$
+%    \end{macrocode}
+% \end{environment}
+%
 % \begin{environment}{viewnl}
-%   The |viewnl| environment is just a layer over the |mhviewsketch| environment with the
+%   The |viewnl| environment is just a layer over the |viewsketch| environment with the
 %   keys and langauge suitably adapted.\ednote{MK: we have to do something about the
 %   if@langfiles situation here. But this is non-trivial, since we do not know the current
 %   path, to which we could append .\meta{lang}!}
@@ -379,6 +485,20 @@ DefEnvironment('{modnl} OptionalKeyVals:modnl {}{}',
 %<ltxml>RawTeX('
 %<*sty|ltxml>
 \newenvironment{viewnl}[5][]{\def\@test{#1}\ifx\@test\@empty%
+\begin{viewsketch}[id=#2.#3,ext=tex]{#4}{#5}\else%
+\begin{viewsketch}[id=#2.#3,#1,ext=tex]{#4}{#5}\fi%
+\smg@select@language{#3}}
+{\end{viewsketch}}
+%    \end{macrocode}
+% \end{environment}
+%
+% \begin{environment}{mhviewnl}
+%   The |mhviewnl| environment is just a layer over the |mhviewsketch| environment with the
+%   keys and langauge suitably adapted.\ednote{MK: we have to do something about the
+%   if@langfiles situation here. But this is non-trivial, since we do not know the current
+%   path, to which we could append .\meta{lang}!}
+%    \begin{macrocode}
+\newenvironment{mhviewnl}[5][]{\def\@test{#1}\ifx\@test\@empty%
 \begin{mhviewsketch}[id=#2.#3,ext=tex]{#4}{#5}\else%
 \begin{mhviewsketch}[id=#2.#3,#1,ext=tex]{#4}{#5}\fi%
 \smg@select@language{#3}}
