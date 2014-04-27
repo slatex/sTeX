@@ -117,18 +117,6 @@
 % \end{modnl}
 % \end{verbatim}
 %
-%   There the |modsig| environment works exactly like the old |module| environment, only
-%   that the |id| attribute has moved into the required argument -- anonymous module
-%   signatures do not make sense. The |modnl| environment takes two arguments the first is
-%   the name of the module signature it provides language bindings for and the second the
-%   ISO 639 language specifier of the content language. We add the |primary| key |modnl|,
-%   which can specify the primary language binding (the one the others translate from; and
-%   which serves as the reference in case of translation conflicts).\ednote{@DG: This
-%   needs to be implemented in LaTeXML}
-% 
-%   There is another difference in the multilingual encoding: All symbols are introduced
-%   in the module signature, either by a |\symdef| or the new |\symbol| macro.
-% 
 %   We retain the old |module| environment as an intermediate stage. It is still useful
 %   for monolingual texts. Note that for files with a module, we still have to extract
 %   |*.sms| files. It is not completely clear yet, how to adapt the workflows. We clearly
@@ -142,6 +130,24 @@
 %   The |smultiling| package accepts all options of the |babel.sty| and just passes them
 %   on to it. The options specify which languages can be used in the \sTeX language
 %   bindings.
+%
+%   There the \DescribeEnv{modsig}|modsig| environment works exactly like the old |module|
+%   environment, only that the |id| attribute has moved into the required argument --
+%   anonymous module signatures do not make sense.
+%
+%   The \DescribeEnv{modnl}|modnl| environment takes two arguments the first is the name
+%   of the module signature it provides language bindings for and the second the ISO 639
+%   language specifier of the content language. We add the |primary| key |modnl|, which
+%   can specify the primary language binding (the one the others translate from; and which
+%   serves as the reference in case of translation conflicts).\ednote{@DG: This needs to
+%   be implemented in LaTeXML}
+% 
+%   There is another difference in the multilingual encoding: All symbols are introduced
+%   in the module signature, either by a |\symdef| or the new \DescribeMacro
+%   {\symbol}|\symbol| macro. |\symbol{|\meta{name}|}| takes a symbol name \meta{name} as
+%   an argument and reserves that name. The variant
+%   \DescribeMacro{\symbol*}|\symbol*{|\meta{name}|}| declares \meta{name} to be a primary
+%   symbol; see~\cite{Kohlhase:dmesmgm14} for a discussion.
 % 
 % \end{omgroup}
 % 
@@ -288,6 +294,21 @@ RequirePackage('babel');
 %<ltxml>');
 %    \end{macrocode}
 % \end{environment}
+%
+% \begin{macro}{symbol}
+%   has a starred form for primary symbols.
+%    \begin{macrocode}
+%<*sty>
+\def\symbol{\@ifstar{\@symbol}{\@symbol@star}}
+\def\@symbol#1{\if@importing\else Symbol: \textsf{#1}\fi}
+\def\@symbol@star#1{\if@importing\else Primary Symbol: \textsf{#1}\fi}
+%</sty>
+%<*ltxml.sty>
+DefConstructor('\symbol OptionalMatch:* {}',
+     "<omdoc:symbol ?#1(role='primary')(role='secondary') name='#2'/>");
+%</ltxml.sty>
+%    \end{macrocode}
+% \end{macro}
 % \end{omgroup}
 % 
 % \begin{omgroup}[id=sec:langbindings]{Language Bindings}
@@ -350,20 +371,20 @@ DefEnvironment('{modnl} OptionalKeyVals:modnl {}{}',
 % \end{environment}
 %
 % \begin{environment}{viewnl}
-%   The |view| environment is just a layer over the |mhviewsketch| environment with the
+%   The |viewnl| environment is just a layer over the |mhviewsketch| environment with the
 %   keys and langauge suitably adapted.\ednote{MK: we have to do something about the
 %   if@langfiles situation here. But this is non-trivial, since we do not know the current
 %   path, to which we could append .\meta{lang}!}
 %    \begin{macrocode}
-%<ltxml.sty>RawTeX('
-%<*sty|ltxml.sty>
+%<ltxml>RawTeX('
+%<*sty|ltxml>
 \newenvironment{viewnl}[5][]{\def\@test{#1}\ifx\@test\@empty%
 \begin{mhviewsketch}[id=#2.#3,ext=tex]{#4}{#5}\else%
 \begin{mhviewsketch}[id=#2.#3,#1,ext=tex]{#4}{#5}\fi%
 \smg@select@language{#3}}
 {\end{mhviewsketch}}
-%</sty|ltxml.sty>
-%<ltxml.sty>');
+%</sty|ltxml>
+%<ltxml>');
 %    \end{macrocode}
 % \end{environment}
 % \end{omgroup}
