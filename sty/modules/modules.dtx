@@ -1016,18 +1016,9 @@
 % 
 % \begin{macro}{\mod@newcommand}
 %   We first hack the {\LaTeX} kernel macros to obtain a version of the |\newcommand|
-%   macro that does not check for definedness. This is just a copy of the code from
-%   |latex.ltx| where I have removed the |\@ifdefinable| check.\footnote{Someone must have
-%     done this before, I would be very happy to hear about a package that provides this.}
+%   macro that does not check for definedness.
 %    \begin{macrocode}
-\let\mod@newcommand=\newcommand
-% \def\mod@newcommand{\@star@or@long\mod@new@command}
-% \def\mod@new@command#1{\@testopt{\@mod@newcommand#1}0}
-% \def\@mod@newcommand#1[#2]{\kernel@ifnextchar [{\mod@xargdef#1[#2]}{\mod@argdef#1[#2]}}
-% \long\def\mod@argdef#1[#2]#3{\@yargdef#1\@ne{#2}{#3}}
-% \long\def\mod@xargdef#1[#2][#3]#4{\expandafter\def\expandafter#1\expandafter{%
-% \expandafter\@protected@testopt\expandafter #1\csname\string#1\endcsname{#3}}%
-% \expandafter\@yargdef\csname\string#1\endcsname\tw@{#2}{#4}}
+\let\mod@newcommand=\newrobustcmd
 %    \end{macrocode}
 % \end{macro}
 % 
@@ -1078,10 +1069,14 @@
 \def\symdef{\@ifnextchar[{\@symdef}{\@symdef[]}}
 \def\@symdef[#1]#2{\@ifnextchar[{\@@symdef[#1]{#2}}{\@@symdef[#1]{#2}[0]}}
 %    \end{macrocode}
+% \end{macro}
+%
 % next we locally abbreviate |\mod@newcommand| to simplify argument passing.
 %    \begin{macrocode}
 \def\@mod@nc#1{\mod@newcommand{#1}[1]}
 %    \end{macrocode}
+%
+% \begin{macro}{\@@symdef}
 %    now comes the real meat: the |\@@symdef| macro does two things, it adds the macro
 %    definition to the macro definition pool of the current module and also provides it.
 %    \begin{macrocode}
@@ -1097,14 +1092,11 @@
 %    \begin{macrocode}
 \expandafter\mod@newcommand\csname modules@#2@pres@\endcsname[#3]{#4}%
 %    \end{macrocode}
-% and then we define the actual semantic macro. Note that this can take an optional
-% argument, for which we provide with |\@ifnextchar| and an internal macro |\@|\meta{sym},
-% which when invoked with an optional argument \meta{opt} calls
-% |\modules@|\meta{sym}|@pres@|\meta{opt}.
+% and then we define the actual semantic macro, which when invoked with an optional
+% argument \meta{opt} calls |\modules@|\meta{sym}|@pres@|\meta{opt} provided by the
+% |\symvariant| macro.
 %    \begin{macrocode}
-\expandafter\def\csname #2\endcsname%
-{\@ifnextchar[{\csname modules@#2\endcsname}{\csname modules@#2\endcsname[]}}%
-\expandafter\def\csname modules@#2\endcsname[##1]%
+\expandafter\mod@newcommand\csname #2\endcsname[1][]%
 {\csname modules@#2@pres@##1\endcsname}%
 %    \end{macrocode}
 % Finally, we prepare the internal macro to be used in the |\symref| call.
@@ -1119,6 +1111,8 @@
 \if@symdeflocal\else%
 \@ifundefined{mod@id}{}{%
 %    \end{macrocode}
+
+
 % Otherwise, we add three functions to the module's pool of defined macros using
 % |\g@addto@macro|. We first add the definition of the intermediate function
 % |\modules@|\meta{sym}|@pres@|.
@@ -1126,20 +1120,16 @@
 \expandafter\g@addto@macro\this@module%
 {\expandafter\mod@newcommand\csname modules@#2@pres@\endcsname[#3]{#4}}%
 %    \end{macrocode}
-% Then we add add the definition of |\|\meta{sym} in terms of the function |\@|\meta{sym}
-% to handle the optional argument.
+% Then we add add the definition of |\|\meta{sym}  which calls the intermediate
+% function and handles the optional argument.
 %    \begin{macrocode}
 \expandafter\g@addto@macro\this@module%
-{\expandafter\def\csname#2\endcsname%
-{\@ifnextchar[{\csname modules@#2\endcsname}{\csname modules@#2\endcsname[]}}}%
-%    \end{macrocode}
-% We add add the definition of |\@|\meta{sym}, which calls the intermediate
-% function.
-%    \begin{macrocode}
-\expandafter\g@addto@macro\this@module%
-{\expandafter\def\csname modules@#2\endcsname[##1]%
+{\expandafter\mod@newcommand\csname #2\endcsname[1][]%
 {\csname modules@#2@pres@##1\endcsname}}%
 %    \end{macrocode}
+
+
+
 % We also add |\mod@symref@|\meta{sym} macro to the macro pool so that the |\symref| macro
 % can pick it up.
 %    \begin{macrocode}
@@ -1294,7 +1284,7 @@
 \@latex@warning{\protect\termref with unidentified cd "#1": the cd key must reference an active module}%
 \def\@label{sref@#2 @target}}%
 {\def\@label{sref@#2@#1@target}}%
-\expandafter\ifx\csname #1@cd@file@base\endcsname\@empty% local reference
+\ifx\csname #1@cd@file@base\endcsname\@empty% local reference
 \sref@hlink@ifh{\@label}{\ifx\@test\@empty #2\else #3\fi}\else%
 \def\@uri{\csname #1@cd@file@base\endcsname.pdf\#\@label}%
 \sref@href@ifh{\@uri}{\ifx\@test\@empty #2\else #3\fi}\fi}
@@ -1513,9 +1503,9 @@
 % \begin{macro}{\requiremodules}
 %   this macro loads the modules in a file. It does quite a lot of work to make sure that
 %   they are only loaded once (actually this does not quite work so they are loaded only
-%   twice). |\requiremodules{|\meta{file}|}| also deposits a call to
-%   |\@requiremodules{|\meta{file}|}| to the |aux| file to make sure that the semantic
-%   macros are already loaded for the table of contents.
+%   twice). |\requiremodules{|\meta{file}|}{|\meta{ext}|}| also deposits a call to
+%   |\@requiremodules{|\meta{file}|}{|\meta{ext}|}| to the |aux| file to make sure that
+%   the semantic macros are already loaded for the table of contents.
 %    \begin{macrocode}
 \newcommand\requiremodules[2]{%
 {\mod@showfalse% save state and ensure silence while reading sms
@@ -1655,10 +1645,10 @@
 \addmetakey{importmhmodule}{path}
 \addmetakey[sms]{importmhmodule}{ext}
 \newcommand\importmhmodule[2][]{\metasetkeys{importmhmodule}{#1}%
-\expandafter\ifx\importmhmodule@path\@empty
+\ifx\importmhmodule@path\@empty
 \importmodule[ext=\importmhmodule@ext,id=\importmhmodule@id]{#2}\else
 \edef\mh@@repos{\mh@currentrepos}%
-\expandafter\ifx\importmhmodule@repos\@empty\else\mhcurrentrepos{\importmhmodule@repos}\fi%
+\ifx\importmhmodule@repos\@empty\else\mhcurrentrepos{\importmhmodule@repos}\fi%
 \importmodule[load=\MathHub{\mh@currentrepos/source/\importmhmodule@path},
               ext=\importmhmodule@ext,id=\importmhmodule@id]{#2}%
 \mhcurrentrepos\mh@@repos\fi\ignorespaces}
@@ -1668,10 +1658,10 @@
 % \begin{macro}{\usemhmodule}
 %    \begin{macrocode}
 \newcommand\usemhmodule[2][]{\metasetkeys{importmhmodule}{#1}%
-\expandafter\ifx\importmhmodule@path\@empty
+\ifx\importmhmodule@path\@empty
 \usemodule[ext=\importmhmodule@ext,id=\importmhmodule@id]{#2}\else
 \edef\mh@@repos{\mh@currentrepos}%
-\expandafter\ifx\importmhmodule@repos\@empty\else\mhcurrentrepos{\importmhmodule@repos}\fi%
+\ifx\importmhmodule@repos\@empty\else\mhcurrentrepos{\importmhmodule@repos}\fi%
 \usemodule[load=\MathHub{\mh@currentrepos/source/\importmhmodule@path},
            ext=\importmhmodule@ext,id=\importmhmodule@id]{#2}%
 \mhcurrentrepos\mh@@repos\fi\ignorespaces}
@@ -1681,10 +1671,10 @@
 % \begin{macro}{\adoptmhmodule}
 %    \begin{macrocode}
 \newcommand\adoptmhmodule[2][]{\metasetkeys{importmhmodule}{#1}%
-\expandafter\ifx\importmhmodule@path\@empty
+\ifx\importmhmodule@path\@empty
 \adoptmodule[ext=\importmhmodule@ext,id=\importmhmodule@id]{#2}\else
 \edef\mh@@repos{\mh@currentrepos}%
-\expandafter\ifx\importmhmodule@repos\@empty\else\mhcurrentrepos{\importmhmodule@repos}\fi%
+\ifx\importmhmodule@repos\@empty\else\mhcurrentrepos{\importmhmodule@repos}\fi%
 \adoptmodule[load=\MathHub{\mh@currentrepos/source/\importmhmodule@path},
              ext=\importmhmodule@ext,id=\importmhmodule@id]{#2}%
 \mhcurrentrepos\mh@@repos\fi\ignorespaces}
