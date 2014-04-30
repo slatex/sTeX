@@ -116,9 +116,9 @@ userdefinedwidth=\slidewidth,align=center]\sf}
 \pgfdeclareimage[width=.9em]{miko@small@dbend}{dangerous-bend}
 \def\smalltextwarning{\pgfuseimage{miko@small@dbend}\xspace}
 \pgfdeclareimage[width=1.5em]{miko@dbend}{dangerous-bend}
-\def\textwarning{\raisebox{-.05cm}{\pgfuseimage{miko@dbend}}\xspace}
+\newrobustcmd\textwarning{\raisebox{-.05cm}{\pgfuseimage{miko@dbend}}\xspace}
 \pgfdeclareimage[width=2.5em]{miko@big@dbend}{dangerous-bend}
-\def\bigtextwarning{\raisebox{-.05cm}{\pgfuseimage{miko@big@dbend}}\xspace}
+\newrobustcmd\bigtextwarning{\raisebox{-.05cm}{\pgfuseimage{miko@big@dbend}}\xspace}
 \ifnotes\newcommand\titleframe{\maketitle}\else
 \newcommand\titleframe{\begin{frame}\titlepage\end{frame}}\fi
 \newenvironment{titleframewith}{\begin{frame}\titlepage}{\end{frame}}
