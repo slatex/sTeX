@@ -106,18 +106,17 @@
 % see Figure~\ref{fig:mysection} for an example. Depending on the whether macro or
 % environment marking up the respective document fragment carries the key/value pair
 % |id=|\meta{id} the cross-reference will expand to ``Section 2.1'' or ``this remark'',
-% both carrying hyper-references. The |\sref| macro takes optional arguments allows to
-% customize its behavior the full form of |\sref| is:
-% |\sref[|\meta{text}|]{|\meta{id}|}[|\meta{fallback}|]|, where \meta{link} can be used to
-% specify a link text that overrides the auto-generated one and \meta{fallback} gives the
+% both carrying hyper-references. The |\sref| macro takes an optional key/value argument
+% that allows to customize its behavior: The |linktext| key can be used to specify a link
+% text that overrides the auto-generated one and the |fallback| allows to give the
 % fallback text when the label \meta{id} is not defined.
 % 
 % \begin{exfig}
 % \begin{verbatim}
 % \mysection[id=foo]{#2}
 % ... \sref{foo} ...
-% ... \sref[this section]{foo} ...
-% ... \sref{foo}[above] ...
+% ... \sref[linktext=this section]{foo} ...
+% ... \sref[fallback=above]{foo} ...
 % \end{verbatim}
 % \vspace*{-1.5em}
 % \caption{Semantic Crossreferencing}\label{fig:mysection}
@@ -414,10 +413,12 @@ RequirePackage('metakeys');
 % \begin{macro}{\sref}
 %    \begin{macrocode}
 %<*package>
-\newrobustcmd\sref[2]{\@sref{#1}{#2}}
-\newrobustcmd\@sref[3][]{\@ifundefined{sref@part}%
-{\sref@hlink[#1]{#2}{#3}}%
-{\sref@hlink[#1]{\sref@part @#2}{#3}}\xspace}
+\addmetakey{sref}{linktext}
+\addmetakey{sref}{fallback}
+\newrobustcmd\sref[2][]{\metasetkeys{sref}{#1}%
+\@ifundefined{sref@part}%
+{\sref@hlink[\sref@linktext]{#2}{\sref@fallback}}%
+{\sref@hlink[\sref@linktext]{\sref@part @#2}{\sref@fallback}}\xspace}
 %</package>
 %<*ltxml>
 sub withhash {'#';}
@@ -477,9 +478,9 @@ DefConstructor('\spageref{}',
 %<*package>
 \newif\ifhref\hreffalse
 \AtBeginDocument{\@ifpackageloaded{hyperref}{\hreftrue}{\hreffalse}}
-\newcommand\sref@href@ifh[2]{\ifhref\href{#1}{#2}\else#2\fi}
-\newcommand\sref@hlink@ifh[2]{\ifhref\hyperlink{#1}{#2}\else#2\fi}
-\newcommand\sref@target@ifh[2]{\ifhref\hypertarget{#1}{#2}\else#2\fi}
+\newrobustcmd\sref@href@ifh[2]{\ifhref\href{#1}{#2}\else#2\fi}
+\newrobustcmd\sref@hlink@ifh[2]{\ifhref\hyperlink{#1}{#2}\else#2\fi}
+\newrobustcmd\sref@target@ifh[2]{\ifhref\hypertarget{#1}{#2}\else#2\fi}
 %    \end{macrocode}
 % \end{macro}
 % 
@@ -597,7 +598,7 @@ DefConstructor('\spageref{}',
 %   object specified by \meta{label} otherwise.
 %    \begin{macrocode}
 %<*package>
-\newcommand\sref@hlink[3][]{\def\@test{#1}\def\sref@ifundef{#3}%
+\newrobustcmd\sref@hlink[3][]{\def\@test{#1}\def\sref@ifundef{#3}%
 \@ifundefined{sref@#2@label}%
 {\ifx\sref@ifundef\@empty%
 \protect\G@refundefinedtrue\@latex@warning{reference #2 undefined}?#2?%
