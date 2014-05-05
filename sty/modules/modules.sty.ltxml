@@ -24,6 +24,10 @@ DefKeyVal('symdef','assocarg','Semiverbatim');
 DefKeyVal('importmodule','id','Semiverbatim');
 DefKeyVal('importmodule','load','Semiverbatim');
 DefKeyVal('importmodule','ext','Semiverbatim');
+DefKeyVal('importmhmodule','id','Semiverbatim');
+DefKeyVal('importmhmodule','repos','Semiverbatim');
+DefKeyVal('importmhmodule','path','Semiverbatim');
+DefKeyVal('importmhmodule','ext','Semiverbatim');
 
 # =======================================================
 # 1. TeX API methods:                                   #
@@ -546,6 +550,8 @@ sub importmoduleI {
    $ext = 'sms' unless $ext;
    my $module = ToString($whatsit->getArg(2));
    my $containing_module = LookupValue('current_module');
+   my $repos = LookupValue('current_repos');
+   print STDERR "\n\nMODULE: $module; REPOS: $repos\n\n";
    # 1. Bookkeeping
    AssignValue('last_import_module',$module);
    #set the relation between the current module and the one to be imported
@@ -611,6 +617,33 @@ sub symdef_assemble_presentation {
   }
   #Tokens(Invocation(T_CS('\@ensuremath'),$presentation)->unlist); 
   $presentation;}
+
+
+sub importMHmoduleI {
+  my ($stomach, $whatsit) = @_;
+  my $keyval = $whatsit->getArg(1);
+  my $id = $whatsit->getArg(2);
+  if ($keyval) {
+    my $repos = ToString($keyval->getValue('repos'));
+    my $path = ToString($keyval->getValue('path'));
+    my $current_repos = LookupValue('current_repos');
+    if (!$repos) { # Use the implicit current repository
+      $repos = $current_repos; }
+    my $defpaths = LookupValue('defpath');
+    my $load_path = ($$defpaths{MathHub}).$repos.'/source/'.$path;
+    $keyval->setValue('load',$load_path);
+    $whatsit->setArgs($keyval,$id);
+    print STDERR "Setting repos to $repos\n";
+    AssignValue('current_repos' => $repos, 'global');
+    importmoduleI($stomach,$whatsit);
+    print STDERR "Resetting repos to $current_repos\n";
+    AssignValue('current_repos' => $current_repos, 'global'); }
+  else {
+    importmoduleI($stomach,$whatsit);
+  }
+  return;
+}
+
 # =======================================================
 # 4. Forgotten Stuff                                    #
 # =======================================================
@@ -744,27 +777,9 @@ DefMacroI(T_CS('\begin{mhviewsketch}'),'OptionalKeyVals:mhview {}{}', sub {
 DefMacroI('\end{mhviewsketch}',undef,'\end{viewsketchenv}');
 
 DefConstructor('\obligation [] {} {}',"<omdoc:obligation induced-by='#2' assertion='#3'/>");
-DefConstructor('\importmhmodule OptionalKeyVals:importmodule {}',
+DefConstructor('\importmhmodule OptionalKeyVals:importmhmodule {}',
    "<omdoc:imports from='?&GetKeyVal(#1,'load')(&canonical_omdoc_path(&GetKeyVal(#1,'load')))()\##2'/>",
-   afterDigest => sub {
-    my ($stomach, $whatsit) = @_;
-    my $keyval = $whatsit->getArg(1);
-    my $id = $whatsit->getArg(2);
-    if (!$keyval) { Fatal(":importmhmodule Currently can't handle missing the KeyVal argument!"); }
-    my $repos = ToString($keyval->getValue('repos'));
-    my $path = ToString($keyval->getValue('path'));
-    my $current_repos = LookupValue('current_repos');
-    if (!$repos) { # Use the implicit current repository
-      $repos = $current_repos; }
-    my $defpaths = LookupValue('defpath');
-    my $load_path = ($$defpaths{MathHub}).$repos.'/source/'.$path;
-    $keyval->setValue('load',$load_path);
-    $whatsit->setArgs($keyval,$id);
-    AssignValue('current_repos' => $repos, 'global');
-    importmoduleI($stomach,$whatsit);
-    AssignValue('current_repos' => $current_repos, 'global');
-    return;
-  });
+   afterDigest => \&importMHmoduleI);
 
 DefMacro('\mhcurrentrepos{}','\@mhcurrentrepos{#1}');
 DefMacro('\@mhcurrentrepos{}','\def\mh@currentrepos{#1}\@@mhcurrentrepos{#1}');
