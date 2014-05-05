@@ -1,7 +1,7 @@
-use LaTeXML;
+use LaTeXML::Core;
 use LaTeXML::Package;
 
-LaTeXML->new(searchpaths=>['./rng/'])->withState(sub{ $_[0]->getModel->setRelaxNGSchema("omdoc+ltxml",
+LaTeXML::Core->new(searchpaths=>['./rng/'])->withState(sub{ $_[0]->getModel->setRelaxNGSchema("omdoc+ltxml",
 '#default'=>"http://omdoc.org/ns",
         'om'=>"http://www.openmath.org/OpenMath",
         'm'=>"http://www.w3.org/1998/Math/MathML",
