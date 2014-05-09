@@ -53,6 +53,42 @@ DefMacro('\defpath[]{}{}', sub {
 # =======================================================
 # 2. Core Modules functionality:                        #
 # =======================================================
+sub module_afterDigestBegin {
+  my($stomach, $whatsit)=@_;
+  $whatsit->setProperty(excluded=>LookupValue('excluding_modules'));
+  my $keys = $whatsit->getArg(1);
+  my($id, $cd)=$keys && map(ToString($keys->getValue($_)),qw(id cd));
+  # 1. Make sure we have an id or give a stub one otherwise:
+  if (! $id) {
+   # RefStepCounter deactivates any scopes for the current value of the
+   # counter which causes the stored prop. of the env. not to be
+   # visible anymore.
+   $id = LookupValue('stex:theory:id') || 1;
+   AssignValue('stex:theory:id', $id+1);
+   $id = "theory$id";
+  }
+  $cd = $cd || $id;
+  # 2. Update the catalog with paths for modules
+  my $module_paths = LookupValue('module_paths') || {};
+  $module_paths->{$id} = LookupValue('last_module_path');
+  AssignValue('module_paths', $module_paths, 'global');
+  # 3. Update the current module reference
+  AssignValue(current_module => $id);
+  AssignValue(module_cd => $cd);
+  # 4. Activate the module in our current scope
+  $STATE->activateScope("module:".$id);
+  # 5. Activate parent scope, if present
+  my $parent_module = LookupValue('parent_module');
+  activate_module_definitions($parent_module) if $parent_module;
+  # 6. Update the current parent module
+  AssignValue("parent_of_$id"=>$parent_module,'global');
+  AssignValue("parent_module"=>$id);
+  return; }
+sub module_afterDigest {
+   # (after)7. Move a step up on the module ancestry
+   AssignValue("parent_module" => LookupValue("parent_of_".LookupValue("parent_module")));
+   return; }
+
 DefEnvironment('{module} OptionalKeyVals:Module',
          "?#excluded()(<omdoc:theory"
          . "?&defined(&GetKeyVal(#1,'id'))(xml:id='&GetKeyVal(#1,'id')')(xml:id='#id')>"
@@ -60,41 +96,8 @@ DefEnvironment('{module} OptionalKeyVals:Module',
          .   "?&defined(&GetKeyVal(#1,'contributors'))(<dc:contributor>&GetKeyVal(#1,'contributors')</dc:contributor>)()"
          .   "#body"
          . "</omdoc:theory>)",
- afterDigestBegin=>sub {
-   my($stomach, $whatsit)=@_;
-   $whatsit->setProperty(excluded=>LookupValue('excluding_modules'));
-   my $keys = $whatsit->getArg(1);
-   my($id, $cd)=$keys && map(ToString($keys->getValue($_)),qw(id cd));
-   # 1. Make sure we have an id or give a stub one otherwise:
-   if (! $id) {
-     # RefStepCounter deactivates any scopes for the current value of the
-     # counter which causes the stored prop. of the env. not to be
-     # visible anymore.
-     $id = LookupValue('stex:theory:id') || 1;
-     AssignValue('stex:theory:id', $id+1);
-     $id = "theory$id";
-   }
-   $cd = $cd || $id;
-   # 2. Update the catalog with paths for modules
-   my $module_paths = LookupValue('module_paths') || {};
-   $module_paths->{$id} = LookupValue('last_module_path');
-   AssignValue('module_paths', $module_paths, 'global');
-   # 3. Update the current module reference
-   AssignValue(current_module => $id);
-   AssignValue(module_cd => $cd);
-   # 4. Activate the module in our current scope
-   $STATE->activateScope("module:".$id);
-   # 5. Activate parent scope, if present
-   my $parent_module = LookupValue('parent_module');
-   activate_module_definitions($parent_module) if $parent_module;
-   # 6. Update the current parent module
-   AssignValue("parent_of_$id"=>$parent_module,'global');
-   AssignValue("parent_module"=>$id);
-   return; },
- afterDigest => sub {
-   # (after)7. Move a step up on the module ancestry
-   AssignValue("parent_module" => LookupValue("parent_of_".LookupValue("parent_module")));
-   return; });
+ afterDigestBegin=>\&module_afterDigestBegin,
+ afterDigest =>\&module_afterDigest);
 
 DefConstructor('\usemodule OptionalKeyVals:importmodule {}',
    "<omdoc:uses from='?&GetKeyVal(#1,'load')(&canonical_omdoc_path(&GetKeyVal(#1,'load')))()\##2'/>",
@@ -551,7 +554,6 @@ sub importmoduleI {
    my $module = ToString($whatsit->getArg(2));
    my $containing_module = LookupValue('current_module');
    my $repos = LookupValue('current_repos');
-   print STDERR "\n\nMODULE: $module; REPOS: $repos\n\n";
    # 1. Bookkeeping
    AssignValue('last_import_module',$module);
    #set the relation between the current module and the one to be imported
@@ -567,7 +569,7 @@ sub importmoduleI {
      # 1. mark as loaded
      AssignValue($cache_key.'_loaded' => 1, 'global');
      # 2. open a group for its definitions so that they are localized
-     $stomach->bgroup;
+     #$stomach->bgroup;
      # 3. update the last module path
      AssignValue('last_module_path', $file);
      # 4. queue the closing tag for this module in the gullet where it will be executed
@@ -577,9 +579,10 @@ sub importmoduleI {
      AssignValue('excluding_modules' => 1);
      # 6. queue this module's sms file in the gullet so that its definitions are imported
      LaTeXML::Package::InputDefinitions($file,type=>$ext,noltxml=>1);
+     # 2-NEW: Open a group for localizing definitions, via pushing \bgroup on top of the token stream
+     $gullet->unread(T_CS('\bgroup'));
    }
-   return;
- }
+   return; }
 DefPrimitive('\end@module@scope{}',sub {
  # Group all imported definitions so far under their named scope
  # i.e. close the group to encapsulate
@@ -587,7 +590,8 @@ DefPrimitive('\end@module@scope{}',sub {
  # Now that we are out of that named scope, we need to explicitly activate it
  # to make its definitions visible in the current module
  # Take care of any imported elements in this current module by activating it and all its dependencies
- activate_module_definitions(ToString(Digest($_[1])->toString));
+ my $module = ToString(Digest($_[1])->toString);
+ activate_module_definitions($module);
  return; });
 
 sub symdef_assemble_presentation {
