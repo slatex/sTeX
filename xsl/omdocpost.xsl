@@ -24,7 +24,7 @@
 <xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 
 <xsl:output method="xml" indent="yes" cdata-section-elements="data"/>
-<xsl:strip-space elements="*"/>
+<!--<xsl:strip-space elements="*"/>-->
 <xsl:param name="math-format" select="'om'"/>
 
 <!-- the fallback (mostly for LaTeXML-generated XHTML: 

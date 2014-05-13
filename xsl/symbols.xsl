@@ -29,7 +29,6 @@
   exclude-result-prefixes="xsl omdoc ltx om">
 
 <xsl:output method="xml" indent="yes" cdata-section-elements="data"/>
-<xsl:strip-space elements="*"/>
 
 <!-- these parameters set the paths to the special latexml cds. The default is made so that it works for GenCS -->
 <xsl:param name="smglom" select="'smglom/smglom/source'"/>

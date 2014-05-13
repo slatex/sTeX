@@ -31,7 +31,6 @@
   exclude-result-prefixes="xsl omdoc xhtml ltx dc">
 
 <xsl:output method="xml" indent="yes" cdata-section-elements="data"/>
-<xsl:strip-space elements="*"/>
 
 <xsl:template match="/">
   <xsl:comment>This OMDoc document is generated from an sTeX-encoded one via LaTeXML, you may want to reconsider editing it.</xsl:comment>
