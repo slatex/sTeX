@@ -30,7 +30,6 @@
   exclude-result-prefixes="xsl omdoc ltx m">
 
 <xsl:output method="xml" indent="yes" cdata-section-elements="data"/>
-<xsl:strip-space elements="*"/>
 
 <xsl:template match="omdoc:rendering">
   <xsl:apply-templates select="." mode="rendering"/>

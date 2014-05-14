@@ -34,8 +34,6 @@
     doctype-public="-//CNX//DTD CNXML 0.5 plus MathML//EN"
     doctype-system="http://cnx.rice.edu/cnxml/0.5/DTD/cnxml_mathml.dtd"/>
   
-  <xsl:strip-space elements="*"/>
-
 <!-- if there is no other template, give a warning -->
 <!--   <xsl:template match="*">
     <xsl:message>Cannot deal with element <xsl:value-of select="local-name()"/> yet! (id=<xsl:value-of select="@xml:id"/>)</xsl:message>

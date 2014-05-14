@@ -30,7 +30,6 @@
   exclude-result-prefixes="omdoc ltx xsl">
 
 <xsl:output method="xml" indent="yes" cdata-section-elements="data"/>
-<xsl:strip-space elements="*"/>
 
 <xsl:template match="ltx:text[@class='listing']">
   <omdoc:phrase type='progsnippet'>

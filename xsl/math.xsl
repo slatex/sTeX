@@ -30,7 +30,6 @@
   exclude-result-prefixes="xsl ltx om">
 
 <xsl:output method="xml" indent="yes" cdata-section-elements="data"/>
-<xsl:strip-space elements="*"/>
 
 <xsl:template match="ltx:equation">
   <xsl:choose>

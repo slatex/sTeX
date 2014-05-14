@@ -33,7 +33,6 @@
   exclude-result-prefixes="xsl omdoc xhtml ltx dc str">
 
 <xsl:output method="xml" indent="yes" cdata-section-elements="data"/>
-<xsl:strip-space elements="*"/>
 
 <!-- we do not need to special-case this any more 
 <xsl:template match="ltx:graphics|ltx:verbatim">
