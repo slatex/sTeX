@@ -1,7 +1,9 @@
 # -*- CPERL -*-
 package LaTeXML::Package::Pool;
 use strict;
+use warnings;
 use LaTeXML::Package;
+
 DeclareOption(undef,sub {PassOptions('article','cls',ToString(Digest(T_CS('\CurrentOption')))); });
 ProcessOptions();
 RequirePackage('amstext');
@@ -20,11 +22,14 @@ sub gimportI {
     $keyval->setValue('repos',$repos); }
   else {
     $keyval->setValue('repos',LookupValue('current_repos')); }
-  $whatsit->setArgs($keyval,$name);
+  # Mystery: Why does $whatsit->setArgs($keyval,$name) raise a warning for
+  #          "odd numbers" in hash assignment? Workaround for now!
+  $$whatsit{args}[1] = $name; # Intention: $whatsit->setArg(2,$name);
+  undef $$whatsit{args}[2]; # Intention: $whatsit->deleteArg(3);
   importMHmoduleI($stomach,$whatsit);  
   return; }
 DefMacro('\gimport[]{}','\g@import[ext=tex,path=#2]{#1}{#2}');
-DefConstructor('\g@import OptionalKeyVals:importmhmodule {} {}',
+DefConstructor('\g@import OptionalKeyVals:importmhmodule {}{}', 
   "<omdoc:imports from='?&GetKeyVal(#1,'load')(&canonical_omdoc_path(&GetKeyVal(#1,'load')))()\##2'/>",
   afterDigest => \&gimportI);
 
@@ -38,9 +43,9 @@ DefConstructor('\g@adopt OptionalKeyVals:importmhmodule {} {}',
   "<omdoc:adopts from='?&GetKeyVal(#1,'load')(&canonical_omdoc_path(&GetKeyVal(#1,'load')))()\##2'/>",
   afterDigest => \&gimportI);
 
-DefConstructor('\hypernym [] {}{}',"");
-DefConstructor('\hyponym [] {}{}',"");
-DefConstructor('\meronym [] {}{}',"");
+DefConstructor('\hypernym[]{}{}',"");
+DefConstructor('\hyponym[]{}{}',"");
+DefConstructor('\meronym[]{}{}',"");
 DefConstructor('\MSC{}',"");
 RawTeX('
 \newenvironment{gviewsig}[4][]{\def\test{#1}\ifx\@test\@empty%
