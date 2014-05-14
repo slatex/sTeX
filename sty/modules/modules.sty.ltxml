@@ -571,18 +571,22 @@ sub importmoduleI {
      # 2. open a group for its definitions so that they are localized
      #$stomach->bgroup;
      # 3. update the last module path
-     AssignValue('last_module_path', $file);
+     AssignValue('last_module_path' => $file);
      # 4. queue the closing tag for this module in the gullet where it will be executed
      #    after all other definitions of the imported module have been taken care of
      $gullet->unread(Invocation(T_CS('\end@module@scope'), Tokens(Explode($module)))->unlist);
      # 5. we only need to load the sms definitions without generating any xml output, so we set the flag to 1
-     AssignValue('excluding_modules' => 1);
+     #AssignValue('excluding_modules' => 1);
      # 6. queue this module's sms file in the gullet so that its definitions are imported
      LaTeXML::Package::InputDefinitions($file,type=>$ext,noltxml=>1);
      # 2-NEW: Open a group for localizing definitions, via pushing \bgroup on top of the token stream
-     $gullet->unread(T_CS('\bgroup'));
+     # 5-NEW: Only set excluding_modules after the group has been opened
+     $gullet->unread(T_CS('\bgroup'),T_CS('\exclude@modules@scope'));
    }
    return; }
+DefPrimitive('\exclude@modules@scope', sub {
+  AssignValue('excluding_modules' => 1);
+  return; });
 DefPrimitive('\end@module@scope{}',sub {
  # Group all imported definitions so far under their named scope
  # i.e. close the group to encapsulate
@@ -636,17 +640,12 @@ sub importMHmoduleI {
     my $defpaths = LookupValue('defpath');
     my $load_path = ($$defpaths{MathHub}).$repos.'/source/'.$path;
     $keyval->setValue('load',$load_path);
-    $whatsit->setArgs($keyval,$id);
-    print STDERR "Setting repos to $repos\n";
     AssignValue('current_repos' => $repos, 'global');
     importmoduleI($stomach,$whatsit);
-    print STDERR "Resetting repos to $current_repos\n";
     AssignValue('current_repos' => $current_repos, 'global'); }
   else {
-    importmoduleI($stomach,$whatsit);
-  }
-  return;
-}
+    importmoduleI($stomach,$whatsit);  }
+  return; }
 
 # =======================================================
 # 4. Forgotten Stuff                                    #
