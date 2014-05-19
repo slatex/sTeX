@@ -230,6 +230,7 @@ DefFormatter('\@postfixa OptionalKeyVals:mi {}{}{}',
                .  "<m:mo fence='true'>)</m:mo>"
                . "</m:mrow>"
                . "#2");
+
 # =======================================================
 # 2.2. LaTeXML Presentation Enhancements:               #
 # =======================================================
@@ -241,8 +242,8 @@ DefMathRewrite(xpath=>'descendant-or-self::ltx:XMWrap[(@role="BIGOP" or @role="O
    my $content = $node->textContent;
    $replacement->appendText($content);
    $replacement->setName('ltx:XMTok');
-   $document->getNode->appendChild($replacement);
- });
+   $document->getNode->appendChild($replacement); });
+
 # =======================================================
 # 3. Auxiliary Functions:                               #
 # =======================================================
@@ -252,20 +253,17 @@ sub DefFormatter {
   DefConstructor($definition,$replacement,%properties,
       afterDigest=>\&compute_precedences,
       beforeConstruct=>\&attach_precedences,
-      properties=>\&compute_presentation_properties,
- );}
+      properties=>\&compute_presentation_properties );}
 
 sub DefBriefFormatter {
   my ($definition,$replacement)=@_;
   register_formatter($definition);
-  DefMacro($definition,$replacement);
-}
+  DefMacro($definition,$replacement); }
 
 sub register_formatter {
   my ($definition)=@_;
   $definition=~/\\\W*(\w+)/;
-  PushValue('presentation_formatters'=>$1);
-}
+  PushValue('presentation_formatters'=>$1); }
 
 sub compute_precedences {
   my ($stomach,$whatsit) = @_;
@@ -275,27 +273,27 @@ sub compute_precedences {
   #Default p (operator precedence) if not set:
   my $default_precedence = LookupValue('default_precedence')||'0';
   $keyval->setValue('p',$default_precedence) unless defined($keyval->getValue('p'));
-  return unless exists $kvhash{'nobrackets'};
-  foreach my $pi_var(qw(pi pii piii)) {
-    $keyval->setValue($pi_var,'neginfty') unless defined($keyval->getValue($pi_var));
-  }
+  # nobrackets implies inner precedence of negative infinity
+  if (exists $kvhash{'nobrackets'}) {
+    foreach my $pi_var(qw(pi pii piii)) {
+      $keyval->setValue($pi_var,'neginfty') unless defined($keyval->getValue($pi_var)); } }
+  # (Hacky) Set the precedences in the "argprec" attribute which XSLT uses to write them in OMDoc:
   my @precs = map { ToString(GetKeyVal($keyval,$_))||"" }
               map { 'pi'.('i' x $_) } 0..($MOST_ALLOWED_ARGUMENTS-1);
   my $argprec_attribute = join(" ",@precs)." ";
   $whatsit->setProperty('argprec',$argprec_attribute);
-  return;
-}#$
+  return; }
 
 sub attach_precedences {
   my ($document,$whatsit)=@_;
   my $argprec = $whatsit->getProperty('argprec');
   my $keyval = $whatsit->getArg(1);
   my $p = ToString(GetKeyVal($keyval,'p')) if (defined $keyval && ($keyval=~/KeyVal/));
+  # All computed, now actually attach to <rendering>
   my $rendering_element = $document->getNode;
   $rendering_element->setAttribute('argprec',$argprec) if $argprec;
   $rendering_element->setAttribute('precedence',$p) if $p;
-  # All computed, now actually attach to <rendering>
-}
+  return; }
 
 sub compute_presentation_properties {
   my ($document,$whatsit)=@_;
@@ -305,6 +303,6 @@ sub compute_presentation_properties {
   my $nargs = LookupValue($nargkey);
   $nargs = 0 unless ($nargs);
   my %props = ('cd'=>$cd,'name'=>$name,'nargs'=>$nargs);
-  return %props;}
+  return %props; }
 
 1;
