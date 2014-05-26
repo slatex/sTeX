@@ -1,5 +1,5 @@
 PREFIX = ..
-DTX.cls.base = smultiling
+DTX.sty.base = smultiling
 TDSCOLL = stex
 CTANPREFIX = /sty
 PACKAGE = smultiling
