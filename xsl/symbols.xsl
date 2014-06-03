@@ -30,9 +30,11 @@
 
 <xsl:output method="xml" indent="yes" cdata-section-elements="data"/>
 
-<!-- these parameters set the paths to the special latexml cds. The default is made so that it works for GenCS -->
-<xsl:param name="smglom" select="'smglom/smglom/source'"/>
-<xsl:param name="mv" select="'smglom/mv/source'"/>
+<!-- these parameters set the paths to the special latexml cds. The default is made so that it works for MathHub -->
+<xsl:param name="smglom" select="'smglom'"/>
+<xsl:param name="numberfields" select="concat($smglom,'/numberfields/source')"/>
+<xsl:param name="mv" select="concat($smglom,'/mv/source')"/>
+<xsl:param name="sets" select="concat($smglom,'/sets/source')"/>
 
 <!-- get rid of the list OMAs LaTeXML uses -->
 <xsl:template match="om:OMA[om:OMS[position()=1 and @name='list' and @cd='latexml']]">
@@ -47,7 +49,7 @@
     <xsl:apply-templates select="@*"/>
     <xsl:if test="//om:OMS[@cd='latexml' and @name='multirelation' and
 		                           not(ancestor::omdoc:notation)]">
-      <omdoc:imports from="{$smglom}/multirel#multirel"/>
+      <omdoc:imports from="{$sets}/multirel#multirel"/>
     </xsl:if>
     <xsl:if test="//om:OMS[@cd='latexml' and 
 		            (@name='times' or
@@ -55,7 +57,7 @@
 		             @name='plus' or
 		             @name='minus')
 			     and not(ancestor::omdoc:notation)]">
-      <omdoc:imports from="{$smglom}/arithmetics#arithmetics"/>
+      <omdoc:imports from="{$numberfields}/arithmetics#arithmetics"/>
     </xsl:if>
     <xsl:if test="//om:OMS[@cd='latexml' and 
 		            (@name='greater-than' or
@@ -63,7 +65,7 @@
 		             @name='greater-than-or-equals' or
 		             @name='less-than-or-equals')
 			      and not(ancestor::omdoc:notation)]">
-      <omdoc:imports from="{$smglom}/numbers-orders#numbers-orders"/>
+      <omdoc:imports from="{$numberfields}/numbers-orders#numbers-orders"/>
     </xsl:if>
     <xsl:if test="//om:OMS[@cd='latexml' and 
 		            (@name='not-equals' or
