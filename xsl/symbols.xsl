@@ -68,11 +68,12 @@
       <omdoc:imports from="{$numberfields}/numbers-relations#numbers-relations"/>
     </xsl:if>
     <xsl:if test="//om:OMS[@cd='latexml' and 
-		            (@name='not-equals' or
- 		             @name='equals') and not(ancestor::omdoc:notation)]">
+		  (@name='not-equals' or
+ 		  @name='equals') and not(ancestor::omdoc:notation)]">
       <omdoc:imports from="{$mv}/equal#equal"/>
+    </xsl:if>
     <xsl:if test="//om:OMS[@cd='latexml' and 
-		            @name='infinity' and not(ancestor::omdoc:notation)]">
+		  @name='infinity' and not(ancestor::omdoc:notation)]">
       <omdoc:imports from="{$numberfields}/infinity#infinity"/>
     </xsl:if>
     <xsl:apply-templates/>
