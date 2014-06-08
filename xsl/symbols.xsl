@@ -71,6 +71,9 @@
 		            (@name='not-equals' or
  		             @name='equals') and not(ancestor::omdoc:notation)]">
       <omdoc:imports from="{$mv}/equal#equal"/>
+    <xsl:if test="//om:OMS[@cd='latexml' and 
+		            @name='infinity' and not(ancestor::omdoc:notation)]">
+      <omdoc:imports from="{$numberfields}/infinity#infinity"/>
     </xsl:if>
     <xsl:apply-templates/>
   </omdoc:theory>
@@ -119,5 +122,9 @@
 
 <xsl:template match="om:OMS[@cd='latexml' and @name='equals']">
   <om:OMS cd="equal" name="eq"/>
+</xsl:template>
+
+<xsl:template match="om:OMS[@cd='latexml' and @name='infinity']">
+  <om:OMS cd="infinity" name="infinity"/>
 </xsl:template>
 </xsl:stylesheet>
