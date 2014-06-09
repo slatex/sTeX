@@ -65,7 +65,7 @@
 		             @name='greater-than-or-equals' or
 		             @name='less-than-or-equals')
 			      and not(ancestor::omdoc:notation)]">
-      <omdoc:imports from="{$numberfields}/numbers-relations#numbers-relations"/>
+      <omdoc:imports from="{$numberfields}/numbers-orders#numbers-orders"/>
     </xsl:if>
     <xsl:if test="//om:OMS[@cd='latexml' and 
 		  (@name='not-equals' or
