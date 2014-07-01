@@ -122,7 +122,7 @@
 </xsl:template>
 
 <xsl:template match="om:OMS[@cd='latexml' and @name='equals']">
-  <om:OMS cd="equal" name="eq"/>
+  <om:OMS cd="equal" name="equal"/>
 </xsl:template>
 
 <xsl:template match="om:OMS[@cd='latexml' and @name='infinity']">
