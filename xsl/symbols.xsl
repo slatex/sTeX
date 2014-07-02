@@ -81,7 +81,7 @@
 </xsl:template>
 
 <!-- and we need to convert the symbols -->
-<xsl:template match="om:OMS[@cd='latexml' and @name='multirelation']">
+<xsl:template match="om:OMS[@cd='latexml' and @name='multi-relation-expression']">
   <om:OMS cd="multirel" name="multirelation"/>
 </xsl:template>
 
