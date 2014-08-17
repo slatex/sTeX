@@ -19,7 +19,7 @@ LaTeXML::Core->new(searchpaths=>['./rng/'])->withState(sub{ $_[0]->getModel->set
 	RegisterNamespace('ltx'=>"http://dlmf.nist.gov/LaTeXML");
 	RegisterNamespace('svg'=>"http://www.w3.org/2000/svg");
 
-	open MODEL, ">", "omdoc+ltxml.model";
+	open MODEL, ">", "ltxml+omdoc.model";
 	 *STDOUT = *MODEL;
 	 $_[0]->getModel->compileSchema; 
 	 close MODEL;
