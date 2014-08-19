@@ -38,7 +38,7 @@
         div.review {margin:5mm 5mm 5mm 5mm}
         div.aunot {font-weight:bold}
         div.published {font-weight:bold}
-		.number {font-style: italic; text-align:right}
+        .number {font-style: italic; text-align:right}
         div.reviewer{font-style:italic;text-align:right}
       </style>
       <!--       <link rel="stylesheet" type="text/css" href="zbl.css"/> -->
@@ -135,7 +135,7 @@
 <xsl:template match="zbl:review"> 
   <div class="review">
      <div class="aunot"> 
-        <xsl:apply-templates select="zbl:author"/>
+        <xsl:apply-templates select="zbl:author"/><br></br>
        <xsl:apply-templates select="zbl:number"/>
      </div>
        <xsl:apply-templates select="zbl:title|zbl:published|zbl:body|zbl:reviewer"/>
