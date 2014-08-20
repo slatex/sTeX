@@ -21,9 +21,14 @@
      License along with this library; if not, write to the Free Software
      Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 -->
-<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+<xsl:stylesheet version="1.0" 
+	xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
+	xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:o="http://omdoc.org/ns"
+	xmlns:ltx="http://dlmf.nist.gov/LaTeXML"
+	exclude-result-prefixes="xsl o ltx">
 
-<xsl:output method="xml" indent="yes" cdata-section-elements="data"/>
+<xsl:output method="xml" indenst="yes" cdata-section-elements="data"/>
 <!--<xsl:strip-space elements="*"/>-->
 <xsl:param name="math-format" select="'om'"/>
 
@@ -35,6 +40,22 @@
 <xsl:template match="@*"><xsl:copy-of select="."/></xsl:template>
 <!-- some general LaTeXML attributes we want to lose -->
 <xsl:template match="@fragid"/>
+
+<!-- transforming the OMDoc elements into HTML -->
+
+<!-- why is this left over? -->
+<xsl:template match="ltx:document">
+  <xsl:apply-templates/>
+</xsl:template>
+
+<xsl:template match="o:theory">
+  <div class="omdoc:theory" id="{xml:id}">
+    <xsl:if test="@xml:id">
+      <xsl:attribute name="o:theory-name"><xsl:value-of select="@xml:id"/></xsl:attribute>
+      <xsl:apply-templates/>
+    </xsl:if>
+  </div>
+</xsl:template>
 
 <xsl:include href="LaTeXML/LaTeXML-all-xhtml.xsl"/>
 </xsl:stylesheet>
