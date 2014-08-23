@@ -26,11 +26,14 @@
 	xmlns="http://www.w3.org/1999/xhtml"
 	xmlns:o="http://omdoc.org/ns"
 	xmlns:ltx="http://dlmf.nist.gov/LaTeXML"
-	exclude-result-prefixes="xsl o ltx">
+	exclude-result-prefixes="xsl o ltx stex">
 
-<xsl:output method="xml" indenst="yes" cdata-section-elements="data"/>
+<xsl:output method="xml" indent="yes" cdata-section-elements="data"/>
 <!--<xsl:strip-space elements="*"/>-->
 <xsl:param name="math-format" select="'om'"/>
+
+<!-- we let LaTeXML do most of the work --> 
+<xsl:include href="LaTeXML/LaTeXML-all-xhtml.xsl"/>
 
 <!-- the fallback (mostly for LaTeXML-generated XHTML: 
      copy the whole thing recursively, until there is something to do -->
@@ -57,5 +60,18 @@
   </div>
 </xsl:template>
 
-<xsl:include href="LaTeXML/LaTeXML-all-xhtml.xsl"/>
+<xsl:template match="o:definition">
+  <div class="omdoc:definition" id="{xml:id}">
+    <xsl:copy-of select="@*"/>
+      <xsl:apply-templates/>
+  </div>
+</xsl:template>
+
+<xsl:template match="o:imports">
+  <span class="omdoc:definition" id="{xml:id}">
+    <xsl:copy-of select="@*"/>
+      <xsl:apply-templates/>
+  </span>
+</xsl:template>
+
 </xsl:stylesheet>
