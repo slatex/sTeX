@@ -59,26 +59,26 @@
   <xsl:template name="LaTeXML_identifier">
     <xsl:if test="$LATEXML_VERSION or $TIMESTAMP">
       <xsl:comment>
-	<xsl:text>Generated</xsl:text>
-	<xsl:if test="$TIMESTAMP">
-	  <xsl:text> on </xsl:text>
-	  <xsl:value-of select="$TIMESTAMP"/>
-	</xsl:if>
-	<xsl:text> by LaTeXML</xsl:text>
-	<xsl:if test="$LATEXML_VERSION">
-	  <xsl:text> (version </xsl:text>
-	  <xsl:value-of select="$LATEXML_VERSION"/>
-	  <xsl:text>)</xsl:text>
-	</xsl:if>
-	<xsl:text> http://dlmf.nist.gov/LaTeXML/.</xsl:text>
+        <xsl:text>Generated</xsl:text>
+        <xsl:if test="$TIMESTAMP">
+          <xsl:text> on </xsl:text>
+          <xsl:value-of select="$TIMESTAMP"/>
+        </xsl:if>
+        <xsl:text> by LaTeXML</xsl:text>
+        <xsl:if test="$LATEXML_VERSION">
+          <xsl:text> (version </xsl:text>
+          <xsl:value-of select="$LATEXML_VERSION"/>
+          <xsl:text>)</xsl:text>
+        </xsl:if>
+        <xsl:text> http://dlmf.nist.gov/LaTeXML/.</xsl:text>
       </xsl:comment>
       <xsl:text>&#x0A;</xsl:text>
     </xsl:if>
     <xsl:if test="//ltx:date[@role='creation' or @role='conversion'][1]">
       <xsl:comment>
-	<xsl:text>Document created on </xsl:text>
-	<xsl:value-of select='//ltx:date/node()'/>
-	<xsl:text>.</xsl:text>
+        <xsl:text>Document created on </xsl:text>
+        <xsl:value-of select='//ltx:date/node()'/>
+        <xsl:text>.</xsl:text>
       </xsl:comment>
       <xsl:text>&#x0A;</xsl:text>
     </xsl:if>
@@ -131,8 +131,8 @@
     <xsl:param name="string"/>
     <xsl:param name="ending"/>
     <func:result>
-      <xsl:value-of select="substring($string,string-length($string) - string-length($ending))
-			    = $ending"/>
+      <xsl:value-of select="substring($string,string-length($string) - string-length($ending)+1)
+                            = $ending"/>
     </func:result>
   </func:function>
 
@@ -158,14 +158,85 @@
     <xsl:param name="string"/>
     <func:result>
       <xsl:choose>
-	<xsl:when test="$string = ''"></xsl:when>
-	<xsl:when test="contains($string,' ')">
-	  <xsl:value-of select="concat($prefix,substring-before($string,' '),
-				' ',f:class-pref-aux($prefix,substring-after($string,' ')))"/>
-	</xsl:when>
-	<xsl:otherwise>
-	  <xsl:value-of select="concat($prefix,$string)"/>
-	</xsl:otherwise>
+        <xsl:when test="$string = ''"></xsl:when>
+        <xsl:when test="contains($string,' ')">
+          <xsl:value-of select="concat($prefix,substring-before($string,' '),
+                                ' ',f:class-pref-aux($prefix,substring-after($string,' ')))"/>
+        </xsl:when>
+        <xsl:otherwise>
+          <xsl:value-of select="concat($prefix,$string)"/>
+        </xsl:otherwise>
+      </xsl:choose>
+    </func:result>
+  </func:function>
+
+  <func:function name="f:subst">
+    <xsl:param name="string"/>
+    <xsl:param name="pattern"/>
+    <xsl:param name="replacement"/>
+    <xsl:choose>
+      <xsl:when test="contains($string,$pattern)">
+        <func:result><xsl:value-of
+        select="concat(substring-before($string,$pattern),
+                       $replacement,
+                       f:subst(substring-after($string,$pattern),$pattern,$replacement))"/>
+        </func:result>
+      </xsl:when>
+      <xsl:otherwise>
+        <func:result><xsl:value-of select="$string"/></func:result>
+      </xsl:otherwise>
+    </xsl:choose>
+  </func:function>
+
+  <!-- ======================================================================
+       Dimension utilities
+       [hopefully only see units of px or pt?
+  -->
+  
+  <func:function name="f:adddim">
+    <xsl:param name="value1"/>
+    <xsl:param name="value2"/>
+    <func:result>
+      <xsl:value-of select="concat(f:dimpx($value1)+f:dimpx($value2),'px')"/>
+      </func:result>
+  </func:function>
+
+  <func:function name="f:halfdiff">
+    <xsl:param name="value1"/>
+    <xsl:param name="value2"/>
+    <func:result>
+      <xsl:value-of select="concat((f:dimpx($value1)-f:dimpx($value2)) div 2,'px')"/>
+      </func:result>
+  </func:function>
+
+  <func:function name="f:dimpx">
+    <xsl:param name="value"/>
+    <func:result>
+      <xsl:choose>
+        <xsl:when test="contains($value,'px')">
+          <xsl:value-of select="number(substring-before($value,'px'))"/>
+        </xsl:when>
+        <xsl:when test="contains($value,'pt')">
+          <xsl:value-of select="number(substring-before($value,'pt'))*100 div 72"/>
+        </xsl:when>
+        <!-- other units? -->
+        <xsl:otherwise>
+          <xsl:value-of select="0"/>
+        </xsl:otherwise>
+      </xsl:choose>
+    </func:result>
+  </func:function>
+
+  <func:function name="f:negate">
+    <xsl:param name="value"/>
+    <func:result>
+      <xsl:choose>
+        <xsl:when test="starts-with($value,'-')">
+          <xsl:value-of select="substring-after($value,'-')"/>
+        </xsl:when>
+        <xsl:otherwise>
+          <xsl:value-of select="concat('-',$value)"/>
+        </xsl:otherwise>
       </xsl:choose>
     </func:result>
   </func:function>
@@ -195,7 +266,7 @@
   <xsl:template match="*" mode='copy-foreign'>
     <xsl:element name="{local-name()}" namespace="{namespace-uri()}">
       <xsl:for-each select="@*">
-	<xsl:apply-templates select="." mode="copy-attribute"/>
+        <xsl:apply-templates select="." mode="copy-attribute"/>
       </xsl:for-each>
       <xsl:apply-templates mode='copy-foreign'/>
     </xsl:element>
@@ -210,7 +281,7 @@
   <xsl:template match="xhtml:*" mode='copy-foreign'>
     <xsl:element name="{local-name()}" namespace="{$html_ns}">
       <xsl:for-each select="@*">
-	<xsl:apply-templates select="." mode="copy-attribute"/>
+        <xsl:apply-templates select="." mode="copy-attribute"/>
       </xsl:for-each>
       <xsl:apply-templates mode='copy-foreign'/>
     </xsl:element>
@@ -227,7 +298,7 @@
                        | ltx:XMArray | ltx:XMRow | ltx:XMCell" mode='copy-foreign'>
     <xsl:element name="{local-name()}" namespace="{namespace-uri()}">
       <xsl:for-each select="@*">
-	<xsl:apply-templates select="." mode="copy-attribute"/>
+        <xsl:apply-templates select="." mode="copy-attribute"/>
       </xsl:for-each>
       <xsl:apply-templates mode='copy-foreign'/>
     </xsl:element>
@@ -300,11 +371,11 @@
     <xsl:call-template name="add_attribute">
       <xsl:with-param name="name" select="'class'"/>
       <xsl:with-param name="value">
-	<xsl:apply-templates select="." mode="classes"/>
-	<xsl:if test="$extra_classes">
-	  <xsl:text> </xsl:text>
-	  <xsl:value-of select="$extra_classes"/>
-	</xsl:if>
+        <xsl:apply-templates select="." mode="classes"/>
+        <xsl:if test="$extra_classes">
+          <xsl:text> </xsl:text>
+          <xsl:value-of select="$extra_classes"/>
+        </xsl:if>
       </xsl:with-param>
     </xsl:call-template>
   </xsl:template>
@@ -353,18 +424,29 @@
     <xsl:call-template name="add_attribute">
       <xsl:with-param name="name" select="'style'"/>
       <xsl:with-param name="value">
-	<xsl:apply-templates select="." mode="styling"/>
-	<xsl:if test="$extra_style">
-	  <xsl:value-of select="$extra_style"/>
-	</xsl:if>
+        <xsl:apply-templates select="." mode="styling"/>
+        <xsl:if test="$extra_style">
+          <xsl:value-of select="$extra_style"/>
+        </xsl:if>
       </xsl:with-param>
     </xsl:call-template>
   </xsl:template>
 
   <xsl:template match="*" mode="styling">
     <xsl:if test="@width"  ><xsl:value-of select="concat('width:',@width,';')"/></xsl:if>
-    <xsl:if test="@height" ><xsl:value-of select="concat('height:',@height,';')"/></xsl:if>
-    <xsl:if test="@depth"  ><xsl:value-of select="concat('vertical-align:',@depth,';')"/></xsl:if>
+    <xsl:if test="@height" >
+      <xsl:choose>
+        <xsl:when test="@depth">
+          <xsl:value-of select="concat('height:',f:adddim(@height,@depth),';')"/>
+        </xsl:when>
+        <xsl:otherwise>
+          <xsl:value-of select="concat('height:',@height,';')"/>
+        </xsl:otherwise>
+      </xsl:choose>
+    </xsl:if>
+    <xsl:if test="@depth"  >
+      <xsl:value-of select="concat('vertical-align:',f:negate(@depth),';')"/>
+    </xsl:if>
     <xsl:if test="@pad-width" ><xsl:value-of select="concat('height:',@pad-width,';')"/></xsl:if>
     <xsl:if test="@pad-height"><xsl:value-of select="concat('height:',@pad-height,';')"/></xsl:if>
     <xsl:if test="@xoffset">
@@ -381,36 +463,36 @@
     <xsl:if test="@framed='rectangle'">
       <xsl:value-of select="'border:1px solid '"/>
       <xsl:choose>
-	<xsl:when test="@framecolor">
-	  <xsl:value-of select="@framecolor"/>
-	</xsl:when>
-	<xsl:otherwise>
-	  <xsl:value-of select="'black'"/>
-	</xsl:otherwise>
+        <xsl:when test="@framecolor">
+          <xsl:value-of select="@framecolor"/>
+        </xsl:when>
+        <xsl:otherwise>
+          <xsl:value-of select="'black'"/>
+        </xsl:otherwise>
       </xsl:choose>
       <xsl:value-of select="';'"/>
     </xsl:if>
     <xsl:if test="@framed='left'">
       <xsl:value-of select="'border-left:1px solid '"/>
       <xsl:choose>
-	<xsl:when test="@framecolor">
-	  <xsl:value-of select="@framecolor"/>
-	</xsl:when>
-	<xsl:otherwise>
-	  <xsl:value-of select="'black'"/>
-	</xsl:otherwise>
+        <xsl:when test="@framecolor">
+          <xsl:value-of select="@framecolor"/>
+        </xsl:when>
+        <xsl:otherwise>
+          <xsl:value-of select="'black'"/>
+        </xsl:otherwise>
       </xsl:choose>
       <xsl:value-of select="';'"/>
     </xsl:if>
     <xsl:if test="@framed='right'">
       <xsl:value-of select="'border-right:1px solid '"/>
       <xsl:choose>
-	<xsl:when test="@framecolor">
-	  <xsl:value-of select="@framecolor"/>
-	</xsl:when>
-	<xsl:otherwise>
-	  <xsl:value-of select="'black'"/>
-	</xsl:otherwise>
+        <xsl:when test="@framecolor">
+          <xsl:value-of select="@framecolor"/>
+        </xsl:when>
+        <xsl:otherwise>
+          <xsl:value-of select="'black'"/>
+        </xsl:otherwise>
       </xsl:choose>
       <xsl:value-of select="';'"/>
     </xsl:if>
@@ -418,6 +500,42 @@
       <xsl:value-of select="'text-decoration:underline;'"/>
     </xsl:if>
     <xsl:if test="@cssstyle"><xsl:value-of select="concat(@cssstyle,';')"/></xsl:if>
+  </xsl:template>
+
+  <xsl:template name="add_transformable_attributes">
+    <xsl:call-template name="add_attribute">
+      <xsl:with-param name="name" select="'style'"/>
+      <xsl:with-param name="value">
+        <xsl:if test="@innerwidth"  >
+          <xsl:value-of select="concat('width:',@innerwidth,';')"/>
+        </xsl:if>
+        <!-- apparently we shouldn't put the innerheigth & innerdepth into the style;
+         seems to mess up the positioning? -->
+        <xsl:text>transform:</xsl:text>
+        <xsl:apply-templates select='.' mode="transformable-transform"/>
+        <xsl:text>;</xsl:text>
+        <xsl:text>-webkit-transform:</xsl:text>
+        <xsl:apply-templates select='.' mode="transformable-transform"/>
+        <xsl:text>;</xsl:text>
+        <xsl:text>-ms-transform:</xsl:text>
+        <xsl:apply-templates select='.' mode="transformable-transform"/>
+        <xsl:text>;</xsl:text>
+      </xsl:with-param>
+    </xsl:call-template>
+  </xsl:template>
+
+  <xsl:template match="*" mode="transformable-transform">
+    <xsl:if test="@xtranslate | @ytranslate">
+      <xsl:value-of select="concat('translate(',f:if(@xtranslate,@xtranslate,0),',',
+                                                f:if(@ytranslate,@ytranslate,0),') ')"/>
+    </xsl:if>
+    <xsl:if test="@xscale | @yscale">
+      <xsl:value-of select="concat('scale(',f:if(@xscale,@xscale,1),',',
+                                            f:if(@yscale,@yscale,1),') ')"/>
+    </xsl:if>
+    <xsl:if test="@angle">
+      <xsl:value-of select="concat('rotate(',f:negate(@angle),'deg) ')"/>
+    </xsl:if>
   </xsl:template>
 
   <!-- Add an RDFa attributes from the context element to the current one.
@@ -466,10 +584,10 @@
     <xsl:if test='/*/@prefix'>
       <xsl:attribute name='prefix'><xsl:value-of select='/*/@prefix'/></xsl:attribute>
       <xsl:if test="$RDFA_VERSION = '1.0'">
-	<xsl:attribute name="version">XHTML+RDFa 1.0</xsl:attribute>
-	<xsl:call-template name="add_RDFa1.0_namespaces">
-	  <xsl:with-param name="prefix" select="normalize-space(/*/@prefix)"/>
-	</xsl:call-template>
+        <xsl:attribute name="version">XHTML+RDFa 1.0</xsl:attribute>
+        <xsl:call-template name="add_RDFa1.0_namespaces">
+          <xsl:with-param name="prefix" select="normalize-space(/*/@prefix)"/>
+        </xsl:call-template>
       </xsl:if>
     </xsl:if>
   </xsl:template>
@@ -481,21 +599,21 @@
     <xsl:if test="$prefix != ''">
       <!-- peal off 1st "prefix: url" pair, and add as namespace declaration. -->
       <xsl:call-template name="add_namespace">
-	<xsl:with-param name="prefix" select="substring-before($prefix,':')"/>
-	<xsl:with-param name="url">
-	  <xsl:choose>
-	    <xsl:when test="substring-before(substring-after($prefix,' '),' ')">
-	      <xsl:value-of select="substring-before(substring-after($prefix,' '),' ')"/>	    
-	    </xsl:when>
-	    <xsl:otherwise>
-	      <xsl:value-of select="substring-after($prefix,' ')"/>
-	    </xsl:otherwise>
-	  </xsl:choose>
-	</xsl:with-param>
+        <xsl:with-param name="prefix" select="substring-before($prefix,':')"/>
+        <xsl:with-param name="url">
+          <xsl:choose>
+            <xsl:when test="substring-before(substring-after($prefix,' '),' ')">
+              <xsl:value-of select="substring-before(substring-after($prefix,' '),' ')"/>           
+            </xsl:when>
+            <xsl:otherwise>
+              <xsl:value-of select="substring-after($prefix,' ')"/>
+            </xsl:otherwise>
+          </xsl:choose>
+        </xsl:with-param>
       </xsl:call-template>
       <!-- Recurse on any remaining pairs -->
       <xsl:call-template name="add_RDFa1.0_namespaces">
-	<xsl:with-param name="prefix" select="substring-after(substring-after($prefix,' '),' ')"/>
+        <xsl:with-param name="prefix" select="substring-after(substring-after($prefix,' '),' ')"/>
       </xsl:call-template>
     </xsl:if>
   </xsl:template>
