@@ -86,19 +86,19 @@
 </xsl:template>
 
 <xsl:template match="om:OMS[@cd='latexml' and @name='plus']">
-  <om:OMS cd="arithmetics" name="plus"/>
+  <om:OMS cd="arithmetics" name="addition"/>
 </xsl:template>
 
 <xsl:template match="om:OMS[@cd='latexml' and @name='minus']">
-  <om:OMS cd="arithmetics" name="minus"/>
+  <om:OMS cd="arithmetics" name="subtraction"/>
 </xsl:template>
 
 <xsl:template match="om:OMS[@cd='latexml' and @name='times']">
-  <om:OMS cd="arithmetics" name="times"/>
+  <om:OMS cd="arithmetics" name="multiplication"/>
 </xsl:template>
 
 <xsl:template match="om:OMS[@cd='latexml' and @name='divide']">
-  <om:OMS cd="arithmetics" name="divide"/>
+  <om:OMS cd="arithmetics" name="division"/>
 </xsl:template>
 
 <xsl:template match="om:OMS[@cd='latexml' and @name='greater-than']">
