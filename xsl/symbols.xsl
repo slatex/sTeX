@@ -55,7 +55,7 @@
 		            (@name='times' or
 		             @name='divide' or
 		             @name='plus' or
-		             @name='minus' 
+		             @name='minus' or
 		             @name='square-root')
 			     and not(ancestor::omdoc:notation)]">
       <omdoc:imports from="{$numberfields}/arithmetics#arithmetics"/>
