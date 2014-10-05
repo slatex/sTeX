@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 all: thm.html thm.ltxml
 
 thm.html: thm.tex ../xsl/htmlpost.xsl
@@ -8,3 +9,10 @@ thm.ltxml: thm.tex
 
 echo: 
 	echo $(STEXDIR)
+=======
+thm.html: thm.tex
+	latexmlc --profile insTeX $< --destination=$@ --log=thm.ltxlog 
+
+# echo: 
+# 	echo $(STEXDIR)
+>>>>>>> starting development on html workflow
