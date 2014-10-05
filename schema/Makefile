@@ -6,7 +6,11 @@ MODELS = omdoc+ltxml.model ltxml+omdoc.model
 all::
 	@for d in $(MAKEDIRS);\
 	  do (cd $$d && $(MAKE) -$(MAKEFLAGS) $@); done;
+<<<<<<< HEAD
 	make $(MODELS)
+=======
+	make $(MODELS) omdoc+ltxml.model
+>>>>>>> upgrading to two-models case
 
 omdoc+ltxml.model: %.model: $(RNG) compileSchema-omdoc+ltxml.pl
 	perl compileSchema-omdoc+ltxml.pl
