@@ -31,6 +31,7 @@
 	xmlns:o="http://omdoc.org/ns"
 	xmlns:ltx="http://dlmf.nist.gov/LaTeXML"
 <<<<<<< HEAD
+<<<<<<< HEAD
 	exclude-result-prefixes="xsl o ltx stex">
 =======
 <xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
@@ -38,17 +39,26 @@
 =======
 	exclude-result-prefixes="xsl o ltx">
 >>>>>>> transforming theories
+=======
+	exclude-result-prefixes="xsl o ltx stex">
+>>>>>>> extending xsl postprocessing
 
-<xsl:output method="xml" indenst="yes" cdata-section-elements="data"/>
+<xsl:output method="xml" indent="yes" cdata-section-elements="data"/>
 <!--<xsl:strip-space elements="*"/>-->
 <xsl:param name="math-format" select="'om'"/>
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 <!-- we let LaTeXML do most of the work --> 
 <xsl:include href="LaTeXML/LaTeXML-all-xhtml.xsl"/>
 
 =======
 >>>>>>> updating LaTeXML stylesheets from distributino, first version of htmlpost.xsl
+=======
+<!-- we let LaTeXML do most of the work --> 
+<xsl:include href="LaTeXML/LaTeXML-all-xhtml.xsl"/>
+
+>>>>>>> extending xsl postprocessing
 <!-- the fallback (mostly for LaTeXML-generated XHTML: 
      copy the whole thing recursively, until there is something to do -->
 <xsl:template match="*">
@@ -79,6 +89,9 @@
 </xsl:template>
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> extending xsl postprocessing
 <xsl:template match="o:definition">
   <div class="omdoc:definition" id="{xml:id}">
     <xsl:copy-of select="@*"/>
@@ -93,9 +106,12 @@
   </span>
 </xsl:template>
 
+<<<<<<< HEAD
 =======
 =======
 >>>>>>> transforming theories
 <xsl:include href="LaTeXML/LaTeXML-all-xhtml.xsl"/>
 >>>>>>> updating LaTeXML stylesheets from distributino, first version of htmlpost.xsl
+=======
+>>>>>>> extending xsl postprocessing
 </xsl:stylesheet>
