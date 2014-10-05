@@ -11,6 +11,11 @@ use LaTeXML::Util::Pathname;
 # careful not to erase it while running "make"!
 
 # =======================================================
+# -1. Requirements:                                     #
+# =======================================================
+RequirePackage('presentation'); # for \@use
+
+# =======================================================
 # 0. Introduce parameters:                              #
 # =======================================================
 DefKeyVal('Module','id','Semiverbatim');
@@ -349,12 +354,15 @@ DefConstructor('\@symdef@construct@presentation{}{}{}{}{} OptionalKeyVals:symdef
   my $id;
   $id = ToString($keys->getValue('id')) if $keys;
   $id = $name.".sym" unless $id;
+  $root->setNamespace("http://omdoc.org/ns","omdoc",0);
   my ($pre_notation_symbol_element) = $root->findnodes(".//omdoc:notation[\@name='$name' and ".
                    "preceding-sibling::omdoc:symbol[1]/\@name
                                     = '$name']");
   # If no <symbol> has been generated for this definition, generate one:
   if (!$pre_notation_symbol_element) {
-    $document->openElement("omdoc:symbol",(name=>$name,"xml:id"=>$id));
+    my $is_primary = $keys && (exists $$keys{hash}{'primary'});
+    $document->openElement("omdoc:symbol",(name=>$name,"xml:id"=>$id,
+      $is_primary ? (role=>'primary'): ()));
     $document->insertElement("dc:title",ToString($keys->getValue("title"))) if ($keys && $keys->getValue("title"));
     $document->insertElement("dc:subject",ToString($keys->getValue("subject"))) if ($keys && $keys->getValue("subject"));
     $document->insertElement("dc:description",ToString($keys->getValue("description"))) if ($keys && $keys->getValue("description"));

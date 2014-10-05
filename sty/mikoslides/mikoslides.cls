@@ -38,8 +38,8 @@
 \newcounter{Hfootnote}
 \usetheme{Jacobs}
 \fi
-\RequirePackage{tikzinput}
 \RequirePackage{stex}
+\RequirePackage{tikzinput}
 \RequirePackage{latexml}
 \RequirePackage{amssymb}
 \RequirePackage{tikz}
