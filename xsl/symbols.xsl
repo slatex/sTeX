@@ -55,7 +55,8 @@
 		            (@name='times' or
 		             @name='divide' or
 		             @name='plus' or
-		             @name='minus')
+		             @name='minus' 
+		             @name='square-root')
 			     and not(ancestor::omdoc:notation)]">
       <omdoc:imports from="{$numberfields}/arithmetics#arithmetics"/>
     </xsl:if>
@@ -86,35 +87,39 @@
 </xsl:template>
 
 <xsl:template match="om:OMS[@cd='latexml' and @name='plus']">
-  <om:OMS cd="arithmetics" name="plus"/>
+  <om:OMS cd="arithmetics" name="addition"/>
 </xsl:template>
 
 <xsl:template match="om:OMS[@cd='latexml' and @name='minus']">
-  <om:OMS cd="arithmetics" name="minus"/>
+  <om:OMS cd="arithmetics" name="subtraction"/>
 </xsl:template>
 
 <xsl:template match="om:OMS[@cd='latexml' and @name='times']">
-  <om:OMS cd="arithmetics" name="times"/>
+  <om:OMS cd="arithmetics" name="multiplication"/>
 </xsl:template>
 
 <xsl:template match="om:OMS[@cd='latexml' and @name='divide']">
-  <om:OMS cd="arithmetics" name="divide"/>
+  <om:OMS cd="arithmetics" name="division"/>
+</xsl:template>
+
+<xsl:template match="om:OMS[@cd='latexml' and @name='square-root']">
+  <om:OMS cd="arithmetics" name="square-root"/>
 </xsl:template>
 
 <xsl:template match="om:OMS[@cd='latexml' and @name='greater-than']">
-  <om:OMS cd="numbers-relations" name="morethan"/>
+  <om:OMS cd="numbers-orders" name="morethan"/>
 </xsl:template>
 
 <xsl:template match="om:OMS[@cd='latexml' and @name='greater-than-or-equals']">
-  <om:OMS cd="numbers-relations" name="methan"/>
+  <om:OMS cd="numbers-orders" name="methan"/>
 </xsl:template>
 
 <xsl:template match="om:OMS[@cd='latexml' and @name='less-than']">
-  <om:OMS cd="numbers-relations" name="lethan"/>
+  <om:OMS cd="numbers-orders" name="lethan"/>
 </xsl:template>
 
 <xsl:template match="om:OMS[@cd='latexml' and @name='less-than-or-equals']">
-  <om:OMS cd="numbers-relations" name="lessthan"/>
+  <om:OMS cd="numbers-orders" name="lessthan"/>
 </xsl:template>
 
 <xsl:template match="om:OMS[@cd='latexml' and @name='not-equals']">
