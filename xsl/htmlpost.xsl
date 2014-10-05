@@ -22,17 +22,24 @@
      Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 -->
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> transforming theories
 <xsl:stylesheet version="1.0" 
 	xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
 	xmlns="http://www.w3.org/1999/xhtml"
 	xmlns:o="http://omdoc.org/ns"
 	xmlns:ltx="http://dlmf.nist.gov/LaTeXML"
+<<<<<<< HEAD
 	exclude-result-prefixes="xsl o ltx stex">
 =======
 <xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 >>>>>>> updating LaTeXML stylesheets from distributino, first version of htmlpost.xsl
+=======
+	exclude-result-prefixes="xsl o ltx">
+>>>>>>> transforming theories
 
-<xsl:output method="xml" indent="yes" cdata-section-elements="data"/>
+<xsl:output method="xml" indenst="yes" cdata-section-elements="data"/>
 <!--<xsl:strip-space elements="*"/>-->
 <xsl:param name="math-format" select="'om'"/>
 
@@ -52,6 +59,9 @@
 <xsl:template match="@fragid"/>
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> transforming theories
 <!-- transforming the OMDoc elements into HTML -->
 
 <!-- why is this left over? -->
@@ -68,6 +78,7 @@
   </div>
 </xsl:template>
 
+<<<<<<< HEAD
 <xsl:template match="o:definition">
   <div class="omdoc:definition" id="{xml:id}">
     <xsl:copy-of select="@*"/>
@@ -83,6 +94,8 @@
 </xsl:template>
 
 =======
+=======
+>>>>>>> transforming theories
 <xsl:include href="LaTeXML/LaTeXML-all-xhtml.xsl"/>
 >>>>>>> updating LaTeXML stylesheets from distributino, first version of htmlpost.xsl
 </xsl:stylesheet>
