@@ -7,10 +7,14 @@ all::
 	@for d in $(MAKEDIRS);\
 	  do (cd $$d && $(MAKE) -$(MAKEFLAGS) $@); done;
 <<<<<<< HEAD
+<<<<<<< HEAD
 	make $(MODELS)
 =======
 	make $(MODELS) omdoc+ltxml.model
 >>>>>>> upgrading to two-models case
+=======
+	make $(MODELS)
+>>>>>>> fixed model generation
 
 omdoc+ltxml.model: %.model: $(RNG) compileSchema-omdoc+ltxml.pl
 	perl compileSchema-omdoc+ltxml.pl

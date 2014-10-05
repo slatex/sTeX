@@ -20,10 +20,14 @@ LaTeXML::Core->new(searchpaths=>['./rng/'])->withState(sub{ $_[0]->getModel->set
 	RegisterNamespace('svg'=>"http://www.w3.org/2000/svg");
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 	open MODEL, ">", "ltxml+omdoc.model";
 =======
 	open MODEL, ">", "omdoc+ltxml.model";
 >>>>>>> upgrading to two-models case
+=======
+	open MODEL, ">", "ltxml+omdoc.model";
+>>>>>>> fixed model generation
 	 *STDOUT = *MODEL;
 	 $_[0]->getModel->compileSchema; 
 	 close MODEL;
