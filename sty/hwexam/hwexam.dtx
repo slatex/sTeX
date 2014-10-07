@@ -45,7 +45,7 @@
 % \GetFileInfo{hwexam.sty}
 % 
 % \MakeShortVerb{\|}
-%\def\scsys#1{{{\sc #1}}\index{#1@{\sc #1}}}
+% \def\scsys#1{{{\sc #1}}\index{#1@{\sc #1}}}
 % \def\latexml{\scsys{LaTeXML}}
 %
 % \title{\texttt{hwexam.sty/cls}: An Infrastructure for formatting Assignments 
@@ -366,7 +366,7 @@ RegisterDocumentNamespace('assig'=>"http://omdoc.org/ontology/assignments#");
 % assignment. Its arguments specify the brackets. 
 % 
 %    \begin{macrocode}
-\def\given@due#1#2{%
+\newcommand\given@due[2]{%
 \ifx\assig@given\@empty
 \ifx\assig@due\@empty\else#1 Due \assig@due #2\fi%
 \else%assig@given non-empty
@@ -374,10 +374,14 @@ RegisterDocumentNamespace('assig'=>"http://omdoc.org/ontology/assignments#");
 \ifx\assig@due\@empty\else, Due \assig@due\fi #2\fi}
 %    \end{macrocode}
 % 
-% With them, we can define the central |assignment| environment. This has two forms
-% (separated by |\ifmultiple|) in one we make a title block for an assignment sheet, and
-% in the other we make a section heading and add it to the table of
-% contents.
+% \begin{macro}{\assignment@number}
+%   We consolidate the assignment number into a reusable internal macro
+% \begin{macrocode}
+\newcommand\assignment@number{\ifx\inclassig@number\@empty%
+\ifx\assig@number\@empty\thesection\else\assig@number\fi%
+\inclassig@number\fi}
+%    \end{macrocode}
+% \end{macro}
 % 
 % \begin{macro}{assignment@title}
 %   This macro prints the title of an assignment, the local title is overwritten, if there
@@ -390,13 +394,18 @@ RegisterDocumentNamespace('assig'=>"http://omdoc.org/ontology/assignments#");
 %    \end{macrocode}
 % \end{macro}
 % 
+% With them, we can define the central |assignment| environment. This has two forms
+% (separated by |\ifmultiple|) in one we make a title block for an assignment sheet, and
+% in the other we make a section heading and add it to the table of
+% contents.
+% 
 % \begin{macro}{assignment@titleblock}
 %   This macro prints the title block of a section. If the |multiple| package option is
 %   given we make a section heading out of this, and if not, a title block. 
 %    \begin{macrocode}
 \ifmultiple
-\def\assignment@titleblock{%
-\ifx\assig@number\@empty\stepcounter{section}\else\setcounter{section}{\assig@number}\fi%
+\newcommand\assignment@titleblock{\edef\@@num{\assignment@number}%
+\ifx\@@num\@empty\stepcounter{section}\else\setcounter{section}{\@@num}\fi%
 \section*{\protect\document@hwexamtype~\arabic{section}%
 \assignment@title\given@due()}%
 \addcontentsline{toc}{section}%
@@ -408,7 +417,7 @@ RegisterDocumentNamespace('assig'=>"http://omdoc.org/ontology/assignments#");
 % are numbered by section, we also set the section counter.
 %    \begin{macrocode}
 \else% multiple
-\def\assignment@titleblock{%
+\newcommand\assignment@titleblock{%
 \ifx\assig@number\@empty\stepcounter{section}\else\setcounter{section}{\assig@number}\fi%
 \begin{center}\bf
 \Large\@title\strut\\
@@ -422,7 +431,7 @@ RegisterDocumentNamespace('assig'=>"http://omdoc.org/ontology/assignments#");
 % \begin{macro}{assignment@process@keys}
 %   this macro collects the keys from its argument and corrects them from the outside.
 %    \begin{macrocode}
-\def\assignment@process@keys#1{\metasetkeys{assig}{#1}
+\newcommand\assignment@process@keys[1]{\metasetkeys{assig}{#1}
 \ifx\inclassig@title\@empty\else\def\assig@title{\inclassig@title}\fi
 \ifx\inclassig@type\@empty\else\def\assig@type{\inclassig@type}\fi
 \ifx\inclassig@number\@empty\else\def\assig@number{\inclassig@number}\fi
@@ -482,7 +491,7 @@ DefEnvironment('{assignment} OptionalKeyVals:assig',
 % 
 %    \begin{macrocode}
 %<*package>
-\def\assig@default@type{Assignment}
+\newcommand\assig@default@type{Assignment}
 \addmetakey[\assig@default@type]{document}{hwexamtype}
 %</package>
 %    \end{macrocode}
@@ -562,9 +571,9 @@ DefEnvironment('{testheading}OptionalKeyVals:omdoc','');
 %
 %    \begin{macrocode}
 %<*package>
-\def\testspace#1{\iftest\vspace*{#1}\fi}
-\def\testnewpage{\iftest\newpage\fi}
-\def\testemptypage{\iftest\begin{center}This page was intentionally left
+\newcommand\testspace[1]{\iftest\vspace*{#1}\fi}
+\newcommand\testnewpage{\iftest\newpage\fi}
+\newcommand\testemptypage{\iftest\begin{center}This page was intentionally left
     blank for extra space\end{center}\vfill\eject\else\fi}
 %</package>
 %<*ltxml>
@@ -579,9 +588,9 @@ DefConstructor('\testemptypage','');
 %   generate the correction table. 
 %    \begin{macrocode}
 %<*package>
-\def\@problem#1#2#3{\stepcounter{assignment@probs}
-\def\@test{#2}\ifx\@test\@empty\else\addtocounter{assignment@totalpts}{#2}\fi
-\def\@test{#3}\ifx\@test\@empty\else\addtocounter{assignment@totalmin}{#3}\fi
+\renewcommand\@problem[3]{\stepcounter{assignment@probs}
+\def\@@pts{#2}\ifx\@@pts\@empty\else\addtocounter{assignment@totalpts}{#2}\fi
+\def\@@min{#3}\ifx\@@min\@empty\else\addtocounter{assignment@totalmin}{#3}\fi
 \xdef\correction@probs{\correction@probs & #1}%
 \xdef\correction@pts{\correction@pts & #2}
 \xdef\correction@reached{\correction@reached &}}
@@ -596,11 +605,11 @@ DefConstructor('\testemptypage','');
 \newcounter{assignment@probs}
 \newcounter{assignment@totalpts}
 \newcounter{assignment@totalmin}
-\def\correction@probs{prob.}%
-\def\correction@pts{total}%
-\def\correction@reached{reached}%
+\newcommand\correction@probs{prob.}%
+\newcommand\correction@pts{total}%
+\newcommand\correction@reached{reached}%
 \stepcounter{assignment@probs}
-\def\correction@table{\begin{tabular}{|l|*{\theassignment@probs}{c|}|p{3cm}|}\hline%
+\newcommand\correction@table{\begin{tabular}{|l|*{\theassignment@probs}{c|}|p{3cm}|}\hline%
 &\multicolumn{\theassignment@probs}{c||}%|
 {\footnotesize To be used for grading, do not write here} &\\\hline
 \correction@probs & Sum & grade\\\hline
@@ -683,14 +692,14 @@ DefMacro('\inputmhassignment OptionalKeyVals:inclprob {}', \&inputmhassignment);
 % \font\uhrfont=../assignments/uhr
 % \font\warnschildfont=../assignments/achtung
 %
-% \def\bierglas{{\bierfont\char65}}
-% \def\denker{{\denkerfont\char65}}
-% \def\uhr{{\uhrfont\char65}}
-% \def\warnschild{{\warnschildfont\char 65}}
-% \def\hardA{\warnschild}
-% \def\longA{\uhr}
-% \def\thinkA{\denker}
-% \def\discussA{\bierglas}
+% \newcommand\bierglas{{\bierfont\char65}}
+% \newcommand\denker{{\denkerfont\char65}}
+% \newcommand\uhr{{\uhrfont\char65}}
+% \newcommand\warnschild{{\warnschildfont\char 65}}
+% \newcommand\hardA{\warnschild}
+% \newcommand\longA{\uhr}
+% \newcommand\thinkA{\denker}
+% \newcommand\discussA{\bierglas}
 % \end{verbatim}
 %
 % Finally, we need to terminate the file with a success mark for perl.
