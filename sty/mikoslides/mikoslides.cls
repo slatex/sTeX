@@ -54,7 +54,7 @@
 \RequirePackage{standalone}
 \RequirePackage{textcomp}
 \newcounter{slide}
-\newlength{\slidewidth}\setlength{\slidewidth}{12.3cm}
+\newlength{\slidewidth}\setlength{\slidewidth}{12.6cm}
 \newlength{\slideheight}\setlength{\slideheight}{9cm}
 \ifnotes\renewenvironment{note}{\ignorespaces}{}\else\excludecomment{note}\fi
 \ifnotes

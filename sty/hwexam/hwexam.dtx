@@ -376,12 +376,14 @@ RegisterDocumentNamespace('assig'=>"http://omdoc.org/ontology/assignments#");
 % 
 % \begin{macro}{assignment@title}
 %   This macro prints the title of an assignment, the local title is overwritten, if there
-%   is one from the |\includeassignment|. 
+%   is one from the |\includeassignment|. |\assignment@title| takes three arguments the
+%   first is the fallback when no title is given at all, the second and third go around
+%   the title, if one is given. 
 %    \begin{macrocode}
-\newcommand\assignment@title
+\newcommand\assignment@title[3]
 {\ifx\inclassig@title\@empty% if there is no outside title
-\ifx\assig@title\@empty{:\quad}\else{\quad(\assig@title)\hfill\\}\fi
-\else\quad(\inclassig@title)\hfill\\\fi}% else show the outside title
+\ifx\assig@title\@empty{#1}\else{#2\assig@title{#3}}\fi
+\else{#2}\inclassig@title{#3}\fi}% else show the outside title
 %    \end{macrocode}
 % \end{macro}
 % 
@@ -397,7 +399,7 @@ RegisterDocumentNamespace('assig'=>"http://omdoc.org/ontology/assignments#");
 \ifmultiple
 \newcommand\assignment@titleblock{%
 \section*{\protect\document@hwexamtype~\arabic{section}%
-\assignment@title\given@due()}%
+\assignment@title{}{\;(}{)\;}\given@due{}{}}%
 \addcontentsline{toc}{section}%
 {\document@hwexamtype~{\arabic{section}}:~%
 \string\importmodules{\imported@modules}\assig@title}%
@@ -406,14 +408,14 @@ RegisterDocumentNamespace('assig'=>"http://omdoc.org/ontology/assignments#");
 % Now to the single assignment case, where we make a title block. Note that as |problem|s
 % are numbered by section, we also set the section counter.
 %    \begin{macrocode}
-\else% multiple
+\else% single
 \newcommand\assignment@titleblock{%
 \begin{center}\bf
 \Large\@title\strut\\
-\document@hwexamtype~\arabic{section}\assignment@title%
-\large\given@due()
+\document@hwexamtype~\arabic{section}\assignment@title{\;}{:\;}{\\}%
+\large\given@due{--\;}{\;--}
 \end{center}}
-\fi %multiple
+\fi% ifmultiple
 %    \end{macrocode}
 % \end{macro}
 % 
@@ -500,6 +502,7 @@ DefMacro('\inputassignment [] {}','\includeassignment[#1]{#2}');
 % 
 % \subsection{Typesetting Exams}
 %
+% \begin{macro}{\quizheading}
 %    \begin{macrocode}
 %<*package>
 \addmetakey{quizheading}{tas}
@@ -508,6 +511,9 @@ DefMacro('\inputassignment [] {}','\includeassignment[#1]{#2}');
 \ifx\@tas\@empty\else%
 \noindent TA: \@for\@I:=\@tas\do{{\Large$\Box$}\@I\hspace*{1em}}\\[2ex]\fi}
 %    \end{macrocode}
+% \end{macro}
+% 
+% \begin{macro}{\testheading}
 %    \begin{macrocode}
 \addmetakey{testheading}{min}
 \addmetakey{testheading}{duration}
@@ -541,21 +547,42 @@ bonus points. \vfill
 DefEnvironment('{testheading}OptionalKeyVals:omdoc','');
 %</ltxml>
 %    \end{macrocode}
-%
+% \end{macro}
+% 
+% \begin{macro}{\testspace}
 %    \begin{macrocode}
 %<*package>
 \newcommand\testspace[1]{\iftest\vspace*{#1}\fi}
+%</package>
+%<*ltxml>
+DefConstructor('\testspace{}','');
+%</ltxml>
+%    \end{macrocode}
+% \end{macro}
+% 
+% \begin{macro}{\testnewpage}
+%    \begin{macrocode}
+%<*package>
 \newcommand\testnewpage{\iftest\newpage\fi}
+%</package>
+%<*ltxml>
+DefConstructor('\testnewpage','');
+%</ltxml>
+%    \end{macrocode}
+% \end{macro}
+% 
+% \begin{macro}{\testemptypage}
+%    \begin{macrocode}
+%<*package>
 \newcommand\testemptypage{\iftest\begin{center}This page was intentionally left
     blank for extra space\end{center}\vfill\eject\else\fi}
 %</package>
 %<*ltxml>
-DefConstructor('\testspace{}','');
-DefConstructor('\testnewpage','');
 DefConstructor('\testemptypage','');
 %</ltxml>
 %    \end{macrocode}
-%
+% \end{macro}
+% 
 % \begin{macro}{\@problem}
 %   This macro acts on a problem's record in the |*.aux| file. Here we redefine it to
 %   generate the correction table. 
