@@ -15,6 +15,7 @@
 \DeclareOption{showignores}{\PassOptionsToPackage{\CurrentOption}{omdoc}}
 \DeclareOption{showmods}{\PassOptionsToPackage{\CurrentOption}{modules}}
 \DeclareOption{extrefs}{\PassOptionsToPackage{\CurrentOption}{sref}}
+\DeclareOption{noauxreq}{\PassOptionsToPackage{\CurrentOption}{modules}}
 \DeclareOption*{\PassOptionsToClass{\CurrentOption}{article}}
 \ProcessOptions
 \LoadClass{\omdoc@class}
