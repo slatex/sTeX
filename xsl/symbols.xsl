@@ -35,6 +35,7 @@
 <xsl:param name="numberfields" select="concat($smglom,'/numberfields/source')"/>
 <xsl:param name="mv" select="concat($smglom,'/mv/source')"/>
 <xsl:param name="sets" select="concat($smglom,'/sets/source')"/>
+<xsl:param name="calculus" select="concat($smglom,'/calculus/source')"/>
 
 <!-- get rid of the list OMAs LaTeXML uses -->
 <xsl:template match="om:OMA[om:OMS[position()=1 and @name='list' and @cd='latexml']]">
@@ -76,6 +77,30 @@
     <xsl:if test="//om:OMS[@cd='latexml' and 
 		  @name='infinity' and not(ancestor::omdoc:notation)]">
       <omdoc:imports from="{$numberfields}/infinity#infinity"/>
+    </xsl:if>
+    <xsl:if test="//om:OMS[@cd='latexml' and 
+		  @name='absolute-value' and not(ancestor::omdoc:notation)]">
+      <omdoc:imports from="{$numberfields}/absolutevalue#absolutevalue"/>
+    </xsl:if>
+    <xsl:if test="//om:OMS[@cd='latexml' and 
+		  @name='approximately-equals' and not(ancestor::omdoc:notation)]">
+      <omdoc:imports from="{$mv}/approxeq#approxeq"/>
+    </xsl:if>
+    <xsl:if test="//om:OMS[@cd='latexml' and 
+		  @name='assign' and not(ancestor::omdoc:notation)]">
+      <omdoc:imports from="{$mv}/defeq#defeq"/>
+    </xsl:if>
+    <xsl:if test="//om:OMS[@cd='latexml' and 
+		  @name='compose' and not(ancestor::omdoc:notation)]">
+      <omdoc:imports from="{$sets}/relation-composition#relation-composition"/>
+    </xsl:if>
+    <xsl:if test="//om:OMS[@cd='latexml' and 
+		  @name='element-of' and not(ancestor::omdoc:notation)]">
+      <omdoc:imports from="{$sets}/set#set"/>
+    </xsl:if>
+    <xsl:if test="//om:OMS[@cd='latexml' and 
+		  @name='natural-logarithm' and not(ancestor::omdoc:notation)]">
+      <omdoc:imports from="{$calculus}/naturallogarithm#naturallogarithm"/>
     </xsl:if>
     <xsl:apply-templates/>
   </omdoc:theory>
@@ -132,5 +157,29 @@
 
 <xsl:template match="om:OMS[@cd='latexml' and @name='infinity']">
   <om:OMS cd="infinity" name="infinity"/>
+</xsl:template>
+
+<xsl:template match="om:OMS[@cd='latexml' and @name='absolutevalue']">
+  <om:OMS cd="absolutevalue" name="absolute-value"/>
+</xsl:template>
+
+<xsl:template match="om:OMS[@cd='latexml' and @name='approximately-equals']">
+  <om:OMS cd="approxeq" name="approximately-equal"/>
+</xsl:template>
+
+<xsl:template match="om:OMS[@cd='latexml' and @name='assign']">
+  <om:OMS cd="defeq" name="definitional-equation"/>
+</xsl:template>
+
+<xsl:template match="om:OMS[@cd='latexml' and @name='compose']">
+  <om:OMS cd="relation-composition" name="composition"/>
+</xsl:template>
+
+<xsl:template match="om:OMS[@cd='latexml' and @name='element-of']">
+  <om:OMS cd="set" name="inset"/>
+</xsl:template>
+
+<xsl:template match="om:OMS[@cd='latexml' and @name='natural-logarithm']">
+  <om:OMS cd="naturallogarithm" name="natural-logarithm"/>
 </xsl:template>
 </xsl:stylesheet>
