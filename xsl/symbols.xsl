@@ -182,4 +182,5 @@
 <xsl:template match="om:OMS[@cd='latexml' and @name='natural-logarithm']">
   <om:OMS cd="naturallogarithm" name="natural-logarithm"/>
 </xsl:template>
+
 </xsl:stylesheet>
