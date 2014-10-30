@@ -42,10 +42,6 @@
 <xsl:include href="symbols.xsl"/>
 <xsl:include href="math.xsl"/>
 
-<!-- we clean up for variable names in \nappa and friends -->
-<xsl:template match="om:OMV[contains(@name,'normal-')]">
-  <om:OMV name="{substring-after(@name,'normal-')}"/>
-</xsl:template>
 <!-- old <xsl:include href="graphics.xsl"/>, replaced by LaTeXML treatment -->
 <!-- old <xsl:include href="listings.xsl"/>, replaced by LaTeXML treatment -->
 <xsl:include href="LaTeXML/LaTeXML-common.xsl"/>

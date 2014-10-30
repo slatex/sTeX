@@ -183,4 +183,9 @@
   <om:OMS cd="naturallogarithm" name="natural-logarithm"/>
 </xsl:template>
 
+<!-- we clean up for variable names in \nappa and friends -->
+<xsl:template match="om:OMV[contains(@name,'normal-')]">
+  <om:OMV name="{substring-after(@name,'normal-')}"/>
+</xsl:template>
+
 </xsl:stylesheet>
