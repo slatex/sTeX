@@ -25,6 +25,7 @@
 \usepackage{listings}
 \usepackage{amsfonts}
 \usepackage{../ctangit}
+\usepackage{xspace}
 \usepackage{hyperref} 
 \makeindex
 \floatstyle{boxed}
@@ -65,7 +66,7 @@
 % \GetFileInfo{modules.sty}
 % 
 % \MakeShortVerb{\|}
-%\def\scsys#1{{{\sc #1}}\index{#1@{\sc #1}}}
+%\def\scsys#1{{{\sc #1}}\index{#1@{\sc #1}}\xspace}
 % \def\xml{\scsys{Xml}}
 % \def\mathml{\scsys{MathML}}
 % \def\omdoc{\scsys{OMDoc}}
@@ -288,7 +289,6 @@
 % that allowed to locally redefine the presentation of a macro. But this did not interact
 % well with the |beamer| package and was less useful than the |\symvariant|
 % functionality. Therefore it is deprecated now and leads to an according error message.
-% 
 % \subsection{Testing Semantic Macros}\label{sec:user:testing}
 % 
 % One of the problems in managing large module graphs with many semantic macros, so the
@@ -313,6 +313,75 @@
 % The \DescribeMacro{\abbrtest}|\abbrtest| macro gives the analogous functionality for
 % |\abbrdef|. 
 %
+% \subsection{Semantic Macros for Variables}\label{sec:user:semvars}
+%
+% Up to now, the semantic macros generated \openmath and \mathml markup where the heads of
+% the semantic macros become constants (the |OMS| and |csymbol| elements in
+% Figure~\ref{fig:omsemmac}). But sometimes we want to have semantic macros for variables,
+% e.g. to associate special notation conventions. For instance, if we want to define
+% mathematical structures from components as in Figure~\ref{fig:monoid}, where the
+% semigroup operation $\circ$ is a variable epistemologically, but is a $n$-ary
+% associative operator -- we are in a semigroup after all. Let us call such variables
+% \textbf{semantic variables} to contrast them from \textbf{semantic constants} generated
+% by |\symdef| and |\symvariant|.
+%
+%\begin{exfig}
+%  \textbf{Definition 3.17} Let $\langle G,\circ\rangle$ be a semigroup, then we call
+%  $e\in G$ a \textbf{unit}, iff $e\circ x=x\circ e=x$. A semigroup with unit $\langle
+%  G,\circ,e\rangle$ is called a \textbf{monoid}.
+%  \caption{A Definition of a Structure with ``semantic
+%  variables''.}\label{fig:monoid}
+% \end{exfig}
+%
+% Semantic variables differ from semantic constants in two ways:
+% \begin{inparaenum}[\em i\rm)]
+% \item they do not participate
+% in the imports mechanism and
+% \item they generate markup with variables.
+% \end{inparaenum}
+%  In the case of
+% Figure~\ref{fig:monoid} we (want to) have the \xml markup in Figure~\ref{fig:omsemvar}.
+% To associate the notation to the variables, we define semantic macros for them, here the
+% macro |\op| for the (semigroup) operation via the \DescribeMacro{\vardef}|\vardef|
+% macro. |\vardef| works exactly like, except
+% \begin{inparaenum}[\em i\rm)]
+% \item semantic variables are local to the current {\TeX} group and 
+% \item they generate variable markup in the \xml
+% \end{inparaenum}
+% 
+% \begin{exfig}\lstset{basicstyle=\scriptsize,aboveskip=-.5em,belowskip=-1.5em}
+% \begin{tabular}{l|p{9.7cm}}
+% \sTeX   & \verb|\vardef{op}[1]{\assoc\circ{#1}}|\\\hline
+% \omdoc & 
+% \begin{lstlisting}
+% <notation>
+%   <prototype>
+%     <OMA>
+%       <OMV name="op"/>
+%       <expr name="a1"/>
+%       <expr name="a2"/>
+%      </OMA>
+%   </prototype>
+%   <rendering>
+%     <mrow>
+%       <render name="a1"/>
+%       <mo>&#x2384;</mo>
+%       <render name="a2"/>
+%     </mrow>
+%   </rendering>
+% </notation>\end{lstlisting}\\\hline
+% \LaTeX  & \verb|\op{x,e}| \\\hline
+% PDF/DVI & $x\circ e$\\\hline
+%  {\openmath} & \lstset{morekeywords={OMA,OMV}}
+% \begin{lstlisting}
+% <OMA><OMV name="op"/><OMV name="x"/><OMV name="e"/></OMA>\end{lstlisting}\\\hline
+% {\mathml}  & \lstset{morekeywords={apply,ci}}
+% \begin{lstlisting}
+% <apply><ci>op</ci><ci>x</ci><ci>e</ci></apply>\end{lstlisting}\\
+% \end{tabular}
+% \caption{Semantic Variables in {\openmath} and {\mathml}}\label{fig:omsemvar}
+% \end{exfig}
+% 
 % \subsection{Symbol and Concept Names}\label{sec:user:termdef}
 % 
 % Just as the |\symdef| declarations define semantic macros for mathematical symbols, the
@@ -1209,6 +1278,19 @@
 %    \end{macrocode}
 % \end{macro}
 %
+% \subsection{Semantic Macros for Variables}\label{sec:user:semvars}
+%
+% \begin{macro}{\vardef} 
+%   We do the argument parsing like in |\symdef| above, but add the |local| key. All the
+%   other changes are in the \latexml binding exclusively.
+%    \begin{macrocode}
+\def\vardef{\@ifnextchar[{\@vardef}{\@vardef[]}}
+\def\@vardef[#1]#2{\@ifnextchar[{\@@vardef[#1]{#2}}{\@@vardef[#1]{#2}[0]}}
+\def\@@vardef[#1]#2[#3]#4{\def\@test{#1}%
+\ifx\@test\@empty\@@symdef[local]{#2}[#3]{#4}\else\symdef[local,#1]{#2}[#3]{#4}\fi}
+%    \end{macrocode}
+% \end{macro}
+%
 % \subsection{Testing Semantic Macros}\label{sec:impl:testing}
 %
 % \begin{macro}{\symtest}
@@ -1700,7 +1782,7 @@
 % \begin{macro}{\mhcurrentrepos}
 %   |\mhcurrentrepos| is used to initialize the current repository. If the repos has
 %   changed, it writes a call to the internal macro
-%   \DescribeMacro{\@mhcurrentrepos}|\@mhcurrentrepos| fo the aux file and calls it. So
+%   \DescribeMacro{\@mhcurrentrepos}|\@mhcurrentrepos| for the aux file and calls it. So
 %   that the |\importmodule| calls there work with the correct repos.
 %    \begin{macrocode}
 \newcommand\mhcurrentrepos[1]{\edef\@test{#1}%
@@ -1898,15 +1980,15 @@
 % LocalWords:  defs foreach LookupValue activateScope DefEnvironment keyvals cd varpres
 % LocalWords:  OptionalKeyVals getValue toString AssignValue openElement omdoc uvee vee
 % LocalWords:  closeElement beforeDigest useTheoryItemizations afterDigestBegin symtest
-% LocalWords:  whatsit setProperty getArg qw symdef  iffalse importOMDocmodule symtest
+% LocalWords:  whatsit setProperty getArg qw symdef  iffalse importOMDocmodule symtest ci
 % LocalWords:  DefKeyVal Semiverbatim symdeflocal atqualified DefMacro STDERR setst spath
 % LocalWords:  args unlist DefPrimitive nargs Stringify eq attr omcd ltx XMTok abbrtest
-% LocalWords:  convertLaTeXArgs scriptpos XMApp OMA XMArg simpl abbrtest
-% LocalWords:  blaaaa savedprefix aaa simplhelp tust tist tost reguse spath baz
+% LocalWords:  convertLaTeXArgs scriptpos XMApp OMA XMArg simpl abbrtest 2oms04 circ ary
+% LocalWords:  blaaaa savedprefix aaa simplhelp tust tist tost reguse spath baz rangle
 % LocalWords:  updatedpre ReturnAfterFi updateall updatedpost updatesms bgroup includeref
 % LocalWords:  texclude tinclude getGullet requiredmodule tex sms egroup pmml sincluderef
 % LocalWords:  toks mixfixi mixfixa mixfixii mixfixia mixfixai mixfixiii arg cr OPaths
-% LocalWords:  undef tok PARAM thyid BerFieMas
+% LocalWords:  undef tok PARAM thyid BerFieMas inparaenum omsemvar vardef vardef mhview
 % LocalWords:  getString showfalse showtrue xcomment stex srcref KeyVal omext osslepsdl13
 % LocalWords:  beginItemize getProperty introdcue afterOpen numberIt Tokenize adoptmodule
 % LocalWords:  OptionalSemiverbatim omdocmod PushValue assocarg getStomach prs HorIacJuc
@@ -1931,21 +2013,21 @@
 % LocalWords:  newenvironment parentmod usemodule ifundefined coolurion cooluri reqmodule
 % LocalWords:  coolurioff cwd ouri ifdefinable testopt ifnextchar xargdef bvars 2oms04
 % LocalWords:  argdef yargdef somefunction symdeflocaltrue bvar xpath assoc qr reqmodules
-% LocalWords:  symdeflocalfalse localpres isbound symdefs COMPLEXTOKEN localp 
+% LocalWords:  symdeflocalfalse localpres isbound symdefs COMPLEXTOKEN localp  fromrepos
 % LocalWords:  findnodes localname carg renewcommand bbb showmeta showmeta exp ifnumequal
 % LocalWords:  refundefinedtrue subsubsection blaaa makeatletter makeatother rm ifinlist
 % LocalWords:  ifmodules gdef xdef xdef modulestrue modulesfalse pathpostfix abbreviative
 % LocalWords:  updatedsms newreg xref texorpdfstring srefaddidkey newsavebox importmodule
-% LocalWords:  viewbox newcounter thesection theview theproblem hfill lrbox req
+% LocalWords:  viewbox newcounter thesection theview theproblem hfill lrbox req torepos
 % LocalWords:  stepcounter textwidth hbox noindent smallskip fbox vbox usebox forpathlist
 % LocalWords:  smallskip newxcomment vassign ensuremath mapsto doctex tocdepth dolistloop
 % LocalWords:  setcounter tableofcontents mathbb symvariant importmodulevia adoptmhmodule
-% LocalWords:  importmodulevia compactdesc tassign tassign tname source-tname
+% LocalWords:  importmodulevia compactdesc tassign tassign tname source-tname frompath
 % LocalWords:  ttassign metakeys addmetakey themodule metasetkeys aftergroup addtocounter
-% LocalWords:  groupling requation IMPORTCD CURRENTCD bindargs defmathop cnode
+% LocalWords:  groupling requation IMPORTCD CURRENTCD bindargs defmathop cnode topath
 % LocalWords:  icvariant aftercounter prestok inputref oref loadfrom loadto adoptmhmodule
 % LocalWords:  csymdef notationdef noauxreq noauxreq rinput ifaux reqtrue bargs
-% LocalWords:  reqfalse currmod importmoduleenv conceptdef stDMemph  tempswa
+% LocalWords:  reqfalse currmod importmoduleenv conceptdef stDMemph  tempswa mhviewsketch
 % LocalWords:  auxout omtext surroundwithmdframed ignorespaces NeedsTeXFormat
 %  LocalWords:  importmhmodule importmhmodule mhcurrentrepos mhcurrentrepos importmodules
-%  LocalWords:  mh@currentrepos NEWrequiremodules importmhmodulevia
+%  LocalWords:  mh@currentrepos NEWrequiremodules importmhmodulevia providerobustcmd
