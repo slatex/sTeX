@@ -41,6 +41,8 @@
 <xsl:include href="notations.xsl"/>
 <xsl:include href="symbols.xsl"/>
 <xsl:include href="math.xsl"/>
+<!-- this should go away, when we fix all problems in LaTeXML/sTeX -->
+<xsl:include href="cleanup.xsl"/>
 
 <!-- old <xsl:include href="graphics.xsl"/>, replaced by LaTeXML treatment -->
 <!-- old <xsl:include href="listings.xsl"/>, replaced by LaTeXML treatment -->

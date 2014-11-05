@@ -24,9 +24,8 @@
   xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
   xmlns="http://omdoc.org/ns"
   xmlns:omdoc="http://omdoc.org/ns"
-  xmlns:ltx="http://dlmf.nist.gov/LaTeXML"
   xmlns:om="http://www.openmath.org/OpenMath"
-  exclude-result-prefixes="xsl omdoc ltx om">
+  exclude-result-prefixes="xsl omdoc om">
 
 <xsl:output method="xml" indent="yes" cdata-section-elements="data"/>
 
@@ -182,10 +181,4 @@
 <xsl:template match="om:OMS[@cd='latexml' and @name='natural-logarithm']">
   <om:OMS cd="naturallogarithm" name="natural-logarithm"/>
 </xsl:template>
-
-<!-- we clean up for variable names in \nappa and friends -->
-<xsl:template match="om:OMV[contains(@name,'normal-')]">
-  <om:OMV name="{substring-after(@name,'normal-')}"/>
-</xsl:template>
-
 </xsl:stylesheet>
