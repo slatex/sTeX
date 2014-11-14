@@ -126,28 +126,32 @@ DefConstructor('\importmoduleI OptionalKeyVals:importmodule {}', '',
    afterDigest=> \&importmoduleI );
 DefConstructor('\vassign[]{}{}',
     "<omdoc:requation>"
-   .  "<om:OMOBJ><om:OMS cd='?#1(#1)(#lastImportModule)' name='#2'/></om:OMOBJ>"
-   .  "<ltx:Math><ltx:XMath>#3</ltx:XMath></ltx:Math>"
-   ."</omdoc:requation>");
-DefConstructor('\tassign[]{}{}',
-    "<omdoc:requation>"
-   .  "<om:OMOBJ><om:OMS cd='?#1(#1)(#lastImportModule)' name='#2'/></om:OMOBJ>"
-   .  "<om:OMOBJ><om:OMS cd='#currentModule' name='#3'/></om:OMOBJ>"
+   .  "<om:OMOBJ><om:OMS cd='?#1(#1)(#from)' name='#2'/></om:OMOBJ>"
+   .    "<ltx:Math><ltx:XMath>#3</ltx:XMath></ltx:Math>"
    ."</omdoc:requation>",
    afterDigest=> sub {
      my ($stomach,$whatsit) = @_;
-     $whatsit->setProperty('currentModule',LookupValue("current_module"));
-     $whatsit->setProperty('lastImportModule',LookupValue("last_import_module"));
+     $whatsit->setProperty('from',LookupValue("from_module"));
+     $whatsit->setProperty('to',LookupValue("to_module"));
+   });
+DefConstructor('\tassign[]{}{}',
+    "<omdoc:requation>"
+   .  "<om:OMOBJ><om:OMS cd='?#1(#1)(#from)' name='#2'/></om:OMOBJ>"
+   .  "<om:OMOBJ><om:OMS cd='#to' name='#3'/></om:OMOBJ>"
+   ."</omdoc:requation>",
+   afterDigest=> sub {
+     my ($stomach,$whatsit) = @_;
+     $whatsit->setProperty('from',LookupValue("from_module"));
+     $whatsit->setProperty('to',LookupValue("to_module"));
    });
 DefConstructor('\ttassign[]{}{}',
     "<omdoc:requation>"
-   .  "<om:OMOBJ><om:OMS cd='?#1(#1)(#lastImportModule)' name='#2'/></om:OMOBJ>"
+   .  "<om:OMOBJ><om:OMS cd='?#1(#1)(#from)' name='#2'/></om:OMOBJ>"
    .  "<p>#3</p>"
    ."</omdoc:requation>",
    afterDigest=> sub {
      my ($stomach,$whatsit) = @_;
-     $whatsit->setProperty('currentModule',LookupValue("current_module"));
-     $whatsit->setProperty('lastImportModule',LookupValue("last_import_module"));
+     $whatsit->setProperty('from',LookupValue("from_module"));
    });
 
 
@@ -621,7 +625,7 @@ sub symdef_assemble_presentation {
   my $formatters_regexp_string = join("|",grep (defined,@$registered_formatters));
   my $formatters_regexp = qr/$formatters_regexp_string/;
   # Full-blown scan, so that we don't have to use formatters only on the top-level
-  # this might be quite slow and should be rethough ...
+  # this might be quite slow and should be rethought ...
   my $wrapped;
   foreach (@toks) {
     if ($_->toString =~ /^\\\@?($formatters_regexp)$/) {
@@ -744,6 +748,8 @@ DefMacroI(T_CS('\begin{mhview}'),'OptionalKeyVals:mhview {}{}', sub {
   my ($gullet, $keyvals, $from_arg, $to_arg) = @_;
   my $from = ToString(Digest($from_arg));
   my $to = ToString(Digest($to_arg));
+  AssignValue(from_module => $from);
+  AssignValue(to_module => $to);
   my $from_repos = ToString(GetKeyVal($keyvals,'fromrepos'));
   my $to_repos = ToString(GetKeyVal($keyvals,'torepos'));
   my $repos = LookupValue('current_repos');
