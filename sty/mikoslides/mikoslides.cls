@@ -42,7 +42,6 @@
 \RequirePackage{tikzinput}
 \RequirePackage{latexml}
 \RequirePackage{amssymb}
-\RequirePackage{tikz}
 \usepgflibrary{shapes}
 \usetikzlibrary{arrows}
 \usetikzlibrary{positioning}
@@ -54,7 +53,7 @@
 \RequirePackage{standalone}
 \RequirePackage{textcomp}
 \newcounter{slide}
-\newlength{\slidewidth}\setlength{\slidewidth}{12.6cm}
+\newlength{\slidewidth}\setlength{\slidewidth}{12.8cm}
 \newlength{\slideheight}\setlength{\slideheight}{9cm}
 \ifnotes\renewenvironment{note}{\ignorespaces}{}\else\excludecomment{note}\fi
 \ifnotes
