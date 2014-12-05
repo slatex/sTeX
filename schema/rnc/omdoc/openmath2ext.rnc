@@ -1,0 +1,89 @@
+# RELAX NG Schema for OpenMath 2
+# $Id: openmath2.rnc 8959 2011-09-02 06:01:43Z kohlhase $
+# $HeadURL: https://svn.omdoc.org/repos/omdoc/branches/omdoc-1.3/schema/rnc/openmath2.rnc $
+# See the documentation and examples at http://www.openmath.org
+
+default namespace om = "http://www.openmath.org/OpenMath"
+
+start = OMOBJ
+
+# OpenMath object constructor
+OMOBJ = element OMOBJ { compound.attributes,
+                        attribute version { xsd:string }?,
+                        omel }
+
+# Elements which can appear inside an OpenMath object
+omel = 
+  OMS | OMV | OMI | OMB | OMSTR | OMF | OMA | OMBIND | OME | OMATTR |OMR
+
+# things which can be variables
+omvar = OMV | attvar
+
+attvar = element OMATTR { common.attributes,(OMATP , (OMV | attvar))}
+
+
+cdbase = attribute cdbase { xsd:anyURI}?
+
+# attributes common to all elements
+common.attributes = (attribute id { xsd:ID })?
+
+# attributes common to all elements that construct compount OM objects.
+compound.attributes = common.attributes,cdbase
+
+# symbol
+OMS = element OMS { common.attributes,
+                    attribute name {xsd:NCName},
+                    attribute cd {xsd:NCName},
+                    cdbase }
+
+# variable
+OMV = element OMV { common.attributes,
+                    attribute name { xsd:NCName} }
+
+# integer
+OMI = element OMI { common.attributes,
+                    xsd:string {pattern = "\s*(-\s?)?[0-9]+(\s[0-9]+)*\s*"}}
+# byte array
+OMB = element OMB { common.attributes, xsd:base64Binary }
+
+# string
+OMSTR = element OMSTR { common.attributes, text }
+
+# IEEE floating point number
+OMF = element OMF { common.attributes,
+                    ( attribute dec { xsd:double } |
+                      attribute hex { xsd:string {pattern = "[0-9A-F]+"}}) }
+
+# apply constructor
+OMA = element OMA { compound.attributes, omel+ }
+
+# binding constructor 
+OMBIND = element OMBIND { compound.attributes, omel, OMBVAR, omel* }
+
+# variables used in binding constructor
+OMBVAR = element OMBVAR { common.attributes, omvar+ }
+
+# error constructor
+OME = element OME { common.attributes, OMS, (omel|OMFOREIGN)* }
+
+# attribution constructor and attribute pair constructor
+OMATTR = element OMATTR { compound.attributes, OMATP, omel }
+
+OMATP = element OMATP { compound.attributes, (OMS, (omel | OMFOREIGN) )+ }
+
+# foreign constructor
+OMFOREIGN =  element OMFOREIGN {
+    compound.attributes, attribute encoding {xsd:string}?,
+   (omel|notom)* }
+
+# Any elements not in the om namespace
+# (valid om is allowed as a descendant)
+notom =
+  (element * - om:* {attribute * { text }*,(omel|notom)*}
+   | text)
+
+# reference constructor
+OMR = element OMR { common.attributes,
+                    attribute href { xsd:anyURI }
+                  }
+
