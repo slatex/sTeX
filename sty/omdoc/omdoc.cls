@@ -17,6 +17,7 @@
 \DeclareOption{extrefs}{\PassOptionsToPackage{\CurrentOption}{sref}}
 \DeclareOption{noauxreq}{\PassOptionsToPackage{\CurrentOption}{modules}}
 \DeclareOption*{\PassOptionsToClass{\CurrentOption}{article}}
+\DeclareOption*{\PassOptionsToPackage{\CurrentOption}{omdoc}}
 \ProcessOptions
 \LoadClass{\omdoc@class}
 \RequirePackage{etoolbox}
