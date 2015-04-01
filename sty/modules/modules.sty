@@ -19,6 +19,7 @@
 \RequirePackage{sref}
 \RequirePackage{xspace}
 \RequirePackage{mdframed}
+\RequirePackage{xstring}
 \addmetakey{module}{cd}% no longer used
 \addmetakey{module}{load}% ignored
 \addmetakey*{module}{title}
@@ -31,10 +32,7 @@
 \edef\this@qualified@module{\expandafter\noexpand\csname module@defs@qualified@#1\endcsname}%
 \global\@namedef{module@defs@qualified@#1}{}%
 \fi
-\def\mod@id{#1}%
-\expandafter\edef\csname #1@cd@file@base\endcsname{\mod@path}%
-\expandafter\g@addto@macro\csname module@defs@#1\expandafter\endcsname\expandafter%
-{\expandafter\def\csname #1@cd@file@base\expandafter\endcsname\expandafter{\mod@path}}}
+\def\mod@id{#1}}
 \newcounter{module}[section]
 \newcommand\module@heading{\stepcounter{module}%
 \ifmod@show%
@@ -42,7 +40,10 @@
 \sref@label@id{Module \thesection.\themodule [\mod@id]}%
 \ifx\module@title\@empty :\quad\else\quad(\module@title)\hfill\\\fi%
 \fi}%mod@show
-\newenvironment{module}[1][]{\begin{@module}[#1]\module@heading}{\end{@module}}
+\newenvironment{module}[1][]{\begin{@module}[#1]%
+\csxdef{\mod@id @cd@file@base}{\mod@path}%
+\module@heading}
+{\end{@module}}
 \ifmod@show\surroundwithmdframed{module}\fi
 \newenvironment{@module}[1][]{\metasetkeys{module}{#1}}{}
 \def\activate@defs#1{%
@@ -62,11 +63,22 @@
 \else\edef\imported@modules{#2,\imported@modules}\fi%
 \@exporttrue\@importmodule[\importmodule@load]{#2}{\importmodule@ext}\ignorespaces}
 \newcommand\@importmodule[3][]{%
-{\@importingtrue% to shut up macros
-\edef\@load{#1}\ifx\@load\@empty\else{\mod@showfalse\requiremodules\@load{#3}}\fi}%
+{\@importingtrue% to shut up macros while in the group opened here
+\edef\@load{#1}\ifx\@load\@empty\else%
+\@ifundefined{#2@cd@file@base}{\requiremodules{#1}{#3}}%
+{\edef\@path{\expandafter\csname #2@cd@file@base\endcsname}
+\IfStrEq\@load\@path% if the known path is the same as the requested one
+{}% do nothing, it has already been loaded, else signal an error
+{\PackageError{modules}
+{Module Name Clash\MessageBreak A module with name #2 was already loaded under the path
+  "\@path"\MessageBreak
+The imported path "\@load" is probably a different module with the\MessageBreak
+same name; this is dangerous -- not importing}
+{Check whether the Module name is correct}}}
+\fi}% \@load empty and end importing group
 \activate@defs{#2}\if@export\export@defs{#2}\fi}
 \newcommand\usemodule[2][]{\@exportfalse\importmodule[#1]{#2}}
-\newcommand\importmodules[1]{\@for\@I:=#1\do{\importmodule\@I}}%
+\newcommand\importmodules[1]{\@for\@I:=#1\do{\activate@defs\@I}}%
 \newenvironment{importmodulevia}[2][]{\gdef\@@doit{\importmodule[#1]{#2}}%
 \ifmod@show\par\noindent importing module #2 via \@@doit\fi}
 {\aftergroup\@@doit\ifmod@show end import\fi}
@@ -189,88 +201,20 @@
 \sref@hlink@ifh{\@label}{\ifx\@test\@empty #2\else #3\fi}\else%
 \def\@uri{\csname #1@cd@file@base\endcsname.pdf\#\@label}%
 \sref@href@ifh{\@uri}{\ifx\@test\@empty #2\else #3\fi}\fi}
-\def\mod@simplify#1{\expandafter\mod@simpl#1/\relax}
-\def\mod@simpl#1/#2\relax{\def\@second{#2}%
-\ifx\mod@blaaaa\@empty\edef\mod@savedprefix{}\def\mod@blaaaa{aaa}\fi%
-\ifx\@second\@empty\edef\mod@savedprefix{\mod@savedprefix#1}%
-\else\mod@simplhelp#1/#2\relax\fi}
-\def\mod@updir{..}
-\def\mod@simplhelp#1/#2/#3\relax{\def\@first{#1}\def\@second{#2}\def\@third{#3}%
-\ifx\@third\@empty% base case
-\ifx\@second\mod@updir\else%
-\ifx\@second\@empty\edef\mod@savedprefix{\mod@savedprefix#1}%
-\else\edef\mod@savedprefix{\mod@savedprefix#1/#2}%
-\fi% @second empty
-\fi% @second = ..
-\else% non-base case: @third non-empty
-\ifx\@first\mod@updir%
-\edef\mod@savedprefix{\mod@savedprefix#1/}\mod@simplhelp#2/#3\relax%
-\else% @first != ..
-\ifx\@second\mod@updir\mod@simpl#3\relax%
-\else\edef\mod@savedprefix{\mod@savedprefix#1/}\mod@simplhelp#2/#3\relax%
-\fi% @first
-\fi% @first = ..
-\fi}% non-base case
+\newcommand\mod@canonicalize[1]{#1}
 \newcommand\defpath[3][]{\expandafter\newcommand\csname #2\endcsname[1]{#3/##1}}
-\newif\ifmodules
-\gdef\mod@reg{}
-\def\mod@update#1{\ifx\mod@reg\@empty\xdef\mod@reg{#1}%
-\else\xdef\mod@reg{#1@\mod@reg}\fi}
-\def\mod@check#1@#2///#3\relax{%
-\def\mod@one{#1}\def\mod@two{#2}\def\mod@three{#3}%
-\expandafter%
-\ifx\mod@three\mod@one\modulestrue%
-\else%
-\ifx\mod@two\@empty\modulesfalse\else\mod@check#2///#3\relax\fi%
-\fi}
-\def\mod@search#1{%
-\modulesfalse\expandafter\mod@check\mod@reg @///#1\relax%
-\ifmodules\else\mod@update{#1}\fi}
-\def\mod@reguse#1{\modulesfalse\expandafter\mod@check\mod@reg @///#1\relax}
-\def\mod@prefix{}
-\def\mod@updatedpre#1{%
-\edef\mod@prefix{\mod@prefix\mod@pathprefix@check#1/\relax}}
-\def\mod@pathprefix@check#1/#2\relax{%
-\ifx\\#2\\% no slash in string
-\else\mod@ReturnAfterFi{#1/\mod@pathprefix@help#2\relax}%
-\fi}
-\def\mod@pathprefix@help#1/#2\relax{%
-\ifx\\#2\\% end of recursion
-\else\mod@ReturnAfterFi{#1/\mod@pathprefix@help#2\relax}%
-\fi}
-\long\def\mod@ReturnAfterFi#1\fi{\fi#1}
-\def\mod@pathpostfix@check#1/#2\relax{% slash
-\ifx\\#2\\%no slash in string
-#1\else\mod@ReturnAfterFi{\mod@pathpostfix@help#2\relax}%
-\fi}
-\def\mod@pathpostfix@help#1/#2\relax{%
-\ifx\\#2\\%
-#1\else\mod@ReturnAfterFi{\mod@pathpostfix@help#2\relax}%
-\fi}
-\def\mod@updatedpost#1{%
-\edef\mod@savedprefix{\mod@savedprefix\mod@pathpostfix@check#1/\relax}}
 \newcommand\requiremodules[2]{%
 {\mod@showfalse% save state and ensure silence while reading sms
-\mod@updatedpre{#1}% add the new file to the already existing path
-\let\mod@savedprefix\mod@prefix% add the path of the new file to the prefix
-\mod@updatedpost{#1}%
-\def\mod@blaaaa{}% macro used in the simplify function (remove .. from the prefix)
-\mod@simplify{\mod@savedprefix}% remove |xxx/..| from the path (in case it exists)
-\mod@reguse{\mod@savedprefix}%
-\ifmodules\else%
-\let\newreg\mod@reg% use to compare, in case the .sms file was loaded before
-\mod@search{\mod@savedprefix}% update registry
-\ifx\newreg\mod@reg\else % load if not in registry
+\edef\mod@path{#1}\edef\mod@ext{#2}% set up path/ext
 \ifaux@req% if we write to the aux file
 \ifx\@mhcurrentrepos\@undefined\else%
 \protected@write\@auxout{}{\string\@mhcurrentrepos{\mh@currentrepos}}%
 \fi%
-\protected@write\@auxout{}{\string\@requiremodules{\mod@savedprefix}{#2}}
 \fi% aux file write
-\input{\mod@savedprefix.#2}%
-\fi% load
-\fi}}%  ifmodules
-\newcommand\@requiremodules[2]{\if@tempswa\mod@showfalse\@importingtrue\input{#1.#2}\fi}
+\input{#1.#2}}}
+\newcommand\@requiremodules[2]{\if@tempswa\mod@showfalse\@importingtrue%
+\edef\mod@path{#1}\edef\mod@ext{#2}% set up path/ext
+\input{#1.#2}\fi}
 \def\sinput#1{
 {\mod@updatedpre{#1}% add the new file to the already existing path
 \let\mod@savedprefix\mod@prefix% add the path to the new file to the prefix
@@ -284,7 +228,7 @@
 \else\input{\mod@savedprefix}%
 \fi}}
 \let\sinputref=\sinput
-\let\inputref=\input
+\newcommand\inputref[1]{\edef\mod@path{#1}\edef\mod@ext{tex}\input{#1}}
 \let\includeref=\include
 \def\requirepackage#1#2{\makeatletter\input{#1.sty}\makeatother}
 \srefaddidkey{view}
