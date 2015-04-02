@@ -582,19 +582,9 @@
 % depth 10) without activating them, so that it would not have to be re-loaded in the
 % critical path of the module |foo|. Solving the load depth problem.
 % 
-% \DescribeMacro{\sinput} In all of the above, we do not want to load an |sms| file, if
-% the corresponding file has already been loaded, since the semantic macros are already in
-% memory. Therefore the |modules| package supplies a semantic variant of the |\input|
-% macro, which records in an internal register that the modules in the file have already
-% been loaded. Thus if we consistently use |\sinput| instead of |\input| or |\include| for
-% files that contain modules\footnote{files without modules should be treated by the
-% regular {\LaTeX} input mechanism, since they do not need to be registered.}, we can
-% prevent double loading of files and therefore gain efficiency. The
-% \DescribeMacro{\sinputref} |\sinputref| macro behaves just like |\sinput| in the
+% The \DescribeMacro{\inputref}|\inputref| macro behaves just like |\input| in the
 % {\LaTeX} workflow, but in the {\latexml} conversion process creates a reference to the
-% transformed version of the input file instead. \DescribeMacro{\inputref}|\inputref| and
-% \DescribeMacro{\includeref}|\sincluderef| also only create references in the {\latexml}
-% workflow but do not register loaded files or avoid duplicate loading.
+% transformed version of the input file instead.
 % 
 % Finally, the separation of documents into multiple modules often profits from a symbolic
 % management of file paths. To simplify this, the |modules| package supplies the
@@ -793,7 +783,7 @@
 % {\sTeX} allows imports in the same file via |\importmodule{|\meta{mod}|}|, but due to
 % the single-pass linear processing model of {\TeX}, \meta{mod} must be the name of a
 % module declared {\emph{before}} the current point. So we cannot have forward imports as
-% in 
+% in \ednote{usemodule should work here; revise}
 % \begin{verbatim}
 % \begin{module}[id=foo]
 %   \importmodule{mod}
@@ -805,7 +795,7 @@
 % \end{module}
 % \end{verbatim}
 % a workaround, we can extract the module \meta{mod} into a file {{{mod.tex}}} and replace
-% it with |\sinput{mod}|, as in 
+% it with |\sinput{mod}|, as in
 % \begin{verbatim}
 % \begin{module}[id=foo]
 %   \importmodule[load=mod]{mod}
@@ -886,9 +876,7 @@
 %   |\this@module| that expands to |\module@defs@|\meta{name}; we define it first and then
 %   initialize |\module@defs@|\meta{name} as empty. Then we do the same for qualified
 %   imports as well (if the |qualifiedimports| option was specified). Furthermore, we save
-%   the module name in |\mod@id| and the module path in |\|\meta{name}|@cd@file@base|
-%   which we add to |\module@defs@|\meta{name}, so that we can use it in the importing
-%   module.
+%   the module name in the token register |\mod@id|.
 %    \begin{macrocode}
 \define@key{module}{id}{%
 \edef\this@module{\expandafter\noexpand\csname module@defs@#1\endcsname}%
@@ -915,12 +903,16 @@
 % \end{macro}
 %
 % \begin{environment}{module}
-%   Finally, we define the begin module command for the module environment. All the work
-%   has already been done in the keyval bindings, so this is very simple.
+%   Finally, we define the begin module command for the module environment. Much of the
+%   work has already been done in the keyval bindings, so this is quite simple. We store
+%   the file name (without extension) and extension of the module file in the global
+%   macros |\module@|\meta{name}|@path| and |\module@|\meta{name}|@ext|, so that we can
+%   use them later.
 %    \begin{macrocode}
 \newenvironment{module}[1][]{\begin{@module}[#1]%
 \@ifundefined{mod@id}{}% only define if components are!
-{\@ifundefined{mod@path}{}{\csxdef{\mod@id @cd@file@base}{\mod@path}}}%
+{\@ifundefined{mod@path}{}{\csxdef{module@\mod@id @path}{\mod@path}}
+\@ifundefined{mod@ext}{}{\csxdef{module@\mod@id @ext}{\mod@ext}}}%
 \module@heading}
 {\end{@module}}
 \ifmod@show\surroundwithmdframed{module}\fi
@@ -998,17 +990,15 @@
 %
 % \begin{macro}{\@importmodule} 
 %   |\@importmodule[|\meta{file}|]{|\meta{mod}|}{|\meta{ext}|}| loads
-%   \meta{file}|.|\meta{ext} (if it is given) and activates the module \meta{mod}. It also
-%   remembers the file name and extension in |\mod@path| and |\mod@ext| so that
-%   |\begin{module}| can pick them up later. There is a slight inefficiency in that
-%     modules can be recorded multiply, but since |\activate@defs| is efficient about not
-%     activating twice, this is OK.
+%   \meta{file}|.|\meta{ext} (if it is given) and activates the module \meta{mod}. There
+%   is a slight inefficiency in that modules can be recorded multiply, but since
+%   |\activate@defs| is efficient about not activating twice, this is OK.
 %    \begin{macrocode}
 \newcommand\@importmodule[3][]{%
 {\@importingtrue% to shut up macros while in the group opened here
 \edef\@load{#1}\ifx\@load\@empty\else%
-\@ifundefined{#2@cd@file@base}{\requiremodules{#1}{#3}}%
-{\edef\@path{\expandafter\csname #2@cd@file@base\endcsname}
+\@ifundefined{module@#2@path}{\requiremodules{#1}{#3}}%
+{\edef\@path{\expandafter\csname module@#2@path\endcsname}
 \IfStrEq\@load\@path% if the known path is the same as the requested one
 {}% do nothing, it has already been loaded, else signal an error
 {\PackageError{modules}
@@ -1262,8 +1252,7 @@ same name; this is dangerous -- not importing}
 \def\resymdef{\@ifnextchar[{\@resymdef}{\@resymdef[]}}
 \def\@resymdef[#1]#2{\@ifnextchar[{\@@resymdef[#1]{#2}}{\@@resymdef[#1]{#2}[0]}}
 \def\@@resymdef[#1]#2[#3]#4{\PackageError{modules}
-  {The \protect\resymdef macro is deprecated,\MessageBreak
-    use the \protect\symvariant instead!}}
+  {The \protect\resymdef macro is deprecated}{use the \protect\symvariant instead!}}
 %    \end{macrocode}
 % \end{macro}
 %
@@ -1356,19 +1345,20 @@ same name; this is dangerous -- not importing}
 %
 % \begin{macro}{\mod@termref} 
 %   |\mod@termref{|\meta{module}|}{|\meta{name}|}{|\meta{nl}|}| determines whether the
-%   macro |\|\meta{module}|@cd@file@base| is defined. If it is, we make it the prefix of a
+%   macro |\module@|\meta{module}|@path| is defined. If it is, we make it the prefix of a
 %   URI reference in the local macro |\@uri|, which we compose to the hyper-reference,
-%   otherwise we give a warning.
+%   otherwise we give a warning.\ednote{MK: this should be rethought, in particular the
+%   local reference does not work!}
 %    \begin{macrocode}
 \def\mod@termref#1#2#3{\def\@test{#3}%
-\@ifundefined{#1@cd@file@base}%
+\@ifundefined{module@#1@path}%
 {\protect\G@refundefinedtrue%
 \@latex@warning{\protect\termref with unidentified cd "#1": the cd key must reference an active module}%
 \def\@label{sref@#2 @target}}%
 {\def\@label{sref@#2@#1@target}}%
-\ifx\csname #1@cd@file@base\endcsname\@empty% local reference
+\ifx\csname module@#1@path\endcsname\@empty% local reference
 \sref@hlink@ifh{\@label}{\ifx\@test\@empty #2\else #3\fi}\else%
-\def\@uri{\csname #1@cd@file@base\endcsname.pdf\#\@label}%
+\def\@uri{\csname module#1@path\endcsname.pdf\#\@label}%
 \sref@href@ifh{\@uri}{\ifx\@test\@empty #2\else #3\fi}\fi}
 %    \end{macrocode}
 % \end{macro}
@@ -1413,53 +1403,35 @@ same name; this is dangerous -- not importing}
 % \subsubsection{Selective Inclusion}
 %
 % \begin{macro}{\requiremodules}
-%   this macro loads the modules in a file. It does quite a lot of work to make sure that
-%   they are only loaded once (actually this does not quite work so they are loaded only
-%   twice). |\requiremodules{|\meta{file}|}{|\meta{ext}|}| also deposits a call to
-%   |\@requiremodules{|\meta{file}|}{|\meta{ext}|}| to the |aux| file to make sure that
-%   the semantic macros are already loaded for the table of contents. 
+%   this macro loads the modules in a file and makes sure that no text is deposited (we
+%   set the flags |\mod@showfalse| and |\@importingtrue| in the local group). It also
+%   remembers the file name and extension in |\mod@path| and |\mod@ext| so that
+%   |\begin{module}| can pick them up later.
 %    \begin{macrocode}
 \newcommand\requiremodules[2]{%
-{\mod@showfalse% save state and ensure silence while reading sms
+{\mod@showfalse\@importingtrue% save state and ensure silence while reading sms
 \edef\mod@path{#1}\edef\mod@ext{#2}% set up path/ext
 \input{#1.#2}}}
 %    \end{macrocode}
 % \end{macro}
 % 
 % \begin{macro}{\@requiremodules}
-% the internal macro that actually does the loading. We disable it at the end of the
-% document, so that when the aux file is read again, nothing is loaded. 
+%   the internal version of |\requiremodules| for use in the |*.aux| file. We disable it
+%   at the end of the document, so that when the |aux| file is read again, nothing is
+%   loaded.
 %    \begin{macrocode}
-\newcommand\@requiremodules[2]{\if@tempswa\mod@showfalse\@importingtrue%
-\edef\mod@path{#1}\edef\mod@ext{#2}% set up path/ext
-\input{#1.#2}\fi}
+\newcommand\@requiremodules[2]{\if@tempswa\requiremodules{#1}{#2}\fi}
 %    \end{macrocode}
 % \end{macro}
 %
-% \begin{macro}{\sinput}
+% \begin{macro}{\inputref}
+%   In {\LaTeX} this is just |\input| but remembers the module path and
+%   extension.\ednote{MK: maybe do something with a non-standard (i.e. non-\texttt{tex})
+%   extension with an optional argument?}
 %    \begin{macrocode}
-\def\sinput#1{
-{\mod@updatedpre{#1}% add the new file to the already existing path
-\let\mod@savedprefix\mod@prefix% add the path to the new file to the prefix
-\mod@updatedpost{#1}%
-\def\mod@blaaaa{}% macro used in the simplify function (remove .. from the prefix)
-\mod@simplify{\mod@savedprefix}% remove |xxx/..| from the path (in case it exists)
-\mod@reguse{\mod@savedprefix}%
-\let\newreg\mod@reg% use to compare, in case the .sms file was loaded before
-\mod@search{\mod@savedprefix}% update registry
-\ifx\newreg\mod@reg%\message{This file has been previously introduced}
-\else\input{\mod@savedprefix}%
-\fi}}
-%    \end{macrocode}
-% \end{macro}
-% \ednote{the sinput macro is just faked, it should be more like requiremodules, except
-% that the tex file is inputted; I wonder if this can be simplified.}
-%
-%    \begin{macrocode}
-\let\sinputref=\sinput
 \newcommand\inputref[1]{\edef\mod@path{#1}\edef\mod@ext{tex}\input{#1}}
-\let\includeref=\include
 %    \end{macrocode}
+% \end{macro}
 % 
 % \subsection{Including Externally Defined Semantic Macros }\label{sec:impl:packages}
 % 
@@ -1675,6 +1647,15 @@ same name; this is dangerous -- not importing}
 % \end{macro}
 %
 % \subsection{Deprecated Functionality}\label{sec:impl:deprecated}
+%
+% \begin{macro}{\sinput*}
+%    \begin{macrocode}
+\newcommand\sinput[1]{\PackageError{modules}%
+  {The \protect\sinput macro is deprecated}{use the \protect\input instead!}}
+\newcommand\sinputref[1]{\PackageError{modules}%
+  {The \protect\sinputref macro is deprecated}{use the \protect\inputref instead!}}
+%    \end{macrocode}
+% \end{macro}
 %
 % In this section we centralize old interfaces that are only partially supported any more. 
 % \begin{macro}{module:uses}
