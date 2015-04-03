@@ -122,7 +122,7 @@
 %   the moment only the \DescribeMacro{id}|id| key is used to give an identifier to the
 %   \texttt{omdoc} element resulting from the {\latexml} transformation.
 % 
-%   \DescribeEnv{omgroup} The structure of the document is given by the |omgroup|
+%   The structure of the document is given by the \DescribeEnv {omgroup}|omgroup|
 %   environment just like in {\omdoc}. In the {\LaTeX} route, the |omgroup| environment is
 %   flexibly mapped to sectioning commands, inducing the proper sectioning level from the
 %   nesting of |omgroup| environments. Correspondingly, the |omgroup| environment takes an
@@ -131,7 +131,16 @@
 %   \DescribeMacro{id}|id| for an identifier, \DescribeMacro{creators}|creators| and
 %   \DescribeMacro{contributors}|contributors| for the Dublin Core
 %   metadata~\cite{DCMI:dmt03}; see~\ctancite{Kohlhase:dcm} for details of the format. The
-%   \DescribeMacro{short}|short| allows to give a short title for the generated section.
+%   \DescribeMacro{short}|short| allows to give a short title for the generated
+%   section. If the title contains semantic macros, they need to be protected by
+%   |\protect|, and we need to give the \DescribeMacro{loadmodules}|loadmodules| key it
+%   needs no value. For instance we would have 
+%   \begin{verbatim}
+%   \begin{module}{foo}
+%   \symdef{bar}{B^a_r}
+%    ...
+%   \begin{omgroup}{Introducing $\protect\bar$ Derivations}
+%   \end{verbatim}
 % 
 %   \sTeX automatically computes the sectioning level, from the nesting of |omgroup|
 %   environments. But sometimes, we want to skip levels (e.g. to use a subsection* as an
@@ -429,6 +438,7 @@ use Cwd qw(abs_path);
 \DeclareOption{book}{\def\omdoc@class{book}\section@level=0\class@booktrue}
 \DeclareOption{showignores}{\show@ignorestrue}
 \DeclareOption{extrefs}{\PassOptionsToPackage{\CurrentOption}{sref}}
+\DeclareOption*{}% accept all other options
 \ProcessOptions
 %</package>
 %<*ltxml.sty>
@@ -535,6 +545,8 @@ DefEnvironment('{blindomgroup} OptionalKeyVals:omgroup',
 % \begin{environment}{omgroup}
 %    \begin{macrocode}
 %<*package>
+\def\@true{true}
+\def\@false{false}
 \srefaddidkey{omgroup}
 \addmetakey{omgroup}{creators}
 \addmetakey{omgroup}{date}
@@ -542,6 +554,7 @@ DefEnvironment('{blindomgroup} OptionalKeyVals:omgroup',
 \addmetakey{omgroup}{type}
 \addmetakey*{omgroup}{short}
 \addmetakey*{omgroup}{display}
+\addmetakey[false]{omgroup}{loadmodules}[true]
 %    \end{macrocode}
 % we define a switch for numbering lines and a hook for the beginning of groups: The
 % \DescribeMacro{\at@begin@omgroup}|\at@begin@omgroup| macro allows customization. It is
@@ -557,8 +570,6 @@ DefEnvironment('{blindomgroup} OptionalKeyVals:omgroup',
 % own key/value interface for customization.
 %
 %    \begin{macrocode}
-\def\@true{true}
-\def\@false{false}
 \addmetakey{omdoc@sect}{name}
 \addmetakey{omdoc@sect}{Name}
 \addmetakey[false]{omdoc@sect}{clear}[true]
@@ -578,23 +589,23 @@ DefEnvironment('{blindomgroup} OptionalKeyVals:omgroup',
 \ifx\omgroup@display\st@flow\@@numfalse\fi
 \if@frontmatter\@@numfalse\fi
 %    \end{macrocode}
-% now we construct the entries for the table of contents. They depend on whether
-% |modules.sty| and |hyperref.sty| are loaded. 
+% now we construct the entries for the table of contents. They depend on whether 
+% the |loadmodules| key is set on |\begin{omtext}| and |hyperref.sty| are loaded. 
 %    \begin{macrocode}
-\ifx\imported@modules\@undefined% modules.sty loaded?
+\ifx\omgroup@loadmodules\@false% loadmodules set
 \ifx\hyper@anchor\@undefined% hyperref.sty loaded? 
 \def\addcontentsline##1##2##3{\addtocontents{##1}{\protect\contentsline{##2}{##3}{\thepage}}}
 \else\def\addcontentsline##1##2##3{%
 \addtocontents{##1}{\protect\contentsline{##2}{##3}{\thepage}{\@currentHref}}}
-\fi% hypreref.sty loaded
-\else% modules.sty loaded?
+\fi%
+\else% modules to load!
 \ifx\hyper@anchor\@undefined% hyperref.sty loaded? 
 \def\addcontentsline##1##2##3{%
 \addtocontents{##1}{\protect\contentsline{##2}{\string\importmodules{\imported@modules}##3}{\thepage}}}
 \else\def\addcontentsline##1##2##3{%
 \addtocontents{##1}{\protect\contentsline{##2}{\string\importmodules{\imported@modules}##3}{\thepage}{\@currentHref}}}
-\fi% hypreref.sty loaded
-\fi% modules.sty loaded
+\fi% hypreref.sty loaded?
+\fi% loadmodules key set 
 %    \end{macrocode}
 % now we only need to construct the right sectioning depending on the value of
 % |\section@level|.
