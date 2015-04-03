@@ -390,20 +390,20 @@
 % 
 % \begin{exfig}
 % \begin{tabular}{l|l|l}
-%   \multicolumn{3}{l}{source}\\
-%   system name & result & index \\\hline
-%   \multicolumn{3}{l}{\texttt{\textbackslash defi\{concept\}}}\\
-%   |concept| & concept& concept\\\hline
-%   \multicolumn{3}{l}{\texttt{\textbackslash defi[csymbol]\{concept\}}}\\
-%   |csymbol| & concept & concept\\\hline
-%   \multicolumn{3}{l}{\texttt{\textbackslash adefi[csymbol]\{concepts\}\{concept\}}}\\
-%   |csymbol| & concepts & concept\\\hline
-%   \multicolumn{3}{l}{\texttt{\textbackslash defii\{concept\}\{group\}}}\\
+%   \multicolumn{3}{l}{source}\\\hline
+%   system name & result & index \\\hline\hline
+%   \multicolumn{3}{l}{\texttt{\textbackslash defi\{concept\}}}\\\hline
+%   |concept| & concept& concept\\\hline\hline
+%   \multicolumn{3}{l}{\texttt{\textbackslash defi[csymbol]\{concept\}}}\\\hline
+%   |csymbol| & concept & concept\\\hline\hline
+%   \multicolumn{3}{l}{\texttt{\textbackslash adefi[csymbol]\{concepts\}\{concept\}}}\\\hline
+%   |csymbol| & concepts & concept\\\hline\hline
+%   \multicolumn{3}{l}{\texttt{\textbackslash defii\{concept\}\{group\}}}\\\hline
 %   |concept-group| & concept group & concept group,  \\
-%   && group - , concept\\\hline
-%   \multicolumn{3}{l}{\texttt{\textbackslash adefii\{small\}\{concept\}\{group\}}}\\
+%   && group - , concept\\\hline\hline
+%   \multicolumn{3}{l}{\texttt{\textbackslash adefii\{small\}\{concept\}\{group\}}}\\\hline
 %   |small-concept-group| & small concept group &  small concept group,  \\
-%   && concept group - , small\\
+%   && concept group - , small\\\hline
 % \end{tabular}
 % \caption{Some definienda with Index}\label{fig:defin}
 % \end{exfig}
@@ -1142,7 +1142,7 @@ DefConstructor('\definiendum [] {}',
 %   them goes via the local |\@phrase| macro.
 %    \begin{macrocode}
 %<*package>
-\newcommand\defi[2][]{\definiendum[#1]{#2}\def\@phrase{#2}\@defi}
+\newcommand\defi[2][]{\st@def@target {#1}{#2}\defemph {#2}\def\@phrase{#2}\@defi}
 \newcommand\@defi[1][]{\omdoc@index[#1]{\@phrase}}
 %</package>
 %<*ltxml>
@@ -1162,11 +1162,14 @@ DefConstructor('\defi[]{}',
 % \end{macro}
 %
 % \begin{macro}{\adefi}
+%   similar in spirit to |\defi|. 
 %    \begin{macrocode}
 %<*package>
-\newcommand\adefi[3][]{\def\@test{#1}%
-\ifx\@test\@empty\definiendum[#3]{#2}\omdoc@index{#3}%
-\else\definiendum[#1]{#2}\omdoc@index[at=#1]{#3}\fi}
+\newcommand\adefi[3][]{\def\@name{#1}\def\@text{#2}\def\@verb{#3}%
+\ifx\@name\@empty\st@def@target{#3}{#2}\defemph{#2}%
+\else\st@def@target{#1}{#2}\defemph{#2}\fi\@adefi}
+\newcommand\@adefi[1][]{%
+\ifx\@name\@empty\omdoc@index[#1]{\@text}\else\omdoc@index[#1]{\@verb}\fi}
 %</package>
 %<*ltxml>
 DefConstructor('\adefi[]{}{}',
@@ -1187,7 +1190,9 @@ DefConstructor('\adefi[]{}{}',
 % \begin{macro}{\defii}
 %    \begin{macrocode}
 %<*package>
-\newcommand\defii[3][]{\st@def@target{#1}{#2-#3}\defemph{#2 #3}\@twin{#2}{#3}}
+\newcommand\defii[3][]{\def\@pone{#2}\def\@ptwo{#3}%
+\st@def@target{#1}{#2-#3}\defemph{#2 #3}\@defii}
+\newcommand\@defii[1][]{\@twin[#1]{\@pone}{\@ptwo}}
 %</package>
 %<*ltxml>
 DefConstructor('\defii[]{}{}',
@@ -1209,9 +1214,10 @@ my $addr = LookupValue('defs');
 % \begin{macro}{\adefii}
 %    \begin{macrocode}
 %<*package>
-\newcommand\adefii[4][]{\def\@test{#1}%
-\ifx\@test\@empty\definiendum[#3-#4]{#2}%
-\else\definiendum[#1]{#2}\@twin[at=#1]{#3}{#4}\fi}
+\newcommand\adefii[4][]{\def\@name{#1}\def\@text{#2}\def\@pone{#3}\def\@ptwo{#4}%
+\ifx\@name\@empty\definiendum[#3-#4]{#2}\else\definiendum[#1]{#2}\fi\@adefii}
+\newcommand\@adefii[1][]{%
+\ifx\@name\@empty\omdoc@index[#1]{\@text}\else\@twin[#1]{\@pone}{\@ptwo}\fi}
 %</package>
 %<*ltxml>
 DefConstructor('\adefii[]{}{}{}',
@@ -1231,9 +1237,12 @@ DefConstructor('\adefii[]{}{}{}',
 % \end{macro}
 %
 % \begin{macro}{\defiii}
+%   similar to |\defii|
 %    \begin{macrocode}
 %<*package>
-\newcommand\defiii[4][]{\st@def@target{#1}{#2-#3-#4}\defemph{#2 #3 #4}\@atwin{#2}{#3}{#4}}
+\newcommand\defiii[4][]{\def\@pone{#2}\def\@ptwo{#3}\def\@pthree{#4}%
+\st@def@target{#1}{#2-#3-#4}\defemph{#2 #3 #4}\@defiii}
+\newcommand\@defiii[1][]{\@atwin[#1]{\@pone}{\@ptwo}{\@pthree}}
 %</package>
 %<*ltxml>
 DefConstructor('\defiii[]{}{}{}',
@@ -1255,9 +1264,11 @@ DefConstructor('\defiii[]{}{}{}',
 % \begin{macro}{\adefiii}
 %    \begin{macrocode}
 %<*package>
-\newcommand\adefiii[5][]{\def\@test{#1}%
-\ifx\@test\@empty\definiendum[#3-#4-#5]{#2}%
-\else\definiendum[#1]{#2}\@atwin[at=#1]{#3}{#4}{#5}\fi}
+\newcommand\adefiii[5][]{\def\@name{#1}%
+\def\@text{#2}\def\@pone{#3}\def\@ptwo{#4}\def\@pthree{#3}%
+\ifx\@name\@empty\definiendum[#3-#4-#5]{#2}\else\definiendum[#1]{#2}\fi\@adefiii}
+\newcommand\@adefiii[1][]{%
+\ifx\@name\@empty\omdoc@index[#1]{\@text}\else\@atwin[#1]{\@pone}{\@ptwo}{\pthree}\fi}
 %</package>
 %<*ltxml>
 DefConstructor('\adefiii[]{}{}{}{}',
