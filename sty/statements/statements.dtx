@@ -374,10 +374,12 @@
 % \end{module}
 % \caption{A Definition based on Figure {\ref{fig:axioms}}}\label{fig:definition}
 % \end{exfig}
-% The \DescribeMacro{defin}|\defi{|\meta{word}|}| macro combines the functionality of the
+% The \DescribeMacro{defi}|\defi{|\meta{word}|}| macro combines the functionality of the
 % |\definiendum| macro with index markup from the |omdoc|
-% package~\ctancite{Kohlhase:smomdl}: use |\defi[|\meta{name}|]{|\meta{word}|}| to markup
-% a definiendum \meta{word} with system name \meta{name} that appear in the index --- in
+% package~\ctancite{Kohlhase:smomdl}: use
+% |\defi[|\meta{name}|]{|\meta{word}|}[|\meta{indexkeys}|]| to markup a definiendum
+% \meta{word} with system name \meta{name} that appear in the index (where
+% \meta{indexkeys} are passed to the |\omdoc@index| macro from the |omdoc| package) --- in
 % other words in almost all definitions of single-word concepts. We also have the variants
 % \DescribeMacro{\defii}|\defii| and \DescribeMacro{\defiii}|\defiii| for (adjectivized)
 % two-word compounds. Finally, the varaiants \DescribeMacro{\adefi}|\adefi|,
@@ -389,16 +391,16 @@
 % \begin{tabular}{l|l|l}
 %   \multicolumn{3}{l}{source}\\
 %   system name & result & index \\\hline
-%   \multicolumn{3}{l}{\texttt{\textbackslash defin\{concept\}}}\\
+%   \multicolumn{3}{l}{\texttt{\textbackslash defi\{concept\}}}\\
 %   |concept| & concept& concept\\\hline
-%   \multicolumn{3}{l}{\texttt{\textbackslash defin[csymbol]\{concept\}}}\\
+%   \multicolumn{3}{l}{\texttt{\textbackslash defi[csymbol]\{concept\}}}\\
 %   |csymbol| & concept & concept\\\hline
-%   \multicolumn{3}{l}{\texttt{\textbackslash definalt[csymbol]\{concepts\}\{concept\}}}\\
+%   \multicolumn{3}{l}{\texttt{\textbackslash adefi[csymbol]\{concepts\}\{concept\}}}\\
 %   |csymbol| & concepts & concept\\\hline
-%   \multicolumn{3}{l}{\texttt{\textbackslash twindef\{concept\}\{group\}}}\\
+%   \multicolumn{3}{l}{\texttt{\textbackslash defii\{concept\}\{group\}}}\\
 %   |concept-group| & concept group & concept group,  \\
 %   && group - , concept\\\hline
-%   \multicolumn{3}{l}{\texttt{\textbackslash atwindef\{small\}\{concept\}\{group\}}}\\
+%   \multicolumn{3}{l}{\texttt{\textbackslash adefii\{small\}\{concept\}\{group\}}}\\
 %   |small-concept-group| & small concept group &  small concept group,  \\
 %   && concept group - , small\\
 % \end{tabular}
@@ -1134,9 +1136,13 @@ DefConstructor('\definiendum [] {}',
 % instances one will be used for the definition and the other for indexing.
 %
 % \begin{macro}{\defi}
+%   We split the |\defi| macro in two: |\defi| does the definiendum bit and |\@defi|
+%   handles the last optional argument and does the indexing. The information flow between
+%   them goes via the local |\@phrase| macro.
 %    \begin{macrocode}
 %<*package>
-\newcommand\defi[2][]{\definiendum[#1]{#2}\omdoc@index{#2}}
+\newcommand\defi[2][]{\definiendum[#1]{#2}\def\@phrase{#2}\@defi}
+\newcommand\@defi[1][]{\omdoc@index[#1]{\@phrase}}
 %</package>
 %<*ltxml>
 DefConstructor('\defi[]{}',
@@ -1154,26 +1160,6 @@ DefConstructor('\defi[]{}',
 %    \end{macrocode}
 % \end{macro}
 %
-% \begin{macro}{\DEFi}
-%   |\DEFi{|\meta{phrase}|}| is like |\defi{|\meta{phrase}|}| only that it uses a
-%   key/value interface: |\defi[|\meta{sym}|]| becomes |\DEFi[name=|\meta{sym}|]| and
-%   |\DEFi| also allows the key |loadmodules| (if \meta{phrase} contains semantic macros),
-%   and |at| to place \meta{phrase} in the index. 
-% 
-%   There must be a better way to pass keys around, but 
-%    \begin{macrocode}
-%<*package>
-\addmetakey[false]{DEF}{loadmodules}[true]
-\addmetakey{DEF}{name}
-\addmetakey{DEF}{at}
-\newcommand\DEFi[2][]{\metasetkeys{DEF}{#1}%
-\ifx\DEF@at\@empty
-\ifx\DEF@loadmodules\@true\omdoc@index[loadmodules]{#2}\else\omdoc@index{#2}\fi
-\else%\DEF@at nonempty
-\ifx\DEF@loadmodules\@true\omdoc@index[at=\DEF@at,loadmodules]{#2}
-\else\omdoc@index[at=\DEF@at]\fi
-\fi}
-%</package>
 % \begin{macro}{\adefi}
 %    \begin{macrocode}
 %<*package>
