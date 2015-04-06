@@ -18,10 +18,12 @@
 \DeclareOption{book}{\def\omdoc@class{book}\section@level=0\class@booktrue}
 \DeclareOption{showignores}{\show@ignorestrue}
 \DeclareOption{extrefs}{\PassOptionsToPackage{\CurrentOption}{sref}}
+\DeclareOption*{}% accept all other options
 \ProcessOptions
 \RequirePackage{sref}
 \RequirePackage{xspace}
 \RequirePackage{comment}
+\RequirePackage{etoolbox}
 \def\currentsectionlevel{document\xspace}%
 \def\Currentsectionlevel{Document\xspace}%
 \newcommand\at@begin@blindomgroup[1]{}
@@ -38,6 +40,8 @@
 \ifx\omgroup@short\@empty\@nameuse{#1}{#2}%
 \else\@ifundefined{rdfmeta@sectioning}{\@nameuse{#1}[\omgroup@short]{#2}}%
 {\@nameuse{rdfmeta@#2@old}[\omgroup@short]{#2}}\fi}
+\def\@true{true}
+\def\@false{false}
 \srefaddidkey{omgroup}
 \addmetakey{omgroup}{creators}
 \addmetakey{omgroup}{date}
@@ -45,12 +49,11 @@
 \addmetakey{omgroup}{type}
 \addmetakey*{omgroup}{short}
 \addmetakey*{omgroup}{display}
+\addmetakey[false]{omgroup}{loadmodules}[true]
 \newif\if@@num\@@numtrue
 \newif\if@frontmatter\@frontmatterfalse
 \newif\if@backmatter\@backmatterfalse
 \newcommand\at@begin@omgroup[3][]{}
-\def\@true{true}
-\def\@false{false}
 \addmetakey{omdoc@sect}{name}
 \addmetakey{omdoc@sect}{Name}
 \addmetakey[false]{omdoc@sect}{clear}[true]
@@ -62,24 +65,22 @@
 \ifx\omdoc@sect@num\@true\omgroup@num{#2}{#3}\else\omgroup@nonum{#2}{#3}\fi
 \omgroup@cl\omdoc@sect@name\omdoc@sect@Name
 \else\omgroup@nonum{#2}{#3}\fi}
+\newcommand\omgroup@redefine@addtocontents[1]{\edef\@@import{#1}%
+\@for\@I:=\@@import\do{\edef\@path{\csname module@\@I  @path\endcsname}%
+\@ifundefined{tf@toc}\relax{\protected@write\tf@toc{}{\string\@requiremodules{\@path}{tex}}}}
+\ifx\hyper@anchor\@undefined% hyperref.sty loaded?
+\def\addcontentsline##1##2##3{%
+\addtocontents{##1}{\protect\contentsline{##2}{\string\importmodules{#1}##3}{\thepage}}}
+\else\def\addcontentsline##1##2##3{%
+\addtocontents{##1}{\protect\contentsline{##2}{\string\importmodules{#1}##3}{\thepage}{\@currentHref}}}%
+\fi}% hypreref.sty loaded?
 \newenvironment{omgroup}[2][]% keys, title
 {\metasetkeys{omgroup}{#1}\sref@target%
 \ifx\omgroup@display\st@flow\@@numfalse\fi
 \if@frontmatter\@@numfalse\fi
-\ifx\imported@modules\@undefined% modules.sty loaded?
-\ifx\hyper@anchor\@undefined% hyperref.sty loaded?
-\def\addcontentsline##1##2##3{\addtocontents{##1}{\protect\contentsline{##2}{##3}{\thepage}}}
-\else\def\addcontentsline##1##2##3{%
-\addtocontents{##1}{\protect\contentsline{##2}{##3}{\thepage}{\@currentHref}}}
-\fi% hypreref.sty loaded
-\else% modules.sty loaded?
-\ifx\hyper@anchor\@undefined% hyperref.sty loaded?
-\def\addcontentsline##1##2##3{%
-\addtocontents{##1}{\protect\contentsline{##2}{\string\importmodules{\imported@modules}##3}{\thepage}}}
-\else\def\addcontentsline##1##2##3{%
-\addtocontents{##1}{\protect\contentsline{##2}{\string\importmodules{\imported@modules}##3}{\thepage}{\@currentHref}}}
-\fi% hypreref.sty loaded
-\fi% modules.sty loaded
+\ifx\omgroup@loadmodules\@true%
+\omgroup@redefine@addtocontents{\@ifundefined{mod@id}\imported@modules%
+{\@ifundefined{module@\mod@id @path}{\imported@modules}\mod@id}}\fi%
 \advance\section@level by 1
 \ifcase\section@level%
 \or\omdoc@sectioning[name=part,Name=Part,clear,num]{part}{#2}%
@@ -118,7 +119,9 @@
 \def\orange#1{\textcolor{orange}{#1}}
 \newcommand\hateq{\ensuremath{\hat=}\xspace}
 \newcommand\hatequiv{\ensuremath{\hat\equiv}\xspace}
-\newcommand\textleadsto{\ensuremath{\leadsto}\xspace}
+\ifdef{\textleadsto}%
+{\renewcommand\textleadsto{\ensuremath{\leadsto}\xspace}}%
+{\newcommand\textleadsto{\ensuremath{\leadsto}\xspace}}%
 \newcommand\baseURI[2][]{}
 \endinput
 %%

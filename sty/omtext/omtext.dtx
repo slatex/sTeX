@@ -14,8 +14,8 @@
 %
 %<*driver>
 \documentclass{ltxdoc}
-\usepackage{url,array,omdoc,float}
-\usepackage{omtext}
+\usepackage{url,array,float}
+\usepackage{omtext,omdoc}
 \usepackage[show]{ed}
 \usepackage[hyperref=auto,style=alphabetic]{biblatex}
 \addbibresource{kwarcpubs.bib}
@@ -128,11 +128,28 @@
 %   \DescribeMacro{style}|style,| \DescribeMacro{class}|class|,
 %   \DescribeMacro{index}|index| that are disregarded in the {\LaTeX}, but copied into the
 %   generated content markup.
-%
-% \DescribeMacro{\sinlinequote} The |sinlinequote| macro allows to mark up quotes inline and
-% attribute them. The quote itself is given as the argument, possibly preceded by the a
-% specification of the source in a an optional argument. For instance, we would quote
-% Hamlet with
+% 
+%   We use the \DescribeMacro{\nlex}|\nlex{|\meta{phrase}|}| for marking up phrases that
+%   serve as natural language examples and \DescribeMacro{\nlcex}|\nlcex{|\meta{phrase}|}|
+%   for counter-examples (utterances that are not acceptable for some reason). In natural
+%   language examples, we sometimes use ``co-rereference markers'' to specify the
+%   resolution of anaphora and the like. We use the
+%   \DescribeMacro{\coreft}|\coreft{|\meta{phrase}|}{|\meta{mark}|}| to mark up the
+%   ``target'' of a co-reference and analogously \DescribeMacro{\corefs}|\corefs| for
+%   coreference source -- e.g. for an anaphoric reference. The usage is the following:
+%   \begin{verbatim}
+%   \nlex{If \coreft{a farmer}1 owns \coreft{a donkey}2, 
+%            \corefs{he}2 beats \corefs{it}2.}
+%   \end{verbatim}
+%   is formatted to 
+%   \begin{quote}
+%     \nlex{If \coreft{a farmer}1 owns \coreft{a donkey}2, \corefs{he}2 beats \corefs{it}2.}
+%   \end{quote}
+%   
+%   \DescribeMacro{\sinlinequote} The |sinlinequote| macro allows to mark up quotes inline
+%   and attribute them. The quote itself is given as the argument, possibly preceded by
+%   the a specification of the source in a an optional argument. For instance, we would
+%   quote Hamlet with
 % \begin{verbatim}
 % \sinlinequote[Hamlet, \cite{Shak:1603:Hamlet}]{To be or not to be}
 % \end{verbatim}
@@ -508,22 +525,35 @@ DefConstructor('\phrase OptionalKeyVals:phrase {}',
 %    \end{macrocode}
 % \end{macro}
 %
-% \begin{environment}{nlex}
-%    For the moment, we do disregard the most of the keys
+% \begin{macro}{\coref*}
 %    \begin{macrocode}
 %<*package>
-\def\nlex#1{\green{\sl{#1}}}
-\def\nlcex#1{*\green{\sl{#1}}}
+\providecommand\textsubscript[1]{\ensuremath{_{#1}}}
+\newcommand\corefs[2]{#1\textsubscript{#2}}
+\newcommand\coreft[2]{#1\textsuperscript{#2}}
 %</package>
 %<*ltxml>
-DefConstructor('\nlex{}',
-  "<ltx:text class='nlex'>#1</ltx:text>");
-DefConstructor('\nlcex{}',
-  "<ltx:text class='nlcex'>#1</ltx:text>");
+DefConstructor('\corefs{}',
+  "<ltx:text class='coref-source' stex:index='#2'>#1</ltx:text>");
+DefConstructor('\coreft{}',
+  "<ltx:text class='coref-target' stex:index='#2'>#1</ltx:text>");
 %</ltxml>
 %    \end{macrocode}
-% \end{environment}
+% \end{macro}
 %
+% \begin{macro}{\n*lex}
+%    \begin{macrocode}
+%<*package>
+\newcommand\nlex[1]{\green{\sl{#1}}}
+\newcommand\nlcex[1]{*\green{\sl{#1}}}
+%</package>
+%<*ltxml>
+DefConstructor('\nlex{}',"<ltx:text class='nlex'>#1</ltx:text>");
+DefConstructor('\nlcex{}',"<ltx:text class='nlcex'>#1</ltx:text>");
+%</ltxml>
+%    \end{macrocode}
+% \end{macro}
+% 
 % \begin{macro}{sinlinequote}
 %    \begin{macrocode}
 %<*package>
@@ -586,7 +616,7 @@ DefEnvironment('{sboxquote} []',
 %    \begin{macrocode}
 %<*package>
 \providecommand{\@@lec}[1]{(#1)}
-\def\@lec#1{\strut\hfil\strut\null\nobreak\hfill\hbox{\@@lec{#1}}}
+\def\@lec#1{\strut\hfil\strut\null\nobreak\hfill\@@lec{#1}}
 \def\lec#1{\@lec{#1}\par}
 %</package>
 %<*ltxml>
@@ -615,20 +645,27 @@ DefConstructor('\lec{}',
 % \begin{omgroup}[id=sec:impl:index]{Index Markup}
 % \begin{macro}{\omdoc@index}
 %   this is the main internal indexing command. It makes sure that the modules necessary
-%   for interpreting the math in the index entries are loaded. If we are in a module
-%   \meta{mod}, then we do that by |\importmodule{|\meta{mod}|}|, else we import all the
-%   imported modules.
+%   for interpreting the math in the index entries are loaded. If the |loadmodules| key is
+%   given, we import the module we are in otherwise all the currentlyimported modules. We
+%   do not have to require the module files, since the index is a the end of the
+%   document. If the |at| key is given, then we use that for sorting in the index.
 %    \begin{macrocode}
 %<*package>
-\newcommand\omdoc@index[2][]{\ifindex\def\@test{#1}%%
-\ifx\@test\@empty\def\@@idx{#2}\else\def\@@idx{#1}\fi%
+\addmetakey{omdoc@index}{at}
+\addmetakey[false]{omdoc@index}{loadmodules}[true]
+\newcommand\omdoc@index[2][]{\ifindex%
+\metasetkeys{omdoc@index}{#1}%
 \@bsphack\begingroup\@sanitize%
-\@ifundefined{mod@id}% if we are not in a module
-{\protected@write\@indexfile{}{\string\indexentry%
-{\@@idx @\string\importmodules{\imported@modules}#2}{\thepage}}}%
-{\protected@write\@indexfile{}{\string\indexentry%
-{\@@idx @\string\importmodules{\mod@id}#2}{\thepage}}}%
-\endgroup\@esphack}
+\ifx\omdoc@index@loadmodules\@true%
+\protected@write\@indexfile{}{\string\indexentry%
+{\ifx\omdoc@index@at\@empty\else\omdoc@index@at @\fi%
+{\string\importmodules{\@ifundefined{mod@id}\imported@modules\mod@id}%
+#2}}{\thepage}}%
+\else%
+\protected@write\@indexfile{}{\string\indexentry%
+{\ifx\omdoc@index@at\@empty\else\omdoc@index@at @\fi#2}{\thepage}}%
+\fi% loadmodules
+\endgroup\@esphack\fi}%ifindex
 %    \end{macrocode}
 % \end{macro}
 % 
@@ -637,23 +674,6 @@ DefConstructor('\lec{}',
 % \begin{macro}{\indexalt}
 %    \begin{macrocode}
 \newcommand\indexalt[3][]{{#2}\omdoc@index[#1]{#3}}               % word in text and index
-%</package>
-%<*ltxml>
-DefConstructor('\indextoo[]{}',
-	       "<omdoc:idx>"
-	      .  "<omdoc:idt>#2</omdoc:idt>"
-	      .  "<omdoc:ide ?#1(sort-by='#1')()>"
-	      .    "<omdoc:idp>#2</omdoc:idp>"
-	      .  "</omdoc:ide>"
-	      ."</omdoc:idx>");
-%</ltxml>
-%    \end{macrocode}
-% \end{macro}
-%
-% \begin{macro}{\indextoo}
-%    \begin{macrocode}
-%<*package>
-\newcommand\indextoo[2][]{{#2}\omdoc@index[#1]{#2}}               % word in text and index
 %</package>
 %<*ltxml>
 DefConstructor('\indexalt[]{}{}',
@@ -667,19 +687,28 @@ DefConstructor('\indexalt[]{}{}',
 %    \end{macrocode}
 % \end{macro}
 %
+% \begin{macro}{\indextoo}
+%    \begin{macrocode}
+%<*package>
+\newcommand\indextoo[2][]{{#2}\omdoc@index[#1]{#2}}               % word in text and index
+%</package>
+%<*ltxml>
+DefConstructor('\indextoo[]{}',
+	       "<omdoc:idx>"
+	      .  "<omdoc:idt>#2</omdoc:idt>"
+	      .  "<omdoc:ide ?#1(sort-by='#1')()>"
+	      .    "<omdoc:idp>#2</omdoc:idp>"
+	      .  "</omdoc:ide>"
+	      ."</omdoc:idx>");
+%</ltxml>
+%    \end{macrocode}
+% \end{macro}
+%
 % \begin{macro}{\@twin}
 % this puts two-compound words into the index in various permutations
 %    \begin{macrocode}
 %<*package>
-\newcommand\@twin[3][]{\ifindex\def\@test{#1}%%
-\ifx\@test\@empty\def\@@idx{#2}\else\def\@@idx{#1}\fi%
-\@ifundefined{mod@id}%
-{\index{\@@idx @#2!#3}%
-\ifx\@test\@empty\def\@@idx{#3}\else\def\@@idx{#1}\fi%
-\index{\@@idx @#2!#3}}%
-{\index{\@@idx @{\importmodule{\mod@id} #2}!{\importmodule{\mod@id} #3}}%
-\ifx\@test\@empty\def\@@idx{#3}\else\def\@@idx{#1}\fi%
-\index{\@@idx @{\importmodule{\mod@id} #3}!{\importmodule{\mod@id} #2}}\fi}}
+\newcommand\@twin[3][]{\indexalt[#1]{#2 #3}{#2!#3}\omdoc@index[#1]{#3!#2}}
 %    \end{macrocode}
 % \end{macro}
 %
@@ -690,9 +719,9 @@ DefConstructor('\indexalt[]{}{}',
 \newcommand\twinalt[4][]{#2\@twin[#1]{#3}{#4}}
 %</package>
 %<*ltxml>
-DefConstructor('\twintoo[]{}{}',
+DefConstructor('\twinalt[]{}{}{}',
 	       "<omdoc:idx>"
-	      .  "<omdoc:idt>#2 #3</omdoc:idt>"
+	      .  "<omdoc:idt>#2</omdoc:idt>"
 	      .  "<omdoc:ide ?#1(sort-by='#1')()>"
 	      .    "<omdoc:idp>#2</omdoc:idp>"
 	      .    "<omdoc:idp>#3</omdoc:idp>"
@@ -708,9 +737,9 @@ DefConstructor('\twintoo[]{}{}',
 \newcommand\twintoo[3][]{{#2 #3}\@twin[#1]{#2}{#3}} % and use the word compound too
 %</package>
 %<*ltxml>
-DefConstructor('\twinalt[]{}{}{}',
+DefConstructor('\twintoo[]{}{}',
 	       "<omdoc:idx>"
-	      .  "<omdoc:idt>#2</omdoc:idt>"
+	      .  "<omdoc:idt>#2 #3</omdoc:idt>"
 	      .  "<omdoc:ide ?#1(sort-by='#1')()>"
 	      .    "<omdoc:idp>#2</omdoc:idp>"
 	      .    "<omdoc:idp>#3</omdoc:idp>"
@@ -725,22 +754,12 @@ DefConstructor('\twinalt[]{}{}{}',
 %   permutations\ednote{what to do with the optional argument here and below?}
 %    \begin{macrocode}
 %<*package>
-\newcommand\@atwin[4][]{\ifindex\def\@test{#1}%%
-\ifx\@test\@empty\def\@@idx{#2}\else\def\@@idx{#1}\fi%
-\@ifundefined{mod@id}%
-{\index{\@@idx @#2!#3!#4}%
-\ifx\@test\@empty\def\@@idx{#3}\else\def\@@idx{#1}\fi%
-\index{\@@idx @#3!#2 (#4)}}%
-{\index{\@@idx @{\importmodule{\mod@id} #2}%
-!{\importmodule{\mod@id} #3}!{\importmodule{\mod@id} #4}}%
-\ifx\@test\@empty\def\@@idx{#3}\else\def\@@idx{#1}\fi%
-\index{\@@idx @{\importmodule{\mod@id} #3}%
-!{\importmodule{\mod@id} #2} ({\importmodule{\mod@id} #4})}\fi}}
+\newcommand\@atwin[4][]{\indexalt[#1]{#2 #3 #4}{#2!#3!#4}\omdoc@index[#1]{#3!#2 (#4)}}
 %    \end{macrocode}
 % \end{macro}
 % 
 % and the two interface macros for this case: 
-% \begin{macro}{\@atwin}
+% \begin{macro}{\@atwinalt}
 %    \begin{macrocode}
 \newcommand\atwinalt[5][]{#2\@atwin[#1]{#3}{#4}{#4}}
 %</package>
@@ -972,12 +991,12 @@ DefMacro('\mhbgraphics []{}','\fbox{\mhgraphics[#1]{#2}}');
 % \Finale
 \endinput
 % \iffalse
-% LocalWords:  GPL structuresharing STR omdoc dtx stex CPERL LoadClass url dc filedate sl
 %%% Local Variables: 
 %%% mode: doctex
 %%% TeX-master: t
 %%% End: 
 % \fi
+% LocalWords:  GPL structuresharing STR omdoc dtx stex CPERL LoadClass url dc filedate sl 
 % LocalWords:  RequirePackage RegisterNamespace namespace xsl DocType ltxml dtd annote mh
 % LocalWords:  ltx DefEnvironment beforeDigest AssignValue inPreamble getGullet indexalt
 % LocalWords:  afterDigest keyval omgroup DefKeyVal Semiverbatim KeyVal regexp indexalt
@@ -995,18 +1014,26 @@ DefMacro('\mhbgraphics []{}','\fbox{\mhgraphics[#1]{#2}}');
 % LocalWords:  flushleft flushright DeclareOption PassOptions undef cls iffalse mathhub
 % LocalWords:  ProcessOptions subparagraph ignoresfalse ignorestrue raisebox tr finalpath
 % LocalWords:  texorpdfstring latexml texttt fileversion maketitle newpage iff mh-variant
-% LocalWords:  tableofcontents newpage ednote obeylines usepackage indextoo Cwd
+% LocalWords:  tableofcontents newpage ednote obeylines usepackage indextoo Cwd coreft
 % LocalWords:  indextoo twintoo twintoo exfig vspace twinalt ldots ttin emin importmodule
-% LocalWords:  renmanig myindex atwin atwin packge-local blockquote inlinequote
+% LocalWords:  renmanig myindex atwin atwin packge-local blockquote inlinequote coreft
 % LocalWords:  atwintoo atwinalt atwinalt printbibliography impl cwd newif ifx mhgraphics
 % LocalWords:  ifindex indextrue indexfalse srefaddidkey smallskip showmeta importmodules
 % LocalWords:  providecommand stDMemph textbf newenvironment hfil showmeta NeedsTeXFormat
 % LocalWords:  noindent ignorespaces newcommand nobreak hfill hbox mygraphics mhcgraphics
-% LocalWords:  includegraphics mycgraphics mybgraphics fbox adjectivized hspace
+% LocalWords:  includegraphics mycgraphics mybgraphics fbox adjectivized hspace corefs
 % LocalWords:  printindex jobname.ind jobname.ind omspace footnotemark thead mhcgraphics
-% LocalWords:  footnotetext findnodes doctex textsf langle textsf langle funval
-% LocalWords:  metakeys funsymbs addmetakey metasetkeys startemph textsl textit
+% LocalWords:  footnotetext findnodes doctex textsf langle textsf langle funval corefs
+% LocalWords:  metakeys funsymbs addmetakey metasetkeys startemph textsl textit mdframed
 % LocalWords:  compactenum ifundefined localname localname xspace ctancite mhcurrentrepos
 % LocalWords:  KohAmb smmssl requiremodules prhase bsphack begingroup thepage mh-variants
 % LocalWords:  indexentry endgroup esphack SOURCEFILE baselocal BASELOCAL importmhmodule
-%  LocalWords:  mh@currentrepos mhbgraphics
+%  LocalWords:  mh@currentrepos mhbgraphics co-rerefence usemodule coref textsubscript
+%  LocalWords:  ensuremath textsuperscript sboxquote leftmargin rightmargin mycbgraphics
+%  LocalWords:  mhcbgraphics
+
+% \endinput
+% Local Variables:
+% mode: doctex
+% TeX-master: t
+% End:

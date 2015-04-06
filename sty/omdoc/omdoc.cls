@@ -16,6 +16,7 @@
 \DeclareOption{showmods}{\PassOptionsToPackage{\CurrentOption}{modules}}
 \DeclareOption{extrefs}{\PassOptionsToPackage{\CurrentOption}{sref}}
 \DeclareOption{noauxreq}{\PassOptionsToPackage{\CurrentOption}{modules}}
+\DeclareOption{defindex}{\PassOptionsToPackage{\CurrentOption}{statements}}
 \DeclareOption*{\PassOptionsToClass{\CurrentOption}{article}}
 \DeclareOption*{\PassOptionsToPackage{\CurrentOption}{omdoc}}
 \ProcessOptions

@@ -10,7 +10,7 @@
 %  
 % \iffalse
 %<package>\NeedsTeXFormat{LaTeX2e}[1999/12/01]
-%<package>\ProvidesPackage{statements}[2012/09/23 v1.1 Semantic Markup for Statements]
+%<package>\ProvidesPackage{statements}[2015/04/03 v1.2 Semantic Markup for Statements]
 %
 %<*driver>
 \documentclass{ltxdoc}
@@ -57,6 +57,7 @@
 % \changes{v1.1}{2012/07/06}{adding \texttt{\textbackslash usevocab} to example for importing}
 % \changes{v1.1}{2013/05/17}{more support for types: \texttt{typedec} and
 % \texttt{\textbackslash inlinetypedec}}
+% \changes{v1.2}{2015/04/03}{adding optional last arg to \texttt{\textbackslash \*defi*}}
 % 
 % \GetFileInfo{statements.sty}
 % 
@@ -119,9 +120,11 @@
 %
 % \subsection{Package Options}\label{sec:user:options}
 % 
-% The |statements| package takes a single option: \DescribeMacro{showmeta}|showmeta|. If
-% this is set, then the metadata keys are shown (see~\cite{Kohlhase:metakeys:ctan} for details
-% and customization options).
+% The |statements| package provides the |defindex| option to \sTeX. If this is set, then
+% definienda are automaticall passed into the index of the document. Furthermore, the
+% |statements| package passes the \DescribeMacro{showmeta}|showmeta| to the |metakeys|
+% package. If this is set, then the metadata keys are shown
+% (see~\cite{Kohlhase:metakeys:ctan} for details and customization options).
 %
 % \subsection{Statements}\label{sec:statements}
 % 
@@ -374,33 +377,41 @@
 % \end{module}
 % \caption{A Definition based on Figure {\ref{fig:axioms}}}\label{fig:definition}
 % \end{exfig}
-% The \DescribeMacro{defin}|\defi{|\meta{word}|}| macro combines the functionality of the
+% The \DescribeMacro{defi}|\defi{|\meta{word}|}| macro combines the functionality of the
 % |\definiendum| macro with index markup from the |omdoc|
-% package~\ctancite{Kohlhase:smomdl}: use |\defi[|\meta{name}|]{|\meta{word}|}| to markup
-% a definiendum \meta{word} with system name \meta{name} that appear in the index --- in
-% other words in almost all definitions of single-word concepts. We also have the variants
-% \DescribeMacro{\defii}|\defii| and \DescribeMacro{\defiii}|\defiii| for (adjectivized)
-% two-word compounds. Finally, the varaiants \DescribeMacro{\adefi}|\adefi|,
+% package~\ctancite{Kohlhase:smomdl}: use
+% |\defi[|\meta{name}|]{|\meta{word}|}[|\meta{indexkeys}|]| to markup a definiendum
+% \meta{word} with system name \meta{name} that appear in the index (where
+% \meta{indexkeys} are passed to the |\omdoc@index| macro from the |omdoc| package) --- in
+% other words in almost all definitions of single-word concepts.  We also have the
+% variants \DescribeMacro{\defii}|\defii| and \DescribeMacro{\defiii}|\defiii| for
+% (adjectivized) two-word compounds.  Note that if the definiendum contains sematnic
+% macros, then we need to specify the |loadmodules| key and also protect the semantic
+% macro. For instance if |\eset| is the semantic macro for $\emptyset$, then we would use
+% \begin{verbatim}
+% \defii[eset-comp]{$\protect\eset$}{compatible}[loadmodules]
+% \end{verbatim}
+% for the definiendum markup. Finally, the variants \DescribeMacro{\adefi}|\adefi|,
 % \DescribeMacro{\adefii}|\adefii|,and \DescribeMacro{\adefiii}|\adefiii| have an
 % additional first argument that allows to specify an alternative text; see
 % Figure~\ref{fig:defin}
 % 
 % \begin{exfig}
 % \begin{tabular}{l|l|l}
-%   \multicolumn{3}{l}{source}\\
-%   system name & result & index \\\hline
-%   \multicolumn{3}{l}{\texttt{\textbackslash defin\{concept\}}}\\
-%   |concept| & concept& concept\\\hline
-%   \multicolumn{3}{l}{\texttt{\textbackslash defin[csymbol]\{concept\}}}\\
-%   |csymbol| & concept & concept\\\hline
-%   \multicolumn{3}{l}{\texttt{\textbackslash definalt[csymbol]\{concepts\}\{concept\}}}\\
-%   |csymbol| & concepts & concept\\\hline
-%   \multicolumn{3}{l}{\texttt{\textbackslash twindef\{concept\}\{group\}}}\\
+%   \multicolumn{3}{l}{source}\\\hline
+%   system name & result & index \\\hline\hline
+%   \multicolumn{3}{l}{\texttt{\textbackslash defi\{concept\}}}\\\hline
+%   |concept| & concept& concept\\\hline\hline
+%   \multicolumn{3}{l}{\texttt{\textbackslash defi[csymbol]\{concept\}}}\\\hline
+%   |csymbol| & concept & concept\\\hline\hline
+%   \multicolumn{3}{l}{\texttt{\textbackslash adefi[csymbol]\{concepts\}\{concept\}}}\\\hline
+%   |csymbol| & concepts & concept\\\hline\hline
+%   \multicolumn{3}{l}{\texttt{\textbackslash defii\{concept\}\{group\}}}\\\hline
 %   |concept-group| & concept group & concept group,  \\
-%   && group - , concept\\\hline
-%   \multicolumn{3}{l}{\texttt{\textbackslash atwindef\{small\}\{concept\}\{group\}}}\\
+%   && group - , concept\\\hline\hline
+%   \multicolumn{3}{l}{\texttt{\textbackslash adefii\{small\}\{concept\}\{group\}}}\\\hline
 %   |small-concept-group| & small concept group &  small concept group,  \\
-%   && concept group - , small\\
+%   && concept group - , small\\\hline
 % \end{tabular}
 % \caption{Some definienda with Index}\label{fig:defin}
 % \end{exfig}
@@ -597,6 +608,8 @@
 % (otherwise they stay false). First we have the general options
 %    \begin{macrocode}
 %<*package>
+\newif\ifdef@index\def@indexfalse
+\DeclareOption{defindex}{\def@indextrue}
 \DeclareOption{showmeta}{\PassOptionsToPackage{\CurrentOption}{metakeys}}
 \DeclareOption*{\PassOptionsToPackage{\CurrentOption}{omdoc}}
 %    \end{macrocode}
@@ -1071,7 +1084,7 @@ can only be referenced when called in a module with id key}}%
 \else% st@indef
 \PackageError{statements}%
 {definiendum outside definition context\MessageBreak
-\protect\definiendum, \protect\defi, 
+\protect\definiendum, \protect\defi,
 \protect\defii, \protect\defiii\MessageBreak
 do not make sense semantically outside a definition.\MessageBreak
 Consider wrapping the defining phrase in a \protect\inlinedef}%
@@ -1134,12 +1147,16 @@ DefConstructor('\definiendum [] {}',
 % instances one will be used for the definition and the other for indexing.
 %
 % \begin{macro}{\defi}
+%   We split the |\defi| macro in two: |\defi| does the definiendum bit and |\@defi|
+%   handles the last optional argument and does the indexing. The information flow between
+%   them goes via the local |\@phrase| macro.
 %    \begin{macrocode}
 %<*package>
-\newcommand\defi[2][]{\definiendum[#1]{#2}\omdoc@index[#1]{#2}}
+\newcommand\defi[2][]{\st@def@target {#1}{#2}\defemph {#2}\def\@phrase{#2}\@defi}
+\newcommand\@defi[1][]{\ifdef@index\omdoc@index[#1]{\@phrase}\fi}
 %</package>
 %<*ltxml>
-DefConstructor('\defi[]{}',
+DefConstructor('\defi[]{} OptionalKeyVals:DEF',
    "<omdoc:term role='definiendum' name='?#1(#1)(#2)' cd='#theory'>#2</omdoc:term>",
        afterDigest => sub {
  my ($stomach, $whatsit) = @_;
@@ -1155,14 +1172,17 @@ DefConstructor('\defi[]{}',
 % \end{macro}
 %
 % \begin{macro}{\adefi}
+%   similar in spirit to |\defi|. 
 %    \begin{macrocode}
 %<*package>
-\newcommand\adefi[3][]{\def\@test{#1}%
-\ifx\@test\@empty\definiendum[#3]{#2}%
-\else\definiendum[#1]{#2}\omdoc@index[#1]{#3}\fi}
+\newcommand\adefi[3][]{\def\@name{#1}\def\@text{#2}\def\@verb{#3}%
+\ifx\@name\@empty\st@def@target{#3}{#2}\defemph{#2}%
+\else\st@def@target{#1}{#2}\defemph{#2}\fi\@adefi}
+\newcommand\@adefi[1][]{%
+\ifdef@index\ifx\@name\@empty\omdoc@index[#1]{\@text}\else\omdoc@index[at=\@name,#1]{\@verb}\fi\fi}
 %</package>
 %<*ltxml>
-DefConstructor('\adefi[]{}{}',
+DefConstructor('\adefi[]{}{} OptionalKeyVals:DEF',
     "<omdoc:term role='definiendum' name='?#1(#1)(#3)' cd='#theory'>#2</omdoc:term>",
        afterDigest => sub {
  my ($stomach, $whatsit) = @_;
@@ -1180,10 +1200,12 @@ DefConstructor('\adefi[]{}{}',
 % \begin{macro}{\defii}
 %    \begin{macrocode}
 %<*package>
-\newcommand\defii[3][]{\st@def@target{#1}{#2-#3}\defemph{#2 #3}\@twin[#1]{#2}{#3}}
+\newcommand\defii[3][]{\def\@pone{#2}\def\@ptwo{#3}%
+\st@def@target{#1}{#2-#3}\defemph{#2 #3}\@defii}
+\newcommand\@defii[1][]{\ifdef@index\@twin[#1]{\@pone}{\@ptwo}\fi}
 %</package>
 %<*ltxml>
-DefConstructor('\defii[]{}{}',
+DefConstructor('\defii[]{}{} OptionalKeyVals:DEF',
    "<omdoc:term role='definiendum' name='?#1(#1)(&dashed(#2,#3))' cd='#theory'>#2 #3</omdoc:term>",
        afterDigest => sub {
  my ($stomach, $whatsit) = @_;
@@ -1202,12 +1224,13 @@ my $addr = LookupValue('defs');
 % \begin{macro}{\adefii}
 %    \begin{macrocode}
 %<*package>
-\newcommand\adefii[4][]{\def\@test{#1}%
-\ifx\@test\@empty\definiendum[#3-#4]{#2}%
-\else\definiendum[#1]{#2}\@twin[#1]{#3}{#4}\fi}
+\newcommand\adefii[4][]{\def\@name{#1}\def\@text{#2}\def\@pone{#3}\def\@ptwo{#4}%
+\ifx\@name\@empty\definiendum[#3-#4]{#2}\else\definiendum[#1]{#2}\fi\@adefii}
+\newcommand\@adefii[1][]{%
+\ifdef@index\ifx\@name\@empty\omdoc@index[#1]{\@text}\else\@twin[at=\@name,#1]{\@pone}{\@ptwo}\fi\fi}
 %</package>
 %<*ltxml>
-DefConstructor('\adefii[]{}{}{}',
+DefConstructor('\adefii[]{}{}{} OptionalKeyVals:DEF',
    "<omdoc:term role='definiendum' name='?#1(#1)(&dashed(#3,#4))' cd='#theory'>#2</omdoc:term>",
        afterDigest => sub {
  my ($stomach, $whatsit) = @_;
@@ -1224,12 +1247,15 @@ DefConstructor('\adefii[]{}{}{}',
 % \end{macro}
 %
 % \begin{macro}{\defiii}
+%   similar to |\defii|
 %    \begin{macrocode}
 %<*package>
-\newcommand\defiii[4][]{\st@def@target{#1}{#2-#3-#4}\defemph{#2 #3 #4}\@atwin[#1]{#2}{#3}{#4}}
+\newcommand\defiii[4][]{\def\@pone{#2}\def\@ptwo{#3}\def\@pthree{#4}%
+\st@def@target{#1}{#2-#3-#4}\defemph{#2 #3 #4}\@defiii}
+\newcommand\@defiii[1][]{\ifdef@index\@atwin[#1]{\@pone}{\@ptwo}{\@pthree}\fi}
 %</package>
 %<*ltxml>
-DefConstructor('\defiii[]{}{}{}',
+DefConstructor('\defiii[]{}{}{} OptionalKeyVals:DEF',
    "<omdoc:term role='definiendum' cd='#theory' name='?#1(#1)(&dashed(#2,#3,#4))'>#2 #3 #4</omdoc:term>",
        afterDigest => sub {
  my ($stomach, $whatsit) = @_;
@@ -1248,12 +1274,14 @@ DefConstructor('\defiii[]{}{}{}',
 % \begin{macro}{\adefiii}
 %    \begin{macrocode}
 %<*package>
-\newcommand\adefiii[5][]{\def\@test{#1}%
-\ifx\@test\@empty\definiendum[#3-#4-#5]{#2}%
-\else\definiendum[#1]{#2}\@atwin[#1]{#3}{#4}{#5}\fi}
+\newcommand\adefiii[5][]{\def\@name{#1}%
+\def\@text{#2}\def\@pone{#3}\def\@ptwo{#4}\def\@pthree{#3}%
+\ifx\@name\@empty\definiendum[#3-#4-#5]{#2}\else\definiendum[#1]{#2}\fi\@adefiii}
+\newcommand\@adefiii[1][]{%
+\ifdef@index\ifx\@name\@empty\omdoc@index[#1]{\@text}\else\@atwin[at=\@name,#1]{\@pone}{\@ptwo}{\pthree}\fi\fi}
 %</package>
 %<*ltxml>
-DefConstructor('\adefiii[]{}{}{}{}',
+DefConstructor('\adefiii[]{}{}{}{} OptionalKeyVals:DEF',
    "<omdoc:term role='definiendum' cd='#theory' name='?#1(#1)(&dashed(#3,#4,#5))'>#2</omdoc:term>",
        afterDigest => sub {
  my ($stomach, $whatsit) = @_;
@@ -1419,7 +1447,7 @@ DefConstructor('\termref OptionalKeyVals:termref {}',
 %    \begin{macrocode}
 %<*package>
 \newcommand\term[2][]{\def\@test{#1}%
-\ifx\@test\@empty\else 
+\ifx\@test\@empty\else
 \@ifundefined{module@defs@#1}{\PackageWarning{statements}%
 {{\protect\term} specifies module #1 which is not in
   scope\MessageBreak import it via e.g. via \protect\importmhmodule}}{}
