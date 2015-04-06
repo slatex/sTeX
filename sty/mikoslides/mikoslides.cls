@@ -9,6 +9,7 @@
 \NeedsTeXFormat{LaTeX2e}[1999/12/01]
 \ProvidesClass{mikoslides}[2014/01/07 v1.0 Jacobs slides]
 \DeclareOption{showmeta}{\PassOptionsToPackage{\CurrentOption}{metakeys}}
+\DeclareOption{defindex}{\PassOptionsToPackage{\CurrentOption}{statements}}
 \newif\ifnotes\notesfalse
 \newif\ifsectocframes\sectocframesfalse
 \newif\ifframeimages\frameimagesfalse
