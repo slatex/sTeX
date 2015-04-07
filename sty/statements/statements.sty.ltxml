@@ -4,203 +4,208 @@ use strict;
 use LaTeXML::Package;
 RequirePackage('omtext');
 RequirePackage('modules');
+DelcareOption("showmeta", sub {
+PassOptions('metakeys', 'sty', "showmeta")};);
+DeclareOption(undef, sub {
+PassOptions('omdoc', 'sty', ToString(Digest(T_CS('\CurrentOption'))))};);
+ProcessOptions();
 sub lowcase {my ($string) = @_; $string ? return lc(ToString($string)) : return('')}#$
 sub dashed { join('-',map($_->toString,@_));}#$
 sub makeNCName {
-  my ($name) = @_;
-  my $ncname=$name;
-  $ncname=~s/\s/_/g;  #Spaces to underscores
-  $ncname="_$ncname" if $ncname!~/^(\w|_)/;  #Ensure start with letter or underscore
-  ##More to come...
-  $ncname;
+my ($name) = @_;
+my $ncname=$name;
+$ncname=~s/\s/_/g;  #Spaces to underscores
+$ncname="_$ncname" if $ncname!~/^(\w|_)/;  #Ensure start with letter or underscore
+##More to come...
+$ncname;
 }
 sub simple_wrapper {
-  #Deref if array reference
-  my @input;
-  foreach (@_) {
-  if (ref $_ && $_ =~ /ARRAY/ && $_ !~ /LaTeXML/) {
-      @input=(@input,@$_);
-    } else
-      { push (@input,$_); }
-  }
-  return '' if (!@input);
-  @input = map(split(/\s*,\s*/,ToString($_)),@input);
-  my $output=join(" ",@input);
-  $output=~s/(^ )|[{}]//g; #remove leading space and list separator brackets
-  $output||'';
+#Deref if array reference
+my @input;
+foreach (@_) {
+if (ref $_ && $_ =~ /ARRAY/ && $_ !~ /LaTeXML/) {
+@input=(@input,@$_);
+} else
+{ push (@input,$_); }
+}
+return '' if (!@input);
+@input = map(split(/\s*,\s*/,ToString($_)),@input);
+my $output=join(" ",@input);
+$output=~s/(^ )|[{}]//g; #remove leading space and list separator brackets
+$output||'';
 }
 sub hash_wrapper{
-  #Deref if array reference
-  my @input;
-  foreach (@_) {
-  if (ref $_ && $_ =~ /ARRAY/ && $_ !~ /LaTeXML/) {
-      @input=(@input,@$_);
-    } else
-      { push (@input,$_); }
-  }
-  return '' if (!@input);
-  @input = map(split(/\s*,\s*/,ToString($_)),@input);
-  my $output=join(".sym #",@input);
-  $output=~s/(^\.sym )|[{}]//g; #remove leading space and list separator brackets
-  "#$output"||'';
+#Deref if array reference
+my @input;
+foreach (@_) {
+if (ref $_ && $_ =~ /ARRAY/ && $_ !~ /LaTeXML/) {
+@input=(@input,@$_);
+} else
+{ push (@input,$_); }
+}
+return '' if (!@input);
+@input = map(split(/\s*,\s*/,ToString($_)),@input);
+my $output=join(".sym #",@input);
+$output=~s/(^\.sym )|[{}]//g; #remove leading space and list separator brackets
+"#$output"||'';
 }#$
 DefStatement('{assertion} OptionalKeyVals:omtext',
-  "<omdoc:assertion "
-  .   "?&GetKeyVal(#1,'id')(xml:id='&GetKeyVal(#1,'id')')() "
-  .   "?&GetKeyVal(#1,'theory')(theory='&GetKeyVal(#1,'theory')')() "
-  .   "type='&lowcase(&GetKeyVal(#1,'type'))'>"
-  .   "?&GetKeyVal(#1,'title')(<dc:title>&GetKeyVal(#1,'title')</dc:title>)()"
- .  "<omdoc:CMP>#body"
-  ."</omdoc:assertion>\n");
+"<omdoc:assertion "
+.   "?&GetKeyVal(#1,'id')(xml:id='&GetKeyVal(#1,'id')')() "
+.   "?&GetKeyVal(#1,'theory')(theory='&GetKeyVal(#1,'theory')')() "
+.   "type='&lowcase(&GetKeyVal(#1,'type'))'>"
+.   "?&GetKeyVal(#1,'title')(<dc:title>&GetKeyVal(#1,'title')</dc:title>)()"
+.  "<omdoc:CMP>#body"
+."</omdoc:assertion>\n");
 DefMacro('\usevocab','\usemodule');
 DefMacro('\usemhvocab','\usemhmodule');
 DefStatement('{example} OptionalKeyVals:omtext',
-       "<omdoc:example "
-       . "?&GetKeyVal(#1,'id')(xml:id='&GetKeyVal(#1,'id')')() "
-       . "?&GetKeyVal(#1,'for')(for='&hash_wrapper(&GetKeyVal(#1,'for'))')()>"
-       . "?&GetKeyVal(#1,'title')(<dc:title>&GetKeyVal(#1,'title')</dc:title>)()"
-      . "#body"
-     . "</omdoc:example>\n");
+"<omdoc:example "
+. "?&GetKeyVal(#1,'id')(xml:id='&GetKeyVal(#1,'id')')() "
+. "?&GetKeyVal(#1,'for')(for='&hash_wrapper(&GetKeyVal(#1,'for'))')()>"
+. "?&GetKeyVal(#1,'title')(<dc:title>&GetKeyVal(#1,'title')</dc:title>)()"
+. "#body"
+. "</omdoc:example>\n");
 DefStatement('{axiom} OptionalKeyVals:omtext',
-  "<omdoc:axiom "
-  .   "?&GetKeyVal(#1,'id')(xml:id='&GetKeyVal(#1,'id')')()>"
-  .   "?&GetKeyVal(#1,'title')(<dc:title>&GetKeyVal(#1,'title')</dc:title>)()"
- . "<omdoc:CMP>#body"
-  . "</omdoc:axiom>\n");
+"<omdoc:axiom "
+.   "?&GetKeyVal(#1,'id')(xml:id='&GetKeyVal(#1,'id')')()>"
+.   "?&GetKeyVal(#1,'title')(<dc:title>&GetKeyVal(#1,'title')</dc:title>)()"
+. "<omdoc:CMP>#body"
+. "</omdoc:axiom>\n");
 DefStatement('{symboldec} OptionalKeyVals:symboldec',
-       "<omdoc:symbol "
-      .  "?&GetKeyVal(#1,'id')(xml:id='&GetKeyVal(#1,'id')')"
-      .                   "(xml:id='&makeNCName(&GetKeyVal(#1,'name')).def.sym')"
-      .               "name='&GetKeyVal(#1,'name')'>"
-      .  "?&GetKeyVal(#1,'title')(<dc:title>&GetKeyVal(#1,'title')</dc:title>)()"
-      .  "<dc:description>#body"
-      ."</omdoc:symbol>\n");
+"<omdoc:symbol "
+.  "?&GetKeyVal(#1,'id')(xml:id='&GetKeyVal(#1,'id')')"
+.                   "(xml:id='&makeNCName(&GetKeyVal(#1,'name')).def.sym')"
+.               "name='&GetKeyVal(#1,'name')'>"
+.  "?&GetKeyVal(#1,'title')(<dc:title>&GetKeyVal(#1,'title')</dc:title>)()"
+.  "<dc:description>#body"
+."</omdoc:symbol>\n");
 DefConstructor('\symtype OptionalKeyVals:omtext {}{}',
-  "<omdoc:type for='#2'"
- .   "?&GetKeyVal(#1,'id')(xml:id='&GetKeyVal(#1,'id').not')()"
- .   "?&GetKeyVal(#1,'system')(xml:id='&GetKeyVal(#1,'system')')()>"
- .  "<ltx:Math><ltx:XMath>#3</ltx:XMath></ltx:Math>"
- ."</omdoc:type>");
+"<omdoc:type for='#2'"
+.   "?&GetKeyVal(#1,'id')(xml:id='&GetKeyVal(#1,'id').not')()"
+.   "?&GetKeyVal(#1,'system')(xml:id='&GetKeyVal(#1,'system')')()>"
+.  "<ltx:Math><ltx:XMath>#3</ltx:XMath></ltx:Math>"
+."</omdoc:type>");
 DefConstructor('\inlinetypedec OptionalKeyVals:omtext {}{}',
-  "<omdoc:type for='&GetKeyVal(#1,'for')'"
- .   "?&GetKeyVal(#1,'id')(xml:id='&GetKeyVal(#1,'id').not')()"
- .   "?&GetKeyVal(#1,'system')(xml:id='&GetKeyVal(#1,'system')')()>"
- .  "<ltx:Math><ltx:XMath>#2</ltx:XMath></ltx:Math>"
- .  "<omdoc:CMP>#body"
- ."</omdoc:type>");
+"<omdoc:type for='&GetKeyVal(#1,'for')'"
+.   "?&GetKeyVal(#1,'id')(xml:id='&GetKeyVal(#1,'id').not')()"
+.   "?&GetKeyVal(#1,'system')(xml:id='&GetKeyVal(#1,'system')')()>"
+.  "<ltx:Math><ltx:XMath>#2</ltx:XMath></ltx:Math>"
+.  "<omdoc:CMP>#body"
+."</omdoc:type>");
 DefStatement('{typedec} OptionalKeyVals:omtext {}',
-  "<omdoc:type for='&GetKeyVal(#1,'for')'"
- .   "?&GetKeyVal(#1,'id')(xml:id='&GetKeyVal(#1,'id').not')()"
- .   "?&GetKeyVal(#1,'system')(xml:id='&GetKeyVal(#1,'system')')()>"
- .   "?&GetKeyVal(#1,'title')(<dc:title>&GetKeyVal(#1,'title')</dc:title>)()"
- .  "<ltx:Math><ltx:XMath>#2</ltx:XMath></ltx:Math>"
- .  "<omdoc:CMP>#body"
- ."</omdoc:type>");
+"<omdoc:type for='&GetKeyVal(#1,'for')'"
+.   "?&GetKeyVal(#1,'id')(xml:id='&GetKeyVal(#1,'id').not')()"
+.   "?&GetKeyVal(#1,'system')(xml:id='&GetKeyVal(#1,'system')')()>"
+.   "?&GetKeyVal(#1,'title')(<dc:title>&GetKeyVal(#1,'title')</dc:title>)()"
+.  "<ltx:Math><ltx:XMath>#2</ltx:XMath></ltx:Math>"
+.  "<omdoc:CMP>#body"
+."</omdoc:type>");
 sub definitionBody {
-    my ($doc, $keyvals, %props) = @_;
-    my $for = $keyvals->getValue('for') if $keyvals;
-    my $type = $keyvals->getValue('type') if $keyvals;
-    my %for_attr=();
-    if (ToString($for)) {
-      $for = ToString($for);
-      $for =~ s/^{(.+)}$/$1/eg;
-      foreach (split(/,\s*/,$for)) {
-        $for_attr{$_}=1;
-    }}
-    if ($props{theory}) {
-      my @symbols = @{$props{defs} || []};
-      my $signature = $props{signature};
-      foreach my $symb(@symbols) {
-        next if $for_attr{$symb};
-        my $qualified_symbol = $signature ? "$signature?$symb" : $symb;
-        $for_attr{$qualified_symbol}=1;
-        if (!$props{multiling}) {
-          $doc->insertElement('omdoc:symbol', undef, (name=>$symb, "xml:id"=>makeNCName("$symb.def.sym"))); }
-      }
-    }
-    my %attrs = ();
-    $for = join(" ",(keys %for_attr));
-    $attrs{'for'} = $for if $for;
-    my $id = $keyvals->getValue('id') if $keyvals;
-    $attrs{'xml:id'} = $id if $id;
-    $attrs{'type'} = $type if $type;
-    if ($props{theory}) {
-      $doc->openElement('omdoc:definition', %attrs);
-    } else {
-      $attrs{'type'}='definition';
-      $doc->openElement('omdoc:omtext', %attrs);
-    }
-    my $title = $keyvals->getValue('title') if $keyvals;
-    if ($title) {
-      $doc->openElement('omdoc:metadata');
-      $doc->openElement('dc:title');
-      $doc->absorb($title);
-      $doc->closeElement('dc:title');}
-    $doc->openElement('omdoc:CMP');
-   $doc->absorb($props{body}) if $props{body};
-   $doc->maybeCloseElement('omdoc:CMP');
-    if ($props{theory}) {
-      $doc->closeElement('omdoc:definition');
-    } else {
-      $doc->closeElement('omdoc:omtext');
-    }
-    return; }
+my ($doc, $keyvals, %props) = @_;
+my $for = $keyvals->getValue('for') if $keyvals;
+my $type = $keyvals->getValue('type') if $keyvals;
+my %for_attr=();
+if (ToString($for)) {
+$for = ToString($for);
+$for =~ s/^{(.+)}$/$1/eg;
+foreach (split(/,\s*/,$for)) {
+$for_attr{$_}=1;
+}}
+if ($props{theory}) {
+my @symbols = @{$props{defs} || []};
+my $signature = $props{signature};
+foreach my $symb(@symbols) {
+next if $for_attr{$symb};
+my $qualified_symbol = $signature ? "$signature?$symb" : $symb;
+$for_attr{$qualified_symbol}=1;
+if (!$props{multiling}) {
+$doc->insertElement('omdoc:symbol', undef, (name=>$symb, "xml:id"=>makeNCName("$symb.def.sym"))); }
+}
+}
+my %attrs = ();
+$for = join(" ",(keys %for_attr));
+$attrs{'for'} = $for if $for;
+my $id = $keyvals->getValue('id') if $keyvals;
+$attrs{'xml:id'} = $id if $id;
+$attrs{'type'} = $type if $type;
+if ($props{theory}) {
+$doc->openElement('omdoc:definition', %attrs);
+} else {
+$attrs{'type'}='definition';
+$doc->openElement('omdoc:omtext', %attrs);
+}
+my $title = $keyvals->getValue('title') if $keyvals;
+if ($title) {
+$doc->openElement('omdoc:metadata');
+$doc->openElement('dc:title');
+$doc->absorb($title);
+$doc->closeElement('dc:title');}
+$doc->openElement('omdoc:CMP');
+$doc->absorb($props{body}) if $props{body};
+$doc->maybeCloseElement('omdoc:CMP');
+if ($props{theory}) {
+$doc->closeElement('omdoc:definition');
+} else {
+$doc->closeElement('omdoc:omtext');
+}
+return; }
 # We use the standard DefEnvironment here, since
 # afterDigestBegins would collide otherwise
 DefEnvironment('{definition} OptionalKeyVals:omtext', \&definitionBody,
-  afterDigestBegin=>sub {
-    my ($stomach, $whatsit) = @_;
-    my @symbols = ();
-    $whatsit->setProperty(multiling=>LookupValue('multiling'));
-    $whatsit->setProperty(theory=>(LookupValue('modnl_signature') || LookupValue('current_module')));
-    $whatsit->setProperty(defs=>\@symbols);
-    $whatsit->setProperty(signature=>LookupValue('modnl_signature'));
-    AssignValue('defs', \@symbols);
-    declareFunctions($stomach,$whatsit);
-    return; },
-  afterDigest => sub { AssignValue('defs', undef); return; });
+afterDigestBegin=>sub {
+my ($stomach, $whatsit) = @_;
+my @symbols = ();
+$whatsit->setProperty(multiling=>LookupValue('multiling'));
+$whatsit->setProperty(theory=>(LookupValue('modnl_signature') || LookupValue('current_module')));
+$whatsit->setProperty(defs=>\@symbols);
+$whatsit->setProperty(signature=>LookupValue('modnl_signature'));
+AssignValue('defs', \@symbols);
+declareFunctions($stomach,$whatsit);
+return; },
+afterDigest => sub { AssignValue('defs', undef); return; });
 DefStatement('{notation} OptionalKeyVals:omtext',
-  "<omdoc:definition "
- .   "?&GetKeyVal(#1,'id')(xml:id='&GetKeyVal(#1,'id').not')()"
- .   "?&GetKeyVal(#1,'for')(for='&simple_wrapper(&GetKeyVal(#1,'for'))')()>"
- . "?&GetKeyVal(#1,'title')(<dc:title>&GetKeyVal(#1,'title')</dc:title>)()"
- . "<omdoc:CMP>#body"
-  . "</omdoc:definition>\n");
+"<omdoc:definition "
+.   "?&GetKeyVal(#1,'id')(xml:id='&GetKeyVal(#1,'id').not')()"
+.   "?&GetKeyVal(#1,'for')(for='&simple_wrapper(&GetKeyVal(#1,'for'))')()>"
+. "?&GetKeyVal(#1,'title')(<dc:title>&GetKeyVal(#1,'title')</dc:title>)()"
+. "<omdoc:CMP>#body"
+. "</omdoc:definition>\n");
 DefConstructor('\notatiendum OptionalKeyVals:notation {}',
-              "<ltx:text class='notatiendum'>#2</ltx:text>");
+"<ltx:text class='notatiendum'>#2</ltx:text>");
 DefConstructor('\definiendum [] {}',
-       "<omdoc:term role='definiendum' name='#name' cd='#theory'>#2</omdoc:term>",
-       afterDigest => sub {
- my ($stomach, $whatsit) = @_;
- my $addr = LookupValue('defs');
- my $name = $whatsit->getArg(1);
- $name = $whatsit->getArg(2) unless $name;
- $whatsit->setProperty(name=>$name->toString);
- push(@$addr, $name->toString) if ($addr and $name);
- $whatsit->setProperty(theory=>(LookupValue('modnl_signature') || LookupValue('current_module')));
- return; });#$
+"<omdoc:term role='definiendum' name='#name' cd='#theory'>#2</omdoc:term>",
+afterDigest => sub {
+my ($stomach, $whatsit) = @_;
+my $addr = LookupValue('defs');
+my $name = $whatsit->getArg(1);
+$name = $whatsit->getArg(2) unless $name;
+$whatsit->setProperty(name=>$name->toString);
+push(@$addr, $name->toString) if ($addr and $name);
+$whatsit->setProperty(theory=>(LookupValue('modnl_signature') || LookupValue('current_module')));
+return; });#$
 #############################################################
- #use option to as the selector for def constructors
- #I. subject to change after option is implementated
- #II. defHelper needs to be pass onto \defi* and \adefi*
+#use option to as the selector for def constructors
+#I. subject to change after option is implementated
+#II. defHelper needs to be pass onto \defi* and \adefi*
 #############################################################
- sub defHelper {
- my ($stomach, $whatsit, $option) = @_;
- my $addr = LookupValue('defs');
- my $name = $whatsit->getArg(1);
- if ($option == 1){$name = $whatsit->getArg(2) unless $name;}
- elsif ($option == 2){$name = $whatsit->getArg(3) unless $name;}
- elsif ($option == 3){$name = $name->toString if $name;
- $name = $whatsit->getArg(2)->toString.'-'.$whatsit->getArg(3)->toString unless $name;}
- elsif ($option == 4){$name = $name->toString if $name;
- $name = $whatsit->getArg(3)->toString.'-'.$whatsit->getArg(4)->toString unless $name;}
- elsif ($option == 5){$name = $name->toString if $name;
- $name = $whatsit->getArg(2)->toString.'-'.$whatsit->getArg(3)->toString.'-'.$whatsit->getArg(4)->toString unless $name;}
- elsif ($option == 6){$name = $name->toString if $name;
- $name = $whatsit->getArg(3)->toString.'-'.$whatsit->getArg(4)->toString.'-'.$whatsit->getArg(5)->toString unless $name;}
- push(@$addr, $name->toString) if ($addr and $name);
- $whatsit->setProperty(theory=>(LookupValue('modnl_signature') || LookupValue('current_module')));
- return;}#$
+sub defHelper {
+my ($stomach, $whatsit, $option) = @_;
+my $addr = LookupValue('defs');
+my $name = $whatsit->getArg(1);
+if ($option == 1){$name = $whatsit->getArg(2) unless $name;}
+elsif ($option == 2){$name = $whatsit->getArg(3) unless $name;}
+elsif ($option == 3){$name = $name->toString if $name;
+$name = $whatsit->getArg(2)->toString.'-'.$whatsit->getArg(3)->toString unless $name;}
+elsif ($option == 4){$name = $name->toString if $name;
+$name = $whatsit->getArg(3)->toString.'-'.$whatsit->getArg(4)->toString unless $name;}
+elsif ($option == 5){$name = $name->toString if $name;
+$name = $whatsit->getArg(2)->toString.'-'.$whatsit->getArg(3)->toString.'-'.$whatsit->getArg(4)->toString unless $name;}
+elsif ($option == 6){$name = $name->toString if $name;
+$name = $whatsit->getArg(3)->toString.'-'.$whatsit->getArg(4)->toString.'-'.$whatsit->getArg(5)->toString unless $name;}
+push(@$addr, $name->toString) if ($addr and $name);
+$whatsit->setProperty(theory=>(LookupValue('modnl_signature') || LookupValue('current_module')));
+return;}#$
 DefConstructor('\defi[]{} OptionalKeyVals:DEF',
 "<omdoc:term role='definiendum' name='?#1(#1)(#2)' cd='#theory'>#2</omdoc:term>",
 afterDigest => sub {
@@ -272,62 +277,62 @@ $whatsit->setProperty(theory=>(LookupValue('modnl_signature') || LookupValue('cu
 return; },
 alias=>'\defiii');
 DefConstructor('\inlineex OptionalKeyVals:omtext {}',
-              "<ltx:text class='example'>#2</ltx:text>");
+"<ltx:text class='example'>#2</ltx:text>");
 DefConstructor('\inlinedef OptionalKeyVals:omtext {}', sub {
- my ($document, $keyvals, $body, %props) = @_;
- my $for = $keyvals->getValue('for') if $keyvals;
- my %for_attr=();
- if (ToString($for)) {
-   $for = ToString($for);
-   $for =~ s/^{(.+)}$/$1/eg;
-   foreach (split(/,\s*/,$for)) {
-     $for_attr{$_}=1;
-   }}
- my @symbols = @{$props{defs} || []};
- #Prepare for symbol insertion -insert before the parent of the closest ancestor CMP element
-  my $original_node = $document->getNode;
- my $xc = XML::LibXML::XPathContext->new( $original_node );
- $xc->registerNs('omdoc', 'http://omdoc.org/ns');
- my ($statement_ancestor) = $xc->findnodes('./ancestor::omdoc:CMP/..');
- foreach my $symb(@symbols) {
-   next if $for_attr{$symb};
-   $for_attr{$symb}=1;
-   my $symbolnode = XML::LibXML::Element->new('symbol');
-   $symbolnode->setAttribute(name=>$symb);
-   $symbolnode->setAttribute("xml:id"=>makeNCName("$symb.def.sym"));
-   $statement_ancestor->parentNode->insertBefore($symbolnode,$statement_ancestor);
- }
- #Restore the insertion point
- $document->setNode($original_node);
- my %attrs = ();
- $for = join(" ",(keys %for_attr));
- $attrs{'for'} = $for if $for;
- my $id = $keyvals->getValue('id') if $keyvals;
- $attrs{'xml:id'} = $id if $id;
+my ($document, $keyvals, $body, %props) = @_;
+my $for = $keyvals->getValue('for') if $keyvals;
+my %for_attr=();
+if (ToString($for)) {
+$for = ToString($for);
+$for =~ s/^{(.+)}$/$1/eg;
+foreach (split(/,\s*/,$for)) {
+$for_attr{$_}=1;
+}}
+my @symbols = @{$props{defs} || []};
+#Prepare for symbol insertion -insert before the parent of the closest ancestor CMP element
+my $original_node = $document->getNode;
+my $xc = XML::LibXML::XPathContext->new( $original_node );
+$xc->registerNs('omdoc', 'http://omdoc.org/ns');
+my ($statement_ancestor) = $xc->findnodes('./ancestor::omdoc:CMP/..');
+foreach my $symb(@symbols) {
+next if $for_attr{$symb};
+$for_attr{$symb}=1;
+my $symbolnode = XML::LibXML::Element->new('symbol');
+$symbolnode->setAttribute(name=>$symb);
+$symbolnode->setAttribute("xml:id"=>makeNCName("$symb.def.sym"));
+$statement_ancestor->parentNode->insertBefore($symbolnode,$statement_ancestor);
+}
+#Restore the insertion point
+$document->setNode($original_node);
+my %attrs = ();
+$for = join(" ",(keys %for_attr));
+$attrs{'for'} = $for if $for;
+my $id = $keyvals->getValue('id') if $keyvals;
+$attrs{'xml:id'} = $id if $id;
 $attrs{'class'} = 'inlinedef';
- $document->openElement('ltx:text',%attrs);
- $document->absorb($body);
+$document->openElement('ltx:text',%attrs);
+$document->absorb($body);
 $document->closeElement('ltx:text'); },
- #Prepare 'defs' hooks for \defi and \definiendum symbol names
-  beforeDigest=>sub {
-    my @symbols = ();
-    AssignValue('defs', \@symbols); return; },
- #Adopt collected names as 'defs' property, remove hooks
-  afterDigest=>sub {
-    my ($stomach, $whatsit) = @_;
-    my $defsref = LookupValue('defs');
-    my @defs = @$defsref;
-    $whatsit->setProperty('defs',\@defs);
-    AssignValue('defs',undef);
- return; });
+#Prepare 'defs' hooks for \defi and \definiendum symbol names
+beforeDigest=>sub {
+my @symbols = ();
+AssignValue('defs', \@symbols); return; },
+#Adopt collected names as 'defs' property, remove hooks
+afterDigest=>sub {
+my ($stomach, $whatsit) = @_;
+my $defsref = LookupValue('defs');
+my @defs = @$defsref;
+$whatsit->setProperty('defs',\@defs);
+AssignValue('defs',undef);
+return; });
 DefConstructor('\termref OptionalKeyVals:termref {}',
-               "<omdoc:term "
-              .  "?&GetKeyVal(#1,'cdbase')(cdbase='&GetKeyVal(#1,'cdbase')')() "
-             .  "cd='?&GetKeyVal(#1,'cd')(&GetKeyVal(#1,'cd'))(#module)' "
-              .  "name='&GetKeyVal(#1,'name')'>"
-              .  "#2"
-              ."</omdoc:term>",
-              afterDigest=>sub{$_[1]->setProperty(module=>(LookupValue('modnl_signature') || LookupValue('current_module')))});
+"<omdoc:term "
+.  "?&GetKeyVal(#1,'cdbase')(cdbase='&GetKeyVal(#1,'cdbase')')() "
+.  "cd='?&GetKeyVal(#1,'cd')(&GetKeyVal(#1,'cd'))(#module)' "
+.  "name='&GetKeyVal(#1,'name')'>"
+.  "#2"
+."</omdoc:term>",
+afterDigest=>sub{$_[1]->setProperty(module=>(LookupValue('modnl_signature') || LookupValue('current_module')))});
 RawTeX('
 \newcommand\atrefi[3][]{\def\@test{#1}%
 \ifx\@test\@empty\termref[name=#3]{#2}\else\termref[cd=#1,name=#3]{#2}\fi}
@@ -339,9 +344,9 @@ RawTeX('
 ');
 DefConstructor('\term{}',"<omdoc:term class='dangling-term-link' ?#1(cd='#1')()>#1</omdoc:term>");
 DefConstructor('\symref{}{}',
-               "<omdoc:term cd='&LookupValue('symdef.#1.cd')' name='&LookupValue('symdef.#1.name')'>"
-              .  "#2"
-              ."</omdoc:term>");
+"<omdoc:term cd='&LookupValue('symdef.#1.cd')' name='&LookupValue('symdef.#1.name')'>"
+.  "#2"
+."</omdoc:term>");
 Tag('omdoc:assertion',afterOpen=>\&numberIt,afterClose=>\&locateIt);
 Tag('omdoc:definition',afterOpen=>\&numberIt,afterClose=>\&locateIt);
 Tag('omdoc:example',afterOpen=>\&numberIt,afterClose=>\&locateIt);
@@ -354,23 +359,23 @@ Tag('omdoc:term',afterOpen=>\&numberIt,afterClose=>\&locateIt);
 #  Auxiliary Functions:                               #
 # =======================================================
 sub DefStatement {
-  my ($definition,$replacement,%properties)=@_;
-  DefEnvironment($definition,$replacement,%properties,
-      afterDigestBegin=>\&declareFunctions,
- );}
+my ($definition,$replacement,%properties)=@_;
+DefEnvironment($definition,$replacement,%properties,
+afterDigestBegin=>\&declareFunctions,
+);}
 
 sub declareFunctions{
-  my ($stomach,$whatsit) = @_;
-  my $keyval = $whatsit->getArg(1);
-  my $funval = GetKeyVal($keyval,'functions') if GetKeyVal($keyval,'functions');
-  return unless $funval;
-  my @funsymbs = $funval->unlist;
-  #Unread the function declarations at the Gullet
-  foreach (@funsymbs) {
-    my $symb = UnTeX($_);
-    $stomach->getGullet->unread(Tokenize('\lxDeclare[role=FUNCTION]{$'.$symb.'$}')->unlist);
-  }
-  return; }#$
+my ($stomach,$whatsit) = @_;
+my $keyval = $whatsit->getArg(1);
+my $funval = GetKeyVal($keyval,'functions') if GetKeyVal($keyval,'functions');
+return unless $funval;
+my @funsymbs = $funval->unlist;
+#Unread the function declarations at the Gullet
+foreach (@funsymbs) {
+my $symb = UnTeX($_);
+$stomach->getGullet->unread(Tokenize('\lxDeclare[role=FUNCTION]{$'.$symb.'$}')->unlist);
+}
+return; }#$
 ####### Deprecated functionality:
 RawTeX('
 \newcommand\defin[2][]{\defi[#1]{#2}%
