@@ -33,18 +33,22 @@
 <xsl:output method="xml" indent="yes" cdata-section-elements="data"/>
 
 <xsl:template match="/">
-  <xsl:comment>This OMDoc document is generated from an sTeX-encoded one via LaTeXML, you may want to reconsider editing it.</xsl:comment>
+  <xsl:comment>This OMDoc document is generated from an sTeX-encoded one via LaTeXML, you
+  may want to reconsider editing it.</xsl:comment>
   <xsl:apply-templates/>
 </xsl:template>
 
 <xsl:template match="omdoc:omdoc">
   <xsl:copy>
     <xsl:apply-templates select="@*"/>
-    <omdoc:metadata>
+    <xsl:variable name="md">
       <xsl:apply-templates select="ltx:title|ltx:creator|
 				   ltx:subtitle|ltx:date|
 				   ltx:abstract" mode="frontmatter"/>
-    </omdoc:metadata>
+    </xsl:variable>
+    <xsl:if test="normalize-space($md)">
+      <omdoc:metadata><xsl:copy-of select="$md"/></omdoc:metadata>
+    </xsl:if>
     <xsl:apply-templates select="*[local-name()!='title' and 
 				   local-name()!='creator' and 
 				   local-name()!='subtitle' and 
