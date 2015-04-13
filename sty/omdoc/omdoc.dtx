@@ -134,12 +134,12 @@
 %   \DescribeMacro{short}|short| allows to give a short title for the generated
 %   section. If the title contains semantic macros, they need to be protected by
 %   |\protect|, and we need to give the \DescribeMacro{loadmodules}|loadmodules| key it
-%   needs no value. For instance we would have 
+%   needs no value. For instance we would have
 %   \begin{verbatim}
 %   \begin{module}{foo}
 %   \symdef{bar}{B^a_r}
 %    ...
-%   \begin{omgroup}{Introducing $\protect\bar$ Derivations}
+%   \begin{omgroup}[id=barderiv,loadmodules]{Introducing $\protect\bar$ Derivations}
 %   \end{verbatim}
 % 
 %   \sTeX automatically computes the sectioning level, from the nesting of |omgroup|
@@ -284,6 +284,7 @@
 \DeclareOption{showmods}{\PassOptionsToPackage{\CurrentOption}{modules}}
 \DeclareOption{extrefs}{\PassOptionsToPackage{\CurrentOption}{sref}}
 \DeclareOption{noauxreq}{\PassOptionsToPackage{\CurrentOption}{modules}}
+\DeclareOption{defindex}{\PassOptionsToPackage{\CurrentOption}{statements}}
 \DeclareOption*{\PassOptionsToClass{\CurrentOption}{article}}
 \DeclareOption*{\PassOptionsToPackage{\CurrentOption}{omdoc}}
 \ProcessOptions
@@ -561,8 +562,8 @@ DefEnvironment('{blindomgroup} OptionalKeyVals:omgroup',
 % run at the beginning of the |omgroup|, i.e. after the section heading.
 %    \begin{macrocode}
 \newif\if@@num\@@numtrue
-\newif\if@frontmatter\@frontmatterfalse 
-\newif\if@backmatter\@backmatterfalse 
+\newif\if@frontmatter\@frontmatterfalse
+\newif\if@backmatter\@backmatterfalse
 \newcommand\at@begin@omgroup[3][]{}
 %    \end{macrocode}
 %
@@ -582,30 +583,35 @@ DefEnvironment('{blindomgroup} OptionalKeyVals:omgroup',
 \omgroup@cl\omdoc@sect@name\omdoc@sect@Name
 \else\omgroup@nonum{#2}{#3}\fi}
 %    \end{macrocode}
-%   now the environment itself. 
+% and another one, if redefines the |\addtocontentsline| macro of {\LaTeX} to import the
+% respective macros. It takes as an argument a list of module names. 
+%    \begin{macrocode}
+\newcommand\omgroup@redefine@addtocontents[1]{\edef\@@import{#1}%
+\@for\@I:=\@@import\do{\edef\@path{\csname module@\@I  @path\endcsname}%
+\@ifundefined{tf@toc}\relax{\protected@write\tf@toc{}{\string\@requiremodules{\@path}{tex}}}}
+\ifx\hyper@anchor\@undefined% hyperref.sty loaded?
+\def\addcontentsline##1##2##3{%
+\addtocontents{##1}{\protect\contentsline{##2}{\string\importmodules{#1}##3}{\thepage}}}
+\else\def\addcontentsline##1##2##3{%
+\addtocontents{##1}{\protect\contentsline{##2}{\string\importmodules{#1}##3}{\thepage}{\@currentHref}}}%
+\fi}% hypreref.sty loaded?
+%    \end{macrocode}
+% now the |omgroup| environment itself. This takes care of the table of contents via the
+% helper macro above and then selects the appropriate sectinoning command from
+% |article.cls|.
 %    \begin{macrocode}
 \newenvironment{omgroup}[2][]% keys, title
 {\metasetkeys{omgroup}{#1}\sref@target%
 \ifx\omgroup@display\st@flow\@@numfalse\fi
 \if@frontmatter\@@numfalse\fi
 %    \end{macrocode}
-% now we construct the entries for the table of contents. They depend on whether 
-% the |loadmodules| key is set on |\begin{omtext}| and |hyperref.sty| are loaded. 
+% If the |loadmodules| key is set on |\begin{omgroup}|, we redefine the |\addcontetsline|
+%   macro that determines how the sectioning commands below construct the entries for the
+%   table of contents.
 %    \begin{macrocode}
-\ifx\omgroup@loadmodules\@false% loadmodules set
-\ifx\hyper@anchor\@undefined% hyperref.sty loaded? 
-\def\addcontentsline##1##2##3{\addtocontents{##1}{\protect\contentsline{##2}{##3}{\thepage}}}
-\else\def\addcontentsline##1##2##3{%
-\addtocontents{##1}{\protect\contentsline{##2}{##3}{\thepage}{\@currentHref}}}
-\fi%
-\else% modules to load!
-\ifx\hyper@anchor\@undefined% hyperref.sty loaded? 
-\def\addcontentsline##1##2##3{%
-\addtocontents{##1}{\protect\contentsline{##2}{\string\importmodules{\imported@modules}##3}{\thepage}}}
-\else\def\addcontentsline##1##2##3{%
-\addtocontents{##1}{\protect\contentsline{##2}{\string\importmodules{\imported@modules}##3}{\thepage}{\@currentHref}}}
-\fi% hypreref.sty loaded?
-\fi% loadmodules key set 
+\ifx\omgroup@loadmodules\@true%
+\omgroup@redefine@addtocontents{\@ifundefined{mod@id}\imported@modules%
+{\@ifundefined{module@\mod@id @path}{\imported@modules}\mod@id}}\fi%
 %    \end{macrocode}
 % now we only need to construct the right sectioning depending on the value of
 % |\section@level|.
