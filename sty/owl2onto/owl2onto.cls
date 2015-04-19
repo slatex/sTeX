@@ -14,10 +14,10 @@
 \RequirePackage{owl2onto}
 \srefaddidkey{ontology}
 \addmetakey{ontology}{baseURI}
-\newcommand{\ontology}[1][]{\document\metasetkeys{ontology}{#1}%
+\newcommand\ontology[1][]{\document\metasetkeys{ontology}{#1}%
 \importmodule[owl2]{OWL2}%
 \ifx\sref@id\@empty\begin{module}\else\begin{module}[id=\sref@id]\fi}
-\newcommand{\endontology}{\end{module}\enddocument}
+\newcommand\endontology{\end{module}\enddocument}
 \endinput
 %%
 %% End of file `owl2onto.cls'.
