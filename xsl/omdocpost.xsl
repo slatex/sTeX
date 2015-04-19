@@ -21,7 +21,10 @@
      License along with this library; if not, write to the Free Software
      Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 -->
-<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+<xsl:stylesheet version="1.0"
+		xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
+		xmlns:stex="http://kwarc.info/ns/sTeX"
+		exclude-result-prefixes="xsl stex">
 
 <xsl:output method="xml" indent="yes" cdata-section-elements="data"/>
 <!--<xsl:strip-space elements="*"/>-->
@@ -55,4 +58,9 @@
 <xsl:include href="LaTeXML/LaTeXML-picture-xhtml.xsl"/>
 <xsl:include href="LaTeXML/LaTeXML-structure-xhtml.xsl"/>
 <xsl:include href="LaTeXML/LaTeXML-bib-xhtml.xsl"/>
+<!-- we specialize the begin mode hook (thanks Bruce), so that it copies over
+     source references --> 
+<xsl:template match="*" mode="begin">
+  <xsl:copy-of select="@stex:srcref"/>
+</xsl:template>
 </xsl:stylesheet>

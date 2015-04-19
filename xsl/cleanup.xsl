@@ -28,7 +28,8 @@
 <xsl:stylesheet version="1.0"
   xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
   xmlns:om="http://www.openmath.org/OpenMath"
-  exclude-result-prefixes="xsl om">
+  xmlns:omdoc="http://omdoc.org/ns"
+  exclude-result-prefixes="xsl om omdoc">
 
 <xsl:output method="xml" indent="yes" cdata-section-elements="data"/>
 
@@ -40,5 +41,4 @@
 <xsl:template match="om:OMA[om:OMS[@cd='latexml' and @name='delimited-[]']]">
   <xsl:apply-templates select="*[position()&gt;1]"/>
 </xsl:template>
-
 </xsl:stylesheet>
