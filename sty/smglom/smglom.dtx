@@ -94,7 +94,7 @@ use strict;
 use warnings;
 use LaTeXML::Package;
 
-DeclareOption(undef,sub {PassOptions('article','cls',ToString(Digest(T_CS('\CurrentOption')))); });
+DeclareOption(undef,sub {PassOptions('omdoc','cls',ToString(Digest(T_CS('\CurrentOption')))); });
 ProcessOptions();
 %</ltxml.cls|ltxml.sty>
 %    \end{macrocode}
@@ -124,12 +124,12 @@ RequirePackage('smglom');
 %</ltxml.cls>
 %<*ltxml.sty>
 RequirePackage('amstext');
-RequirePackage('modules'); 
-RequirePackage('dcm'); 
+RequirePackage('modules');
+RequirePackage('dcm');
 RequirePackage('statements');
-RequirePackage('sproof'); 
-RequirePackage('cmath');  
-RequirePackage('smultiling',options => ['langfiles']);  
+RequirePackage('sproof');
+RequirePackage('cmath');
+RequirePackage('smultiling',options => ['langfiles']);
 RequirePackage('presentation');
 RequirePackage('amsfonts');
 %</ltxml.sty>
@@ -137,20 +137,29 @@ RequirePackage('amsfonts');
 % \end{omgroup}
 % 
 % \begin{omgroup}[id=sec:module-defs]{For Module Definitions} %
-% \begin{macro}{gimport}
-%   just a shortcut
+% \begin{macro}{\gimport}
+%   just a shortcut, we have a starred and unstarred version, the first one is
+%   conservative.  
 %    \begin{macrocode}
 %<*sty>
-\newcommand\gimport[2][]{\def\@test{#1}%
-\edef\mh@@repos{\mh@currentrepos}%
+\def\gimport{\@ifstar\@gimport@star\@gimport@nostar}
+\newcommand\@gimport@star[2][]{\def\@test{#1}\edef\mh@@repos{\mh@currentrepos}%
+\ifx\@test\@empty\importmhmodule[conservative,repos=\mh@@repos,ext=tex,path=#2]{#2}%
+\else\importmhmodule[conservative,repos=#1,ext=tex,path=#2]{#2}\fi%
+\mhcurrentrepos\mh@@repos\ignorespaces}
+\newcommand\@gimport@nostar[2][]{\def\@test{#1}\edef\mh@@repos{\mh@currentrepos}%
 \ifx\@test\@empty\importmhmodule[repos=\mh@@repos,ext=tex,path=#2]{#2}%
-\else\importmhmodule[repos=#1,ext=tex,path=#2]{#2}\fi
+\else\importmhmodule[repos=#1,ext=tex,path=#2]{#2}\fi%
 \mhcurrentrepos\mh@@repos\ignorespaces}
 %</sty>
 %<*ltxml.sty>
-DefMacro('\gimport[]{}','\g@import[ext=tex,path=#2]{#1}{#2}');
-DefConstructor('\g@import OptionalKeyVals:importmhmodule {}{}', 
-  "<omdoc:imports from='?&GetKeyVal(#1,'load')(&canonical_omdoc_path(&GetKeyVal(#1,'load')))()\##2'/>",
+DefMacro('\gimport',' \@ifstar\@gimport@star\@gimport@nostar');
+DefMacro('\@gimport@star[]{}','\g@import[conservative=true,ext=tex,path=#2]{#1}{#2}');
+DefMacro('\@gimport@nostar[]{}','\g@import[conservative=false,ext=tex,path=#2]{#1}{#2}');
+DefConstructor('\g@import OptionalKeyVals:importmhmodule {}{}',
+       "<omdoc:imports "
+       . "from='?&GetKeyVal(#1,'load')(&canonical_omdoc_path(&GetKeyVal(#1,'load')))()\##2'  "
+       . "conservative='&GetKeyVal(#1,'conservative')'/>",
   afterDigest => \&gimportI);
 %    \end{macrocode}
 % To make this work we need a sub that sets the respective values. 
@@ -168,7 +177,7 @@ DefConstructor('\g@import OptionalKeyVals:importmhmodule {}{}',
   #          "odd numbers" in hash assignment? Workaround for now!
   $$whatsit{args}[1] = $name; # Intention: $whatsit->setArg(2,$name);
   undef $$whatsit{args}[2]; # Intention: $whatsit->deleteArg(3);
-  importMHmoduleI($stomach,$whatsit);  
+  importMHmoduleI($stomach,$whatsit);
   return; }#$
 %</ltxml.sty>
 %    \end{macrocode}
@@ -320,6 +329,10 @@ DefConstructor('\MathHubPath{}','');
 %</ltxml.sty>
 %    \end{macrocode}
 % \end{macro}
+% and finally, we need to terminate the file with a success mark for perl.
+%    \begin{macrocode}
+%<ltxml.sty|ltxml.cls>1;
+%    \end{macrocode}
 % \end{omgroup}
 % \end{omgroup} 
 % \Finale
