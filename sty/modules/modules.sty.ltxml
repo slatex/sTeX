@@ -11,6 +11,15 @@ use LaTeXML::Util::Pathname;
 # careful not to erase it while running "make"!
 
 # =======================================================
+# -2. Options Handling:                                 #
+# =======================================================
+DeclareOption('showmeta', sub {PassOptions('metakeys','sty',ToString(Digest(T_CS('\CurrentOption')))); });
+DeclareOption('showmods', '');
+DeclareOption('noauxreq', '');
+DeclareOption('qualifiedimports', '');
+ProcessOptions();
+
+# =======================================================
 # -1. Requirements:                                     #
 # =======================================================
 RequirePackage('presentation'); # for \@use
@@ -31,10 +40,12 @@ DefKeyVal('symdef','assocarg','Semiverbatim');
 DefKeyVal('importmodule','id','Semiverbatim');
 DefKeyVal('importmodule','load','Semiverbatim');
 DefKeyVal('importmodule','ext','Semiverbatim');
+DefKeyVal('importmodule','conservative','Semiverbatim');
 DefKeyVal('importmhmodule','id','Semiverbatim');
 DefKeyVal('importmhmodule','repos','Semiverbatim');
 DefKeyVal('importmhmodule','path','Semiverbatim');
 DefKeyVal('importmhmodule','ext','Semiverbatim');
+DefKeyVal('importmhmodule','conservative','Semiverbatim');
 
 # =======================================================
 # 1. TeX API methods:                                   #
@@ -111,7 +122,9 @@ DefConstructor('\usemodule OptionalKeyVals:importmodule {}',
    "<omdoc:uses from='?&GetKeyVal(#1,'load')(&canonical_omdoc_path(&GetKeyVal(#1,'load')))()\##2'/>",
    afterDigest=>\&importmoduleI);
 DefConstructor('\importmodule OptionalKeyVals:importmodule {}',
-   "<omdoc:imports from='?&GetKeyVal(#1,'load')(&canonical_omdoc_path(&GetKeyVal(#1,'load')))()\##2'/>",
+	       "<omdoc:imports "
+	       . "from='?&GetKeyVal(#1,'load')(&canonical_omdoc_path(&GetKeyVal(#1,'load')))()\##2'"
+               . "?&defined(&GetKeyVal(#1,'conservative'))(load='&GetKeyVal(#1,'conservative')')()/>",
    afterDigest=> \&importmoduleI);
 # {importmodulevia} environment
 DefMacro('\importmodulevia[]{}',
@@ -153,7 +166,6 @@ DefConstructor('\ttassign[]{}{}',
      my ($stomach,$whatsit) = @_;
      $whatsit->setProperty('from',LookupValue("from_module"));
    });
-
 
 DefConstructor('\importOMDocmodule OptionalSemiverbatim {}{}',
                "<omdoc:imports from='?#3(&canonical_omdoc_path(#3))\##2'/>",
@@ -505,11 +517,17 @@ DefPrimitive('\abbrdef OptionalKeyVals:symdef {}[]{}', sub {
   return; });
 
 # =======================================================
-# 2.3. Testing Semantic macros
+# 2.4. Testing Semantic macros
 # =======================================================
 # *** we fake it for now
 DefMacro('\symtest OptionalKeyVals:symtest []{}{}','');
 DefMacro('\abbrtest OptionalKeyVals:symtest []{}{}','');
+
+# =======================================================
+# 2.5. Numbering and Source References
+# =======================================================
+Tag('omdoc:notation',afterOpen=>\&numberIt,afterClose=>\&locateIt);
+
 
 # =======================================================
 # 3. Auxiliary routines:                                #
@@ -807,7 +825,9 @@ DefConstructor('\@@mhcurrentrepos{}','',
   afterDigest => sub{ AssignValue('current_repos',ToString($_[1]->getArg(1)),'global'); } );
 
 DefConstructor('\importmhmodule OptionalKeyVals:importmhmodule {}',
-   "<omdoc:imports from='?&GetKeyVal(#1,'load')(&canonical_omdoc_path(&GetKeyVal(#1,'load')))()\##2'/>",
+	       "<omdoc:imports "
+	       . "from='?&GetKeyVal(#1,'load')(&canonical_omdoc_path(&GetKeyVal(#1,'load')))()\##2'"
+               . "?&defined(&GetKeyVal(#1,'conservative'))(load='&GetKeyVal(#1,'conservative')')()/>",
    afterDigest => \&importMHmoduleI);
 
 DefConstructor('\usemhmodule OptionalKeyVals:importmhmodule {}',

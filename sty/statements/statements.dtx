@@ -58,6 +58,7 @@
 % \changes{v1.1}{2013/05/17}{more support for types: \texttt{typedec} and
 % \texttt{\textbackslash inlinetypedec}}
 % \changes{v1.2}{2015/04/03}{adding optional last arg to \texttt{\textbackslash \*defi*}}
+% \changes{v1.2}{2015/04/17}{adding \texttt{\textbackslash inlineass}}
 % 
 % \GetFileInfo{statements.sty}
 % 
@@ -627,6 +628,7 @@
 %    \begin{macrocode}
 %<*package>
 \RequirePackage{omtext}
+\RequirePackage[base]{babel}
 \RequirePackage{modules}
 \RequirePackage[hyperref]{ntheorem}
 \theoremstyle{plain}
@@ -636,6 +638,10 @@
 package LaTeXML::Package::Pool;
 use strict;
 use LaTeXML::Package;
+DeclareOption('defindex', '');
+DeclareOption('showmeta',sub {PassOptions('metakeys','sty',ToString(Digest(T_CS('\CurrentOption')))); });
+DeclareOption(undef,sub {PassOptions('omdoc','sty',ToString(Digest(T_CS('\CurrentOption')))); });
+ProcessOptions();
 RequirePackage('omtext');
 RequirePackage('modules');
 %</ltxml>
@@ -691,14 +697,21 @@ sub hash_wrapper{
       { push (@input,$_); }
   }
   return '' if (!@input);
-  @input = map(split(/\s*,\s*/,ToString($_)),@input);
+  @input = sort map(split(/\s*,\s*/,ToString($_)),@input);
   my $output=join(".sym #",@input);
   $output=~s/(^\.sym )|[{}]//g; #remove leading space and list separator brackets
   "#$output"||'';
-}#$
+}
 %</ltxml>
 %    \end{macrocode}
 % 
+% For the other languages, we set up triggers
+%    \begin{macrocode}
+%<*package>
+\AfterBabelLanguage{ngerman}{\input{statements-ngerman.ldf}}
+%</package>
+%    \end{macrocode}
+%
 % \subsection{Statements}\label{sec:impl:statements}
 %
 % \begin{macro}{\STpresent}
@@ -990,7 +1003,7 @@ sub definitionBody {
       }
     }
     my %attrs = ();
-    $for = join(" ",(keys %for_attr));
+    $for = join(" ",(sort keys %for_attr));
     $attrs{'for'} = $for if $for;
     my $id = $keyvals->getValue('id') if $keyvals;
     $attrs{'xml:id'} = $id if $id;
@@ -1310,10 +1323,27 @@ DefConstructor('\inlineex OptionalKeyVals:omtext {}',
 %    \end{macrocode}
 % \end{macro}
 %
+% \begin{macro}{\inlineass}
+%    \begin{macrocode}
+%<*package>
+\newcommand\inlineass[2][]{\metasetkeys{omtext}{#1}%
+\sref@target\sref@label@id{here}#2}
+%</package>
+%<*ltxml>
+DefConstructor('\inlineass OptionalKeyVals:omtext {}',
+              "<ltx:text "
+            .    "?&GetKeyVal(#1,'type')(class='&GetKeyVal(#1,'type') assertion')(class='assertion') >"
+            .    "#2"
+            . "</ltx:text>");
+%</ltxml>
+%    \end{macrocode}
+% \end{macro}
+%
 % \begin{macro}{\inlinedef}
 %    \begin{macrocode}
 %<*package>
-\newcommand\inlinedef[2][]{\metasetkeys{omtext}{#1}\sref@target\sref@label@id{here}\st@indeftrue #2}
+\newcommand\inlinedef[2][]{\metasetkeys{omtext}{#1}%
+\sref@target\sref@label@id{here}\st@indeftrue #2}
 %</package>
 %<*ltxml>
 DefConstructor('\inlinedef OptionalKeyVals:omtext {}', sub {
@@ -1343,7 +1373,7 @@ DefConstructor('\inlinedef OptionalKeyVals:omtext {}', sub {
  #Restore the insertion point
  $document->setNode($original_node);
  my %attrs = ();
- $for = join(" ",(keys %for_attr));
+ $for = join(" ",(sort keys %for_attr));
  $attrs{'for'} = $for if $for;
  my $id = $keyvals->getValue('id') if $keyvals;
  $attrs{'xml:id'} = $id if $id;
