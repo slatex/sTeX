@@ -1358,8 +1358,8 @@ DefConstructor('\inlinedef OptionalKeyVals:omtext {}', sub {
    }}
  my @symbols = @{$props{defs} || []};
  #Prepare for symbol insertion -insert before the parent of the closest ancestor CMP element
-  my $original_node = $document->getNode;
- my $statement_ancestor = $document->findnode('./ancestor::CMP/..', $original_node);
+ my $original_node = $document->getNode;
+ my $statement_ancestor = $document->findnode('./ancestor::omdoc:CMP/..', $original_node);
  foreach my $symb(@symbols) {
    next if $for_attr{$symb};
    $for_attr{$symb}=1;
@@ -1368,8 +1368,7 @@ DefConstructor('\inlinedef OptionalKeyVals:omtext {}', sub {
    $symbolnode->setAttribute("xml:id"=>makeNCName("$symb.def.sym"));
  if ($statement_ancestor) {
    $statement_ancestor->parentNode->insertBefore($symbolnode,$statement_ancestor);
-  } else {
-   Error('expected', $statement_ancestor, $original_node, "Missing omdoc:CMP ancestor for symbol '$symb'. ");}}
+  } }
  #Restore the insertion point
  $document->setNode($original_node);
  my %attrs = ();
@@ -1377,10 +1376,13 @@ DefConstructor('\inlinedef OptionalKeyVals:omtext {}', sub {
  $attrs{'for'} = $for if $for;
  my $id = $keyvals->getValue('id') if $keyvals;
  $attrs{'xml:id'} = $id if $id;
-$attrs{'class'} = 'inlinedef';
+ $attrs{'class'} = 'inlinedef';
+ #Open omdoc:CMP if not found
+ $document->openElement('omdoc:CMP') unless $statement_ancestor;
  $document->openElement('ltx:text',%attrs);
  $document->absorb($body);
-$document->closeElement('ltx:text'); },
+ $document->maybeCloseElement('omdoc:CMP');
+ $document->closeElement('ltx:text'); },
  #Prepare 'defs' hooks for \defi and \definiendum symbol names
   beforeDigest=>sub {
     my @symbols = ();
