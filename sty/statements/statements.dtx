@@ -1364,10 +1364,8 @@ DefConstructor('\inlinedef OptionalKeyVals:omtext {}', sub {
    }}
  my @symbols = @{$props{defs} || []};
  #Prepare for symbol insertion -insert before the parent of the closest ancestor CMP element
-  my $original_node = $document->getNode;
- my $xc = XML::LibXML::XPathContext->new( $original_node );
- $xc->registerNs('omdoc', 'http://omdoc.org/ns');
- my ($statement_ancestor) = $xc->findnodes('./ancestor::omdoc:CMP/..');
+ my $original_node = $document->getNode;
+ my $statement_ancestor = $document->findnode('./ancestor::omdoc:CMP/..', $original_node);
  foreach my $symb(@symbols) {
    next if $for_attr{$symb};
    $for_attr{$symb}=1;
@@ -1377,7 +1375,8 @@ DefConstructor('\inlinedef OptionalKeyVals:omtext {}', sub {
  if ($statement_ancestor) {
    $statement_ancestor->parentNode->insertBefore($symbolnode,$statement_ancestor);
   } else {
-   Error('expected', $statement_ancestor, $original_node, "Missing omdoc:CMP ancestor for symbol '$symb'. ");}}
+    Error('malformed', $statement_ancestor, $original_node, "\inlinedef outside a statement!
+Try wrapping the paragraph in a begin{omtext}, \\begin{assertion}, \\begin{axiom}...\nwhatever is suitable semantically.")}}
  #Restore the insertion point
  $document->setNode($original_node);
  my %attrs = ();
@@ -1385,10 +1384,10 @@ DefConstructor('\inlinedef OptionalKeyVals:omtext {}', sub {
  $attrs{'for'} = $for if $for;
  my $id = $keyvals->getValue('id') if $keyvals;
  $attrs{'xml:id'} = $id if $id;
-$attrs{'class'} = 'inlinedef';
+ $attrs{'class'} = 'inlinedef';
  $document->openElement('ltx:text',%attrs);
  $document->absorb($body);
-$document->closeElement('ltx:text'); },
+ $document->closeElement('ltx:text'); },
  #Prepare 'defs' hooks for \defi and \definiendum symbol names
   beforeDigest=>sub {
     my @symbols = ();
