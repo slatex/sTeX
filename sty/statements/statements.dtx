@@ -733,6 +733,7 @@ sub hash_wrapper{
 %<*package>
 \def\define@statement@env#1{%
 \newenvironment{#1}[1][]{\metasetkeys{omtext}{##1}\sref@target%
+\@in@omtexttrue%
 \ifx\omtext@display\st@flow\else%
 \ifx\omtext@title\@empty\begin{ST#1Env}\else\begin{ST#1Env}[\omtext@title]\fi%
 \ifx\sref@id\@empty\else\label{#1.\sref@id}\fi
@@ -741,7 +742,7 @@ sub hash_wrapper{
 \sref@label@id{\STpresent{\csname ST#1EnvKeyword\endcsname}~\@currentlabel}\fi%
 \ignorespaces}
 {\csname st@#1@terminate\endcsname\ifx\omtext@display\st@flow\else\end{ST#1Env}\fi%
-\omtext@post@skip}}
+\omtext@post@skip\@in@omtextfalse}}
 %</package>
 %    \end{macrocode}
 % \end{macro}
@@ -1343,6 +1344,11 @@ DefConstructor('\inlineass OptionalKeyVals:omtext {}',
 %    \begin{macrocode}
 %<*package>
 \newcommand\inlinedef[2][]{\metasetkeys{omtext}{#1}%
+\if@in@omtext\else% we are not in an omtext or statement
+\PackageError{modules}{\protect\inlinedef\space outside a statement!}%
+{Try wrapping the paragraph in a\MessageBreak 
+\protect\begin{omtext}, \protect\begin{assertion}, \protect\begin{axiom}, ... \MessageBreak
+whatever is suitable semantically}\fi%
 \sref@target\sref@label@id{here}\st@indeftrue #2}
 %</package>
 %<*ltxml>
@@ -1358,18 +1364,19 @@ DefConstructor('\inlinedef OptionalKeyVals:omtext {}', sub {
    }}
  my @symbols = @{$props{defs} || []};
  #Prepare for symbol insertion -insert before the parent of the closest ancestor CMP element
-  my $original_node = $document->getNode;
- my $xc = XML::LibXML::XPathContext->new( $original_node );
- $xc->registerNs('omdoc', 'http://omdoc.org/ns');
- my ($statement_ancestor) = $xc->findnodes('./ancestor::omdoc:CMP/..');
+ my $original_node = $document->getNode;
+ my $statement_ancestor = $document->findnode('./ancestor::omdoc:CMP/..', $original_node);
  foreach my $symb(@symbols) {
    next if $for_attr{$symb};
    $for_attr{$symb}=1;
    my $symbolnode = XML::LibXML::Element->new('symbol');
    $symbolnode->setAttribute(name=>$symb);
    $symbolnode->setAttribute("xml:id"=>makeNCName("$symb.def.sym"));
+ if ($statement_ancestor) {
    $statement_ancestor->parentNode->insertBefore($symbolnode,$statement_ancestor);
- }
+  } else {
+    Error('malformed', $statement_ancestor, $original_node, "\inlinedef outside a statement!
+Try wrapping the paragraph in a begin{omtext}, \\begin{assertion}, \\begin{axiom}...\nwhatever is suitable semantically.")}}
  #Restore the insertion point
  $document->setNode($original_node);
  my %attrs = ();
@@ -1377,10 +1384,10 @@ DefConstructor('\inlinedef OptionalKeyVals:omtext {}', sub {
  $attrs{'for'} = $for if $for;
  my $id = $keyvals->getValue('id') if $keyvals;
  $attrs{'xml:id'} = $id if $id;
-$attrs{'class'} = 'inlinedef';
+ $attrs{'class'} = 'inlinedef';
  $document->openElement('ltx:text',%attrs);
  $document->absorb($body);
-$document->closeElement('ltx:text'); },
+ $document->closeElement('ltx:text'); },
  #Prepare 'defs' hooks for \defi and \definiendum symbol names
   beforeDigest=>sub {
     my @symbols = ();
