@@ -1,0 +1,77 @@
+%%
+%% This is file `cpath.sty'
+%% Author: Jinbo Zhang
+\NeedsTeXFormat{LaTeX2e}[1999/12/01]
+\ProvidesPackage{cpath}[2015/05/12 v1.0 Canonical Path]
+\RequirePackage{xstring}
+\RequirePackage{forloop}
+%
+\newcounter{AddrNum}% how many sections in the input path
+\newcounter{iLoop}% only as loop iterator,no other uses
+\newcounter{iName}% for generate names such as Addri, Addrii
+\newcounter{RealAddrNum}% how many sections in the canonical path
+\def\ToTop{..}%
+%
+\def\@MultiAddrs#1/#2\@nil{% create storing cs, split the input address
+	\def\CurArg{#1}%
+	\def\NextArg{#2}%
+	\ifx\@empty\CurArg% for the first one
+	\else%
+		\stepcounter{AddrNum}%   
+		\expandafter\edef\csname Addr\roman{AddrNum}\endcsname{#1}% storing 
+	\fi%
+	\ifx\@empty\NextArg% for the last one
+		\let\next\@gobble%
+	\fi%
+	\next#2\@nil% recursion
+}% 
+%
+\def\@cpath#1{%
+	\let\next\@MultiAddrs%
+	\setcounter{AddrNum}{0}%
+	\setcounter{iLoop}{0}%
+	\setcounter{iName}{0}%
+	\setcounter{RealAddrNum}{0}%
+	\def\@CurrPath{}%
+	\def\@CanPath{}%
+	\def\@TempPath{}%
+	\def\@Rubbish{}%
+	\expandafter\next#1/\@nil% recursion starts
+	%
+	\forloop{iLoop}{0}{\value{iLoop} < \value{AddrNum}}{%
+		\stepcounter{iName}%
+		\edef\@CurrPath{%
+			\csname Addr\roman{iName}\endcsname% 
+		}%
+		\ifx\@CurrPath\ToTop%
+			\ifnum\value{RealAddrNum} > 0% only execute when not the root dir
+				\StrCut[\value{RealAddrNum}]{\@CanPath}{/}\@TempPath\@Rubbish%
+				\edef\@CanPath{\@TempPath}%
+				\addtocounter{RealAddrNum}{-1}%
+			\fi%
+		\else%
+			\stepcounter{RealAddrNum}%
+			\edef\@CanPath{\@TempPath/\@CurrPath}% attach
+			\edef\@TempPath{\@CanPath}%
+		\fi%
+	}%
+}%
+\newcommand\cpath[1]{% print canonical path
+	\@cpath{#1}%
+	\@CanPath%
+}%
+%
+\newif\ifpath%
+\newcommand\ComparePath[2]{% compare two paths
+	\@cpath{#1}%
+	\edef\patha{\@CanPath}%
+	\@cpath{#2}%
+	\edef\pathb{\@CanPath}%
+	\ifx\patha\pathb%
+	\pathtrue%
+	\else%
+	\pathfalse%
+	\fi%
+}%
+%%
+%% End of file `cpath.sty'.
