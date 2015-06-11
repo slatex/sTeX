@@ -19,7 +19,7 @@
 \addmetakey{sref}{fallback}
 \newrobustcmd\sref[2][]{%
 \metasetkeys{sref}{#1}%
-\@ifundefined{sref@part}{%
+\ifcsundef{sref@part}{%
 \sref@hlink[\sref@linktext]{#2}{\sref@fallback}%
 }{%
 \sref@hlink[\sref@linktext]{\sref@part @#2}{\sref@fallback}%
@@ -43,26 +43,50 @@
 \fi%
 }%
 \newrobustcmd\spageref[1]{%
-\@ifundefined{sref@part}{%
+\ifcsundef{sref@part}{%
 \sref@pageref{#1}%
 }{%
 \sref@pageref{\sref@part @#1}%
 }%
 }%
-\newif\ifhref\hreffalse
-\AtBeginDocument{\@ifpackageloaded{hyperref}{\hreftrue}{\hreffalse}}
-\newrobustcmd\sref@href@ifh[2]{\ifhref\href{#1}{#2}\else#2\fi}
-\newrobustcmd\sref@hlink@ifh[2]{\ifhref\hyperlink{#1}{#2}\else#2\fi}
-\newrobustcmd\sref@target@ifh[2]{\ifhref\hypertarget{#1}{#2}\else#2\fi}
+\newif\ifhref\hreffalse%
+\AtBeginDocument{%
+\@ifpackageloaded{hyperref}{%
+\hreftrue%
+}{%
+\hreffalse%
+}%
+}%
+\newrobustcmd\sref@href@ifh[2]{%
+\ifhref%
+\href{#1}{#2}%
+\else%
+#2%
+\fi%
+}%
+\newrobustcmd\sref@hlink@ifh[2]{%
+\ifhref%
+\hyperlink{#1}{#2}%
+\else%
+#2%
+\fi%
+}%
+\newrobustcmd\sref@target@ifh[2]{%
+\ifhref%
+\hypertarget{#1}{#2}%
+\else%
+#2%
+\fi%
+}%
 \def\sref@target{%
 \ifx\sref@id\@empty%
 \relax%
 \else%
-\edef\@target{sref@\@ifundefined{sref@part}{}{\sref@part @}\sref@id @target}%
+\edef\@target{sref@\ifcsundef{sref@part}{}{\sref@part @}\sref@id @target}%
 \sref@target@ifh\@target{}%
 \fi%
 }%
-\newcommand\@sref@def[3]{\expandafter\gdef\csname sref@#1@#2\endcsname{#3}}
+\newrobustcmd\@sref@def[3]{\csgdef{sref@#1@#2}{#3}}
 \ifextrefs%
 \newwrite\refs@file%
 \else%
@@ -80,7 +104,8 @@
 \metakeys@ext@showkeys{#2}{id}%
 \define@key{#2}{id}{%
 \edef\sref@id{\srefaddidkey@prefix ##1}%
-\expandafter\edef\csname #2@id\endcsname{\srefaddidkey@prefix ##1}%
+%\expandafter\edef\csname #2@id\endcsname{\srefaddidkey@prefix ##1}%
+\csedef{#2@id}{\srefaddidkey@prefix ##1}%
 }%
 }%
 \newrobustcmd\makeextrefs[1]{%
@@ -91,11 +116,11 @@
 \makeatother%
 }%
 \newrobustcmd\sref@label[2]{%
-\sref@def{\@ifundefined{sref@part}{}{\sref@part @}#2}{page}{\thepage}%
-\sref@def{\@ifundefined{sref@part}{}{\sref@part @}#2}{label}{#1}%
+\sref@def{\ifcsundef{sref@part}{}{\sref@part @}#2}{page}{\thepage}%
+\sref@def{\ifcsundef{sref@part}{}{\sref@part @}#2}{label}{#1}%
 }%
-\newcommand\sreflabel[2]{\sref@label{#1 \@currentlabel}{#2}}
-\newcommand\sref@label@id[1]{%
+\newrobustcmd\sreflabel[2]{\sref@label{#1 \@currentlabel}{#2}}
+\newrobustcmd\sref@label@id[1]{%
 \ifx\sref@id\@empty%
 \relax%
 \else%
@@ -105,7 +130,7 @@
 \newrobustcmd\sref@hlink[3][]{%
 \edef\@linktext{#1}%
 \edef\@fallback{#3}%
-\@ifundefined{sref@#2@label}{%
+\ifcsundef{sref@#2@label}{%
 \ifx\@fallback\@empty% warn about undefined links and show a substitute
 \protect\G@refundefinedtrue\@latex@warning{reference #2 undefined}%
 \ifx\@linktext\@empty%
@@ -126,9 +151,9 @@
 \fi%
 }%
 }%
-\newcommand\sref@page@label[1]{p.~{#1}}
+\newrobustcmd\sref@page@label[1]{p.~{#1}}
 \newrobustcmd\sref@pageref[1]{%
-\@ifundefined{sref@#1@page}{%
+\ifcsundef{sref@#1@page}{%
 \protect\G@refundefinedtrue\@latex@warning{reference #1 undefined}\sref@page@label{??}%
 }{%
 \sref@hlink@ifh{sref@#1@target}{\sref@page@label{\@nameuse{sref@#1@page}}}%
@@ -136,10 +161,10 @@
 }%
 \newrobustcmd\sref@href[3][]{%
 \edef\@linktext{#1}%
-\@ifundefined{sref@#2@label}{%
+\ifcsundef{sref@#2@label}{%
 \protect\G@refundefinedtrue\@latex@warning{reference #2 undefined}??%
 }{%
-\@ifundefined{sref@#3@URI}{%
+\ifcsundef{sref@#3@URI}{%
 \protect\G@refundefinedtrue\@latex@warning{external refs of type  #3 undefined}??%
 }{%
 \edef\@uri{\@nameuse{sref@#3@URI}.pdf\#sref@#2@target}%
@@ -151,7 +176,8 @@
 \ifextrefs%
 \newrobustcmd\extref[3][]{%
 \def\theextref{\sref@href[#1]{#2@#3}{#2}}%
-\csname doextref@#2\endcsname%
+%\csname doextref@#2\endcsname%
+\csuse{doextref@#2}%
 }%
 \else%
 \newrobustcmd\extref[3][]{\sref[#1]{#3}}%
@@ -159,15 +185,17 @@
 \ifextrefs%
 \newrobustcmd\extpageref[3][]{%
 \def\theextref{\sref@pageref{#2@#3}}%
-\csname doextpageref@#2\endcsname%
+%\csname doextpageref@#2\endcsname%
+\csuse{doextpageref@#2}%
 }%
 \else%
 \newrobustcmd\extpageref[3][]{\spageref{#3}}%
 \fi%
-\newcommand\extrefstyle[2]{\expandafter\gdef\csname doextref@#1\endcsname{#2}}%
-\newcommand\extpagerefstyle[2]{\expandafter\gdef\csname doextpageref@#1\endcsname{#2}}%
+\newrobustcmd\extrefstyle[2]{\csgdef{doextref@#1}{#2}}%
+\newrobustcmd\extpagerefstyle[2]{\csgdef{doextpageref@#1}{#2}}%
 \newrobustcmd\inputrefs[2]{%
-\@namedef{sref@#1@URI}{#2}%
+%\@namedef{sref@#1@URI}{#2}%
+\csdef{sref@#1@URI}{#2}%
 \extrefstyle{#1}{\theextref}\extpagerefstyle{#1}{\theextref}%
 \makeatletter%
 \IfFileExists{#2.refs}{%
@@ -202,7 +230,7 @@
 }{%
 \end{eqnarray*}%
 }%
-\newcommand\withcite[2]{#2~\cite{#1}}%
+\newrobustcmd\withcite[2]{#2~\cite{#1}}%
 \newenvironment{withcitation}[1]{\def\citeit{\cite{#1}}}{}%
 \endinput
 %%
