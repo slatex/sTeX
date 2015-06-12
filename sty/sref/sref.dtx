@@ -29,7 +29,7 @@
 \floatstyle{boxed}
 \newfloat{exfig}{thp}{lop}
 \floatname{exfig}{Example}
-\newcommand\tracissue[1]{\cite{sTeX:online}, \hyperlink{http://trac.kwarc.info/sTeX/ticket/#1}{issue #1}}
+\newrobustcmd\tracissue[1]{\cite{sTeX:online}, \hyperlink{http://trac.kwarc.info/sTeX/ticket/#1}{issue #1}}
 \begin{document}\DocInput{sref.dtx}\end{document}
 %</driver>
 % \fi
@@ -143,7 +143,7 @@
 % styling the page reference. Redefining this will allows to customize this. The default
 % setting is
 % \begin{verbatim}
-% \newcommand\sref@page@label[1]{p.~{#1}}
+% \newrobustcmd\sref@page@label[1]{p.~{#1}}
 % \end{verbatim}
 %
 % \subsection{An API for Package Authors}\sreflabel{Section}{supackage-authors}
@@ -168,7 +168,7 @@
 % \addmetakey{sec}{short}
 % \addmetakey[black]{sec}{color}
 % \srefaddidkey[prefix=sec.]{sec}
-% \newcommand\mysection[2][]{\metasetkeys{#1}\sref@target\color{\sec@color}
+% \newrobustcmd\mysection[2][]{\metasetkeys{#1}\sref@target\color{\sec@color}
 % \section[\sec@short]{#2}\sref@label@id{Section \thesection}}
 % \end{verbatim}
 % \vspace*{-1.5em}
@@ -190,8 +190,8 @@
 %
 % \begin{exfig}
 % \begin{verbatim}
-% \newcommand\my@section@label[1]{Section~{#1}}
-% \newcommand\mysection[2][]{\metasetkeys{#1}\sref@target\color{\sec@color}
+% \newrobustcmd\my@section@label[1]{Section~{#1}}
+% \newrobustcmd\mysection[2][]{\metasetkeys{#1}\sref@target\color{\sec@color}
 % \section[\sec@short]{#2}\sref@label@id{\my@section@label\thesection}}
 % \end{verbatim}
 % \vspace*{-1.5em}
@@ -411,14 +411,21 @@ RequirePackage('metakeys');
 % stubs to make the error messages shut up.}
 % 
 % \begin{macro}{\sref}
+% First we declare two keys, so |\sref@linktext| and |\sref@fallback| are defined.
+% |\sref@part| will be globally defined when |\makeextrefs| is called.
 %    \begin{macrocode}
 %<*package>
 \addmetakey{sref}{linktext}
 \addmetakey{sref}{fallback}
-\newrobustcmd\sref[2][]{\metasetkeys{sref}{#1}%
-\@ifundefined{sref@part}%
-{\sref@hlink[\sref@linktext]{#2}{\sref@fallback}}%
-{\sref@hlink[\sref@linktext]{\sref@part @#2}{\sref@fallback}}\xspace}
+\newrobustcmd\sref[2][]{%
+  \metasetkeys{sref}{#1}%
+  \ifcsundef{sref@part}{%
+    \sref@hlink[\sref@linktext]{#2}{\sref@fallback}%
+  }{%
+    \sref@hlink[\sref@linktext]{\sref@part @#2}{\sref@fallback}%
+  }%
+  \xspace%
+}%
 %</package>
 %<*ltxml>
 sub withhash {'#';}
@@ -433,7 +440,13 @@ Tag('omdoc:oref',afterOpen=>\&numberIt,afterClose=>\&locateIt,autoClose=>1);
 %    \begin{macrocode}
 %<*package>
 \newrobustcmd\srefs[3][]{%
-\def\@test{#1}\ifx\@test\@empty\sref{#2} and \sref{#3}\else #1\fi}
+  \def\@test{#1}%
+  \ifx\@test\@empty%
+    \sref{#2} and \sref{#3}%
+  \else%
+    #1%
+  \fi%
+}%
 %</package>
 %<*ltxml>
 DefConstructor('\srefs[]{}',
@@ -445,8 +458,14 @@ DefConstructor('\srefs[]{}',
 % \begin{macro}{\srefl}
 %    \begin{macrocode}
 %<*package>
-\newcommand\srefl[3][]{%
-\def\@test{#1}\ifx\@test\@empty\sref{#2} to \sref{#3}\else #1\fi}
+\newrobustcmd\srefl[3][]{%
+  \def\@test{#1}%
+  \ifx\@test\@empty%
+    \sref{#2} to \sref{#3}%
+  \else%
+    #1%
+  \fi%
+}%
 %</package>
 %<*ltxml>
 DefConstructor('\srefl[]{}',
@@ -458,8 +477,13 @@ DefConstructor('\srefl[]{}',
 % \begin{macro}{\spageref}
 %    \begin{macrocode}
 %<*package>
-\newcommand\spageref[1]{%
-\@ifundefined{sref@part}{\sref@pageref{#1}}{\sref@pageref{\sref@part @#1}}}
+\newrobustcmd\spageref[1]{%
+  \ifcsundef{sref@part}{%
+    \sref@pageref{#1}%
+  }{%
+    \sref@pageref{\sref@part @#1}%
+  }%
+}%
 %</package>
 %<*ltxml>
 DefConstructor('\spageref{}',
@@ -477,11 +501,35 @@ DefConstructor('\spageref{}',
 % \begin{macro}{\sref@*@ifh}
 %    \begin{macrocode}
 %<*package>
-\newif\ifhref\hreffalse
-\AtBeginDocument{\@ifpackageloaded{hyperref}{\hreftrue}{\hreffalse}}
-\newrobustcmd\sref@href@ifh[2]{\ifhref\href{#1}{#2}\else#2\fi}
-\newrobustcmd\sref@hlink@ifh[2]{\ifhref\hyperlink{#1}{#2}\else#2\fi}
-\newrobustcmd\sref@target@ifh[2]{\ifhref\hypertarget{#1}{#2}\else#2\fi}
+\newif\ifhref\hreffalse%
+\AtBeginDocument{%
+  \@ifpackageloaded{hyperref}{%
+    \hreftrue%
+  }{%
+    \hreffalse%
+  }%
+}%
+\newrobustcmd\sref@href@ifh[2]{%
+  \ifhref%
+    \href{#1}{#2}%
+  \else%
+    #2%
+  \fi%
+}%
+\newrobustcmd\sref@hlink@ifh[2]{%
+  \ifhref%
+    \hyperlink{#1}{#2}%
+  \else%
+    #2%
+  \fi%
+}%
+\newrobustcmd\sref@target@ifh[2]{%
+  \ifhref%
+    \hypertarget{#1}{#2}%
+  \else%
+    #2%
+  \fi%
+}%
 %    \end{macrocode}
 % \end{macro}
 % 
@@ -491,10 +539,14 @@ DefConstructor('\spageref{}',
 %   The next macro uses this and makes an target from the current |sref@id| declared by
 %   a |id| key.
 %    \begin{macrocode}
-\def\sref@target%
-{\ifx\sref@id\@empty\else%
-\edef\@target{sref@\@ifundefined{sref@part}{}{\sref@part @}\sref@id @target}
-\sref@target@ifh\@target{}\fi}
+\def\sref@target{%
+  \ifx\sref@id\@empty%
+    \relax%
+  \else%
+    \edef\@target{sref@\ifcsundef{sref@part}{}{\sref@part @}\sref@id @target}%
+    \sref@target@ifh\@target{}%
+  \fi%
+}%
 %    \end{macrocode}
 % \end{macro}
 %
@@ -504,21 +556,28 @@ DefConstructor('\spageref{}',
 % \begin{macro}{\@sref@def}
 %   This macro stores the value of its last argument in a custom macro for reference.
 %    \begin{macrocode}
-\newcommand\@sref@def[3]{\expandafter\gdef\csname sref@#1@#2\endcsname{#3}}
+%\newrobustcmd\@sref@def[3]{\expandafter\gdef\csname sref@#1@#2\endcsname{#3}}
+\newrobustcmd\@sref@def[3]{\csgdef{sref@#1@#2}{#3}}
 %    \end{macrocode}
 % \end{macro}
 %
 % The next step is to set up a file to which the references are written, this is normally
 % the |.aux| file, but if the |extref| option is set, we have to use an |.ref| file. 
 %    \begin{macrocode}
-\ifextrefs\newwrite\refs@file\else\def\refs@file{\@auxout}\fi
+\ifextrefs%
+  \newwrite\refs@file%
+\else%
+  \def\refs@file{\@auxout}%
+\fi%
 %    \end{macrocode}
 %
 % \begin{macro}{\sref@def}
 %    This macro writes an |\@sref@def| command to the current aux file and also executes it. 
 %    \begin{macrocode}
-\newcommand\sref@def[3]{%\@sref@def{#1}{#2}{#3}%
-\protected@write\refs@file{}{\string\@sref@def{#1}{#2}{#3}}}
+\newrobustcmd\sref@def[3]{%
+  %\@sref@def{#1}{#2}{#3}%
+  \protected@write\refs@file{}{\string\@sref@def{#1}{#2}{#3}}%
+}%
 %    \end{macrocode}
 % \end{macro}
 %
@@ -531,12 +590,17 @@ DefConstructor('\spageref{}',
 %   used for showing metadata via the |showmeta| option of the |metakeys| package.
 %    \begin{macrocode}
 \addmetakey{srefaddidkey}{prefix}
-\newcommand\srefaddidkey[2][]{\metasetkeys{srefaddidkey}{#1}%
-\@metakeys@ext@clear@keys{#2}{sref@id}{}% id cannot have a default
-\metakeys@ext@clear@keys{#2}{id}{}%
-\metakeys@ext@showkeys{#2}{id}%
-\define@key{#2}{id}{\edef\sref@id{\srefaddidkey@prefix ##1}%
-\expandafter\edef\csname #2@id\endcsname{\srefaddidkey@prefix ##1}}}
+\newrobustcmd\srefaddidkey[2][]{%
+  \metasetkeys{srefaddidkey}{#1}%
+  \@metakeys@ext@clear@keys{#2}{sref@id}{}% id cannot have a default
+  \metakeys@ext@clear@keys{#2}{id}{}%
+  \metakeys@ext@showkeys{#2}{id}%
+  \define@key{#2}{id}{%
+    \edef\sref@id{\srefaddidkey@prefix ##1}%
+   %\expandafter\edef\csname #2@id\endcsname{\srefaddidkey@prefix ##1}%
+    \csedef{#2@id}{\srefaddidkey@prefix ##1}%
+  }%
+}%
 %</package>
 %    \end{macrocode}
 % \end{macro}
@@ -546,11 +610,13 @@ DefConstructor('\spageref{}',
 % \begin{macro}{\makeextrefs}
 %    \begin{macrocode}
 %<*package>
-\newcommand\makeextrefs[1]{\gdef\sref@part{#1}%
-\makeatletter
-\IfFileExists{\jobname.refs}{\input{\jobname.refs}}{}%
-\immediate\openout\refs@file=\jobname.refs
-\makeatother}
+\newrobustcmd\makeextrefs[1]{%
+  \gdef\sref@part{#1}%
+  \makeatletter%
+  \IfFileExists{\jobname.refs}{\input{\jobname.refs}}{}%
+  \immediate\openout\refs@file=\jobname.refs
+  \makeatother%
+}%
 %</package>
 %<ltxml>DefConstructor('\makeextrefs{}','');
 %    \end{macrocode}
@@ -560,9 +626,10 @@ DefConstructor('\spageref{}',
 %   The |\sref@label| macro writes a label definition to the auxfile. 
 %    \begin{macrocode}
 %<*package>
-\newcommand\sref@label[2]{%
-\sref@def{\@ifundefined{sref@part}{}{\sref@part @}#2}{page}{\thepage}%
-\sref@def{\@ifundefined{sref@part}{}{\sref@part @}#2}{label}{#1}}
+\newrobustcmd\sref@label[2]{%
+  \sref@def{\ifcsundef{sref@part}{}{\sref@part @}#2}{page}{\thepage}%
+  \sref@def{\ifcsundef{sref@part}{}{\sref@part @}#2}{label}{#1}%
+}%
 %</package>
 %    \end{macrocode}
 % \end{macro}
@@ -572,7 +639,7 @@ DefConstructor('\spageref{}',
 %   given in the first argument with {\LaTeX}'s |\@currentlabel|.
 %    \begin{macrocode}
 %<*package>
-\newcommand\sreflabel[2]{\sref@label{#1 \@currentlabel}{#2}}
+\newrobustcmd\sreflabel[2]{\sref@label{#1 \@currentlabel}{#2}}
 %</package>
 %    \end{macrocode}
 % \end{macro}
@@ -582,7 +649,13 @@ DefConstructor('\spageref{}',
 %   defined.
 %    \begin{macrocode}
 %<*package>
-\newcommand\sref@label@id[1]{\ifx\sref@id\@empty\else\sref@label{#1}{\sref@id}\fi}
+\newrobustcmd\sref@label@id[1]{%
+  \ifx\sref@id\@empty%
+    \relax%
+  \else%
+    \sref@label{#1}{\sref@id}%
+  \fi%
+}%
 %</package>
 %    \end{macrocode}
 % \end{macro}
@@ -599,18 +672,30 @@ DefConstructor('\spageref{}',
 %   object specified by \meta{label} otherwise.
 %    \begin{macrocode}
 %<*package>
-\newrobustcmd\sref@hlink[3][]{\edef\@linktext{#1}\edef\@fallback{#3}%
-\@ifundefined{sref@#2@label}% 
-{\ifx\@fallback\@empty% warn about undefined links and show a substitute
-\protect\G@refundefinedtrue\@latex@warning{reference #2 undefined}%
-\ifx\@linktext\@empty?#2?\else\@linktext\fi%
-\else%
-\protect\G@refundefinedtrue\@latex@warning{using fallback for undefined reference #2}%
-\@fallback%
-\fi}%
-{\edef\@link{\@nameuse{sref@#2@label}}% retrieve the reference label
-\ifx\@linktext\@empty\sref@hlink@ifh{sref@#2@target}{\@link}%
-\else\sref@hlink@ifh{sref@#2@target}{\@linktext}\fi}}
+\newrobustcmd\sref@hlink[3][]{%
+  \edef\@linktext{#1}%
+  \edef\@fallback{#3}%
+  \ifcsundef{sref@#2@label}{%
+    \ifx\@fallback\@empty% warn about undefined links and show a substitute
+      \protect\G@refundefinedtrue\@latex@warning{reference #2 undefined}%
+      \ifx\@linktext\@empty%
+        ?#2?%
+      \else%
+        \@linktext%
+      \fi%
+    \else%
+      \protect\G@refundefinedtrue\@latex@warning{using fallback for undefined reference #2}%
+      \@fallback%
+    \fi
+  }{%
+    \edef\@link{\@nameuse{sref@#2@label}}% retrieve the reference label
+    \ifx\@linktext\@empty%
+      \sref@hlink@ifh{sref@#2@target}{\@link}%
+    \else%
+      \sref@hlink@ifh{sref@#2@target}{\@linktext}%
+    \fi%
+  }%
+}%
 %</package> 
 %    \end{macrocode}
 % \end{macro}
@@ -619,7 +704,7 @@ DefConstructor('\spageref{}',
 %   This macro styles a page reference.
 %    \begin{macrocode}
 %<*package>
-\newcommand\sref@page@label[1]{p.~{#1}}
+\newrobustcmd\sref@page@label[1]{p.~{#1}}
 %</package> 
 %    \end{macrocode}
 % \end{macro}
@@ -629,9 +714,13 @@ DefConstructor('\spageref{}',
 %   generates a page reference.
 %    \begin{macrocode}
 %<*package>
-\newcommand\sref@pageref[1]{\@ifundefined{sref@#1@page}%
-{\protect\G@refundefinedtrue\@latex@warning{reference #1 undefined}\sref@page@label{??}}%
-{\sref@hlink@ifh{sref@#1@target}{\sref@page@label{\@nameuse{sref@#1@page}}}}}
+\newrobustcmd\sref@pageref[1]{%
+  \ifcsundef{sref@#1@page}{%
+    \protect\G@refundefinedtrue\@latex@warning{reference #1 undefined}\sref@page@label{??}%
+  }{%
+    \sref@hlink@ifh{sref@#1@target}{\sref@page@label{\@nameuse{sref@#1@page}}}%
+  }%
+}%
 %</package> 
 %    \end{macrocode}
 % \end{macro}
@@ -641,14 +730,20 @@ DefConstructor('\spageref{}',
 %   generates a hyperlinked reference.
 %    \begin{macrocode}
 %<*package>
-\newcommand\sref@href[3][]{\edef\@linktext{#1}%
-\@ifundefined{sref@#2@label}%
-{\protect\G@refundefinedtrue\@latex@warning{reference #2 undefined}??}%
-{\@ifundefined{sref@#3@URI}%
-{\protect\G@refundefinedtrue\@latex@warning{external refs of type  #3 undefined}??}%
-{\edef\@uri{\@nameuse{sref@#3@URI}.pdf\#sref@#2@target}
-\edef\@label{\ifx\@linktext\@empty\@nameuse{sref@#2@label}\else\@linktext\fi}
-\sref@href@ifh\@uri\@label}}}
+\newrobustcmd\sref@href[3][]{%
+  \edef\@linktext{#1}%
+  \ifcsundef{sref@#2@label}{%
+    \protect\G@refundefinedtrue\@latex@warning{reference #2 undefined}??%
+  }{%
+    \ifcsundef{sref@#3@URI}{%
+      \protect\G@refundefinedtrue\@latex@warning{external refs of type  #3 undefined}??%
+    }{%
+      \edef\@uri{\@nameuse{sref@#3@URI}.pdf\#sref@#2@target}%
+      \edef\@label{\ifx\@linktext\@empty\@nameuse{sref@#2@label}\else\@linktext\fi}%
+      \sref@href@ifh\@uri\@label%
+    }%
+  }%
+}%
 %</package> 
 %    \end{macrocode}
 % \end{macro}
@@ -660,12 +755,15 @@ DefConstructor('\spageref{}',
 %     to be implemented on the LaTeXML side.}
 %    \begin{macrocode}
 %<*package>
-\ifextrefs
-\newcommand\extref[3][]{\def\theextref{\sref@href[#1]{#2@#3}{#2}}%
-\csname doextref@#2\endcsname}
-\else
-\newcommand\extref[3][]{\sref[#1]{#3}}
-\fi
+\ifextrefs%
+  \newrobustcmd\extref[3][]{%
+    \def\theextref{\sref@href[#1]{#2@#3}{#2}}%
+    %\csname doextref@#2\endcsname%
+    \csuse{doextref@#2}%
+  }%
+\else%
+  \newrobustcmd\extref[3][]{\sref[#1]{#3}}%
+\fi%
 %</package>
 %<*ltxml>
 DefConstructor('\extref[]{}{}',
@@ -682,12 +780,15 @@ DefConstructor('\theextref','');
 %   to be implemented on the LaTeXML side.}
 %    \begin{macrocode}
 %<*package>
-\ifextrefs
-\newcommand\extpageref[3][]{\def\theextref{\sref@pageref{#2@#3}}%
-\csname doextpageref@#2\endcsname}
-\else
-\newcommand\extpageref[3][]{\spageref{#3}}
-\fi
+\ifextrefs%
+  \newrobustcmd\extpageref[3][]{%
+    \def\theextref{\sref@pageref{#2@#3}}%
+    %\csname doextpageref@#2\endcsname%
+    \csuse{doextpageref@#2}%
+  }%
+\else%
+  \newrobustcmd\extpageref[3][]{\spageref{#3}}%
+\fi%
 %</package>
 %<*ltxml>
 DefConstructor('\extpageref[]{}{}',
@@ -703,7 +804,8 @@ DefConstructor('\theextref','');
 %   which evaluates to \meta{the reference} |in bar|. This is used in the |\extref| macro.
 %    \begin{macrocode}
 %<*package>
-\newcommand\extrefstyle[2]{\expandafter\gdef\csname doextref@#1\endcsname{#2}}
+%\newrobustcmd\extrefstyle[2]{\expandafter\gdef\csname doextref@#1\endcsname{#2}}%
+\newrobustcmd\extrefstyle[2]{\csgdef{doextref@#1}{#2}}%
 %</package>
 %<*ltxml>
 DefConstructor('\extrefstyle{}{}',"");
@@ -715,7 +817,8 @@ DefConstructor('\extrefstyle{}{}',"");
 %   This is analogous to |\extrefstyle|
 %    \begin{macrocode}
 %<*package>
-\newcommand\extpagerefstyle[2]{\expandafter\gdef\csname doextpageref@#1\endcsname{#2}}
+%\newrobustcmd\extpagerefstyle[2]{\expandafter\gdef\csname doextpageref@#1\endcsname{#2}}%
+\newrobustcmd\extpagerefstyle[2]{\csgdef{doextpageref@#1}{#2}}%
 %</package>
 %<*ltxml>
 DefConstructor('\extrefstyle{}{}',"");
@@ -728,14 +831,18 @@ DefConstructor('\extrefstyle{}{}',"");
 %   |\makeatother|) otherwise an error message is displayed.
 %    \begin{macrocode}
 %<*package>
-\newcommand\inputrefs[2]{%
-\@namedef{sref@#1@URI}{#2}%
-\extrefstyle{#1}{\theextref}\extpagerefstyle{#1}{\theextref}%
-\makeatletter%
-\IfFileExists{#2.refs}{\message{Reading external references: #2.refs}\input{#2.refs}}
-             {\PackageError{sref}{Reference file #2.refs does not exist}
-                                 {Maybe you have to run LaTeX on #2.tex first}}
-\makeatother}
+\newrobustcmd\inputrefs[2]{%
+ %\@namedef{sref@#1@URI}{#2}%
+  \csdef{sref@#1@URI}{#2}%
+  \extrefstyle{#1}{\theextref}\extpagerefstyle{#1}{\theextref}%
+  \makeatletter%
+  \IfFileExists{#2.refs}{%
+    \message{Reading external references: #2.refs}\input{#2.refs}%
+  }{%
+    \PackageError{sref}{Reference file #2.refs does not exist}%
+    {Maybe you have to run LaTeX on #2.tex first}}%
+  \makeatother%
+}%
 %</package>
 %<*ltxml>
 DefConstructor('\inputrefs{}{}','');
@@ -748,12 +855,23 @@ DefConstructor('\inputrefs{}{}','');
 % \begin{environment}{sequation}
 %    \begin{macrocode}
 %<*package>
-\srefaddidkey{sequation}
-\def\sref@sequation@heading{equation}
-\newenvironment{sequation}[1][]{\metasetkeys{sequation}{#1}% 
-\ifx\sref@id\@empty\begin{displaymath}\else% no id, using equation*
-\begin{equation}\sref@target\sref@label@id{\sref@sequation@heading~(\theequation)}\fi}
-{\ifx\sref@id\@empty\end{displaymath}\else\end{equation}\fi}
+\srefaddidkey{sequation}%
+\def\sref@sequation@heading{equation}%
+\newenvironment{sequation}[1][]{%
+  \metasetkeys{sequation}{#1}%
+  \ifx\sref@id\@empty%
+    \begin{displaymath}%
+  \else% no id, using equation*
+    \begin{equation}%
+    \sref@target\sref@label@id{\sref@sequation@heading~(\theequation)}%
+  \fi%
+}{%
+  \ifx\sref@id\@empty%
+    \end{displaymath}%
+  \else%
+    \end{equation}%
+  \fi%
+}%
 %</package>
 %<*ltxml>
 DefEnvironment('{sequation} OptionalKeyVals',
@@ -774,10 +892,14 @@ DefEnvironment('{sequation} OptionalKeyVals',
 % \begin{environment}{seqnarray}
 %    \begin{macrocode}
 %<*package>
-\newenvironment{seqnarray}[1][]%
-{\metasetkeys{sequation}{#1}\begin{eqnarray*}\sref@target%
-\sref@label@id{\sref@sequation@heading~(\theequation)}}
-{\end{eqnarray*}}
+\newenvironment{seqnarray}[1][]{%
+  \metasetkeys{sequation}{#1}%
+  \begin{eqnarray*}%
+  \sref@target%
+  \sref@label@id{\sref@sequation@heading~(\theequation)}%
+}{%
+  \end{eqnarray*}%
+}%
 %</package>
 %<*ltxml>
 DefMacro('\seqnarray OptionalKeyVals','\begin{eqnarray*}');
@@ -791,7 +913,7 @@ DefMacro('\endseqnarray','\end{eqnarray*}');
 % \begin{macro}{withcite}
 %    \begin{macrocode}
 %<*package>
-\newcommand\withcite[2]{#2~\cite{#1}}
+\newrobustcmd\withcite[2]{#2~\cite{#1}}%
 %</package>
 %<*ltxml>
 DefMacro('\withcite{}{}','\begin{withcitation}{#1}#2\citeit\end{withcitation}');
@@ -802,7 +924,7 @@ DefMacro('\withcite{}{}','\begin{withcitation}{#1}#2\citeit\end{withcitation}');
 % \begin{environment}{withcitation}
 %    \begin{macrocode}
 %<*package>
-\newenvironment{withcitation}[1]{\def\citeit{\cite{#1}}}{}
+\newenvironment{withcitation}[1]{\def\citeit{\cite{#1}}}{}%
 %</package>
 %<*ltxml>
 DefConstructor('\citeit',"<omdoc:citation/> ",
@@ -865,7 +987,7 @@ DefEnvironment('{withcitation}{}',
 % LocalWords:  makeextrefs inputrefs extref foo Patashnik withcite biblatex10 sref@pagref
 % LocalWords:  extrefstyle theextref theextref displaymath hrule impl ednote sref@ifundef
 % LocalWords:  printbibliography newif ifextrefs extrefsfalse extrefstrue srefs
-% LocalWords:  Crossreferencing newcommand ifundefined ifx srefl xref ifh gdef
+% LocalWords:  Crossreferencing newrobustcmd ifundefined ifx srefl xref ifh gdef
 % LocalWords:  ifhref hreffalse ifpackageloaded hreftrue expandafter jobname doextpageref
 % LocalWords:  jobname csname endcsname newwrite auxout makeatletter openout
 % LocalWords:  makeatother auxfile nameuse doextref namedef newenvironment NeedsTeXFormat
