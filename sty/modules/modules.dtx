@@ -735,20 +735,6 @@
 % may be an avenue of future development see~\cite[issue \#1522]{sTeX:online} for a
 % discussion.
 % 
-% \subsection{Module Signatures loaded even if Modules are}\label{sec:limitations:sms2}
-% 
-% Currently, the module signature \meta{filepath}|.sms| is loaded even if
-% \meta{filepath}|.tex| has already been loaded. The Problem is that the |\input|
-% |\inputref| macros do not register the files. I guess, for |\input| we may not want
-% that, but for |\inputref| we should; and maybe we should also have a registering variant
-% |\rinput| that does, then we can leave the choice to the user. 
-%
-% \subsection{Only one level of path simplification}\label{sec:limitations:simpl}
-%
-% It seems that module simplification only covers one level, in particular |foo/bar/../..|
-% is only simplified to |foo/..|, which is not enough in practice. As a consequence,
-% module signatures are loaded unnecessary in the presence of relative paths. 
-%
 % \subsection{Qualified Imports}\label{sec:limitations:qualified-imports}
 % 
 % In an earlier version of the \texttt{modules} package we used the \texttt{usesqualified}
@@ -1016,7 +1002,7 @@
 %
 % \begin{macro}{\@importmodule} 
 %   |\@importmodule[|\meta{file(with path, without extension)}|]{|\meta{module}|}{|\meta{extension}|}| loads
-%   \meta{file}|.|\meta{extension} (if it is given) and activates the module \meta{module}. First |\@load| will store the base file name with full path, then check if |\module@|\meta{module}|@path| is defined. If this macro is defined, that means the module has been already loaded, otherwise we load it.\ednote{Jinbo: try to implement package |cpath| in |@path|.} The actual loading will be executed by |\requiremodules|.
+%   \meta{file}|.|\meta{extension} (if it is given) and activates the module \meta{module}. First |\@load| will store the base file name with full path, then check if |\module@|\meta{module}|@path| is defined. If this macro is defined, that means the module has been already loaded, otherwise we load it. The actual loading will be executed by |\requiremodules|.
 %    \begin{macrocode}
 \newcommand\@importmodule[3][]{%
   \@importingtrue% to shut up macros while in the group opened here
@@ -1032,11 +1018,11 @@
         \relax% do nothing, it has already been loaded, else signal an error
 	  }{%
         \PackageError{modules}
-	    {Module Name Clash\MessageBreak
+        {{Module Name Clash\MessageBreak
         A module with name #2 was already loaded under the path "\@path"\MessageBreak
         The imported path "\@load" is probably a different module with the\MessageBreak
         same name; this is dangerous -- not importing}%
-	    {Check whether the Module name is correct}%
+        {Check whether the Module name is correct}}%
       }%
     }%
   \fi%
@@ -1200,71 +1186,75 @@
 % We use a switch to keep track of the local optional argument. We initialize the switch
 % to false and set all the keys that have been provided as arguments: |name|, |local|.
 %    \begin{macrocode}
-\@symdeflocalfalse\metasetkeys{symdef}{#1}%
+  \@symdeflocalfalse%
+  \metasetkeys{symdef}{#1}%
 %    \end{macrocode}
 % First, using |\mod@newcommand| we initialize the intermediate macro
 % |\module@|\meta{sym}|@pres@|, the one that can be extended with |\symvariant|
 %    \begin{macrocode}
-\expandafter\mod@newcommand\csname modules@#2@pres@\endcsname[#3]{#4}%
+  \expandafter\mod@newcommand\csname modules@#2@pres@\endcsname[#3]{#4}%
 %    \end{macrocode}
 % and then we define the actual semantic macro, which when invoked with an optional
 % argument \meta{opt} calls |\modules@|\meta{sym}|@pres@|\meta{opt} provided by the
 % |\symvariant| macro.
 %    \begin{macrocode}
-\expandafter\mod@newcommand\csname #2\endcsname[1][]%
-{\csname modules@#2@pres@##1\endcsname}%
+  \expandafter\mod@newcommand\csname #2\endcsname[1][]%
+  {\csname modules@#2@pres@##1\endcsname}%
 %    \end{macrocode}
 % Finally, we prepare the internal macro to be used in the |\symref| call.
 %    \begin{macrocode}
-\expandafter\@mod@nc\csname mod@symref@#2\expandafter\endcsname\expandafter%
-{\expandafter\mod@termref\expandafter{\mod@id}{#2}{##1}}%
+  \expandafter\@mod@nc\csname mod@symref@#2\expandafter\endcsname\expandafter%
+  {\expandafter\mod@termref\expandafter{\mod@id}{#2}{##1}}%
 %    \end{macrocode}
 % We check if the switch for the local scope is set: if it is we are done, since this
 % function has a local scope. Similarly, if we are not inside a module, which we could
 % export from.  
 %    \begin{macrocode}
-\if@symdeflocal\else%
-\@ifundefined{mod@id}{}{%
+  \if@symdeflocal%
+  \else%
+    \@ifundefined{mod@id}{}{%
 %    \end{macrocode}
 % Otherwise, we add three functions to the module's pool of defined macros using
 % |\g@addto@macro|. We first add the definition of the intermediate function
 % |\modules@|\meta{sym}|@pres@|.
 %    \begin{macrocode}
-\expandafter\g@addto@macro\this@module%
-{\expandafter\mod@newcommand\csname modules@#2@pres@\endcsname[#3]{#4}}%
+      \expandafter\g@addto@macro\this@module%
+      {\expandafter\mod@newcommand\csname modules@#2@pres@\endcsname[#3]{#4}}%
 %    \end{macrocode}
 % Then we add add the definition of |\|\meta{sym}  which calls the intermediate
 % function and handles the optional argument.
 %    \begin{macrocode}
-\expandafter\g@addto@macro\this@module%
-{\expandafter\mod@newcommand\csname #2\endcsname[1][]%
-{\csname modules@#2@pres@##1\endcsname}}%
+      \expandafter\g@addto@macro\this@module%
+      {\expandafter\mod@newcommand\csname #2\endcsname[1][]%
+      {\csname modules@#2@pres@##1\endcsname}}%
 %    \end{macrocode}
 % We also add |\mod@symref@|\meta{sym} macro to the macro pool so that the |\symref| macro
 % can pick it up.
 %    \begin{macrocode}
-\expandafter\g@addto@macro\csname  module@defs@\mod@id\expandafter\endcsname\expandafter%
-{\expandafter\@mod@nc\csname mod@symref@#2\expandafter\endcsname\expandafter%
-{\expandafter\mod@termref\expandafter{\mod@id}{#2}{##1}}}%
+      \expandafter\g@addto@macro\csname  module@defs@\mod@id\expandafter\endcsname\expandafter%
+      {\expandafter\@mod@nc\csname mod@symref@#2\expandafter\endcsname\expandafter%
+      {\expandafter\mod@termref\expandafter{\mod@id}{#2}{##1}}}%
 %    \end{macrocode}
 % Finally, using |\g@addto@macro| we add the two functions to the qualified version of the
 % module if the |qualifiedimports| option was set.
 %    \begin{macrocode}
-\ifmod@qualified%
-\expandafter\g@addto@macro\this@qualified@module%
-{\expandafter\mod@newcommand\csname modules@#2@pres@qualified\endcsname[#3]{#4}}%
-\expandafter\g@addto@macro\this@qualified@module%
-{\expandafter\def\csname#2atqualified\endcsname{\csname modules@#2@pres@qualified\endcsname}}%
-\fi}% mod@qualified
-\fi% symdeflocal
+      \ifmod@qualified%
+        \expandafter\g@addto@macro\this@qualified@module%
+        {\expandafter\mod@newcommand\csname modules@#2@pres@qualified\endcsname[#3]{#4}}%
+        \expandafter\g@addto@macro\this@qualified@module%
+        {\expandafter\def\csname#2@qualified\endcsname{\csname modules@#2@pres@qualified\endcsname}}%
+      \fi%
+    }% mod@qualified
+  \fi% symdeflocal
 %    \end{macrocode}
 % So now we only need to show the data in the symdef, if the options allow. 
 %    \begin{macrocode}
-\ifmod@show
-\ifx\symdef@display\st@flow\else{\noindent\stDMemph{\symdef@type} #2:}\fi%
-\ifx\symdef@title\@empty~\else~(\stDMemph{\symdef@title})\par\fi
-\fi}% mod@show
-\def\symdef@type{Symbol}
+  \ifmod@show%
+    \ifx\symdef@display\st@flow\else{\noindent\stDMemph{\symdef@type} #2:}\fi%
+    \ifx\symdef@title\@empty~\else~(\stDMemph{\symdef@title})\par\fi%
+  \fi%
+}% mod@show
+\def\symdef@type{Symbol}%
 %    \end{macrocode}
 % \end{macro}
 %
@@ -1276,16 +1266,20 @@
 %   is called by the macro |\|\meta{sym}|[|\meta{var}|]| induced by the
 %   |\symdef|.\ednote{MK@DG: this needs to be implemented in LaTeXML}
 %    \begin{macrocode}
-\def\symvariant#1{\@ifnextchar[{\@symvariant{#1}}{\@symvariant{#1}[0]}}
+\def\symvariant#1{%
+  \@ifnextchar[{\@symvariant{#1}}{\@symvariant{#1}[0]}%
+}%
 \def\@symvariant#1[#2]#3#4{%
-\expandafter\mod@newcommand\csname modules@#1@pres@#3\endcsname[#2]{#4}%
+  \expandafter\mod@newcommand\csname modules@#1@pres@#3\endcsname[#2]{#4}%
 %    \end{macrocode}
 % and if we are in a named module, then we need to export the function
 % |\modules@|\meta{sym}|@pres@|\meta{opt} just as we have done that in |\symdef|.
 %    \begin{macrocode}
-\@ifundefined{mod@id}{}{%
-\expandafter\g@addto@macro\this@module%
-{\expandafter\mod@newcommand\csname modules@#1@pres@#3\endcsname[#2]{#4}}}}%
+  \@ifundefined{mod@id}{}{%
+    \expandafter\g@addto@macro\this@module%
+    {\expandafter\mod@newcommand\csname modules@#1@pres@#3\endcsname[#2]{#4}}%
+  }%
+}%
 %    \end{macrocode}
 % \end{macro}
 %
@@ -1310,12 +1304,15 @@
 % \subsection{Defining Math Operators}\label{sec:impl:defmathop}
 %
 % \begin{macro}{\DefMathOp} 
-% \ednote{MK@MK,DG: DefMathOp needs to be documented above, what can we do with it? }
+% |\DefMathOp[|\meta{key pair}|]{definition}| will take 2 arguments. ||\meta{key pair}|| should be something like |[name=...]|, for example, |[name=equal]|. Though |\setkeys|, |\defmathop@name| will be set. Further definition will be done by |\symdef|.
 %    \begin{macrocode}
-\define@key{DefMathOp}{name}{\def\defmathop@name{#1}}%
+\define@key{DefMathOp}{name}{%
+  \def\defmathop@name{#1}%
+}%
 \newcommand\DefMathOp[2][]{%
-\setkeys{DefMathOp}{#1}%
-\symdef[#1]{\defmathop@name}{#2}}%
+  \setkeys{DefMathOp}{#1}%
+  \symdef[#1]{\defmathop@name}{#2}%
+}%
 %    \end{macrocode}
 % \end{macro}
 %
@@ -1339,27 +1336,33 @@
 %    \begin{macrocode}
 \addmetakey{symtest}{name}%
 \addmetakey{symtest}{variant}%
-\newcommand\symtest[3][]{\if@importing\else%
-\metasetkeys{symtest}{#1}%
-\par\noindent \textbf{Symbol}~%
-\ifx\symtest@name\@empty\texttt{#2}\else\texttt{\symtest@name}\fi%
-\ifx\symtest@variant\@empty\else\ (variant \texttt{\symtest@variant})\fi%
-\ with semantic macro %
-\texttt{\textbackslash #2\ifx\symtest@variant\@empty\else[\symtest@variant]\fi}%
-: used e.g. in \ensuremath{#3}%
-\fi}
+\newcommand\symtest[3][]{%
+  \if@importing%
+  \else%
+    \metasetkeys{symtest}{#1}%
+    \par\noindent \textbf{Symbol}~%
+    \ifx\symtest@name\@empty\texttt{#2}\else\texttt{\symtest@name}\fi%
+    \ifx\symtest@variant\@empty\else\ (variant \texttt{\symtest@variant})\fi%
+    \ with semantic macro %
+    \texttt{\textbackslash #2\ifx\symtest@variant\@empty\else[\symtest@variant]\fi}%
+    : used e.g. in \ensuremath{#3}%
+  \fi%
+}%
 %    \end{macrocode}
 % \end{macro}
 % 
 % \begin{macro}{\abbrtest}
 %    \begin{macrocode}
 \addmetakey{abbrtest}{name}%
-\newcommand\abbrtest[3][]{\if@importing\else%
-\metasetkeys{abbrtest}{#1}%
-\par\noindent \textbf{Abbreviation}~%
-\ifx\abbrtest@name\@empty\texttt{#2}\else\texttt{\abbrtest@name}\fi%
-: used e.g. in \ensuremath{#3}%
-\fi}
+\newcommand\abbrtest[3][]{%
+  \if@importing%
+  \else%
+    \metasetkeys{abbrtest}{#1}%
+    \par\noindent \textbf{Abbreviation}~%
+    \ifx\abbrtest@name\@empty\texttt{#2}\else\texttt{\abbrtest@name}\fi%
+    : used e.g. in \ensuremath{#3}%
+  \fi%
+}%
 %    \end{macrocode}
 % \end{macro}
 % 
@@ -1370,12 +1373,17 @@
 \def\mod@true{true}%
 \addmetakey[false]{termdef}{local}%
 \addmetakey{termdef}{name}%
-\newcommand\termdef[3][]{\metasetkeys{termdef}{#1}%
-\expandafter\mod@newcommand\csname#2\endcsname[0]{#3\xspace}%
-\ifx\termdef@local\mod@true\else%
-\@ifundefined{mod@id}{}{\expandafter\g@addto@macro\this@module%
-{\expandafter\mod@newcommand\csname#2\endcsname[0]{#3\xspace}}}%
-\fi}
+\newcommand\termdef[3][]{%
+  \metasetkeys{termdef}{#1}%
+  \expandafter\mod@newcommand\csname#2\endcsname[0]{#3\xspace}%
+  \ifx\termdef@local\mod@true%
+  \else%
+    \@ifundefined{mod@id}{}{%
+      \expandafter\g@addto@macro\this@module%
+      {\expandafter\mod@newcommand\csname#2\endcsname[0]{#3\xspace}}%
+    }%
+  \fi%
+}%
 %    \end{macrocode}
 % \end{macro}
 %
@@ -1393,27 +1401,31 @@
 %   otherwise we give a warning.\ednote{MK: this should be rethought, in particular the
 %   local reference does not work!}
 %    \begin{macrocode}
-\def\mod@termref#1#2#3{\def\@test{#3}%
-\@ifundefined{module@#1@path}%
-{\protect\G@refundefinedtrue%
-\@latex@warning{\protect\termref with unidentified cd "#1": the cd key must reference an active module}%
-\def\@label{sref@#2 @target}}%
-{\def\@label{sref@#2@#1@target}}%
-\ifx\csname module@#1@path\endcsname\@empty% local reference
-\sref@hlink@ifh{\@label}{\ifx\@test\@empty #2\else #3\fi}\else%
-\def\@uri{\csname module@#1@path\endcsname.pdf\#\@label}%
-\sref@href@ifh{\@uri}{\ifx\@test\@empty #2\else #3\fi}\fi}
+\def\mod@termref#1#2#3{%
+  \def\@test{#3}%
+  \@ifundefined{module@#1@path}{%
+    \protect\G@refundefinedtrue%
+    \@latex@warning{\protect\termref with unidentified cd "#1": the cd key must reference an active module}%
+    \def\@label{sref@#2 @target}%
+  }%
+  {\def\@label{sref@#2@#1@target}}%
+  \ifx\csname module@#1@path\endcsname\@empty% local reference
+    \sref@hlink@ifh{\@label}{\ifx\@test\@empty #2\else #3\fi}%
+  \else%
+    \def\@uri{\csname module@#1@path\endcsname.pdf\#\@label}%
+    \sref@href@ifh{\@uri}{\ifx\@test\@empty #2\else #3\fi}%
+  \fi%
+}%
 %    \end{macrocode}
 % \end{macro}
 %
 % \subsection{Dealing with Multiple Files}\label{sec:impl:multiple}
 %
 % Before we can come to the functionality we want to offer, we need some auxiliary
-% functions that deal with path names. \ednote{Jinbo: This will be implemented in |@importmodule|}
+% functions that deal with path names. \ednote{Jinbo: This will be implemented in |@importmodule|, we probably don't need this anymore.}
 % 
 % \begin{macro}{\mod@canonicalize}
-%   the path simplifier |\mod@canonicalize| is not implemented at the moment\ednote{MK:
-%   Jinbo's task; integrate it somehow}
+%   the path simplifier |\mod@canonicalize| is not implemented at the moment
 %    \begin{macrocode}
 \newcommand\mod@canonicalize[1]{#1}
 %    \end{macrocode}
@@ -1436,6 +1448,15 @@
 % \makeatother
 %
 % \begin{macro}{\defpath}
+%  |\defpath[optional argument]{macro name}{base path}| defines a new macro which can take another path to formal one integrated path. For example, |\MathHub| in every |localpaths.tex| is defined as:
+% \begin{center}
+% |\defpath{MathHub}{/path/to/localmh/MathHub}|
+% \end{center}
+% then we can use |\MathHub| to form other paths, for example, 
+% \begin{center}
+% |\MathHub{source/smglom/sets}|
+% \end{center}
+%  will generate |/path/to/localmh/MathHub/source/smglom/sets|.
 %    \begin{macrocode}
 \newcommand\defpath[3][]{%
   \expandafter\newcommand\csname #2\endcsname[1]{#3/##1}%
@@ -1514,15 +1535,26 @@
 %   Then we make a convenience macro for the view heading. This can be customized. 
 %    \begin{macrocode} 
 \newcounter{view}[section]
-\newcommand\view@heading[4]{\if@importing\else%
-\stepcounter{view}%
-\edef\@display{#3}\edef\@title{#4}%
-\noindent\ifx\@display\st@flow\else
-{\textbf{View} {\thesection.\theview} from \textsf{#1} to \textsf{#2}}%
-\sref@label@id{View \thesection.\theview}%
-\ifx\@title\@empty\quad\else\quad(\@title)\fi%
-\par\noindent%
-\fi\ignorespaces\fi}%ifmod@show
+\newcommand\view@heading[4]{%
+  \if@importing%
+  \else%
+    \stepcounter{view}%
+    \edef\@display{#3}\edef\@title{#4}%
+    \noindent%
+      \ifx\@display\st@flow%
+      \else%
+        {\textbf{View} {\thesection.\theview} from \textsf{#1} to \textsf{#2}}%
+        \sref@label@id{View \thesection.\theview}%
+        \ifx\@title\@empty%
+          \quad%
+        \else%
+          \quad(\@title)%
+        \fi%
+        \par\noindent%
+      \fi%
+      \ignorespaces%
+  \fi%
+}%ifmod@show
 %    \end{macrocode}
 % \end{macro}
 %
@@ -1531,11 +1563,16 @@
 %   module signatures) for module bookkeeping and adds presentation (a heading and a box)
 %   if the |showmods| option is set.
 %    \begin{macrocode}
-\newenvironment{view}[3][]%
-{\metasetkeys{view}{#1}\sref@target%
-\begin{@view}{#2}{#3}\view@heading{#2}{#3}{\view@display}{\view@title}}
-{\end{@view}\ignorespaces}
-\ifmod@show\surroundwithmdframed{view}\fi
+\newenvironment{view}[3][]{%
+  \metasetkeys{view}{#1}%
+  \sref@target%
+  \begin{@view}{#2}{#3}%
+  \view@heading{#2}{#3}{\view@display}{\view@title}%
+}{%
+  \end{@view}%
+  \ignorespaces%
+}%
+\ifmod@show\surroundwithmdframed{view}\fi%
 %    \end{macrocode}
 % \end{environment}
 %
@@ -1543,20 +1580,24 @@
 %   The |@view| does the actual bookkeeping at the module level.
 %    \begin{macrocode}
 \newenvironment{@view}[2]{%from, to
-\@importmodule[\view@from]{#1}{\view@ext}%
-\@importmodule[\view@to]{#2}{\view@ext}}
-{}
+  \@importmodule[\view@from]{#1}{\view@ext}%
+  \@importmodule[\view@to]{#2}{\view@ext}%
+}{}%
 %    \end{macrocode}
 % \end{environment}
 % 
 % \begin{environment}{viewsketch}
 %   The |viewsketch| environment behaves like |view|, but only has text contents.
 %    \begin{macrocode}
-\newenvironment{viewsketch}[3][]%
-{\metasetkeys{view}{#1}\sref@target%
-\begin{@view}{#2}{#3}\view@heading{#2}{#3}{\view@display}{\view@title}}
-{\end{@view}}
-\ifmod@show\surroundwithmdframed{viewsketch}\fi
+\newenvironment{viewsketch}[3][]{%
+  \metasetkeys{view}{#1}%
+  \sref@target%
+  \begin{@view}{#2}{#3}%
+  \view@heading{#2}{#3}{\view@display}{\view@title}%
+}{%
+  \end{@view}%
+}%
+\ifmod@show\surroundwithmdframed{viewsketch}\fi%
 %    \end{macrocode}
 % \end{environment}
 %
@@ -1573,7 +1614,7 @@
 \addmetakey{importmhmodule}{repos}% saves the repo's path. E.g: smglom/numberfield
 \addmetakey{importmhmodule}{path}% saves the module name. E.g: naturalnumbers
 \addmetakey[sms]{importmhmodule}{ext}% saves the extension: E.g: tex
-\addmetakey[false]{importmhmodule}{conservative}[true]
+\addmetakey[false]{importmhmodule}{conservative}[true]%
 \newcommand\importmhmodule[2][]{%
   \metasetkeys{importmhmodule}{#1}%
   \ifx\importmhmodule@path\@empty% if module name is not set
@@ -1703,10 +1744,15 @@
 % \begin{environment}{mhview}
 %   the MathHub version
 %    \begin{macrocode}
-\newenvironment{mhview}[3][]% keys, from, to
-{\metasetkeys{mhview}{#1}\sref@target%
-\begin{@mhview}{#2}{#3}\view@heading{#2}{#3}{\mhview@display}{\mhview@title}}
-{\end{@mhview}\ignorespaces}
+\newenvironment{mhview}[3][]{% keys, from, to
+  \metasetkeys{mhview}{#1}%
+  \sref@target%
+  \begin{@mhview}{#2}{#3}%
+  \view@heading{#2}{#3}{\mhview@display}{\mhview@title}%
+}{%
+  \end{@mhview}%
+  \ignorespaces%
+}%
 \ifmod@show\surroundwithmdframed{mhview}\fi
 %    \end{macrocode}
 % \end{environment}
@@ -1715,19 +1761,24 @@
 %   The |@mhview| does the actual bookkeeping at the module level.
 %    \begin{macrocode}
 \newenvironment{@mhview}[2]{%from, to
-\importmhmodule[repos=\mhview@fromrepos,path=\mhview@frompath,ext=\mhview@ext]{#1}%
-\importmhmodule[repos=\mhview@torepos,path=\mhview@topath,ext=\mhview@ext]{#2}}
-{}
+  \importmhmodule[repos=\mhview@fromrepos,path=\mhview@frompath,ext=\mhview@ext]{#1}%
+  \importmhmodule[repos=\mhview@torepos,path=\mhview@topath,ext=\mhview@ext]{#2}%
+}{}%
 %    \end{macrocode}
 % \end{environment}
 % 
 % \begin{environment}{mhviewsketch}
 %   The |mhviewsketch| environment behaves like |mhview|, but only has text contents.
 %    \begin{macrocode}
-\newenvironment{mhviewsketch}[3][]%
-{\metasetkeys{mhview}{#1}\sref@target%
-\begin{@mhview}{#2}{#3}\view@heading{#2}{#3}{\mhview@display}{\mhview@title}}
-{\end{@mhview}\ignorespaces}
+\newenvironment{mhviewsketch}[3][]{%
+  \metasetkeys{mhview}{#1}%
+  \sref@target%
+  \begin{@mhview}{#2}{#3}%
+  \view@heading{#2}{#3}{\mhview@display}{\mhview@title}%
+}{%
+  \end{@mhview}%
+  \ignorespaces%
+}%
 \ifmod@show\surroundwithmdframed{mhviewsketch}\fi
 %    \end{macrocode}
 % \end{environment}
@@ -1736,7 +1787,11 @@
 %   The |\obligation| element does not do anything yet on the latexml
 %   side.\ednote{document above}
 %    \begin{macrocode}
-\newcommand\obligation[3][]{\if@importing\else Axiom #2 is proven by \sref{#3}\fi}
+\newcommand\obligation[3][]{%
+  \if@importing%
+  \else Axiom #2 is proven by \sref{#3}%
+  \fi%
+}%
 %    \end{macrocode}
 % \end{macro}
 %
@@ -1744,10 +1799,13 @@
 %
 % \begin{macro}{\sinput*}
 %    \begin{macrocode}
-\newcommand\sinput[1]{\PackageError{modules}%
-  {The \protect\sinput macro is deprecated}{use the \protect\input instead!}}
+\newcommand\sinput[1]{%
+  \PackageError{modules}%
+  {The \protect\sinput macro is deprecated}{use the \protect\input instead!}%
+}%
 \newcommand\sinputref[1]{\PackageError{modules}%
-  {The \protect\sinputref macro is deprecated}{use the \protect\inputref instead!}}
+  {The \protect\sinputref macro is deprecated}{use the \protect\inputref instead!}%
+}%
 %    \end{macrocode}
 % \end{macro}
 %
@@ -1758,7 +1816,8 @@
 %     before 1.0.}
 %    \begin{macrocode}
 \define@key{module}{uses}{%
-\@for\module@tmp:=#1\do{\activate@defs\module@tmp\export@defs\module@tmp}}
+  \@for\module@tmp:=#1\do{\activate@defs\module@tmp\export@defs\module@tmp}%
+}%
 %    \end{macrocode}
 % \end{macro}
 % 
@@ -1768,7 +1827,8 @@
 %   modules provide a macro with the same name.
 %    \begin{macrocode}
 \define@key{module}{usesqualified}{%
-\@for\module@tmp:=#1\do{\activate@defs{qualified@\module@tmp}\export@defs\module@tmp}}
+  \@for\module@tmp:=#1\do{\activate@defs{qualified@\module@tmp}\export@defs\module@tmp}%
+}%
 %    \end{macrocode}
 % \end{macro}
 %
@@ -1788,9 +1848,13 @@
 % For the {\LaTeX} we use |\symdef| and forget the last argument. The code here is just
 % needed for parsing the (non-standard) argument structure. 
 %    \begin{macrocode}
-\def\csymdef{\@ifnextchar[{\@csymdef}{\@csymdef[]}}
-\def\@csymdef[#1]#2{\@ifnextchar[{\@@csymdef[#1]{#2}}{\@@csymdef[#1]{#2}[0]}}
-\def\@@csymdef[#1]#2[#3]#4#5{\@@symdef[#1]{#2}[#3]{#4}}
+\def\csymdef{\@ifnextchar[{\@csymdef}{\@csymdef[]}}%
+\def\@csymdef[#1]#2{%
+  \@ifnextchar[{\@@csymdef[#1]{#2}}{\@@csymdef[#1]{#2}[0]}
+}%
+\def\@@csymdef[#1]#2[#3]#4#5{%
+  \@@symdef[#1]{#2}[#3]{#4}%
+}%
 %    \end{macrocode}
 % \end{macro}
 % 
@@ -1817,7 +1881,9 @@
 %   We keep a file path registry |\@register| and only load a module signature, if it is
 %   not in there.
 %    \begin{macrocode}
-\newcommand\reqmodules[2]{\ifinlist{#1}{\@register}{}{\listadd\@register{#1}\input{#1.#2}}}
+\newcommand\reqmodules[2]{%
+  \ifinlist{#1}{\@register}{}{\listadd\@register{#1}\input{#1.#2}}%
+}%
 %    \end{macrocode}
 % \end{macro}
 % for the relative paths, I have to find out the directory prefix and the file name. Here
@@ -1832,10 +1898,14 @@
 %   |\file@name| selects the filename of the file path: |\file@name{/foo/bar/baz.tex}| is
 %   |baz.tex|.
 %    \begin{macrocode}
-\def\file@name#1{\setcounter{@pl}{0}%
-\forpathlist{\stepcounter{@pl}\listadd\@pathlist}{#1}
-\def\do##1{\ifnumequal{\value{@pl}}{1}{##1}{\addtocounter{@pl}{-1}}}
-\dolistloop{\@pathlist}}
+\def\file@name#1{%
+  \setcounter{@pl}{0}%
+  \forpathlist{\stepcounter{@pl}\listadd\@pathlist}{#1}
+  \def\do##1{%
+    \ifnumequal{\value{@pl}}{1}{##1}{\addtocounter{@pl}{-1}}
+  }%
+  \dolistloop{\@pathlist}%
+}%
 %    \end{macrocode}
 % \end{macro}
 %
@@ -1843,11 +1913,17 @@
 %   |\file@path| selects the path of the file path |\file@path{/foo/bar/baz.tex}| is
 %   |/foo/bar|
 %    \begin{macrocode}
-\def\file@path#1{\setcounter{@pl}{0}%
-\forpathlist{\stepcounter{@pl}\listadd\@pathlist}{#1}
-\def\do##1{\ifnumequal{\value{@pl}}{1}{}{\addtocounter{@pl}{-1}%
-\ifnumequal{\value{@pl}}{1}{##1}{##1/}}}
-\dolistloop{\@pathlist}}
+\def\file@path#1{%
+  \setcounter{@pl}{0}%
+  \forpathlist{\stepcounter{@pl}\listadd\@pathlist}{#1}%
+  \def\do##1{%
+    \ifnumequal{\value{@pl}}{1}{}{%
+      \addtocounter{@pl}{-1}%
+      \ifnumequal{\value{@pl}}{1}{##1}{##1/}%
+    }%
+  }%
+  \dolistloop{\@pathlist}%
+}%
 %</package>
 %    \end{macrocode}
 % \end{macro}
@@ -1857,10 +1933,15 @@
 %   |\edef|.
 %    \begin{macrocode}
 \def\@NEWcurrentprefix{}
-\def\NEWrequiremodules#1{\def\@pref{\file@path{#1}}%
-\ifx\@pref\@empty\else\xdef\@NEWcurrentprefix{\@NEWcurrentprefix/\@pref}\fi%
-\edef\@input@me{\@NEWcurrentprefix/\file@name{#1}}
-\message{requiring \@input@me}\reqmodule{\@input@me}}
+\def\NEWrequiremodules#1{%
+  \def\@pref{\file@path{#1}}%
+  \ifx\@pref\@empty%
+  \else%
+    \xdef\@NEWcurrentprefix{\@NEWcurrentprefix/\@pref}%
+  \fi%
+  \edef\@input@me{\@NEWcurrentprefix/\file@name{#1}}%
+  \message{requiring \@input@me}\reqmodule{\@input@me}%
+}%
 %    \end{macrocode}
 % \end{macro}
 % \Finale
