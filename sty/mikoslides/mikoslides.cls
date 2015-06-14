@@ -135,7 +135,11 @@
 \fi%
 \newsavebox{\slidelogo}%
 \sbox{\slidelogo}{\includegraphics[height=\slidelogoheight]{jacobs-logo}}%
+\newrobustcmd{\setslidelogo}[1]{%
+\sbox{\slidelogo}{\includegraphics[height=\slidelogoheight]{#1}}%
+}%
 \def\source{Michael Kohlhase}% customize locally
+\newrobustcmd{\setsource}[1]{\def\source{#1}}%
 \def\copyrightnotice{\footnotesize\copyright:\hspace{.3ex}{\source}}%
 \newsavebox{\cclogo}%
 \sbox{\cclogo}{\includegraphics[height=\slidelogoheight]{cc_somerights}}%
@@ -148,6 +152,21 @@
 \href{http://creativecommons.org/licenses/by-sa/2.5/}{\usebox{\cclogo}}%
 \else%
 {\usebox{\cclogo}}%
+\fi%
+}%
+\newrobustcmd{\setlicensing}[2][]{%
+\def\@url{#1}%
+\sbox{\cclogo}{\includegraphics[height=\slidelogoheight]{#2}}%
+\ifx\@url\@empty%
+\def\licensing{{\usebox{\cclogo}}}%
+\else%
+\def\licensing{%
+\ifcchref%
+\href{#1}{\usebox{\cclogo}}%
+\else%
+{\usebox{\cclogo}}%
+\fi%
+}%
 \fi%
 }%
 \newrobustcmd\miko@slidelabel{%
