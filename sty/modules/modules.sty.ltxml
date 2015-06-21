@@ -274,41 +274,28 @@ DefPrimitive('\@symdef@define@symbol OptionalKeyVals:symdef {}[]{}', sub {
      AssignValue(ToString($cs).'_counter',$count+1);
      (Invocation(T_CS('\\@'.$cs->toString.'@construct'),$variant,@args)->unlist);
      # deal with variants of a symbol
-     my $variants_ref = LookupValue("Sym:".ToString($name).".variants");
-     my @variants;
-     if ($variants_ref){ @variants = @$variants_ref;}
-     else {@variants = ('default');}
-     my $exist = 0;
-     # see if this variant already stored in the list
-     for my $temp (@variants){
-       if($icvariant eq $ temp){
-	 $exist = 1;}
-     }
-     # store the new variant
-     push(@variants, $icvariant) unless $exist;
-     AssignValue("Sym:".ToString($name).".variants", \@variants,'global');
-     # counter for each symdef
-     my $ct = LookupValue("Macro:".ToString($cs)."Symol:".ToString($name)."Var".ToString($icvariant)."counter") || 0;
-     AssignValue("Macro:".ToString($cs)."Symol:".ToString($name)."Var".ToString($icvariant)."counter", $ct+1, 'global');
+     my $key = "symvariants.".ToString($name);
+     my $variants = LookupValue($key);
+     $variants = {} unless defined $variants;
+     $variants->{$icvariant} += 1;
+     AssignValue($key, $variants, 'global');
    },scope=>$scope);
   DefMacro('\symreport[]{}', sub {
 	     my($gullet, $sym, $arg)=@_;
+	     my($sum, $message, %counts);
 	     $arg = ToString($arg);
 	     $sym = ToString($sym);
 	     $sym = $arg unless $sym;
 	     $module = ToString($module);
-	     my $variants_ref = LookupValue("Sym:".ToString($sym).".variants");
-	     my (@variants, %values, $sum);
-	     if ($variants_ref){ @variants = @$variants_ref;}
-	     else {@variants = ('default');}
-	     # get count for this symbol's each variant 
-	     for my $variant (@variants){
-	       $values{$variant} = LookupValue("Macro:".$arg."Symol:".$sym."Var".$variant."counter") || 0;
-	       $sum +=  $values{$variant};
-	     }
-	     my $message = "\nSymbol ". $sym." from module ".$module. "(macro \\". $arg.") use count: $sum";
-	     for my $var (keys %values){
-	     	 $message .= " [$var] $values{$var}"; 
+	     my $counts = LookupValue("symvariants.".ToString($sym));
+	     if ($counts){
+	       %counts = %$counts;
+	       # get the count for this symbol's each variant
+	       for my $key (keys %counts){$sum +=  $counts{$key};}
+	       $message = "\nSymbol ". $sym." from module ".$module. "(macro \\". $arg.") use count: $sum ";
+	       foreach my $key (keys %counts){ $message .= "[$key] $counts{$key} ";}
+	     } else {
+	       $message = "\nSymbol ". $sym." from module ".$module. "(macro \\". $arg.") doesn't exist";
 	     }
 	     Info("symreport", undef, undef, $message);
 	});
