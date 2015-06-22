@@ -10,4 +10,4 @@ include $(PREFIX)/make/Makefile.vars
 include $(PREFIX)/make/Makefile.in
 
 echo:
-	echo $(BSTINPUTS)
+	echo $(BIBINPUTS)
