@@ -102,7 +102,7 @@
 </xsl:template>
 
 <xsl:template match="ltx:para">
-  <omdoc:omtext><xsl:apply-templates select="@*"/><omdoc:CMP><xsl:apply-templates/></omdoc:CMP></omdoc:omtext>
+  <omdoc:omtext><xsl:apply-templates select="@*"/><omdoc:CMP><xsl:apply-templates select="@*|*"/></omdoc:CMP></omdoc:omtext>
 </xsl:template>
 
 <!-- not needed any more
