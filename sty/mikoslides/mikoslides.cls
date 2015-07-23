@@ -298,7 +298,7 @@
 \excludecomment{problems}%
 \fi%
 \addmetakey{Gin}{mhrepos}
-\newrobustcmd\mhframeimage[2][]{%
+\newcommand\mhframeimage[2][]{%
 \metasetkeys{Gin}{#1}%
 \edef\mh@@repos{\mh@currentrepos}%
 \ifx\Gin@mhrepos\@empty%
