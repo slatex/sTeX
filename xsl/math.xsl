@@ -33,12 +33,15 @@
 
 <xsl:template match="ltx:equation">
   <xsl:choose>
-    <xsl:when test="$math-format='om'">
+    <xsl:when test="$math-format='cmml'">
       <om:OMOBJ style="display:block">
 	<xsl:apply-templates select="ltx:Math/m:math/*"/>
       </om:OMOBJ>
     </xsl:when>
     <xsl:when test="$math-format='pmml'">
+      <xsl:copy-of select="ltx:Math/m:math"/>
+    </xsl:when>
+    <xsl:when test="$math-format='cmml'">
       <xsl:copy-of select="ltx:Math/m:math"/>
     </xsl:when>
     <xsl:otherwise>
@@ -54,6 +57,9 @@
       <xsl:apply-templates select="om:OMOBJ"/> 
     </xsl:when>
     <xsl:when test="$math-format='pmml'">
+      <xsl:copy-of select="m:math"/>
+    </xsl:when>
+    <xsl:when test="$math-format='cmml'">
       <xsl:copy-of select="m:math"/>
     </xsl:when>
     <xsl:otherwise>
@@ -75,6 +81,9 @@
       </om:OMOBJ>
     </xsl:when>
     <xsl:when test="$math-format='pmml'">
+      <xsl:copy-of select="ltx:MathFork/ltx:Math/m:math"/>
+    </xsl:when>
+    <xsl:when test="$math-format='cmml'">
       <xsl:copy-of select="ltx:MathFork/ltx:Math/m:math"/>
     </xsl:when>
     <xsl:otherwise>

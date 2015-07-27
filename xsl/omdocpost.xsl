@@ -28,7 +28,7 @@
 
 <xsl:output method="xml" indent="yes" cdata-section-elements="data"/>
 <!--<xsl:strip-space elements="*"/>-->
-<xsl:param name="math-format" select="'om'"/>
+<xsl:param name="math-format" select="'cmml'"/>
 
 <!-- the fallback (mostly for LaTeXML-generated XHTML: 
      copy the whole thing recursively, until there is something to do -->
