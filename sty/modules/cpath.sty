@@ -5,12 +5,15 @@
 \ProvidesPackage{cpath}[2015/05/12 v1.0 Canonical Path]
 \RequirePackage{xstring}
 \RequirePackage{forloop}
+\RequirePackage{calc}
 %
 \newcounter{AddrNum}% how many sections in the input path
 \newcounter{iLoop}% only as loop iterator,no other uses
 \newcounter{iName}% for generate names such as Addri, Addrii
 \newcounter{RealAddrNum}% how many sections in the canonical path
-\def\ToTop{..}%
+\newcounter{Cutable}% address part besides ..
+\def\@ToTop{..}%
+\def\@Slash{/}%
 %
 \def\@MultiAddrs#1/#2\@nil{% create storing cs, split the input address
 	\def\CurArg{#1}%
@@ -32,6 +35,7 @@
 	\setcounter{iLoop}{0}%
 	\setcounter{iName}{0}%
 	\setcounter{RealAddrNum}{0}%
+	\setcounter{Cutable}{0}%
 	\def\@CurrPath{}%
 	\def\@CanPath{}%
 	\def\@TempPath{}%
@@ -43,35 +47,27 @@
 		\edef\@CurrPath{%
 			\csname Addr\roman{iName}\endcsname% 
 		}%
-		\ifx\@CurrPath\ToTop%
-			\ifnum\value{RealAddrNum} > 0% only execute when not the root dir
-				\StrCut[\value{RealAddrNum}]{\@CanPath}{/}\@TempPath\@Rubbish%
-				\edef\@CanPath{\@TempPath}%
+		\ifx\@CurrPath\@ToTop%
+			\ifnum\value{Cutable} = 0%
+				\edef\@CanPath{\@CanPath\csname Addr\roman{iName}\endcsname/}%
+				\stepcounter{RealAddrNum}%
+			\else%
+				% cut the last part, and add a slash at the end
+				\StrCut[\value{RealAddrNum}]{/\@CanPath}{/}\@TempPath\@Rubbish%
+				\StrCut[1]{\@TempPath/}{/}\@Rubbish\@CanPath%
 				\addtocounter{RealAddrNum}{-1}%
+				\addtocounter{Cutable}{-1}%
 			\fi%
 		\else%
+			\edef\@CanPath{\@CanPath\csname Addr\roman{iName}\endcsname/}%
 			\stepcounter{RealAddrNum}%
-			\edef\@CanPath{\@TempPath/\@CurrPath}% attach
-			\edef\@TempPath{\@CanPath}%
+			\stepcounter{Cutable}%
 		\fi%
 	}%
+	\ifx\@CanPath\@Slash\edef\@CanPath{}\fi% deal with empty address
 }%
 \newcommand\cpath[1]{% print canonical path
 	\@cpath{#1}%
 	\@CanPath%
 }%
-%
-\newif\ifpath%
-\newcommand\ComparePath[2]{% compare two paths
-	\@cpath{#1}%
-	\edef\patha{\@CanPath}%
-	\@cpath{#2}%
-	\edef\pathb{\@CanPath}%
-	\ifx\patha\pathb%
-	\pathtrue%
-	\else%
-	\pathfalse%
-	\fi%
-}%
-%%
 %% End of file `cpath.sty'.
