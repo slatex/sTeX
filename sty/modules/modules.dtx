@@ -1422,17 +1422,25 @@
 %
 % \subsection{Dealing with Multiple Files}\label{sec:impl:multiple}
 %
-% |cpath| package deals with the canonicalization of paths. |\@cpath| will canonicalize a path and store the result into |\@CanPath|. To print a canoncalized path, simply use |\cpath{|\meta{path}|}|.
+% |cpath| package deals with the canonicalization of paths. |\@cpath| will canonicalize a path 
+% and store the result into |\@CanPath|. To print a canoncalized path, simply use |\cpath{|\meta{path}|}|.
 % 
-% \begin{macro}{\rinput}
-%   |\rinput{|\meta{directory of the file to input}|}{|\meta{base file name}|}| allows loading modules with relative path. For example, |\rinput{foo/bar}{B}| will load |foo/bar/B.tex|.
+% \begin{macro}{\@rinput}
+%   |\@rinput{|\meta{path to the current file without extension}|}{|\meta{extension}|}| allows loading 
+%   modules with relative path. For example, |\@rinput{foo/bar/B}{tex}| will load |foo/bar/B.tex|.
+%   \ednote{Jinbo: How to handle |mod@path|?}
 %    \begin{macrocode}
 \RequirePackage{cpath}
 \def\CurrentDir{}%
-\newrobustcmd{\rinput}[2]{%
+\newrobustcmd{\@rinput}[2]{%
   \@cpath{\CurrentDir#1}%
-  \edef\CurrentDir{\@CanPath}%
-  \input{\@CanPath#2.tex}%
+  \StrCut[\value{RealAddrNum}]{/\@CanPath}{/}\@TempPath\@Rubbish%
+  \StrCut[1]{\@TempPath/}{/}\@Rubbish\@DirPath%
+  \edef\CurrentDir{\@DirPath}%
+%  \edef\mod@path{}% what should I put in here???
+%  \edef\mod@ext{}%
+  \input{\@CanPath.#2}%
+  \def\CurrentDir{}%
 }%
 %    \end{macrocode}
 % \end{macro} 
@@ -1486,14 +1494,22 @@
 % \end{macro}
 %
 % \begin{macro}{\inputref}
-%   In {\LaTeX} this is just |\input| but remembers the module path and
-%   extension.\ednote{MK: maybe do something with a non-standard (i.e. non-\texttt{tex})
+%   |\inputref{|\meta{path to the current file without extension}|}| supports both absolute path 
+%   and relative path, at the same time, records the path and the extension.
+%   \ednote{MK: maybe do something with a non-standard (i.e. non-\texttt{tex})
 %   extension with an optional argument?}
 %    \begin{macrocode}
 \newrobustcmd\inputref[1]{%
-  \edef\mod@path{#1}%
-  \edef\mod@ext{tex}%
-  \input{#1}%
+  \def\@Slash{/}
+  \edef\@load{#1}%
+  \StrChar{\@load}{1}[\@testchar]
+  \ifx\@testchar\@Slash%
+    \edef\mod@path{#1}%
+    \edef\mod@ext{tex}%
+    \input{#1}%
+  \else%
+    \@rinput{#1}{tex}%
+  \fi%
 }%
 %    \end{macrocode}
 % \end{macro}
