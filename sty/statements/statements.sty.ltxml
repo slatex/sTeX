@@ -2,9 +2,11 @@
 package LaTeXML::Package::Pool;
 use strict;
 use LaTeXML::Package;
-DeclareOption('defindex', '');
-DeclareOption('showmeta',sub {PassOptions('metakeys','sty',ToString(Digest(T_CS('\CurrentOption')))); });
-DeclareOption(undef,sub {PassOptions('omdoc','sty',ToString(Digest(T_CS('\CurrentOption')))); });
+RawTeX('\newif\if@defindex\@defindexfalse');
+# the switch is don't toggling defindex option
+DeclareOption('defindex', sub{Digest('\@defindextrue'); });
+DeclareOption('showmeta', sub{PassOptions('metakeys','sty',ToString(Digest(T_CS('\CurrentOption')))); });
+DeclareOption(undef, sub{PassOptions('omdoc','sty',ToString(Digest(T_CS('\CurrentOption')))); });
 ProcessOptions();
 RequirePackage('omtext');
 RequirePackage('modules');
@@ -183,8 +185,130 @@ DefConstructor('\definiendum [] {}',
  push(@$addr, $name->toString) if ($addr and $name);
  $whatsit->setProperty(theory=>(LookupValue('modnl_signature') || LookupValue('current_module')));
  return; });#$
-DefConstructor('\defi[]{} OptionalKeyVals:DEF',
-   "<omdoc:term role='definiendum' name='?#1(#1)(#2)' cd='#theory'>#2</omdoc:term>",
+
+# too verbose, needs to be refactored
+# only `defi` is modified for the defindex switch
+if (IfCondition(T_CS('\if@defindex'))) {
+  DefConstructor('\defi[]{} OptionalKeyVals:DEF',
+		 "<omdoc:idx>"
+		 .  "<omdoc:idt>"
+		 .     "<omdoc:term role='definiendum' name='?#1(#1)(#2)' cd='#theory'>#2</omdoc:term>"
+		 .  "</omdoc:idt>"
+		 ."</omdoc:idx>",
+		 afterDigest => sub {
+ my ($stomach, $whatsit) = @_;
+ my $addr = LookupValue('defs');
+ my $name = $whatsit->getArg(1);
+ $name = $whatsit->getArg(2) unless $name;
+ push(@$addr, $name->toString) if ($addr and $name);
+ $whatsit->setProperty(theory=>(LookupValue('modnl_signature') || LookupValue('current_module')));#$
+ return; },
+		 alias=>'\defi');
+DefConstructor('\adefi[]{}{} OptionalKeyVals:DEF',
+	       "<omdoc:idx>"
+	       .  "<omdoc:idt>"
+	       .     "<omdoc:term role='definiendum' name='?#1(#1)(#3)' cd='#theory'>#2</omdoc:term>"
+	       .  "</omdoc:idt>"
+	       .  "<omdoc:ide index='default'><omdoc:idp>#3</omdoc:idp></omdoc:ide>"
+	       ."</omdoc:idx>",
+       afterDigest => sub {
+ my ($stomach, $whatsit) = @_;
+ my $addr = LookupValue('defs');
+ my $name = $whatsit->getArg(1);
+ $name = $whatsit->getArg(3) unless $name;
+ push(@$addr, $name->toString) if ($addr and $name);
+ $whatsit->setProperty(theory=>(LookupValue('modnl_signature') || LookupValue('current_module')));#$
+ return; },
+	       alias=>'\adefi');
+  DefConstructor('\defii[]{}{} OptionalKeyVals:DEF',
+		 "<omdoc:idx>"
+		 .  "<omdoc:idt>"
+		 .    "<omdoc:term role='definiendum' name='?#1(#1)(&dashed(#2,#3))' cd='#theory'>"
+		 .      "#2 #3"
+		 .    "</omdoc:term>"
+		 .  "</omdoc:idt>"
+		 .  "<omdoc:ide index='default'>"
+		 .    "<omdoc:idp>#2</omdoc:idp>"
+		 .    "<omdoc:idp>#3</omdoc:idp>"
+		 .  "</omdoc:ide>"
+		 ."</omdoc:idx>",
+       afterDigest => sub {
+ my ($stomach, $whatsit) = @_;
+ my $addr = LookupValue('defs');
+ my $name = $whatsit->getArg(1);
+ $name = $name->toString if $name;
+ $name = $whatsit->getArg(2)->toString.'-'.$whatsit->getArg(3)->toString unless $name;
+ push(@$addr, $name) if ($addr and $name);
+ $whatsit->setProperty(theory=>(LookupValue('modnl_signature') || LookupValue('current_module')));
+ return; },
+       alias=>'\defii');#$
+  DefConstructor('\adefii[]{}{}{} OptionalKeyVals:DEF',
+		 "<omdoc:idx>"
+		 .  "<omdoc:idt>"
+	         .    "<omdoc:term role='definiendum' name='?#1(#1)(&dashed(#3,#4))' cd='#theory'>"
+	         .       "#2"
+	         .    "</omdoc:term>"
+		 .  "</omdoc:idt>"
+		 .  "<omdoc:ide index='default'>"
+		 .    "<omdoc:idp>#3</omdoc:idp>"
+		 .    "<omdoc:idp>#4</omdoc:idp>"
+		 .  "</omdoc:ide>"
+		 ."</omdoc:idx>",
+       afterDigest => sub {
+ my ($stomach, $whatsit) = @_;
+ my $addr = LookupValue('defs');
+ my $name = $whatsit->getArg(1);
+ $name = $name->toString if $name;
+ $name = $whatsit->getArg(3)->toString.'-'.$whatsit->getArg(4)->toString unless $name;
+ push(@$addr, $name) if ($addr and $name);
+ $whatsit->setProperty(theory=>(LookupValue('modnl_signature') || LookupValue('current_module')));
+ return; },
+	       alias=>'\defii');#$
+  DefConstructor('\defiii[]{}{}{} OptionalKeyVals:DEF',
+		 "<omdoc:idx>"
+		 . "<omdoc:idt>"
+	         . "<omdoc:term role='definiendum' cd='#theory' name='?#1(#1)(&dashed(#2,#3,#4))'>#2 #3 #4</omdoc:term>"
+		 . "</omdoc:idt>"
+	         . "<omdoc:ide index='default'>"
+		 . "<omdoc:idp>#2</omdoc:idp>"
+		 . "<omdoc:idp>#3</omdoc:idp>"
+		 . "<omdoc:idp>#4</omdoc:idp>"
+		 . "</omdoc:ide>"
+		 . "</omdoc:idx>",
+       afterDigest => sub {
+ my ($stomach, $whatsit) = @_;
+ my $addr = LookupValue('defs');
+ my $name = $whatsit->getArg(1);
+ $name = $name->toString if $name;
+ $name = $whatsit->getArg(2)->toString.'-'.$whatsit->getArg(3)->toString.'-'.$whatsit->getArg(4)->toString unless $name;
+ push(@$addr, $name) if ($addr and $name);
+ $whatsit->setProperty(theory=>(LookupValue('modnl_signature') || LookupValue('current_module')));
+ return; },
+       alias=>'\defiii');
+  DefConstructor('\adefiii[]{}{}{}{} OptionalKeyVals:DEF',
+		 "<omdoc:idx>"
+		 . "<omdoc:idt>"
+		 . "<omdoc:term role='definiendum' cd='#theory' name='?#1(#1)(&dashed(#3,#4,#5))'>#2</omdoc:term>"
+		 . "</omdoc:idt>"
+		 . "<omdoc:ide index='default'>"
+		 . "<omdoc:idp>#3</omdoc:idp>"
+		 . "<omdoc:idp>#4</omdoc:idp>"
+		 . "<omdoc:idp>#5</omdoc:idp>"
+		 . "</omdoc:ide>"
+		 . "</omdoc:idx>",
+       afterDigest => sub {
+ my ($stomach, $whatsit) = @_;
+ my $addr = LookupValue('defs');
+ my $name = $whatsit->getArg(1);
+ $name = $name->toString if $name;
+ $name = $whatsit->getArg(3)->toString.'-'.$whatsit->getArg(4)->toString.'-'.$whatsit->getArg(5)->toString unless $name;
+ push(@$addr, $name) if ($addr and $name);
+ $whatsit->setProperty(theory=>(LookupValue('modnl_signature') || LookupValue('current_module')));
+ return; },
+       alias=>'\defiii');}
+else {
+  DefConstructor('\defi[]{} OptionalKeyVals:DEF',
+      "<omdoc:term role='definiendum' name='?#1(#1)(#2)' cd='#theory'>#2</omdoc:term>",
        afterDigest => sub {
  my ($stomach, $whatsit) = @_;
  my $addr = LookupValue('defs');
@@ -193,7 +317,7 @@ DefConstructor('\defi[]{} OptionalKeyVals:DEF',
  push(@$addr, $name->toString) if ($addr and $name);
  $whatsit->setProperty(theory=>(LookupValue('modnl_signature') || LookupValue('current_module')));#$
  return; },
-       alias=>'\defi');
+		     alias=>'\defi');
 DefConstructor('\adefi[]{}{} OptionalKeyVals:DEF',
     "<omdoc:term role='definiendum' name='?#1(#1)(#3)' cd='#theory'>#2</omdoc:term>",
        afterDigest => sub {
@@ -209,7 +333,7 @@ DefConstructor('\defii[]{}{} OptionalKeyVals:DEF',
    "<omdoc:term role='definiendum' name='?#1(#1)(&dashed(#2,#3))' cd='#theory'>#2 #3</omdoc:term>",
        afterDigest => sub {
  my ($stomach, $whatsit) = @_;
-my $addr = LookupValue('defs');
+ my $addr = LookupValue('defs');
  my $name = $whatsit->getArg(1);
  $name = $name->toString if $name;
  $name = $whatsit->getArg(2)->toString.'-'.$whatsit->getArg(3)->toString unless $name;
@@ -228,8 +352,8 @@ DefConstructor('\adefii[]{}{}{} OptionalKeyVals:DEF',
  push(@$addr, $name) if ($addr and $name);
  $whatsit->setProperty(theory=>(LookupValue('modnl_signature') || LookupValue('current_module')));
  return; },
-       alias=>'\defii');#$
-DefConstructor('\defiii[]{}{}{} OptionalKeyVals:DEF',
+	       alias=>'\defii');#$
+ DefConstructor('\defiii[]{}{}{} OptionalKeyVals:DEF',
    "<omdoc:term role='definiendum' cd='#theory' name='?#1(#1)(&dashed(#2,#3,#4))'>#2 #3 #4</omdoc:term>",
        afterDigest => sub {
  my ($stomach, $whatsit) = @_;
@@ -240,7 +364,7 @@ DefConstructor('\defiii[]{}{}{} OptionalKeyVals:DEF',
  push(@$addr, $name) if ($addr and $name);
  $whatsit->setProperty(theory=>(LookupValue('modnl_signature') || LookupValue('current_module')));
  return; },
-       alias=>'\defiii');
+		alias=>'\defiii');
 DefConstructor('\adefiii[]{}{}{}{} OptionalKeyVals:DEF',
    "<omdoc:term role='definiendum' cd='#theory' name='?#1(#1)(&dashed(#3,#4,#5))'>#2</omdoc:term>",
        afterDigest => sub {
@@ -252,7 +376,7 @@ DefConstructor('\adefiii[]{}{}{}{} OptionalKeyVals:DEF',
  push(@$addr, $name) if ($addr and $name);
  $whatsit->setProperty(theory=>(LookupValue('modnl_signature') || LookupValue('current_module')));
  return; },
-       alias=>'\defiii');
+       alias=>'\defiii');}
 DefConstructor('\inlineex OptionalKeyVals:omtext {}',
               "<ltx:text class='example'>#2</ltx:text>");
 DefConstructor('\inlineass OptionalKeyVals:omtext {}',
