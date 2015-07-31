@@ -1006,7 +1006,7 @@
 %   \meta{file}|.|\meta{extension} (if it is given) and activates the module \meta{module}. First |\@load| will store the base file name with full path, then check if |\module@|\meta{module}|@path| is defined. If this macro is defined, that means the module has been already loaded, otherwise we load it. The actual loading will be executed by |\requiremodules|.
 %    \begin{macrocode}
 \newrobustcmd\@importmodule[3][]{%
-  \@importingtrue% to shut up macros while in the group opened here
+  {\@importingtrue% to shut up macros while in the group opened here
   \edef\@load{#1}%
   \ifx\@load\@empty%
     \relax%
@@ -1026,7 +1026,7 @@
         {Check whether the Module name is correct}}%
       }%
     }%
-  \fi%
+  \fi}%
   \activate@defs{#2}% activate the module
   \if@export\export@defs{#2}\fi% export the module
 }%
@@ -1422,31 +1422,28 @@
 %
 % \subsection{Dealing with Multiple Files}\label{sec:impl:multiple}
 %
-% Before we can come to the functionality we want to offer, we need some auxiliary
-% functions that deal with path names. \ednote{Jinbo: This will be implemented in |@importmodule|, we probably don't need this anymore.}
+% |cpath| package deals with the canonicalization of paths. |\@cpath| will canonicalize a path 
+% and store the result into |\@CanPath|. To print a canoncalized path, simply use |\cpath{|\meta{path}|}|.
 % 
-% \begin{macro}{\mod@canonicalize}
-%   the path simplifier |\mod@canonicalize| is not implemented at the moment
+% \begin{macro}{\@rinput}
+%   |\@rinput{|\meta{path to the current file without extension}|}{|\meta{extension}|}| allows loading 
+%   modules with relative path. For example, |\@rinput{foo/bar/B}{tex}| will load |foo/bar/B.tex|.
+%   \ednote{Jinbo: How to handle |mod@path|?}
 %    \begin{macrocode}
-\newrobustcmd\mod@canonicalize[1]{#1}
+\RequirePackage{cpath}
+\def\CurrentDir{}%
+\newrobustcmd{\@rinput}[2]{%
+  \@cpath{\CurrentDir#1}%
+  \StrCut[\value{RealAddrNum}]{/\@CanPath}{/}\@TempPath\@Rubbish%
+  \StrCut[1]{\@TempPath/}{/}\@Rubbish\@DirPath%
+  \edef\CurrentDir{\@DirPath}%
+%  \edef\mod@path{}% what should I put in here???
+%  \edef\mod@ext{}%
+  \input{\@CanPath.#2}%
+  \def\CurrentDir{}%
+}%
 %    \end{macrocode}
 % \end{macro} 
-% We directly test the simplification: \makeatletter
-% \begin{center}
-% \begin{tabular}{|l|l|l|}\hline
-%   source       & result                          & should be \\\hline\hline
-% aaa            & \mod@canonicalize{aaa}            &  aaa\\\hline
-% ../../aaa      & \mod@canonicalize{../../aaa}      &  ../../aaa\\\hline
-% aaa/bbb        & \mod@canonicalize{aaa/bbb}        & aaa/bbb\\\hline
-% aaa/..         & \mod@canonicalize{aaa/..}         & \\\hline
-% ../../aaa/bbb  & \mod@canonicalize{../../aaa/bbb}  & ../../aaa/bbb\\\hline
-% ../aaa/../bbb  & \mod@canonicalize{../aaa/../bbb}  &  ../bbb\\\hline
-% ../aaa/bbb  & \mod@canonicalize{../aaa/bbb}  &  ../aaa/bbb\\\hline
-% aaa/bbb/../ddd & \mod@canonicalize{aaa/bbb/../ddd} & aaa/ddd\\\hline
-% aaa/bbb/../.. & \mod@canonicalize{aaa/bbb/../..} & \\\hline
-% \end{tabular}
-% \end{center}
-% \makeatother
 %
 % \begin{macro}{\defpath}
 %  |\defpath[optional argument]{macro name}{base path}| defines a new macro which can take another path to formal one integrated path. For example, |\MathHub| in every |localpaths.tex| is defined as:
@@ -1497,14 +1494,22 @@
 % \end{macro}
 %
 % \begin{macro}{\inputref}
-%   In {\LaTeX} this is just |\input| but remembers the module path and
-%   extension.\ednote{MK: maybe do something with a non-standard (i.e. non-\texttt{tex})
+%   |\inputref{|\meta{path to the current file without extension}|}| supports both absolute path 
+%   and relative path, at the same time, records the path and the extension.
+%   \ednote{MK: maybe do something with a non-standard (i.e. non-\texttt{tex})
 %   extension with an optional argument?}
 %    \begin{macrocode}
 \newrobustcmd\inputref[1]{%
-  \edef\mod@path{#1}%
-  \edef\mod@ext{tex}%
-  \input{#1}%
+  \def\@Slash{/}
+  \edef\@load{#1}%
+  \StrChar{\@load}{1}[\@testchar]
+  \ifx\@testchar\@Slash%
+    \edef\mod@path{#1}%
+    \edef\mod@ext{tex}%
+    \input{#1}%
+  \else%
+    \@rinput{#1}{tex}%
+  \fi%
 }%
 %    \end{macrocode}
 % \end{macro}
