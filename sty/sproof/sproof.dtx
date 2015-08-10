@@ -405,6 +405,7 @@ ProcessOptions();
 %    \begin{macrocode}
 %<*package>
 \RequirePackage{sref}
+\RequirePackage{etoolbox}
 %</package>
 %    \end{macrocode}
 %
@@ -455,35 +456,64 @@ ProcessOptions();
 %   proof depth counter by 1 again.
 %    \begin{macrocode}
 %<*package>
-\newenvironment{pst@with@label}[1]%
-{\edef\pst@label{#1}\advance\count10 by 1\count\count10=1}
-{\advance\count10 by -1}
+\newenvironment{pst@with@label}[1]{%
+  \edef\pst@label{#1}%
+  \advance\count10 by 1%
+  \count\count10=1%
+}{%
+  \advance\count10 by -1%
+}%
 %    \end{macrocode}
 % \end{environment}
 %
 % \begin{macro}{\the@pst@label}
 % |\the@pst@label| evaluates to the current step label.
 %    \begin{macrocode}
-\def\the@pst@label{\pst@make@label\pst@label{\number\count\count10}}
+\def\the@pst@label{%
+  \pst@make@label\pst@label{\number\count\count10}\pstlabel@postfix%
+}%
+%    \end{macrocode}
+%\end{macro}
+%
+% \begin{macro}{\setpstlabelstyle}
+% |\setpstlabelstyle{|meta{Key-Val pairs}|}| makes the labeling style customizable.
+% |\setpstlabelstyle{prefix=Pr,delimiter=-,postfix=\dag}| will change the labeling style
+% from \textbf{P.1.2.3} to \textbf{Pr-1-2-3\dag}. |\setpstlabelstyledefault| will set the
+% labeling style back to default.
+%    \begin{macrocode}
+\addmetakey[P]{pstlabel}{prefix}[]
+\addmetakey[.]{pstlabel}{delimiter}[]
+\addmetakey[]{pstlabel}{postfix}[]
+\metasetkeys{pstlabel}{}% initialization
+\newrobustcmd\setpstlabelstyle[1]{%
+  \metasetkeys{pstlabel}{#1}%
+}%
+\newrobustcmd\setpstlabelstyledefault{%
+  \metasetkeys{pstlabel}{prefix=P,delimiter=.,postfix=}%
+}%
 %    \end{macrocode}
 %\end{macro}
 %
 % \begin{macro}{\pstlabelstyle}
-% |\pstlabelstyle| just sets the |\pst@make@label| macro according to the style. 
+% |\pstlabelstyle| just sets the |\pst@make@label| macro according to the style.
 %    \begin{macrocode}
-\def\pst@make@label@long#1#2{\@for\@I:=#1\do{\@I.}#2}
+\def\pst@make@label@long#1#2{\@for\@I:=#1\do{\expandafter\@I\pstlabel@delimiter}#2}
 \def\pst@make@label@angles#1#2{\ensuremath{\@for\@I:=#1\do{\rangle}}#2}
 \def\pst@make@label@short#1#2{#2}
 \def\pst@make@label@empty#1#2{}
-\def\pstlabelstyle#1{\def\pst@make@label{\@nameuse{pst@make@label@#1}}}
-\pstlabelstyle{long}
+\def\pstlabelstyle#1{%
+  \def\pst@make@label{\@nameuse{pst@make@label@#1}}%
+}%
+\pstlabelstyle{long}%
 %    \end{macrocode}
 %\end{macro}
 %
 % \begin{macro}{\next@pst@label}
 % |\next@pst@label| increments the step label at the current level.
 %    \begin{macrocode}
-\def\next@pst@label{\global\advance\count\count10 by 1}
+\def\next@pst@label{%
+  \global\advance\count\count10 by 1%
+}%
 %    \end{macrocode}
 %\end{macro}
 %
@@ -491,10 +521,17 @@ ProcessOptions();
 %    This macro places a little box at the end of the line if there is space, or at the
 %    end of the next line if there isn't
 %    \begin{macrocode}
-\def\sproof@box{\hbox{\vrule\vbox{\hrule width 6 pt\vskip 6pt\hrule}\vrule}}
-\def\spf@proofend{\sproof@box}
-\def\sproofend{\ifx\spf@proofend\@empty\else\hfil\null\nobreak\hfill\spf@proofend\par\smallskip\fi}
-\def\sProofEndSymbol#1{\def\sproof@box{#1}}
+\def\sproof@box{%
+  \hbox{\vrule\vbox{\hrule width 6 pt\vskip 6pt\hrule}\vrule}%
+}%
+\def\spf@proofend{\sproof@box}%
+\def\sproofend{%
+  \ifx\spf@proofend\@empty%
+  \else%
+    \hfil\null\nobreak\hfill\spf@proofend\par\smallskip%
+  \fi%
+}%
+\def\sProofEndSymbol#1{\def\sproof@box{#1}}%
 %</package>
 %<*ltxml>
 DefConstructor('\sproofend',"");
@@ -523,10 +560,15 @@ DefConstructor('\sProofEndSymbol{}','');
 % \begin{macro}{spfsketch}
 %    \begin{macrocode}
 %<*package>
-\newcommand\spfsketch[2][]{\metasetkeys{spf}{#1}\sref@target%
-\ifx\spf@display\spf@flow\else%
-{\stDMemph{\ifx\spf@type\@empty\spf@proofsketch@kw\else\spf@type\fi}:}\fi{ #2}%
-\sref@label@id{this \ifx\spf@type\@empty\spf@proofsketch@kw\else\spf@type\fi}\sproofend}
+\newrobustcmd\spfsketch[2][]{%
+  \metasetkeys{spf}{#1}%
+  \sref@target%
+  \ifx\spf@display\spf@flow%
+  \else%
+	  {\stDMemph{\ifx\spf@type\@empty\spf@proofsketch@kw\else\spf@type\fi}:}
+  \fi{ #2}%
+  \sref@label@id{this \ifx\spf@type\@empty\spf@proofsketch@kw\else\spf@type\fi}\sproofend%
+}%
 %</package>
 %<*ltxml>
 DefConstructor('\spfsketch OptionalKeyVals:pf{}',
@@ -544,13 +586,16 @@ DefConstructor('\spfsketch OptionalKeyVals:pf{}',
 %   column}\ednote{document above}
 %    \begin{macrocode}
 %<*package>
-\newenvironment{spfeq}[2][]%
-{\metasetkeys{spf}{#1}\sref@target%
-\ifx\spf@display\spf@flow\else%
-{\stDMemph{\ifx\spf@type\@empty\spf@proof@kw\else\spf@type\fi}:} #2%
-\fi% display=flow
-\begin{displaymath}\begin{array}{rcll}}
-{\end{array}\end{displaymath}}
+\newenvironment{spfeq}[2][]{%
+  \metasetkeys{spf}{#1}\sref@target%
+  \ifx\spf@display\spf@flow%
+  \else%
+    {\stDMemph{\ifx\spf@type\@empty\spf@proof@kw\else\spf@type\fi}:} #2%
+  \fi% display=flow
+  \begin{displaymath}\begin{array}{rcll}%
+}{%
+  \end{array}\end{displaymath}%
+}%
 %</package>
 %<*ltxml>
 RawTeX('
@@ -568,17 +613,24 @@ RawTeX('
 %    proof, we position the proof end into the last line.
 %    \begin{macrocode}
 %<*package>
-\newenvironment{spf@proof}[2][]{\metasetkeys{spf}{#1}\sref@target%
-\count10=10%
-\par\noindent%
-\ifx\spf@display\spf@flow\else%
-\stDMemph{\ifx\spf@type\@empty\spf@proof@kw\else\spf@type\fi}:\fi{ #2}%
-\sref@label@id{this \ifx\spf@type\@empty\spf@proof@kw\else\spf@type\fi}%
-\def\pst@label{}\newcount\pst@count% initialize the labeling mechanism
-\begin{description}\begin{pst@with@label}{P}}
-{\end{pst@with@label}\end{description}}
-\newenvironment{sproof}[2][]{\begin{spf@proof}[#1]{#2}}{\sproofend\end{spf@proof}}
-\newenvironment{sProof}[2][]{\begin{spf@proof}[#1]{#2}}{\end{spf@proof}}
+\newenvironment{spf@proof}[2][]{%
+  \metasetkeys{spf}{#1}%
+  \sref@target%
+  \count10=10%
+  \par\noindent%
+  \ifx\spf@display\spf@flow%
+  \else%
+    \stDMemph{\ifx\spf@type\@empty\spf@proof@kw\else\spf@type\fi}:%
+  \fi{ #2}%
+  \sref@label@id{this \ifx\spf@type\@empty\spf@proof@kw\else\spf@type\fi}%
+  \def\pst@label{}%
+  \newcount\pst@count% initialize the labeling mechanism
+  \begin{description}\begin{pst@with@label}{\pstlabel@prefix}%
+}{%
+  \end{pst@with@label}\end{description}%
+}%
+\newenvironment{sproof}[2][]{\begin{spf@proof}[#1]{#2}}{\sproofend\end{spf@proof}}%
+\newenvironment{sProof}[2][]{\begin{spf@proof}[#1]{#2}}{\end{spf@proof}}%
 %</package>
 %<*ltxml>
 DefEnvironment('{sproof} OptionalKeyVals:pf{}',
@@ -599,8 +651,10 @@ DefMacro('\endsProof','\endsproof');
 % \begin{environment}{spfidea}
 %    \begin{macrocode}
 %<*package>
-\newcommand\spfidea[2][]{\metasetkeys{spf}{#1}%
-\stDMemph{\ifx\spf@type\@empty{Proof Idea}\else\spf@type\fi:} #2\sproofend}
+\newrobustcmd\spfidea[2][]{%
+  \metasetkeys{spf}{#1}%
+  \stDMemph{\ifx\spf@type\@empty{Proof Idea}\else\spf@type\fi:} #2\sproofend%
+}%
 %</package>
 %<*ltxml>
 DefConstructor('\spfidea OptionalKeyVals:pf {}',
@@ -622,11 +676,18 @@ DefConstructor('\spfidea OptionalKeyVals:pf {}',
 % \ednote{MK: labeling of steps does not work yet.}
 %    \begin{macrocode}
 %<*package>
-\newenvironment{spfstep}[1][]{\metasetkeys{spf}{#1}\@in@omtexttrue%
-\ifx\spf@display\spf@flow\else\item[\the@pst@label]\fi%
-\ifx\spf@title\@empty\else{(\stDMemph{\spf@title})}\fi%
-\sref@label@id{\pst@label}\ignorespaces}%
-{\next@pst@label\@in@omtextfalse\ignorespaces}
+\newenvironment{spfstep}[1][]{%
+  \metasetkeys{spf}{#1}%
+  \@in@omtexttrue%
+  \ifx\spf@display\spf@flow%
+  \else%
+    \item[\the@pst@label]%
+  \fi%
+  \ifx\spf@title\@empty\else{(\stDMemph{\spf@title})}\fi%
+  \sref@label@id{\pst@label}\ignorespaces%
+}{%
+  \next@pst@label\@in@omtextfalse\ignorespaces%
+}%
 %</package>
 %<*ltxml>
 DefEnvironment('{spfstep} OptionalKeyVals:pf',
@@ -643,9 +704,12 @@ DefEnvironment('{spfstep} OptionalKeyVals:pf',
 % \begin{environment}{sproofcomment}
 %    \begin{macrocode}
 %<*package>
-\newenvironment{sproofcomment}[1][]{\metasetkeys{spf}{#1}%
-\ifx\spf@display\spf@flow\else\item[\the@pst@label]\fi}
-{\next@pst@label}
+\newenvironment{sproofcomment}[1][]{%
+  \metasetkeys{spf}{#1}%
+  \ifx\spf@display\spf@flow\else\item[\the@pst@label]\fi%
+}{%
+  \next@pst@label%
+}%
 %</package>
 %<*ltxml>
 DefEnvironment('{sproofcomment} OptionalKeyVals:pf',
@@ -664,11 +728,20 @@ DefEnvironment('{sproofcomment} OptionalKeyVals:pf',
 %   In the |subproof| environment, a new (lower-level) proof environment is started.
 %    \begin{macrocode}
 %<*package>
-\newenvironment{subproof}[2][]{\metasetkeys{spf}{#1}%
-\def\@test{#2}\ifx\@test\empty\else%
-\ifx\spf@display\spf@flow {#2}\else\item[\the@pst@label]{#2} \fi\fi%
-\begin{pst@with@label}{\pst@label,\number\count\count10}}
-{\end{pst@with@label}\next@pst@label}
+\newenvironment{subproof}[2][]{%
+  \metasetkeys{spf}{#1}%
+  \def\@test{#2}%
+  \ifx\@test\empty%
+  \else%
+    \ifx\spf@display\spf@flow {#2}%
+    \else%
+      \item[\the@pst@label]{#2} %
+    \fi%
+  \fi%
+  \begin{pst@with@label}{\pst@label,\number\count\count10}%
+}{%
+  \end{pst@with@label}\next@pst@label%
+}%
 %</package>
 %<*ltxml>
 DefEnvironment('{subproof} OptionalKeyVals:pf {}',
@@ -688,10 +761,16 @@ DefEnvironment('{subproof} OptionalKeyVals:pf {}',
 %   proof.
 %    \begin{macrocode}
 %<*package>
-\newenvironment{spfcases}[2][]{\def\@test{#1}%
-\ifx\@test\empty\begin{subproof}[method=by-cases]{#2}%
-\else\begin{subproof}[#1,method=by-cases]{#2}\fi}
-{\end{subproof}}
+\newenvironment{spfcases}[2][]{%
+  \def\@test{#1}%
+  \ifx\@test\empty%
+    \begin{subproof}[method=by-cases]{#2}%
+  \else%
+    \begin{subproof}[#1,method=by-cases]{#2}%
+  \fi%
+}{%
+  \end{subproof}%
+}%
 %</package>
 %<*ltxml>
 DefEnvironment('{spfcases} OptionalKeyVals:pf {}',
@@ -711,11 +790,23 @@ DefEnvironment('{spfcases} OptionalKeyVals:pf {}',
 %    after the |\item|
 %    \begin{macrocode}
 %<*package>
-\newenvironment{spfcase}[2][]{\metasetkeys{spf}{#1}%
-\ifx\spf@display\spf@flow\else\item[\the@pst@label]\fi%
-\def\@test{#2}\ifx\@test\@empty\else{\stDMemph{#2}: }\fi% need blank here
-\begin{pst@with@label}{\pst@label,\number\count\count10}}
-{\ifx\spf@display\spf@flow\else\sproofend\fi\end{pst@with@label}\next@pst@label}
+\newenvironment{spfcase}[2][]{%
+  \metasetkeys{spf}{#1}%
+  \ifx\spf@display\spf@flow\else\item[\the@pst@label]\fi%
+  \def\@test{#2}%
+  \ifx\@test\@empty%
+  \else%
+    {\stDMemph{#2}: }% need blank here
+  \fi% 
+  \begin{pst@with@label}{\pst@label,\number\count\count10}
+}{%
+  \ifx\spf@display\spf@flow%
+  \else%
+    \sproofend%
+  \fi%
+  \end{pst@with@label}%
+  \next@pst@label%
+}%
 %</package>
 %<*ltxml>
 DefEnvironment('{spfcase} OptionalKeyVals:pf{}',
@@ -734,10 +825,19 @@ DefEnvironment('{spfcase} OptionalKeyVals:pf{}',
 %    similar to |spfcase|, takes a third argument. 
 %    \begin{macrocode}
 %<*package>
-\newcommand\spfcasesketch[3][]{\metasetkeys{spf}{#1}%
-\ifx\spf@display\spf@flow\else\item[\the@pst@label]\fi%
-\def\@test{#2}\ifx\@test\@empty\else{\stDMemph{#2}: }\fi#3%
-\next@pst@label}
+\newrobustcmd\spfcasesketch[3][]{%
+  \metasetkeys{spf}{#1}%
+  \ifx\spf@display\spf@flow%
+  \else%
+    \item[\the@pst@label]%
+  \fi%
+  \def\@test{#2}%
+  \ifx\@test\@empty%
+  \else%
+    {\stDMemph{#2}: }%
+  \fi#3%
+  \next@pst@label%
+}%
 %</package>
 %<*ltxml>
 DefConstructor('\spfcasesketch OptionalKeyVals:pf{}{}',
@@ -815,7 +915,7 @@ DefEnvironment('{justification} OptionalKeyVals:just', sub {
 % \begin{macro}{\premise}
 %    \begin{macrocode}
 %<*package>
-\newcommand\premise[2][]{#2}
+\newrobustcmd\premise[2][]{#2}
 %</package>
 %<*ltxml>
 DefMacro('\premise[]{}', sub {
@@ -835,7 +935,7 @@ DefConstructor('\premise@content[]',
 % only display the content.
 %    \begin{macrocode}
 %<*package>
-\newcommand\justarg[2][]{#2}
+\newrobustcmd\justarg[2][]{#2}
 %</package>
 %<*ltxml>
 DefMacro('\justarg[]{}', sub { (($_[1] ? $_[1]->unlist : ()),
