@@ -638,8 +638,8 @@
 package LaTeXML::Package::Pool;
 use strict;
 use LaTeXML::Package;
-RawTeX('\newif\if@defindex\@defindexfalse');
-DeclareOption('defindex', sub{Digest('\@defindextrue'); });
+DefConditional('\if@defindex');
+DeclareOption('defindex', sub{Digest(T_CS('\@defindextrue')); });
 DeclareOption('showmeta', sub{PassOptions('metakeys','sty',ToString(Digest(T_CS('\CurrentOption')))); });
 DeclareOption(undef, sub{PassOptions('omdoc','sty',ToString(Digest(T_CS('\CurrentOption')))); });
 ProcessOptions();
@@ -1511,22 +1511,17 @@ sub defHelper{
   my $addr = LookupValue('defs');
   my $name = $whatsit->getArg(1);
   $name = $name->toString if $name;
-  if($defOption eq 'definiendum') {
-     $name = $whatsit->getArg(2) unless $name;
-     $whatsit->setProperty(name=>$name->toString);
-  } elsif($defOption eq 'defi') {
-     $name = $whatsit->getArg(2) unless $name;
-  } elsif($defOption eq 'adefi') {
-     $name = $whatsit->getArg(3) unless $name;
-  } elsif($defOption eq 'defii') {
-     $name = $whatsit->getArg(2)->toString.'-'.$whatsit->getArg(3)->toString unless $name;
-  } elsif($defOption eq 'adefii') {
-     $name = $whatsit->getArg(3)->toString.'-'.$whatsit->getArg(4)->toString unless $name;
-  } elsif($defOption eq 'defiii') {
-     $name = $whatsit->getArg(2)->toString.'-'.$whatsit->getArg(3)->toString.'-'.$whatsit->getArg(4)->toString unless $name;
-  } elsif($defOption eq 'adefiii') {
-     $name = $whatsit->getArg(3)->toString.'-'.$whatsit->getArg(4)->toString.'-'.$whatsit->getArg(5)->toString unless $name;
-   }
+  my %choose_Option = (
+                      definiendum => sub {$whatsit->getArg(2);},
+                      defi => sub {$whatsit->getArg(2);},
+                      adefi => sub {$whatsit->getArg(3);},
+                      defii => sub {$whatsit->getArg(2)->toString.'-'.$whatsit->getArg(3)->toString;},
+                      adefii => sub {$whatsit->getArg(3)->toString.'-'.$whatsit->getArg(4)->toString;},
+                      defiii => sub {$whatsit->getArg(2)->toString.'-'.$whatsit->getArg(3)->toString.'-'.$whatsit->getArg(4)->toString;},
+                      adefiii => sub {$whatsit->getArg(3)->toString.'-'.$whatsit->getArg(4)->toString.'-'.$whatsit->getArg(5)->toString;} 
+                      );
+  $name = $name || $choose_Option{$defOption};
+  $whatsit->setProperty(name=>$name->toString);
   push(@$addr, $name) if ($addr and $name);
   $whatsit->setProperty('defindex', IfCondition(T_CS('\if@defindex')));
   $whatsit->setProperty(theory=>(LookupValue('modnl_signature') || LookupValue('current_module')));
