@@ -59,6 +59,7 @@
 % \texttt{\textbackslash inlinetypedec}}
 % \changes{v1.2}{2015/04/03}{adding optional last arg to \texttt{\textbackslash \*defi*}}
 % \changes{v1.2}{2015/04/17}{adding \texttt{\textbackslash inlineass}}
+% \changes{v1.2}{2015/09/05}{adding \texttt{\textbackslash defis} and friends}
 % 
 % \GetFileInfo{statements.sty}
 % 
@@ -381,12 +382,14 @@
 % The \DescribeMacro{defi}|\defi{|\meta{word}|}| macro combines the functionality of the
 % |\definiendum| macro with index markup from the |omdoc|
 % package~\ctancite{Kohlhase:smomdl}: use
-% |\defi[|\meta{name}|]{|\meta{word}|}[|\meta{indexkeys}|]| to markup a definiendum
-% \meta{word} with system name \meta{name} that appear in the index (where
-% \meta{indexkeys} are passed to the |\omdoc@index| macro from the |omdoc| package) --- in
-% other words in almost all definitions of single-word concepts.  We also have the
-% variants \DescribeMacro{\defii}|\defii| and \DescribeMacro{\defiii}|\defiii| for
-% (adjectivized) two-word compounds.  Note that if the definiendum contains sematnic
+% \begin{center}
+% |\defi[|\meta{name}|]{|\meta{word}|}[|\meta{indexkeys}|]|
+% \end{center}
+% to markup a definiendum \meta{word} with system name \meta{name} that appear in the
+% index (where \meta{indexkeys} are passed to the |\omdoc@index| macro from the |omdoc|
+% package) --- in other words in almost all definitions of single-word concepts.  We also
+% have the variants \DescribeMacro{\defii}|\defii| and \DescribeMacro{\defiii}|\defiii|
+% for (adjectivized) two-word compounds.  Note that if the definiendum contains sematnic
 % macros, then we need to specify the |loadmodules| key and also protect the semantic
 % macro. For instance if |\eset| is the semantic macro for $\emptyset$, then we would use
 % \begin{verbatim}
@@ -395,7 +398,14 @@
 % for the definiendum markup. Finally, the variants \DescribeMacro{\adefi}|\adefi|,
 % \DescribeMacro{\adefii}|\adefii|,and \DescribeMacro{\adefiii}|\adefiii| have an
 % additional first argument that allows to specify an alternative text; see
-% Figure~\ref{fig:defin}
+% Figure~\ref{fig:defin}. The main use of these is to mark up inflected forms as in
+% \begin{verbatim}
+% we speak of \adefi{lemmata}{lemma} in this case. 
+% \end{verbatim}
+% As the greatest number of these are plurals, which tends to be regular (e.g. adding a
+% trailing ``s'' in English), we provide the variants \DescribeMacro{\defis}|\defis|,
+% \DescribeMacro{\defiis}|\defiis|,and \DescribeMacro{\defiiis}|\defiiis| for that case:
+% |\defiis{simple}{group}| is equivalent to much longer |\adefii{simple groups}{simple}{group}|.
 % 
 % \begin{exfig}
 % \begin{tabular}{l|l|l}
@@ -638,8 +648,8 @@
 package LaTeXML::Package::Pool;
 use strict;
 use LaTeXML::Package;
-RawTeX('\newif\if@defindex\@defindexfalse');
-DeclareOption('defindex', sub{Digest('\@defindextrue'); });
+DefConditional('\if@defindex');
+DeclareOption('defindex', sub{Digest(T_CS('\@defindextrue')); });
 DeclareOption('showmeta', sub{PassOptions('metakeys','sty',ToString(Digest(T_CS('\CurrentOption')))); });
 DeclareOption(undef, sub{PassOptions('omdoc','sty',ToString(Digest(T_CS('\CurrentOption')))); });
 ProcessOptions();
@@ -1143,7 +1153,7 @@ Consider wrapping the defining phrase in a \protect\inlinedef}%
 %<*ltxml>
 DefConstructor('\definiendum [] {}',
        "<omdoc:term role='definiendum' name='#name' cd='#theory'>#2</omdoc:term>",
-       afterDigest => sub { defHelper(@_, 'definiendum'); });#$
+       afterDigest => sub { defHelper(@_, 'definiendum'); });
 %</ltxml>
 %    \end{macrocode}
 % \end{macro}
@@ -1169,6 +1179,7 @@ DefConstructor('\definiendum [] {}',
 %<*package>
 \newcommand\defi[2][]{\st@def@target{#1}{#2}\defemph{#2}\def\@phrase{#2}\@defi}
 \newcommand\@defi[1][]{\ifdef@index\omdoc@index[#1]{\@phrase}\fi\xspace}
+\newcommand\defis[2][]{\st@def@target{#1}{#2}\defemph{#2s}\def\@phrase{#2}\@defi}
 %</package>
 %<*ltxml>
 DefConstructor('\defi[]{} OptionalKeyVals:DEF',
@@ -1177,7 +1188,27 @@ DefConstructor('\defi[]{} OptionalKeyVals:DEF',
 		 ."?#defindex(</omdoc:idt><omdoc:ide index='default'><omdoc:idp>#2</omdoc:idp></omdoc:ide></omdoc:idx>)",
 		 afterDigest => sub { defHelper(@_, 'defi'); },
 		 alias=>'\defi');
-DefConstructor('\adefi[]{}{} OptionalKeyVals:DEF',	      
+DefConstructor('\defis[]{} OptionalKeyVals:DEF',
+		 "?#defindex(<omdoc:idx><omdoc:idt>)"
+		 .     "<omdoc:term role='definiendum' name='?#1(#1)(#2)' cd='#theory'>#2s</omdoc:term>"
+		 ."?#defindex(</omdoc:idt><omdoc:ide index='default'><omdoc:idp>#2</omdoc:idp></omdoc:ide></omdoc:idx>)",
+		 afterDigest => sub { defHelper(@_, 'defi'); },
+		 alias=>'\defi');
+%</ltxml>
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\adefi}
+%    \begin{macrocode}
+%<*package>
+\newcommand\adefi[3][]{\def\@name{#1}\def\@text{#2}\def\@verb{#3}%
+\ifx\@name\@empty\st@def@target{#3}{#2}\defemph{#2}%
+\else\st@def@target{#1}{#2}\defemph{#2}\fi\@adefi}
+\newcommand\@adefi[1][]{%
+\ifdef@index\ifx\@name\@empty\omdoc@index[#1]{\@text}\else\omdoc@index[at=\@name,#1]{\@verb}\fi\fi\xspace}
+%</package>
+%<*ltxml>
+ DefConstructor('\adefi[]{}{} OptionalKeyVals:DEF',	      
 		 "?#defindex(<omdoc:idx><omdoc:idt>)"
 	       .     "<omdoc:term role='definiendum' name='?#1(#1)(#3)' cd='#theory'>#2</omdoc:term>"
 	       ."?#defindex(</omdoc:idt><omdoc:ide index='default'><omdoc:idp>#3</omdoc:idp></omdoc:ide></omdoc:idx>)",
@@ -1206,12 +1237,22 @@ DefConstructor('\adefi[]{}{} OptionalKeyVals:DEF',
 \newcommand\defii[3][]{\def\@pone{#2}\def\@ptwo{#3}%
 \st@def@target{#1}{#2-#3}\defemph{#2 #3}\@defii}
 \newcommand\@defii[1][]{\ifdef@index\@twin[#1]{\@pone}{\@ptwo}\fi\xspace}
+\newcommand\defiis[3][]{\def\@pone{#2}\def\@ptwo{#3}%
+\st@def@target{#1}{#2-#3}\defemph{#2 #3s}\@defii}
 %</package>
 %<*ltxml>
 DefConstructor('\defii[]{}{} OptionalKeyVals:DEF',
 		 "?#defindex(<omdoc:idx><omdoc:idt>)"
 		 .    "<omdoc:term role='definiendum' name='?#1(#1)(&dashed(#2,#3))' cd='#theory'>"
 		 .      "#2 #3"
+		 .    "</omdoc:term>"
+		 ."?#defindex(</omdoc:idt><omdoc:ide index='default'><omdoc:idp>#2</omdoc:idp><omdoc:idp>#3</omdoc:idp></omdoc:ide></omdoc:idx>)",
+       afterDigest => sub { defHelper(@_, 'defii'); },
+	       alias=>'\defii');
+DefConstructor('\defii[]{}{} OptionalKeyVals:DEF',
+		 "?#defindex(<omdoc:idx><omdoc:idt>)"
+		 .    "<omdoc:term role='definiendum' name='?#1(#1)(&dashed(#2,#3))' cd='#theory'>"
+		 .      "#2 #3s"
 		 .    "</omdoc:term>"
 		 ."?#defindex(</omdoc:idt><omdoc:ide index='default'><omdoc:idp>#2</omdoc:idp><omdoc:idp>#3</omdoc:idp></omdoc:ide></omdoc:idx>)",
        afterDigest => sub { defHelper(@_, 'defii'); },
@@ -1235,8 +1276,8 @@ DefConstructor('\adefii[]{}{}{} OptionalKeyVals:DEF',
 	         .       "#2"
 	         .    "</omdoc:term>"
 		 ."?#defindex(</omdoc:idt><omdoc:ide index='default'><omdoc:idp>#3</omdoc:idp><omdoc:idp>#4</omdoc:idp></omdoc:ide></omdoc:idx>)",
-       afterDigest => sub { defHelper(@_, 'adeii'); },
-	       alias=>'\adefii');#$
+       afterDigest => sub { defHelper(@_, 'adefii'); },
+	       alias=>'\adefii');
 %</ltxml>
 %    \end{macrocode}
 % \end{macro}
@@ -1248,11 +1289,19 @@ DefConstructor('\adefii[]{}{}{} OptionalKeyVals:DEF',
 \newcommand\defiii[4][]{\def\@pone{#2}\def\@ptwo{#3}\def\@pthree{#4}%
 \st@def@target{#1}{#2-#3-#4}\defemph{#2 #3 #4}\@defiii}
 \newcommand\@defiii[1][]{\ifdef@index\@atwin[#1]{\@pone}{\@ptwo}{\@pthree}\fi\xspace}
+\newcommand\defiiis[4][]{\def\@pone{#2}\def\@ptwo{#3}\def\@pthree{#4}%
+\st@def@target{#1}{#2-#3-#4}\defemph{#2 #3 #4s}\@defiii}
 %</package>
 %<*ltxml>
 DefConstructor('\defiii[]{}{}{} OptionalKeyVals:DEF',
 		 "?#defindex(<omdoc:idx><omdoc:idt>)"
 	         . "<omdoc:term role='definiendum' cd='#theory' name='?#1(#1)(&dashed(#2,#3,#4))'>#2 #3 #4</omdoc:term>"
+		 ."?#defindex(</omdoc:idt><omdoc:ide index='default'><omdoc:idp>#2</omdoc:idp><omdoc:idp>#3</omdoc:idp><omdoc:idp>#4</omdoc:idp></omdoc:ide></omdoc:idx>)",
+       afterDigest => sub { defHelper(@_, 'defiii'); },
+	       alias=>'\defiii');
+DefConstructor('\defiii[]{}{}{} OptionalKeyVals:DEF',
+		 "?#defindex(<omdoc:idx><omdoc:idt>)"
+	         . "<omdoc:term role='definiendum' cd='#theory' name='?#1(#1)(&dashed(#2,#3,#4))'>#2 #3 #4s</omdoc:term>"
 		 ."?#defindex(</omdoc:idt><omdoc:ide index='default'><omdoc:idp>#2</omdoc:idp><omdoc:idp>#3</omdoc:idp><omdoc:idp>#4</omdoc:idp></omdoc:ide></omdoc:idx>)",
        afterDigest => sub { defHelper(@_, 'defiii'); },
 	       alias=>'\defiii');
@@ -1430,6 +1479,9 @@ DefConstructor('\termref OptionalKeyVals:termref {}',
 \newcommand\trefi[2][]{\atrefi[#1]{#2}{#2}}
 \newcommand\trefii[3][]{\atrefi[#1]{#2 #3}{#2-#3}}
 \newcommand\trefiii[4][]{\atrefi[#1]{#2 #3 #4}{#2-#3-#4}}
+\newcommand\trefis[2][]{\atrefi[#1]{#2s}{#2}}
+\newcommand\trefiis[3][]{\atrefi[#1]{#2 #3s}{#2-#3}}
+\newcommand\trefiiis[4][]{\atrefi[#1]{#2 #3 #4s}{#2-#3-#4}}
 %</package|ltxml>
 %<ltxml>');
 %    \end{macrocode}
@@ -1531,22 +1583,17 @@ sub defHelper{
   my $addr = LookupValue('defs');
   my $name = $whatsit->getArg(1);
   $name = $name->toString if $name;
-  if($defOption eq 'definiendum') {
-     $name = $whatsit->getArg(2) unless $name;
-     $whatsit->setProperty(name=>$name->toString);
-  } elsif($defOption eq 'defi') {
-     $name = $whatsit->getArg(2) unless $name;
-  } elsif($defOption eq 'adefi') {
-     $name = $whatsit->getArg(3) unless $name;
-  } elsif($defOption eq 'defii') {
-     $name = $whatsit->getArg(2)->toString.'-'.$whatsit->getArg(3)->toString unless $name;
-  } elsif($defOption eq 'adefii') {
-     $name = $whatsit->getArg(3)->toString.'-'.$whatsit->getArg(4)->toString unless $name;
-  } elsif($defOption eq 'defiii') {
-     $name = $whatsit->getArg(2)->toString.'-'.$whatsit->getArg(3)->toString.'-'.$whatsit->getArg(4)->toString unless $name;
-  } elsif($defOption eq 'adefiii') {
-     $name = $whatsit->getArg(3)->toString.'-'.$whatsit->getArg(4)->toString.'-'.$whatsit->getArg(5)->toString unless $name;
-   }
+  my %choose_Option = (
+                      definiendum => sub {$whatsit->getArg(2);},
+                      defi => sub {$whatsit->getArg(2);},
+                      adefi => sub {$whatsit->getArg(3);},
+                      defii => sub {$whatsit->getArg(2)->toString.'-'.$whatsit->getArg(3)->toString;},
+                      adefii => sub {$whatsit->getArg(3)->toString.'-'.$whatsit->getArg(4)->toString;},
+                      defiii => sub {$whatsit->getArg(2)->toString.'-'.$whatsit->getArg(3)->toString.'-'.$whatsit->getArg(4)->toString;},
+                      adefiii => sub {$whatsit->getArg(3)->toString.'-'.$whatsit->getArg(4)->toString.'-'.$whatsit->getArg(5)->toString;} 
+                      );
+  $name = $name || $choose_Option{$defOption}->();
+  $whatsit->setProperty(name=>$name->toString) if ref($name);
   push(@$addr, $name) if ($addr and $name);
   $whatsit->setProperty('defindex', IfCondition(T_CS('\if@defindex')));
   $whatsit->setProperty(theory=>(LookupValue('modnl_signature') || LookupValue('current_module')));
