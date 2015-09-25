@@ -373,7 +373,7 @@ RequirePackage('omdoc');
 %<*cls>
 \let\orig@document=\document
 \srefaddidkey{document}
-\renewrobustcmd{\document}[1][]{\metasetkeys{document}{#1}\orig@document}
+\renewcommand{\document}[1][]{\metasetkeys{document}{#1}\orig@document}
 %</cls>
 %<*ltxml.cls>
 sub xmlBase {
@@ -500,14 +500,10 @@ DefConstructor('\@CurrentSectionLevel',
 % \begin{environment}{blindomgroup}
 % \begin{macrocode}
 %<*package>
-\newrobustcmd\at@begin@blindomgroup[1]{}
-\newenvironment{blindomgroup}{%
-  \advance\section@level by 1%
-  \at@begin@blindomgroup%
-  \setion@level%
-}{%
-  \advance\section@level by -1%
-}%
+\newcommand\at@begin@blindomgroup[1]{}
+\newenvironment{blindomgroup}
+{\advance\section@level by 1\at@begin@blindomgroup\setion@level}
+{\advance\section@level by -1}
 %</package>
 %<*ltxml.sty> 
 DefEnvironment('{blindomgroup} OptionalKeyVals:omgroup',
@@ -525,10 +521,9 @@ DefEnvironment('{blindomgroup} OptionalKeyVals:omgroup',
 %   arguments
 %    \begin{macrocode}
 %<*package>
-\newrobustcmd\omgroup@cl[2]{%
-  \def\currentsectionlevel{#1\xspace}%
-  \def\Currentsectionlevel{#2\xspace}%
-}%
+\newcommand\omgroup@cl[2]{%
+\def\currentsectionlevel{#1\xspace}%
+\def\Currentsectionlevel{#2\xspace}}
 %    \end{macrocode}
 % \end{macro}
 %
@@ -536,11 +531,9 @@ DefEnvironment('{blindomgroup} OptionalKeyVals:omgroup',
 %   convenience macro: |\omgroup@nonum{|\meta{level}|}{|\meta{title}|}| makes an unnumbered
 %   sectioning with title \meta{title} at level \meta{level}.
 %    \begin{macrocode}
-\newrobustcmd\omgroup@nonum[2]{%
-  \ifcsundef{hyper@anchor}{}{\phantomsection}%
-  \addcontentsline{toc}{#1}{#2}%
-  \@nameuse{#1}*{#2}%
-}%
+\newcommand\omgroup@nonum[2]{%
+\ifx\hyper@anchor\@undefined\else\phantomsection\fi%
+\addcontentsline{toc}{#1}{#2}\@nameuse{#1}*{#2}}
 %    \end{macrocode}
 % \end{macro}
 %
@@ -550,15 +543,10 @@ DefEnvironment('{blindomgroup} OptionalKeyVals:omgroup',
 %   key was given in the |omgroup| environment and -- if it is use it. But how to do that
 %   depends on whether the |rdfmeta| package has been loaded.
 %    \begin{macrocode}
-\newrobustcmd\omgroup@num[2]{%
-  \sref@label@id{\omdoc@sect@Name~\@nameuse{the#1}}%
-  \ifx\omgroup@short\@empty%
-    \@nameuse{#1}{#2}%
-  \else%
-    \@ifundefined{rdfmeta@sectioning}{\@nameuse{#1}[\omgroup@short]{#2}}%
-    {\@nameuse{rdfmeta@#2@old}[\omgroup@short]{#2}}%
-  \fi%
-}%
+\newcommand\omgroup@num[2]{\sref@label@id{\omdoc@sect@Name~\@nameuse{the#1}}%
+\ifx\omgroup@short\@empty\@nameuse{#1}{#2}%
+\else\@ifundefined{rdfmeta@sectioning}{\@nameuse{#1}[\omgroup@short]{#2}}%
+{\@nameuse{rdfmeta@#2@old}[\omgroup@short]{#2}}\fi}
 %</package>
 %    \end{macrocode}
 % \end{macro}
@@ -585,7 +573,7 @@ DefEnvironment('{blindomgroup} OptionalKeyVals:omgroup',
 \newif\if@@num\@@numtrue
 \newif\if@frontmatter\@frontmatterfalse
 \newif\if@backmatter\@backmatterfalse
-\newrobustcmd\at@begin@omgroup[3][]{}
+\newcommand\at@begin@omgroup[3][]{}
 %    \end{macrocode}
 %
 % Then we define a helper macro that takes care of the sectioning magic. It comes with its
@@ -597,81 +585,60 @@ DefEnvironment('{blindomgroup} OptionalKeyVals:omgroup',
 \addmetakey[false]{omdoc@sect}{clear}[true]
 \addmetakey{omdoc@sect}{ref}
 \addmetakey[false]{omdoc@sect}{num}[true]
-\newrobustcmd\omdoc@sectioning[3][]{%
-  \metasetkeys{omdoc@sect}{#1}%
-  \ifx\omdoc@sect@clear\@true%
-    \cleardoublepage%
-  \fi%
-  \if@@num% numbering not overridden by frontmatter, etc.
-    \ifx\omdoc@sect@num\@true%
-      \omgroup@num{#2}{#3}%
-    \else%
-      \omgroup@nonum{#2}{#3}%
-    \fi%
-    \omgroup@cl\omdoc@sect@name\omdoc@sect@Name
-  \else%
-    \omgroup@nonum{#2}{#3}%
-  \fi%
-}%
+\newcommand\omdoc@sectioning[3][]{\metasetkeys{omdoc@sect}{#1}%
+\ifx\omdoc@sect@clear\@true\cleardoublepage\fi%
+\if@@num% numbering not overridden by frontmatter, etc.
+\ifx\omdoc@sect@num\@true\omgroup@num{#2}{#3}\else\omgroup@nonum{#2}{#3}\fi
+\omgroup@cl\omdoc@sect@name\omdoc@sect@Name
+\else\omgroup@nonum{#2}{#3}\fi}
 %    \end{macrocode}
 % and another one, if redefines the |\addtocontentsline| macro of {\LaTeX} to import the
 % respective macros. It takes as an argument a list of module names.\ednote{MK: the
 % extension sms is hard-coded here, but should not be. This will not work in multilingual
 % settings.}
 %    \begin{macrocode}
-\newrobustcmd\omgroup@redefine@addtocontents[1]{%
-  \edef\@@import{#1}%
-  \@for\@I:=\@@import\do{%
-    \edef\@path{\csname module@\@I  @path\endcsname}%
-    \@ifundefined{tf@toc}\relax{%
-      \protected@write\tf@toc{}{\string\@requiremodules{\@path}{sms}}%
-    }%
-  }%
-  \ifcsundef{hyper@anchor}{% hyperref.sty loaded?
-    \def\addcontentsline##1##2##3{%
-      \addtocontents{##1}{\protect\contentsline{##2}{\string\importmodules{#1}##3}{\thepage}}}%
-  }{%
-    \def\addcontentsline##1##2##3{%
-      \addtocontents{##1}{\protect\contentsline{##2}{\string\importmodules{#1}##3}{\thepage}{\@currentHref}}}%
-  }%
-}% hypreref.sty loaded?
+\newcommand\omgroup@redefine@addtocontents[1]{\edef\@@import{#1}%
+\@for\@I:=\@@import\do{\edef\@path{\csname module@\@I  @path\endcsname}%
+\@ifundefined{tf@toc}\relax{\protected@write\tf@toc{}{\string\@requiremodules{\@path}{sms}}}}
+\ifx\hyper@anchor\@undefined% hyperref.sty loaded?
+\def\addcontentsline##1##2##3{%
+\addtocontents{##1}{\protect\contentsline{##2}{\string\importmodules{#1}##3}{\thepage}}}
+\else\def\addcontentsline##1##2##3{%
+\addtocontents{##1}{\protect\contentsline{##2}{\string\importmodules{#1}##3}{\thepage}{\@currentHref}}}%
+\fi}% hypreref.sty loaded?
 %    \end{macrocode}
 % now the |omgroup| environment itself. This takes care of the table of contents via the
 % helper macro above and then selects the appropriate sectinoning command from
 % |article.cls|.
 %    \begin{macrocode}
-\newenvironment{omgroup}[2][]{% keys, title
-  \metasetkeys{omgroup}{#1}\sref@target%
-  \ifx\omgroup@display\st@flow\@@numfalse\fi%
-  \if@frontmatter\@@numfalse\fi%
+\newenvironment{omgroup}[2][]% keys, title
+{\metasetkeys{omgroup}{#1}\sref@target%
+\ifx\omgroup@display\st@flow\@@numfalse\fi
+\if@frontmatter\@@numfalse\fi
 %    \end{macrocode}
 % If the |loadmodules| key is set on |\begin{omgroup}|, we redefine the |\addcontetsline|
 %   macro that determines how the sectioning commands below construct the entries for the
 %   table of contents.
 %    \begin{macrocode}
-  \ifx\omgroup@loadmodules\@true%
-    \omgroup@redefine@addtocontents{\@ifundefined{mod@id}\imported@modules%
-    {\@ifundefined{module@\mod@id @path}{\imported@modules}\mod@id}}%
-  \fi%
+\ifx\omgroup@loadmodules\@true%
+\omgroup@redefine@addtocontents{\@ifundefined{mod@id}\imported@modules%
+{\@ifundefined{module@\mod@id @path}{\imported@modules}\mod@id}}\fi%
 %    \end{macrocode}
 % now we only need to construct the right sectioning depending on the value of
 % |\section@level|.
 %    \begin{macrocode}
-  \advance\section@level by 1
-  \ifcase\section@level%
-  \or\omdoc@sectioning[name=part,Name=Part,clear,num]{part}{#2}%
-  \or\omdoc@sectioning[name=chapter,Name=Chapter,clear,num]{chapter}{#2}%
-  \or\omdoc@sectioning[name=section,Name=Section,num]{section}{#2}%
-  \or\omdoc@sectioning[name=subsection,Name=Subsection,num]{subsection}{#2}%
-  \or\omdoc@sectioning[name=subsubsection,Name=Subsubsection,num]{subsubsection}{#2}%
-  \or\omdoc@sectioning[name=paragraph,Name=Paragraph,ref=this paragraph]{paragraph}{#2}%
-  \or\omdoc@sectioning[name=subparagraph,Name=Subparagraph,ref=this subparagraph]{paragraph}{#2}%
-  \fi% \ifcase
-  \at@begin@omgroup[#1]%
-  \section@level{#2}%
-}{% for customization
-  \advance\section@level by -1
-}%
+\advance\section@level by 1
+\ifcase\section@level%
+\or\omdoc@sectioning[name=part,Name=Part,clear,num]{part}{#2}%
+\or\omdoc@sectioning[name=chapter,Name=Chapter,clear,num]{chapter}{#2}%
+\or\omdoc@sectioning[name=section,Name=Section,num]{section}{#2}%
+\or\omdoc@sectioning[name=subsection,Name=Subsection,num]{subsection}{#2}%
+\or\omdoc@sectioning[name=subsubsection,Name=Subsubsection,num]{subsubsection}{#2}%
+\or\omdoc@sectioning[name=paragraph,Name=Paragraph,ref=this paragraph]{paragraph}{#2}%
+\or\omdoc@sectioning[name=subparagraph,Name=Subparagraph,ref=this subparagraph]{paragraph}{#2}%
+\fi% \ifcase
+\at@begin@omgroup[#1]\section@level{#2}}% for customization
+{\advance\section@level by -1}
 %</package>
 %<*ltxml.sty> 
 DefEnvironment('{omgroup} OptionalKeyVals:omgroup {}',
@@ -733,19 +700,15 @@ Tag('omdoc:bibliography',afterOpen=>\&numberIt,afterClose=>\&locateIt);
 %   matter environment in this case.
 %    \begin{macrocode}
 %<*cls>
-\ifclass@book%
-  \renewenvironment{frontmatter}{%
-    \@frontmattertrue\cleardoublepage\@mainmatterfalse\pagenumbering{roman}
-  }{%
-    \@frontmatterfalse\setcounter{page}{1}\pagenumbering{arabic}%
-  }%
-\else%
-  \newenvironment{frontmatter}{%
-    \@frontmattertrue\pagenumbering{roman}%
-  }{%
-    \@frontmatterfalse\setcounter{page}{1}\pagenumbering{arabic}%
-  }%
-\fi%
+\ifclass@book
+\renewenvironment{frontmatter}
+{\@frontmattertrue\cleardoublepage\@mainmatterfalse\pagenumbering{roman}}
+{\@frontmatterfalse\setcounter{page}{1}\pagenumbering{arabic}}
+\else
+\newenvironment{frontmatter}
+{\@frontmattertrue\pagenumbering{roman}}
+{\@frontmatterfalse\setcounter{page}{1}\pagenumbering{arabic}}
+\fi
 %</cls>
 %<*ltxml.cls>
 DefEnvironment('{frontmatter}','#body');
@@ -758,15 +721,13 @@ DefEnvironment('{frontmatter}','#body');
 %   matter environment in this case.
 %    \begin{macrocode}
 %<*cls>
-\ifclass@book%
-  \renewenvironment{backmatter}{%
-    \cleardoublepage\@mainmatterfalse\@backmattertrue%
-  }{%
-    \@backmatterfalse%
-  }%
-\else%
-  \newenvironment{backmatter}{\@backmattertrue}{\@backmatterfalse}%
-\fi%
+\ifclass@book
+\renewenvironment{backmatter}
+{\cleardoublepage\@mainmatterfalse\@backmattertrue}
+{\@backmatterfalse}
+\else
+\newenvironment{backmatter}{\@backmattertrue}{\@backmatterfalse}
+\fi
 %</cls>
 %<*ltxml.cls>
 DefEnvironment('{backmatter}','#body');
@@ -779,19 +740,13 @@ DefEnvironment('{backmatter}','#body');
 % \begin{environment}{ignore}
 %    \begin{macrocode}
 %<*package>
-\ifshow@ignores%
-  \addmetakey{ignore}{type}%
-  \addmetakey{ignore}{comment}%
-  \newenvironment{ignore}[1][]{%
-    \metasetkeys{ignore}{#1}%
-    \textless\ignore@type\textgreater\bgroup\itshape%
-  }{%
-    \egroup\textless/\ignore@type\textgreater%
-  }%
-  \renewenvironment{ignore}{}{}%
-\else%
-  \excludecomment{ignore}%
-\fi%
+\ifshow@ignores
+\addmetakey{ignore}{type}
+\addmetakey{ignore}{comment}
+\newenvironment{ignore}[1][]
+{\metasetkeys{ignore}{#1}\textless\ignore@type\textgreater\bgroup\itshape}
+{\egroup\textless/\ignore@type\textgreater}
+\renewenvironment{ignore}{}{}\else\excludecomment{ignore}\fi
 %</package>
 %<*ltxml.sty>
 DefKeyVal('ignore','type','Semiverbatim');
@@ -828,13 +783,9 @@ DefConstructor('\STRlabel{}{}', sub {
 %   ref!}
 %    \begin{macrocode}
 %<*package>
-\newrobustcmd\STRcopy[2][]{%
-  \expandafter\ifx\csname STR@#2\endcsname\relax%
-    \message{STR warning: reference #2 undefined!}%
-  \else%
-    \csname STR@#2\endcsname%
-  \fi%
-}%
+\newcommand\STRcopy[2][]{\expandafter\ifx\csname STR@#2\endcsname\relax
+\message{STR warning: reference #2 undefined!}
+\else\csname STR@#2\endcsname\fi}
 %</package>
 %<*ltxml.sty>
 DefConstructor('\STRcopy[]{}',"<omdoc:ref xref='#1##2'/>");
@@ -847,7 +798,7 @@ Tag('omdoc:ref',afterOpen=>\&numberIt,afterClose=>\&locateIt);
 %    if we have a presentation form and a semantic form, then we can use
 %    \begin{macrocode}
 %<*package>
-\newrobustcmd\STRsemantics[3][]{#2\def\@test{#1}\ifx\@test\@empty\STRlabeldef{#1}{#2}\fi}
+\newcommand\STRsemantics[3][]{#2\def\@test{#1}\ifx\@test\@empty\STRlabeldef{#1}{#2}\fi}
 %</package>
 %<*ltxml.sty>
 DefConstructor('\STRsemantics[]{}{}', sub {
@@ -933,13 +884,11 @@ DefConstructor('\newpage','');
 %
 %    \begin{macrocode}
 %<*package>
-\newrobustcmd\hateq{\ensuremath{\hat=}\xspace}
-\newrobustcmd\hatequiv{\ensuremath{\hat\equiv}\xspace}
-\ifdef{\textleadsto}{%
-  \renewrobustcmd\textleadsto{\ensuremath{\leadsto}\xspace}%
-}{%
-  \newrobustcmd\textleadsto{\ensuremath{\leadsto}\xspace}%
-}%
+\newcommand\hateq{\ensuremath{\hat=}\xspace}
+\newcommand\hatequiv{\ensuremath{\hat\equiv}\xspace}
+\ifdef{\textleadsto}%
+{\renewcommand\textleadsto{\ensuremath{\leadsto}\xspace}}%
+{\newcommand\textleadsto{\ensuremath{\leadsto}\xspace}}%
 %</package>
 %<*ltxml.sty>
 DefMacro('\hateq','\@hateq\xspace'); 
@@ -957,7 +906,7 @@ DefConstructor('\@textleadsto',"\x{219D}");
 %
 %    \begin{macrocode}
 %<*package>
-\newrobustcmd\baseURI[2][]{}
+\newcommand\baseURI[2][]{}
 %</package>
 %<*ltxml.sty>
 DefMacro('\baseURI []Semiverbatim', sub {

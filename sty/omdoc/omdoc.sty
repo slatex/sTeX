@@ -26,32 +26,20 @@
 \RequirePackage{etoolbox}
 \def\currentsectionlevel{document\xspace}%
 \def\Currentsectionlevel{Document\xspace}%
-\newrobustcmd\at@begin@blindomgroup[1]{}
-\newenvironment{blindomgroup}{%
-\advance\section@level by 1%
-\at@begin@blindomgroup%
-\setion@level%
-}{%
-\advance\section@level by -1%
-}%
-\newrobustcmd\omgroup@cl[2]{%
+\newcommand\at@begin@blindomgroup[1]{}
+\newenvironment{blindomgroup}
+{\advance\section@level by 1\at@begin@blindomgroup\setion@level}
+{\advance\section@level by -1}
+\newcommand\omgroup@cl[2]{%
 \def\currentsectionlevel{#1\xspace}%
-\def\Currentsectionlevel{#2\xspace}%
-}%
-\newrobustcmd\omgroup@nonum[2]{%
-\ifcsundef{hyper@anchor}{}{\phantomsection}%
-\addcontentsline{toc}{#1}{#2}%
-\@nameuse{#1}*{#2}%
-}%
-\newrobustcmd\omgroup@num[2]{%
-\sref@label@id{\omdoc@sect@Name~\@nameuse{the#1}}%
-\ifx\omgroup@short\@empty%
-\@nameuse{#1}{#2}%
-\else%
-\@ifundefined{rdfmeta@sectioning}{\@nameuse{#1}[\omgroup@short]{#2}}%
-{\@nameuse{rdfmeta@#2@old}[\omgroup@short]{#2}}%
-\fi%
-}%
+\def\Currentsectionlevel{#2\xspace}}
+\newcommand\omgroup@nonum[2]{%
+\ifx\hyper@anchor\@undefined\else\phantomsection\fi%
+\addcontentsline{toc}{#1}{#2}\@nameuse{#1}*{#2}}
+\newcommand\omgroup@num[2]{\sref@label@id{\omdoc@sect@Name~\@nameuse{the#1}}%
+\ifx\omgroup@short\@empty\@nameuse{#1}{#2}%
+\else\@ifundefined{rdfmeta@sectioning}{\@nameuse{#1}[\omgroup@short]{#2}}%
+{\@nameuse{rdfmeta@#2@old}[\omgroup@short]{#2}}\fi}
 \def\@true{true}
 \def\@false{false}
 \srefaddidkey{omgroup}
@@ -66,52 +54,34 @@
 \newif\if@@num\@@numtrue
 \newif\if@frontmatter\@frontmatterfalse
 \newif\if@backmatter\@backmatterfalse
-\newrobustcmd\at@begin@omgroup[3][]{}
+\newcommand\at@begin@omgroup[3][]{}
 \addmetakey{omdoc@sect}{name}
 \addmetakey{omdoc@sect}{Name}
 \addmetakey[false]{omdoc@sect}{clear}[true]
 \addmetakey{omdoc@sect}{ref}
 \addmetakey[false]{omdoc@sect}{num}[true]
-\newrobustcmd\omdoc@sectioning[3][]{%
-\metasetkeys{omdoc@sect}{#1}%
-\ifx\omdoc@sect@clear\@true%
-\cleardoublepage%
-\fi%
+\newcommand\omdoc@sectioning[3][]{\metasetkeys{omdoc@sect}{#1}%
+\ifx\omdoc@sect@clear\@true\cleardoublepage\fi%
 \if@@num% numbering not overridden by frontmatter, etc.
-\ifx\omdoc@sect@num\@true%
-\omgroup@num{#2}{#3}%
-\else%
-\omgroup@nonum{#2}{#3}%
-\fi%
+\ifx\omdoc@sect@num\@true\omgroup@num{#2}{#3}\else\omgroup@nonum{#2}{#3}\fi
 \omgroup@cl\omdoc@sect@name\omdoc@sect@Name
-\else%
-\omgroup@nonum{#2}{#3}%
-\fi%
-}%
-\newrobustcmd\omgroup@redefine@addtocontents[1]{%
-\edef\@@import{#1}%
-\@for\@I:=\@@import\do{%
-\edef\@path{\csname module@\@I  @path\endcsname}%
-\@ifundefined{tf@toc}\relax{%
-\protected@write\tf@toc{}{\string\@requiremodules{\@path}{sms}}%
-}%
-}%
-\ifcsundef{hyper@anchor}{% hyperref.sty loaded?
+\else\omgroup@nonum{#2}{#3}\fi}
+\newcommand\omgroup@redefine@addtocontents[1]{\edef\@@import{#1}%
+\@for\@I:=\@@import\do{\edef\@path{\csname module@\@I  @path\endcsname}%
+\@ifundefined{tf@toc}\relax{\protected@write\tf@toc{}{\string\@requiremodules{\@path}{sms}}}}
+\ifx\hyper@anchor\@undefined% hyperref.sty loaded?
 \def\addcontentsline##1##2##3{%
-\addtocontents{##1}{\protect\contentsline{##2}{\string\importmodules{#1}##3}{\thepage}}}%
-}{%
-\def\addcontentsline##1##2##3{%
+\addtocontents{##1}{\protect\contentsline{##2}{\string\importmodules{#1}##3}{\thepage}}}
+\else\def\addcontentsline##1##2##3{%
 \addtocontents{##1}{\protect\contentsline{##2}{\string\importmodules{#1}##3}{\thepage}{\@currentHref}}}%
-}%
-}% hypreref.sty loaded?
-\newenvironment{omgroup}[2][]{% keys, title
-\metasetkeys{omgroup}{#1}\sref@target%
-\ifx\omgroup@display\st@flow\@@numfalse\fi%
-\if@frontmatter\@@numfalse\fi%
+\fi}% hypreref.sty loaded?
+\newenvironment{omgroup}[2][]% keys, title
+{\metasetkeys{omgroup}{#1}\sref@target%
+\ifx\omgroup@display\st@flow\@@numfalse\fi
+\if@frontmatter\@@numfalse\fi
 \ifx\omgroup@loadmodules\@true%
 \omgroup@redefine@addtocontents{\@ifundefined{mod@id}\imported@modules%
-{\@ifundefined{module@\mod@id @path}{\imported@modules}\mod@id}}%
-\fi%
+{\@ifundefined{module@\mod@id @path}{\imported@modules}\mod@id}}\fi%
 \advance\section@level by 1
 \ifcase\section@level%
 \or\omdoc@sectioning[name=part,Name=Part,clear,num]{part}{#2}%
@@ -122,34 +92,21 @@
 \or\omdoc@sectioning[name=paragraph,Name=Paragraph,ref=this paragraph]{paragraph}{#2}%
 \or\omdoc@sectioning[name=subparagraph,Name=Subparagraph,ref=this subparagraph]{paragraph}{#2}%
 \fi% \ifcase
-\at@begin@omgroup[#1]%
-\section@level{#2}%
-}{% for customization
-\advance\section@level by -1
-}%
+\at@begin@omgroup[#1]\section@level{#2}}% for customization
+{\advance\section@level by -1}
 \providecommand\printindex{\IfFileExists{\jobname.ind}{\input{\jobname.ind}}{}}
-\ifshow@ignores%
-\addmetakey{ignore}{type}%
-\addmetakey{ignore}{comment}%
-\newenvironment{ignore}[1][]{%
-\metasetkeys{ignore}{#1}%
-\textless\ignore@type\textgreater\bgroup\itshape%
-}{%
-\egroup\textless/\ignore@type\textgreater%
-}%
-\renewenvironment{ignore}{}{}%
-\else%
-\excludecomment{ignore}%
-\fi%
+\ifshow@ignores
+\addmetakey{ignore}{type}
+\addmetakey{ignore}{comment}
+\newenvironment{ignore}[1][]
+{\metasetkeys{ignore}{#1}\textless\ignore@type\textgreater\bgroup\itshape}
+{\egroup\textless/\ignore@type\textgreater}
+\renewenvironment{ignore}{}{}\else\excludecomment{ignore}\fi
 \long\def\STRlabel#1#2{\STRlabeldef{#1}{#2}{#2}}
-\newrobustcmd\STRcopy[2][]{%
-\expandafter\ifx\csname STR@#2\endcsname\relax%
-\message{STR warning: reference #2 undefined!}%
-\else%
-\csname STR@#2\endcsname%
-\fi%
-}%
-\newrobustcmd\STRsemantics[3][]{#2\def\@test{#1}\ifx\@test\@empty\STRlabeldef{#1}{#2}\fi}
+\newcommand\STRcopy[2][]{\expandafter\ifx\csname STR@#2\endcsname\relax
+\message{STR warning: reference #2 undefined!}
+\else\csname STR@#2\endcsname\fi}
+\newcommand\STRsemantics[3][]{#2\def\@test{#1}\ifx\@test\@empty\STRlabeldef{#1}{#2}\fi}
 \def\STRlabeldef#1{\expandafter\gdef\csname STR@#1\endcsname}
 \def\black#1{\textcolor{black}{#1}}
 \def\gray#1{\textcolor{gray}{#1}}
@@ -161,14 +118,12 @@
 \def\brown#1{\textcolor{brown}{#1}}
 \def\yellow#1{\textcolor{yellow}{#1}}
 \def\orange#1{\textcolor{orange}{#1}}
-\newrobustcmd\hateq{\ensuremath{\hat=}\xspace}
-\newrobustcmd\hatequiv{\ensuremath{\hat\equiv}\xspace}
-\ifdef{\textleadsto}{%
-\renewrobustcmd\textleadsto{\ensuremath{\leadsto}\xspace}%
-}{%
-\newrobustcmd\textleadsto{\ensuremath{\leadsto}\xspace}%
-}%
-\newrobustcmd\baseURI[2][]{}
+\newcommand\hateq{\ensuremath{\hat=}\xspace}
+\newcommand\hatequiv{\ensuremath{\hat\equiv}\xspace}
+\ifdef{\textleadsto}%
+{\renewcommand\textleadsto{\ensuremath{\leadsto}\xspace}}%
+{\newcommand\textleadsto{\ensuremath{\leadsto}\xspace}}%
+\newcommand\baseURI[2][]{}
 \endinput
 %%
 %% End of file `omdoc.sty'.
