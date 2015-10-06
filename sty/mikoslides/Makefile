@@ -1,5 +1,5 @@
 PREFIX = ..
-DTX.sty.base = 
+DTX.sty.base = mikoslides
 DTX.cls.base = mikoslides
 TDSCOLL = stex
 CTANPREFIX = /sty
