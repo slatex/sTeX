@@ -612,6 +612,17 @@
 % since the documentation applies to both of them and to prevent them from getting out of
 % sync.
 %
+% The general preamble for \latexml:
+%
+%    \begin{macrocode}
+%<*ltxml>
+# -*- CPERL -*-
+package LaTeXML::Package::Pool;
+use strict;
+use LaTeXML::Package;
+%</ltxml>
+%    \end{macrocode}
+%
 % \subsection{Package Options}\label{sec:impl:options}
 %
 % We declare some switches which will modify the behavior according to the package
@@ -621,13 +632,17 @@
 %<*package>
 \newif\ifdef@index\def@indexfalse
 \DeclareOption{defindex}{\def@indextrue}
-\DeclareOption{showmeta}{\PassOptionsToPackage{\CurrentOption}{metakeys}}
-\DeclareOption*{\PassOptionsToPackage{\CurrentOption}{omdoc}}
-%    \end{macrocode}
-%    Finally, we need to declare the end of the option declaration section to {\LaTeX}.
-%    \begin{macrocode}
-\ProcessOptions
+\DeclareOption*{\PassOptionsToPackage{\CurrentOption}{omtext}
+                           \PassOptionsToPackage{\CurrentOption}{modules}}
+\ProcessOptions 
 %</package>
+%<*ltxml>
+DefConditional('\if@defindex');
+DeclareOption('defindex', sub{Digest(T_CS('\@defindextrue')); });
+DeclareOption(undef,sub{PassOptions('omdoc','sty',ToString(Digest(T_CS('\CurrentOption'))));
+                                        PassOptions('omdoc','sty',ToString(Digest(T_CS('\CurrentOption')))); });
+ProcessOptions();
+%</ltxml>
 %    \end{macrocode}
 % 
 % The next measure is to ensure that some {\sTeX} packages are loaded: |omdoc| for the
@@ -644,15 +659,6 @@
 \theoremstyle{plain}
 %</package>
 %<*ltxml>
-# -*- CPERL -*-
-package LaTeXML::Package::Pool;
-use strict;
-use LaTeXML::Package;
-DefConditional('\if@defindex');
-DeclareOption('defindex', sub{Digest(T_CS('\@defindextrue')); });
-DeclareOption('showmeta', sub{PassOptions('metakeys','sty',ToString(Digest(T_CS('\CurrentOption')))); });
-DeclareOption(undef, sub{PassOptions('omdoc','sty',ToString(Digest(T_CS('\CurrentOption')))); });
-ProcessOptions();
 RequirePackage('omtext');
 RequirePackage('modules');
 %</ltxml>
@@ -1397,7 +1403,7 @@ Try wrapping the paragraph in a begin{omtext}, \\begin{assertion}, \\begin{axiom
     my @defs = @$defsref;
     $whatsit->setProperty('defs',\@defs);
     AssignValue('defs',undef);
- return; });
+ return; });#$
 %</ltxml>
 %    \end{macrocode}
 % \end{macro}
