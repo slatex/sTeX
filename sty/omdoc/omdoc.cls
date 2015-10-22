@@ -14,8 +14,8 @@
 \newif\ifclass@book\class@bookfalse
 \DeclareOption{book}{\def\omdoc@class{book}\class@booktrue%
 \PassOptionsToPackage{\CurrentOption}{omdoc}}
-\DeclareOption*{\PassOptionsToClass{\CurrentOption}{article}}
-\DeclareOption*{\PassOptionsToPackage{\CurrentOption}{\omdoc@class}}
+\DeclareOption*{\PassOptionsToClass{\CurrentOption}{\omdoc@class}}
+\DeclareOption*{\PassOptionsToPackage{\CurrentOption}{omdoc}}
 \ProcessOptions
 \LoadClass{\omdoc@class}
 \RequirePackage{etoolbox}
