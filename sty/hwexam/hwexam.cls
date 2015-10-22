@@ -8,17 +8,7 @@
 %% 
 \NeedsTeXFormat{LaTeX2e}[1999/12/01]
 \ProvidesClass{hwexam}[2013/12/12 v1.0 assignment and exam documents]
-\DeclareOption{test}{\PassOptionsToPackage{\CurrentOption}{hwexam}}
-\DeclareOption{multiple}{\PassOptionsToPackage{\CurrentOption}{hwexam}}
-\DeclareOption{showmeta}{\PassOptionsToPackage{\CurrentOption}{metakeys}}
-\DeclareOption{extrefs}{\PassOptionsToPackage{\CurrentOption}{sref}}
-\DeclareOption{notes}{\PassOptionsToPackage{\CurrentOption}{problem}}
-\DeclareOption{hints}{\PassOptionsToPackage{\CurrentOption}{problem}}
-\DeclareOption{solutions}{\PassOptionsToPackage{\CurrentOption}{problem}}
-\DeclareOption{pts}{\PassOptionsToPackage{\CurrentOption}{problem}}
-\DeclareOption{min}{\PassOptionsToPackage{\CurrentOption}{problem}}
-\DeclareOption{boxed}{\PassOptionsToPackage{\CurrentOption}{problem}}
-\DeclareOption{extract}{\PassOptionsToPackage{\CurrentOption}{problem}}
+\DeclareOption*{\PassOptionsToPackage{\CurrentOption}{hwexam}}
 \DeclareOption*{\PassOptionsToClass{\CurrentOption}{omdoc}}
 \ProcessOptions
 \LoadClass{omdoc}
