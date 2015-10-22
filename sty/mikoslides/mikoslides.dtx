@@ -250,10 +250,7 @@
 % since the documentation applies to both of them and to prevent them from getting out of
 % sync.
 %
-%\subsection{Initialization and Class Options}\label{sec:impl:init}
-%
-% For the {\latexml} bindings, we make sure the right perl packages are loaded.
-%
+% The general preamble for \latexml:
 %    \begin{macrocode}
 %<*ltxml.cls|ltxml.sty>
 # -*- CPERL -*-
@@ -261,33 +258,35 @@ package LaTeXML::Package::Pool;
 use strict;
 use LaTeXML::Package;
 %</ltxml.cls|ltxml.sty>
-%<*ltxml.cls>
-DeclareOption('notes', '');
-DeclareOption('slides', '');
-DeclareOption('noproblems', '');
-DeclareOption('sectocframes', '');
-DeclareOption('frameimages', '');
-DeclareOption('report', sub {PassOptions('omdoc','cls',ToString(Digest(T_CS('\CurrentOption')))); });
-DeclareOption('book', sub {PassOptions('omdoc','cls',ToString(Digest(T_CS('\CurrentOption')))); });
-DeclareOption(undef, sub {PassOptions('omdoc','cls',ToString(Digest(T_CS('\CurrentOption'))));
-                          PassOptions('beamer','cls',ToString(Digest(T_CS('\CurrentOption'))));});
-DeclareOption(undef, sub {PassOptions('mikoslides','sty',ToString(Digest(T_CS('\CurrentOption'))));});
-%</ltxml.cls>
-%<*ltxml.sty>
- DeclareOption('showmeta', sub {PassOptions('metakeys','sty',ToString(Digest(T_CS('\CurrentOption')))); });
-DeclareOption('defindex', sub {PassOptions('statements','sty',ToString(Digest(T_CS('\CurrentOption')))); });
-%</ltxml.sty>
-%<*ltxml.cls|ltxml.sty>
- ProcessOptions();
-%</ltxml.cls|ltxml.sty>
 %    \end{macrocode}
 %
-% For {\LaTeX} we define some Package Options and switches for the |mikoslides| class and activate
-% them by passing them on to |beamer.cls| the appropriate packages.
+%\subsection{Class and Package Options}\label{sec:impl:init}
+%
+% We define some Package Options and switches for the |mikoslides| class and activate them
+% by passing them on to |beamer.cls| and |omdoc.cls| and the |mikoslides| package.
 %
 %    \begin{macrocode}
 %<*cls>
 \newif\ifnotes\notesfalse
+\DeclareOption{notes}{\notestrue\PassOptionsToPackage{\CurrentOption}{mikoslides}}
+\DeclareOption{slides}{\notesfalse\PassOptionsToPackage{\CurrentOption}{mikoslides}}
+\DeclareOption*{\PassOptionsToClass{\CurrentOption}{omdoc}
+                           \PassOptionsToClass{\CurrentOption}{beamer}
+                           \PassOptionsToPackage{\CurrentOption}{mikoslides}}
+\ProcessOptions
+%</cls>
+%<*ltxml.cls>
+DeclareOption(undef, sub {PassOptions('omdoc','cls',ToString(Digest(T_CS('\CurrentOption'))));
+                                          PassOptions('mikoslides','sty',ToString(Digest(T_CS('\CurrentOption'))));});
+ProcessOptions();
+%</ltxml.cls>
+%    \end{macrocode}
+% now we do the same for the |mikoslides| package. Note that we also have to define the
+% same switches\ednote{MK: we may think about making all of them internal}, since we might
+% use |mikoslides.sty| in a different class.
+%    \begin{macrocode}
+%<*package>
+\newif\ifnotes\notesfalse 
 \DeclareOption{notes}{\notestrue}
 \DeclareOption{slides}{\notesfalse}
 \newif\ifsectocframes\sectocframesfalse 
@@ -297,22 +296,21 @@ DeclareOption('defindex', sub {PassOptions('statements','sty',ToString(Digest(T_
 \newif\if@part\@partfalse 
 \DeclareOption{report}{\@parttrue\PassOptionsToClass{\CurrentOption}{omdoc}}
 \DeclareOption{book}{\@parttrue\PassOptionsToClass{\CurrentOption}{omdoc}}
-\DeclareOption*{\PassOptionsToClass{\CurrentOption}{omdoc}
-                \PassOptionsToClass{\CurrentOption}{beamer}}
-\DeclareOption*{\PassOptionsToPackage{\CurrentOption}{mikoslides}}
-%</cls>
-%<*package>
-\DeclareOption{showmeta}{\PassOptionsToPackage{\CurrentOption}{metakeys}}
-\DeclareOption{defindex}{\PassOptionsToPackage{\CurrentOption}{statements}}
-\newif\ifnotes\notesfalse 
-\DeclareOption{notes}{\notestrue}
-\DeclareOption{slides}{\notesfalse}
 \newif\ifproblems\problemstrue
 \DeclareOption{noproblems}{\problemsfalse}
-\DeclareOption*{}% accept anything
+\DeclareOption*{\PassOptionsToPackage{\CurrentOption}{stex}
+                           \PassOptionsToPackage{\CurrentOption}{tikzinput}}
+\ProcessOptions
 %</package>
-%<cls|package>\ProcessOptions
 %<*ltxml.sty>
+DeclareOption('notes', '');
+DeclareOption('slides', '');
+DeclareOption('noproblems', '');
+DeclareOption('sectocframes', '');
+DeclareOption('frameimages', '');
+DeclareOption(undef, sub {PassOptions('stex','sty',ToString(Digest(T_CS('\CurrentOption'))));
+                                          PassOptions('tikzinput','sty',ToString(Digest(T_CS('\CurrentOption')))); });
+ProcessOptions();
 RawTeX('\newif\ifnotes\notesfalse');
 RawTeX('\newif\ifproblems\problemsfalse');
 %</ltxml.sty>
@@ -343,13 +341,11 @@ RawTeX('\newif\ifproblems\problemsfalse');
 %<*ltxml.cls>
 LoadClass('omdoc');
 RequirePackage('mikoslides');
-RequirePackage('tikzinput', options => ['image']));
 DefConstructor('\usetheme{}','');
 %</ltxml.cls>
 %    \end{macrocode}
 % 
-% now, we load the remaining packages for both versions. \ednote{MK: eventually (when tikz
-% support is fully realized in \latexml) get rid of the standalone package} 
+% now, we load the remaining packages for both versions. 
 %
 %    \begin{macrocode}
 %<*package>
@@ -357,25 +353,19 @@ DefConstructor('\usetheme{}','');
 \RequirePackage{tikzinput}
 \RequirePackage{latexml}
 \RequirePackage{amssymb}
-\usepgflibrary{shapes}
-\usetikzlibrary{arrows}
-\usetikzlibrary{positioning}
-\usetikzlibrary{tikzmark}%experimental/beta but very useful
-\usetikzlibrary{fit}
-\RequirePackage{url}
 \RequirePackage{amsmath}
 \RequirePackage{comment}
-\RequirePackage{standalone}
 \RequirePackage{textcomp}
+\RequirePackage{url}
 %</package>
 %<*ltxml.sty>
 RequirePackage('stex'); 
+RequirePackage('tikzinput', options => ['image'])); 
 RequirePackage('latexml');
 RequirePackage('amssymb');
+RequirePackage('amsmath');
 RequirePackage('graphicx');
-RequirePackage('tikz');
 RequirePackage('url');
- RequirePackage('amsmath');
 %</ltxml.sty>
 %    \end{macrocode}
 % 
@@ -542,7 +532,6 @@ DefConstructor('\@frameimage{}',"<omdoc:omgroup layout='slide'>#1</omdoc:omgroup
 %</ltxml.sty>
 %    \end{macrocode}
 % \end{macro}
-
 % 
 % \subsection{Header and Footer Lines}\label{sec:impl:headfootlines}
 %
@@ -758,13 +747,11 @@ DefEnvironment('{ttitle}', "\n<dc:title>#body</dc:title>");
 \newrobustcmd\putat[2]{%
   \begin{picture}(0,0)\put(#1){#2}\end{picture}%
 }%
-%</package>
 %    \end{macrocode}
 %
 % \subsection{Sectioning}
 % If the |sectocframes| option is set, then we make section frames. 
 %    \begin{macrocode}
-%<*cls>
 \ifsectocframes%
   \if@part%
     \newcounter{mpart}%
@@ -796,7 +783,7 @@ DefEnvironment('{ttitle}', "\n<dc:title>#body</dc:title>");
     }%
   \fi% ifnotes
 \fi% ifsectocframes
-%</cls>
+%</package>
 %    \end{macrocode}
 %
 % \subsection{Miscellaneous}
