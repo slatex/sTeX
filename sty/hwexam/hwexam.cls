@@ -8,12 +8,13 @@
 %% 
 \NeedsTeXFormat{LaTeX2e}[1999/12/01]
 \ProvidesClass{hwexam}[2013/12/12 v1.0 assignment and exam documents]
-\DeclareOption*{\PassOptionsToPackage{\CurrentOption}{hwexam}}
-\DeclareOption*{\PassOptionsToClass{\CurrentOption}{omdoc}}
+\DeclareOption*{\PassOptionsToPackage{\CurrentOption}{hwexam}
+                           \PassOptionsToClass{\CurrentOption}{omdoc}}
 \ProcessOptions
 \LoadClass{omdoc}
 \RequirePackage{stex}
 \RequirePackage{hwexam}
+\usepackage{tikzinput}
 \RequirePackage{graphicx}
 \RequirePackage{a4wide}
 \RequirePackage{amssymb}
