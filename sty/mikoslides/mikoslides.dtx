@@ -10,8 +10,8 @@
 % 
 % \iffalse
 %<cls|package>\NeedsTeXFormat{LaTeX2e}[1999/12/01]
-%<cls>\ProvidesClass{mikoslides}[2015/10/04 v1.0 Jacobs slides Class]
-%<package>\ProvidesPackage{mikoslides}[2015/10/04 v1.0 Jacobs slides Package]
+%<cls>\ProvidesClass{mikoslides}[2015/10/25 v1.1 Jacobs slides Class]
+%<package>\ProvidesPackage{mikoslides}[2015/10/25 v1.1 Jacobs slides Package]
 %
 %<*driver>
 \documentclass{ltxdoc}
@@ -47,6 +47,8 @@
 % notes mode}
 % \changes{v0.9}{2013/08/23}{numbered sectocframes}
 % \changes{v1.0}{2014/01/07}{adding \texttt{\textbackslash frameimage}}
+% \changes{v1.1}{2015/10/25}{Removing the old title macros (use the regular ones instead)}
+% \changes{v1.1}{2015/10/25}{reinterpreting omgroup}
 % 
 % \GetFileInfo{mikoslides.cls}
 % \MakeShortVerb{\|}
@@ -233,10 +235,10 @@
 % please feel free to contact the package author. Some of them are currently discussed in
 % the \sTeX GitHub repository~\cite{sTeX:github:on}. 
 % \begin{compactenum}
-% \item the class should be divided into concerns. \tracissue{1684}
-% \item when option |book| or |report| is given together with |sectocframes| chapter-level
-%   omgroups generate a spurious slide with a bare heading. This has something to do with
-%   the fact that beamer does not support |\chapter|
+% \item when option |book| which uses |\pagestyle{headings}| is given and semantic macros
+%   are given in the |omgroup| titles, then they sometimes are not defined by the time the
+%   heading is formatted. Need to look into how the headings are made. This is a problem
+%   of the underlying |omdoc| package.
 % \end{compactenum}
 % 
 % \StopEventually{\newpage\PrintIndex\newpage\PrintChanges\printbibliography}
@@ -297,8 +299,8 @@ ProcessOptions();
 \newif\ifframeimages\frameimagesfalse 
 \DeclareOption{frameimages}{\frameimagestrue}
 \newif\if@part\@partfalse 
-\DeclareOption{report}{\@parttrue\PassOptionsToClass{\CurrentOption}{omdoc}}
-\DeclareOption{book}{\@parttrue\PassOptionsToClass{\CurrentOption}{omdoc}}
+\DeclareOption{report}{\@parttrue\PassOptionsToPackage{\CurrentOption}{omdoc}}
+\DeclareOption{book}{\@parttrue\PassOptionsToPackage{\CurrentOption}{omdoc}}
 \newif\ifproblems\problemstrue
 \DeclareOption{noproblems}{\problemsfalse}
 \DeclareOption*{\PassOptionsToPackage{\CurrentOption}{stex}
@@ -311,8 +313,6 @@ DeclareOption('slides', '');
 DeclareOption('noproblems', '');
 DeclareOption('sectocframes', '');
 DeclareOption('frameimages', '');
-DeclareOption('report', sub{PassOptions('omdoc','cls',ToString(Digest(T_CS('\CurrentOption'))))});
-DeclareOption('book', sub{PassOptions('omdoc','cls',ToString(Digest(T_CS('\CurrentOption'))))});
 DeclareOption(undef, sub {PassOptions('stex','sty',ToString(Digest(T_CS('\CurrentOption'))));
                                           PassOptions('tikzinput','sty',ToString(Digest(T_CS('\CurrentOption')))); });
 ProcessOptions();
@@ -399,9 +399,7 @@ DefRegister('\slideheight'     => Dimension('9cm'));
 %    \begin{macrocode}
 %<*package>
 \ifnotes%
-  \renewenvironment{note}{%
-    \ignorespaces%
-  }{}%
+  \renewenvironment{note}{\ignorespaces}{}%
 \else%
   \excludecomment{note}%
 \fi%
@@ -684,65 +682,6 @@ DefMacro('\date[]{}', '\@add@frontmatter{ltx:date}[role=creation]{#1}');
 DefMacro('\author[]{}', sub { andSplit(T_CS('\@author'),$_[1]); });#$
 %</ltxml.sty>
 %    \end{macrocode}
-%
-% Now, we specialize the slide environment that we have implemented above or inherited
-% from |seminar.cls| for some abbreviations, e.g. separator slides and title slides.
-%    \begin{macrocode}
-%<*package>
-\ifnotes%
-  \newrobustcmd\titleframe{\maketitle}%
-\else%
-  \newrobustcmd\titleframe{%
-    \begin{frame}%
-    \titlepage%
-    \end{frame}%
-  }%
-\fi%
-\newenvironment{titleframewith}{%
-  \begin{frame}%
-  \titlepage%
-}{%
-  \end{frame}%
-}%
-\newenvironment{ttitle}{%
-  \begin{center}%
-  \LARGE%
-  \begin{tabular}{|c|}%
-  \hline%
-}{%
-  \\\hline%
-  \end{tabular}%
-  \end{center}%
-  \vspace{1ex minus 1ex}%
-}%
-\newenvironment{ttitlejoint}[1]{%
-  \newbox\boxwith%
-  \setbox\boxwith\hbox{%
-    \begin{tabular}{c}{\em joint work with}\\#1\end{tabular}%
-  }%
-  \begin{center}%
-  \LARGE%
-  \begin{tabular}{c}%
-  \color{red}%
-}{%
-  \\\box\boxwith%
-  \end{tabular}%
-  \end{center}%
-  \vspace{1ex minus 1ex}%
-}%
-%</package>
-%<*ltxml.sty>
-DefConstructor('\titleframe',"<omdoc:ignore>titleframe elided here</omdoc:ignore>");
-DefEnvironment('{titleframewith}',
-               "<omdoc:ignore>begin elided titleframe</omdoc:ignore>"
-               . "#body"
-              ."<omdoc:ignore>end elided titleframe</omdoc:ignore>"); 
-DefEnvironment('{titleslide}',"");
-DefEnvironment('{titleslide}',"<omdoc:omgroup>#body</omdoc:omgroup>");
-DefEnvironment('{ttitle}', "\n<dc:title>#body</dc:title>");
-%</ltxml.sty>
-%    \end{macrocode}
-%
 %    \begin{macrocode}
 %      Must be first command on slide to make positioning work.
 %<*package>
@@ -755,7 +694,9 @@ DefEnvironment('{ttitle}', "\n<dc:title>#body</dc:title>");
 %    \end{macrocode}
 %
 % \subsection{Sectioning}
-% If the |sectocframes| option is set, then we make section frames. 
+%
+% If the |sectocframes| option is set, then we make section frames. We first define a set
+% of counters
 %    \begin{macrocode}
 \ifsectocframes%
   \if@part%
@@ -768,26 +709,34 @@ DefEnvironment('{ttitle}', "\n<dc:title>#body</dc:title>");
   \newcounter{msubsection}[msection]%
   \newcounter{msubsubsection}[msubsection]%
   \newcounter{msubsubsubsection}[msubsubsection]%
-  \ifnotes\else% only in slides
-    \renewcommand\at@begin@omgroup[3][]{%
-      \begin{frame}%
-      \vfill\Large\centering%
-      \red{%
-      	\ifcase\section@level\or%
-          \stepcounter{mpart}Part \Roman{mpart}\or%
-          \stepcounter{mchapter}Chapter \arabic{mchapter}\or
-          \stepcounter{msection}\if@part\arabic{mchapter}.\fi\arabic{msection}\or
-          \stepcounter{msubsection}\if@part\arabic{mchapter}.\fi\arabic{msection}.\arabic{msubsection}\or
-          \stepcounter{msubsubsection}\if@part\arabic{mchapter}.\fi\arabic{msection}.\arabic{msubsection}.\arabic{msubsubsection}.\or
-          \stepcounter{msubsubsubsection}\if@part\arabic{mchapter}.\fi\arabic{msection}.\arabic{msubsection}.\arabic{msubsubsection}.\arabic{msubsubsubsection}%
-        \fi% end ifcase
-        \quad #3%
-      }%
-      \vfill%
-      \end{frame}%
+\fi% ifsectocframes 
+%    \end{macrocode}
+% and then 
+%    \begin{macrocode}
+\ifnotes\else% only in slides
+  \renewenvironment{omgroup}[2][]{%
+    \metasetkeys{omgroup}{#1}\sref@target%
+    \advance\section@level by 1% 
+    \ifsectocframes%
+    \begin{frame}%
+    \vfill\Large\centering%
+    \red{%
+    	\ifcase\section@level\or%
+        \stepcounter{mpart}Part \Roman{mpart}\or%
+        \stepcounter{mchapter}Chapter \arabic{mchapter}\or
+        \stepcounter{msection}\if@part\arabic{mchapter}.\fi\arabic{msection}\or
+        \stepcounter{msubsection}\if@part\arabic{mchapter}.\fi\arabic{msection}.\arabic{msubsection}\or
+        \stepcounter{msubsubsection}\if@part\arabic{mchapter}.\fi\arabic{msection}.\arabic{msubsection}.\arabic{msubsubsection}.\or
+        \stepcounter{msubsubsubsection}\if@part\arabic{mchapter}.\fi\arabic{msection}.\arabic{msubsection}.\arabic{msubsubsection}.\arabic{msubsubsubsection}%
+      \fi% end ifcase
+      \quad #2%
     }%
-  \fi% ifnotes
-\fi% ifsectocframes
+    \vfill%
+    \end{frame}%
+    \fi %ifsectocframes
+  }
+  {\advance\section@level by -1}% 
+\fi% ifnotes
 %</package>
 %    \end{macrocode}
 %
