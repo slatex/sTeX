@@ -351,6 +351,7 @@ RegisterDocumentNamespace('assig'=>"http://omdoc.org/ontology/assignments#");
 \addmetakey{assig}{type}
 \addmetakey{assig}{given}
 \addmetakey{assig}{due}
+\addmetakey[false]{assig}{loadmodules}[true]
 %    \end{macrocode}
 %
 % The next three macros are intermediate functions that handle the case gracefully, where
@@ -418,7 +419,7 @@ RegisterDocumentNamespace('assig'=>"http://omdoc.org/ontology/assignments#");
 }
 %    \end{macrocode}
 % 
-% \begin{macro}{assignment@title}
+% \begin{macro}{\assignment@title}
 %   This macro prints the title of an assignment, the local title is overwritten, if there
 %   is one from the |\includeassignment|. |\assignment@title| takes three arguments the
 %   first is the fallback when no title is given at all, the second and third go around
@@ -431,49 +432,64 @@ RegisterDocumentNamespace('assig'=>"http://omdoc.org/ontology/assignments#");
 %    \end{macrocode}
 % \end{macro}
 % 
-% With them, we can define the central |assignment| environment. This has two forms
-% (separated by |\ifmultiple|) in one we make a title block for an assignment sheet, and
-% in the other we make a section heading and add it to the table of
-% contents.
-% 
-% \begin{macro}{assignment@titleblock}
-%   This macro prints the title block of a section. If the |multiple| package option is
-%   given we make a section heading out of this, and if not, a title block. 
+% \begin{macro}{\assignment@number}
+%   Like |\assignment@title| only for the number, and no around part.
 %    \begin{macrocode}
-\ifmultiple
-\newcommand\assignment@titleblock{%
-\section*{\protect\document@hwexamtype~\arabic{section}%
-\assignment@title{}{\;(}{)\;}\given@due{}{}}%
-\addcontentsline{toc}{section}%
-{\document@hwexamtype~{\arabic{section}}:~%
-\string\importmodules{\imported@modules}\assig@title}%
-\setcounter{problem}{0}}
-%    \end{macrocode}
-% Now to the single assignment case, where we make a title block. Note that as |problem|s
-% are numbered by section, we also set the section counter.
-%    \begin{macrocode}
-\else% single
-\newcommand\assignment@titleblock{%
-\begin{center}\bf
-\Large\@title\strut\\
-\document@hwexamtype~\arabic{section}\assignment@title{\;}{:\;}{\\}%
-\large\given@due{--\;}{\;--}
-\end{center}}
-\fi% ifmultiple
+\newcommand\assignment@number%
+{\ifx\inclassig@number\@empty% if there is no outside number
+\ifx\assig@number\@empty\else\assig@number\fi
+\else\inclassig@number\fi}% else show the outside number
 %    \end{macrocode}
 % \end{macro}
 % 
+% With them, we can define the central |assignment| environment. This has two forms
+% (separated by |\ifmultiple|) in one we make a title block for an assignment sheet, and
+% in the other we make a section heading and add it to the table of contents. We first
+% define an assignment counter
+% 
+%    \begin{macrocode}
+\newcounter{assignment}
+%    \end{macrocode}
+%
 % \begin{environment}{assignment}
+%   For the |assignment| environment we delegate the work to the |@assignment| environment
+%   that depends on whether |multiple| option is given. 
 %    \begin{macrocode}
 \newenvironment{assignment}[1][]{\metasetkeys{assig}{#1}\sref@target%
-\edef\@@num{\ifx\inclassig@number\@empty%
-\ifx\assig@number\@empty\else\assig@number\fi%
-\else\inclassig@number\fi}%
-\ifx\@@num\@empty\stepcounter{section}\else\setcounter{section}{\@@num}\fi%
-\sref@label@id{\document@hwexamtype \thesection}%
-\assignment@titleblock%
+\edef\@@num{\assignment@number}%
+\ifx\@@num\@empty\stepcounter{assignment}\else\setcounter{assignment}{\@@num}\fi%
+\setcounter{problem}{0}%
 \def\current@section@level{\document@hwexamtype}%
-\ignorespaces}{}
+\sref@label@id{\document@hwexamtype \thesection}%
+\begin{@assignment}}
+{\end{@assignment}}
+%    \end{macrocode}
+% In the multi-assignment case we just use the |omdoc| environment for suitable
+% sectioning. 
+%    \begin{macrocode}
+\ifmultiple 
+\newenvironment{@assignment}%
+{\ifx\assig@loadmodules\@true
+\begin{omgroup}[loadmodules]{\protect\document@hwexamtype~\arabic{assignment}%
+\assignment@title{}{\;(}{)\;}\given@due{}{}}
+\else
+\begin{omgroup}{\protect\document@hwexamtype~\arabic{assignment}%
+\assignment@title{}{\;(}{)\;}\given@due{}{}}
+\fi%
+{\protect\document@hwexamtype~\arabic{assignment}%
+\assignment@title{}{\;(}{)\;}\given@due{}{}}}
+{\end{omgroup}}
+%    \end{macrocode}
+%    \begin{macrocode}
+\else
+\newenvironment{@assignment}
+{\begin{center}\bf
+\Large\@title\strut\\
+\document@hwexamtype~\arabic{assignment}\assignment@title{\;}{:\;}{\\}%
+\large\given@due{--\;}{\;--}
+\end{center}}
+{}
+\fi% multiple
 %</package>
 %    \end{macrocode}
 % 
