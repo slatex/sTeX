@@ -14,12 +14,14 @@
 \LoadClass{omdoc}
 \RequirePackage{stex}
 \RequirePackage{hwexam}
-\usepackage{tikzinput}
+\RequirePackage{tikzinput}
 \RequirePackage{graphicx}
 \RequirePackage{a4wide}
 \RequirePackage{amssymb}
 \RequirePackage{amstext}
 \RequirePackage{amsmath}
+\newcommand\assig@default@type{Assignment}
+\addmetakey[\assig@default@type]{document}{hwexamtype}
 \endinput
 %%
 %% End of file `hwexam.cls'.

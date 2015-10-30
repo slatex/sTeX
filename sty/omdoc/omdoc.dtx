@@ -498,17 +498,23 @@ RequirePackage('omtext');
 %   OMDoc. The hierarchy is adjusted automatically according to the {\LaTeX} class in
 %   effect. 
 % \begin{macro}{\currentsectionlevel}
+%   For the |\currentsectionlevel| and |\Currentsectionlevel| macros we use an internal
+%   macro |\current@section@level| that only contains the keyword in lowercase (no
+%   markup). We initialize it with ``document'' as a default. In the generated OMDoc, we
+%   only generate a text element of class |omdoc_currentsectionlevel|, wich will be
+%   instantiated by CSS later.
 %    \begin{macrocode}
 %<*package>
-\def\currentsectionlevel{document\xspace}%
-\def\Currentsectionlevel{Document\xspace}%
+\def\current@section@level{document}%
+\newcommand\currentsectionlevel{\current@section@level\xspace}%
+\newcommand\Currentsectionlevel{\expandafter\MakeUppercase\current@section@level\xspace}%
 %</package>
 %<*ltxml.sty>
 DefMacro('\currentsectionlevel','\@currentsectionlevel\xspace');
 DefMacro('\Currentsectionlevel','\@Currentsectionlevel\xspace');
 DefConstructor('\@currentsectionlevel',
                "<ltx:text class='omdoc-currentsectionlevel'>section</ltx:text>");
-DefConstructor('\@CurrentSectionLevel',
+DefConstructor('\@Currentsectionlevel',
                "<ltx:text class='omdoc-Currentsectionlevel'>Section</ltx:text>");
 %</ltxml.sty>
 %    \end{macrocode}
@@ -533,21 +539,11 @@ DefEnvironment('{blindomgroup} OptionalKeyVals:omgroup',
 %    \end{macrocode}
 % \end{environment}
 %
-% \begin{macro}{\omgroup@cl}
-%   Convenience macro: defines the |\currentsectionlevel| macro from the keywords in the
-%   arguments
-%    \begin{macrocode}
-%<*package>
-\newcommand\omgroup@cl[2]{%
-\def\currentsectionlevel{#1\xspace}%
-\def\Currentsectionlevel{#2\xspace}}
-%    \end{macrocode}
-% \end{macro}
-%
 % \begin{macro}{\omgroup@nonum}
 %   convenience macro: |\omgroup@nonum{|\meta{level}|}{|\meta{title}|}| makes an unnumbered
 %   sectioning with title \meta{title} at level \meta{level}.
 %    \begin{macrocode}
+%<*package>
 \newcommand\omgroup@nonum[2]{%
 \ifx\hyper@anchor\@undefined\else\phantomsection\fi%
 \addcontentsline{toc}{#1}{#2}\@nameuse{#1}*{#2}}
@@ -560,7 +556,8 @@ DefEnvironment('{blindomgroup} OptionalKeyVals:omgroup',
 %   key was given in the |omgroup| environment and -- if it is use it. But how to do that
 %   depends on whether the |rdfmeta| package has been loaded.
 %    \begin{macrocode}
-\newcommand\omgroup@num[2]{\sref@label@id{\omdoc@sect@Name~\@nameuse{the#1}}%
+\newcommand\omgroup@num[2]{%
+\sref@label@id{\expandafter\MakeUppercase\omdoc@sect@name~\@nameuse{the#1}}%
 \ifx\omgroup@short\@empty\@nameuse{#1}{#2}%
 \else\@ifundefined{rdfmeta@sectioning}{\@nameuse{#1}[\omgroup@short]{#2}}%
 {\@nameuse{rdfmeta@#1@old}[\omgroup@short]{#2}}%
@@ -599,15 +596,14 @@ DefEnvironment('{blindomgroup} OptionalKeyVals:omgroup',
 %
 %    \begin{macrocode}
 \addmetakey{omdoc@sect}{name}
-\addmetakey{omdoc@sect}{Name}
 \addmetakey[false]{omdoc@sect}{clear}[true]
 \addmetakey{omdoc@sect}{ref}
 \addmetakey[false]{omdoc@sect}{num}[true]
 \newcommand\omdoc@sectioning[3][]{\metasetkeys{omdoc@sect}{#1}%
 \ifx\omdoc@sect@clear\@true\cleardoublepage\fi%
 \if@@num% numbering not overridden by frontmatter, etc.
-\ifx\omdoc@sect@num\@true\omgroup@num{#2}{#3}\else\omgroup@nonum{#2}{#3}\fi
-\omgroup@cl\omdoc@sect@name\omdoc@sect@Name
+\ifx\omdoc@sect@num\@true\omgroup@num{#2}{#3}\else\omgroup@nonum{#2}{#3}\fi%
+\def\current@section@level{\omdoc@sect@name}%
 \else\omgroup@nonum{#2}{#3}\fi}
 %    \end{macrocode}
 % and another one, if redefines the |\addtocontentsline| macro of {\LaTeX} to import the
@@ -647,13 +643,13 @@ DefEnvironment('{blindomgroup} OptionalKeyVals:omgroup',
 %    \begin{macrocode}
 \advance\section@level by 1
 \ifcase\section@level%
-\or\omdoc@sectioning[name=part,Name=Part,clear,num]{part}{#2}%
-\or\omdoc@sectioning[name=chapter,Name=Chapter,clear,num]{chapter}{#2}%
-\or\omdoc@sectioning[name=section,Name=Section,num]{section}{#2}%
-\or\omdoc@sectioning[name=subsection,Name=Subsection,num]{subsection}{#2}%
-\or\omdoc@sectioning[name=subsubsection,Name=Subsubsection,num]{subsubsection}{#2}%
-\or\omdoc@sectioning[name=paragraph,Name=Paragraph,ref=this paragraph]{paragraph}{#2}%
-\or\omdoc@sectioning[name=subparagraph,Name=Subparagraph,ref=this subparagraph]{paragraph}{#2}%
+\or\omdoc@sectioning[name=part,clear,num]{part}{#2}%
+\or\omdoc@sectioning[name=chapter,clear,num]{chapter}{#2}%
+\or\omdoc@sectioning[name=section,num]{section}{#2}%
+\or\omdoc@sectioning[name=subsection,num]{subsection}{#2}%
+\or\omdoc@sectioning[name=subsubsection,num]{subsubsection}{#2}%
+\or\omdoc@sectioning[name=paragraph,ref=this paragraph]{paragraph}{#2}%
+\or\omdoc@sectioning[name=subparagraph,ref=this subparagraph]{paragraph}{#2}%
 \fi% \ifcase
 \at@begin@omgroup[#1]\section@level{#2}}% for customization
 {\advance\section@level by -1}
@@ -933,7 +929,7 @@ DefMacro('\baseURI []Semiverbatim', sub {
 % LocalWords:  afterDigest keyval omgroup DefKeyVal Semiverbatim KeyVal srcf frontmatter
 % LocalWords:  OptionalKeyVals DefParameterType IfBeginFollows skipSpaces CMP rangle
 % LocalWords:  ifNext DefMacro needwrapper unlist DefConstructor omtext bgroup showmods
-% LocalWords:  useCMPItemizations RefStepItemCounter egroup beginItemize li di omgroup@cl
+% LocalWords:  useCMPItemizations RefStepItemCounter egroup beginItemize li di
 % LocalWords:  beforeDigestEnd dt autoclose ul ol dl env showignores srcref Cwd rdfmeta
 % LocalWords:  afterOpen LastSeenCMP autoClose DefCMPEnvironment proto ToString st@flow
 % LocalWords:  addAttribute nlex nlcex omdocColorMacro args tok MergeFont qw setion@level
