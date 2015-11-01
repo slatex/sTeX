@@ -20,7 +20,7 @@
 \RequirePackage{amssymb}
 \RequirePackage{amstext}
 \RequirePackage{amsmath}
-\newcommand\assig@default@type{Assignment}
+\newcommand\assig@default@type{\hwexam@assignment@kw}
 \addmetakey[\assig@default@type]{document}{hwexamtype}
 \endinput
 %%
