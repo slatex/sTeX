@@ -204,7 +204,7 @@
 % 
 % In this section we document known limitations. If you want to help alleviate them,
 % please feel free to contact the package author. Some of them are currently discussed in
-% the \sTeX TRAC~\cite{sTeX:online}. 
+% the \sTeX GitHub repository~\cite{sTeX:github:on}. 
 % \begin{compactenum}
 % \item none reported yet. 
 % \end{compactenum}
@@ -227,6 +227,18 @@
 % respetively}}). We keep the corresponding code fragments together, since the
 % documentation applies to both of them and to prevent them from getting out of sync.
 %
+% first the general setup for \latexml (for the class and package)
+%    \begin{macrocode}
+%<*ltxml.cls|ltxml.sty>
+# -*- CPERL -*-
+package LaTeXML::Package::Pool;
+use strict;
+use LaTeXML::Package;
+use LaTeXML::Util::Pathname;
+use Cwd qw(cwd abs_path);
+%</ltxml.cls|ltxml.sty>
+%    \end{macrocode}
+%
 % \subsection{Class Options}\label{sec:impl:cls:options}
 %
 % To initialize the |hwexam| class, we declare and process the necessary options by
@@ -234,39 +246,13 @@
 % 
 %    \begin{macrocode}
 %<*cls>
-\DeclareOption{test}{\PassOptionsToPackage{\CurrentOption}{hwexam}}
-\DeclareOption{multiple}{\PassOptionsToPackage{\CurrentOption}{hwexam}}
-\DeclareOption{showmeta}{\PassOptionsToPackage{\CurrentOption}{metakeys}}
-\DeclareOption{extrefs}{\PassOptionsToPackage{\CurrentOption}{sref}}
-\DeclareOption{notes}{\PassOptionsToPackage{\CurrentOption}{problem}}
-\DeclareOption{hints}{\PassOptionsToPackage{\CurrentOption}{problem}}
-\DeclareOption{solutions}{\PassOptionsToPackage{\CurrentOption}{problem}}
-\DeclareOption{pts}{\PassOptionsToPackage{\CurrentOption}{problem}}
-\DeclareOption{min}{\PassOptionsToPackage{\CurrentOption}{problem}}
-\DeclareOption{boxed}{\PassOptionsToPackage{\CurrentOption}{problem}}
-\DeclareOption{extract}{\PassOptionsToPackage{\CurrentOption}{problem}}
-\DeclareOption*{\PassOptionsToClass{\CurrentOption}{omdoc}}
+\DeclareOption*{\PassOptionsToPackage{\CurrentOption}{hwexam}
+                           \PassOptionsToClass{\CurrentOption}{omdoc}}
 \ProcessOptions
 %</cls>
 %<*ltxml.cls>
-# -*- CPERL -*-
-package LaTeXML::Package::Pool;
-use strict;
-use LaTeXML::Package;
-use LaTeXML::Util::Pathname;
-use Cwd qw(cwd abs_path);
-DeclareOption('test',sub {PassOptions('hwexam','sty',ToString(Digest(T_CS('\CurrentOption')))); }); 
-DeclareOption('multiple',sub {PassOptions('hwexam','sty',ToString(Digest(T_CS('\CurrentOption')))); }); 
-DeclareOption('showmeta',sub {PassOptions('metakeys','sty',ToString(Digest(T_CS('\CurrentOption')))); }); 
-DeclareOption('extrefs',sub {PassOptions('sref','sty',ToString(Digest(T_CS('\CurrentOption')))); }); 
-DeclareOption('notes',sub {PassOptions('problem','sty',ToString(Digest(T_CS('\CurrentOption')))); }); 
-DeclareOption('hints',sub {PassOptions('problem','sty',ToString(Digest(T_CS('\CurrentOption')))); }); 
-DeclareOption('solutions',sub {PassOptions('problem','sty',ToString(Digest(T_CS('\CurrentOption')))); }); 
-DeclareOption('pts',sub {PassOptions('problem','sty',ToString(Digest(T_CS('\CurrentOption')))); }); 
-DeclareOption('min',sub {PassOptions('problem','sty',ToString(Digest(T_CS('\CurrentOption')))); }); 
-DeclareOption('boxed',sub {PassOptions('problem','sty',ToString(Digest(T_CS('\CurrentOption')))); }); 
-DeclareOption('extract',sub {PassOptions('problem','sty',ToString(Digest(T_CS('\CurrentOption')))); }); 
-DeclareOption(undef,sub {PassOptions('omdoc','cls',ToString(Digest(T_CS('\CurrentOption')))); });
+DeclareOption(undef,sub {PassOptions('hwexam','sty',ToString(Digest(T_CS('\CurrentOption')))); }); 
+DeclareOption(undef,sub {PassOptions('omdoc','cls',ToString(Digest(T_CS('\CurrentOption')))); }); 
 ProcessOptions();
 %</ltxml.cls>
 %    \end{macrocode}
@@ -279,6 +265,7 @@ ProcessOptions();
 \LoadClass{omdoc}
 \RequirePackage{stex}
 \RequirePackage{hwexam}
+\RequirePackage{tikzinput}
 \RequirePackage{graphicx}
 \RequirePackage{a4wide}
 \RequirePackage{amssymb}
@@ -289,13 +276,22 @@ ProcessOptions();
 LoadClass('omdoc');
 RequirePackage('stex');
 RequirePackage('hwexam');
+RequirePackage('tikzinput', options => ['image']); 
 RequirePackage('graphicx');
 RequirePackage('amssymb');
 RequirePackage('amstext');
 RequirePackage('amsmath');
 %</ltxml.cls>
 %    \end{macrocode}
-%
+% Finally, we register another keyword for the |document| environment\ednote{MK: this
+% still needs to be internationalized.}
+%    \begin{macrocode}
+%<*cls>
+\newcommand\assig@default@type{\hwexam@assignment@kw}
+\addmetakey[\assig@default@type]{document}{hwexamtype}
+%</cls>
+%    \end{macrocode}
+% 
 % \section{Implementation: The hwexam Package} 
 %
 % \subsection{Package Options}
@@ -306,10 +302,8 @@ RequirePackage('amsmath');
 %
 %    \begin{macrocode}
 %<*package>
-\DeclareOption{showmeta}{\PassOptionsToPackage{\CurrentOption}{metakeys}}
 \newif\iftest\testfalse
-\newif\ifsolutions\solutionsfalse
-\DeclareOption{test}{\testtrue\solutionsfalse}
+\DeclareOption{test}{\testtrue}
 \newif\ifmultiple\multiplefalse
 \DeclareOption{multiple}{\multipletrue}
 \DeclareOption*{\PassOptionsToPackage{\CurrentOption}{problem}}
@@ -329,13 +323,8 @@ RequirePackage('amsmath');
 % do. 
 %    \begin{macrocode}
 %<*ltxml>
-# -*- CPERL -*-
-package LaTeXML::Package::Pool;
-use strict;
-use LaTeXML::Package;
 DeclareOption('test', '');
 DeclareOption('multiple', '');
-DeclareOption('showmeta', sub {PassOptions('metakeys','sty',ToString(Digest(T_CS('\CurrentOption')))); });
 DeclareOption(undef, sub {PassOptions('problem','sty',ToString(Digest(T_CS('\CurrentOption')))); });
 ProcessOptions();
 RequirePackage('problem');
@@ -350,18 +339,41 @@ RegisterDocumentNamespace('assig'=>"http://omdoc.org/ontology/assignments#");
 %</ltxml>
 %    \end{macrocode}
 %
+% \begin{macro}{\hwexam@*@kw}
+%   For multilinguality, we define internal macros for keywords that can be specialized in
+%   |*.ldf| files. 
+%    \begin{macrocode}
+%<*package>
+\AfterBabelLanguage{ngerman}{\input{hwexam-ngerman.ldf}}
+\newcommand\hwexam@assignment@kw{Assignment}
+\newcommand\hwexam@given@kw{Given}
+\newcommand\hwexam@due@kw{Due}
+%</package>
+%    \end{macrocode}
+% \end{macro}
+% 
 % \subsection{Assignments}
+%
+% Then we set up a counter for problems and make the problem counter inherited from
+% |problem.sty| depend on it. Furthermore, we specialize the |\prob@label| macro to take
+% the assignment counter into account.
+%    \begin{macrocode}
+%<*package>
+\newcounter{assignment}
+\numberproblemsin{assignment}
+\renewcommand\prob@label[1]{\arabic{assignment}.#1}
+%    \end{macrocode}
 %
 % We will prepare the keyval support for the |assignment| environment.
 %
 %    \begin{macrocode}
-%<*package>
 \srefaddidkey{assig}
 \addmetakey{assig}{number}
 \addmetakey*{assig}{title}
 \addmetakey{assig}{type}
 \addmetakey{assig}{given}
 \addmetakey{assig}{due}
+\addmetakey[false]{assig}{loadmodules}[true]
 %    \end{macrocode}
 %
 % The next three macros are intermediate functions that handle the case gracefully, where
@@ -386,9 +398,9 @@ RegisterDocumentNamespace('assig'=>"http://omdoc.org/ontology/assignments#");
 \fi
 \ifx\inclassig@given\@empty
 	\ifx\assig@given\@empty% do nothing
-	\else Given \assig@given%
+	\else \hwexam@given@kw\xspace \assig@given%
 	\fi
-\else Given \inclassig@given%
+\else \hwexam@given@kw\xspace \inclassig@given%
 \fi
 \ifx \inclassig@due\@empty
 	\ifx \assig@due\@empty% do nothing
@@ -410,9 +422,9 @@ RegisterDocumentNamespace('assig'=>"http://omdoc.org/ontology/assignments#");
 \fi
 \ifx \inclassig@due\@empty
 	\ifx \assig@due\@empty% do nothing
-	\else Due \assig@due%
+	\else \hwexam@due@kw\xspace \assig@due%
 	\fi
-\else Due \inclassig@due%
+\else \hwexam@due@kw\xspace \inclassig@due%
 \fi
 \ifx \inclassig@given\@empty
 	\ifx \assig@given\@empty
@@ -429,7 +441,7 @@ RegisterDocumentNamespace('assig'=>"http://omdoc.org/ontology/assignments#");
 }
 %    \end{macrocode}
 % 
-% \begin{macro}{assignment@title}
+% \begin{macro}{\assignment@title}
 %   This macro prints the title of an assignment, the local title is overwritten, if there
 %   is one from the |\includeassignment|. |\assignment@title| takes three arguments the
 %   first is the fallback when no title is given at all, the second and third go around
@@ -442,50 +454,61 @@ RegisterDocumentNamespace('assig'=>"http://omdoc.org/ontology/assignments#");
 %    \end{macrocode}
 % \end{macro}
 % 
-% With them, we can define the central |assignment| environment. This has two forms
-% (separated by |\ifmultiple|) in one we make a title block for an assignment sheet, and
-% in the other we make a section heading and add it to the table of
-% contents.
-% 
-% \begin{macro}{assignment@titleblock}
-%   This macro prints the title block of a section. If the |multiple| package option is
-%   given we make a section heading out of this, and if not, a title block. 
+% \begin{macro}{\assignment@number}
+%   Like |\assignment@title| only for the number, and no around part.
 %    \begin{macrocode}
-\ifmultiple
-\newcommand\assignment@titleblock{%
-\section*{\protect\document@hwexamtype~\arabic{section}%
-\assignment@title{}{\;(}{)\;}\given@due{}{}}%
-\addcontentsline{toc}{section}%
-{\document@hwexamtype~{\arabic{section}}:~%
-\string\importmodules{\imported@modules}\assig@title}%
-\setcounter{problem}{0}}
-%    \end{macrocode}
-% Now to the single assignment case, where we make a title block. Note that as |problem|s
-% are numbered by section, we also set the section counter.
-%    \begin{macrocode}
-\else% single
-\newcommand\assignment@titleblock{%
-\begin{center}\bf
-\Large\@title\strut\\
-\document@hwexamtype~\arabic{section}\assignment@title{\;}{:\;}{\\}%
-\large\given@due{--\;}{\;--}
-\end{center}}
-\fi% ifmultiple
+\newcommand\assignment@number%
+{\ifx\inclassig@number\@empty% if there is no outside number
+\ifx\assig@number\@empty\else\assig@number\fi
+\else\inclassig@number\fi}% else show the outside number
 %    \end{macrocode}
 % \end{macro}
 % 
+% With them, we can define the central |assignment| environment. This has two forms
+% (separated by |\ifmultiple|) in one we make a title block for an assignment sheet, and
+% in the other we make a section heading and add it to the table of contents. We first
+% define an assignment counter
+% 
 % \begin{environment}{assignment}
+%   For the |assignment| environment we delegate the work to the |@assignment| environment
+%   that depends on whether |multiple| option is given. 
 %    \begin{macrocode}
 \newenvironment{assignment}[1][]{\metasetkeys{assig}{#1}\sref@target%
-\edef\@@num{\ifx\inclassig@number\@empty%
-\ifx\assig@number\@empty\else\assig@number\fi%
-\else\inclassig@number\fi}%
-\ifx\@@num\@empty\stepcounter{section}\else\setcounter{section}{\@@num}\fi%
-\sref@label@id{Assignment \thesection}%
-\assignment@titleblock%
-\def\currentsectionlevel{assignment\xspace}%
-\def\Currentsectionlevel{Assignment\xspace}%
-\ignorespaces}{}
+\edef\@@num{\assignment@number}%
+\ifx\@@num\@empty\stepcounter{assignment}\else\setcounter{assignment}{\@@num}\fi%
+\setcounter{problem}{0}%
+\def\current@section@level{\document@hwexamtype}%
+\sref@label@id{\document@hwexamtype \thesection}%
+\begin{@assignment}}
+{\end{@assignment}}
+%    \end{macrocode}
+% In the multi-assignment case we just use the |omdoc| environment for suitable
+% sectioning. 
+%    \begin{macrocode}
+\ifmultiple 
+\newenvironment{@assignment}%
+{\ifx\assig@loadmodules\@true
+\begin{omgroup}[loadmodules]{\protect\document@hwexamtype~\arabic{assignment}%
+\assignment@title{}{\;(}{)\;}\given@due{}{}}
+\else
+\begin{omgroup}{\protect\document@hwexamtype~\arabic{assignment}%
+\assignment@title{}{\;(}{)\;}\given@due{}{}}
+\fi%
+{\protect\document@hwexamtype~\arabic{assignment}%
+\assignment@title{}{\;(}{)\;}\given@due{}{}}}
+{\end{omgroup}}
+%    \end{macrocode}
+% for the single-page case we make a title block from the same components.
+%    \begin{macrocode}
+\else
+\newenvironment{@assignment}
+{\begin{center}\bf
+\Large\@title\strut\\
+\document@hwexamtype~\arabic{assignment}\assignment@title{\;}{:\;}{\\}%
+\large\given@due{--\;}{\;--}
+\end{center}}
+{}
+\fi% multiple
 %</package>
 %    \end{macrocode}
 % 
@@ -517,13 +540,6 @@ DefEnvironment('{assignment} OptionalKeyVals:assig',
 %</ltxml>
 %    \end{macrocode}
 % \end{environment}
-% 
-%    \begin{macrocode}
-%<*package>
-\newcommand\assig@default@type{Assignment}
-\addmetakey[\assig@default@type]{document}{hwexamtype}
-%</package>
-%    \end{macrocode}
 % 
 % \subsection{Including Assignments}
 %

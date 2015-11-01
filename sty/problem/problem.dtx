@@ -238,7 +238,7 @@
 % 
 % In this section we document known limitations. If you want to help alleviate them,
 % please feel free to contact the package author. Some of them are currently discussed in
-% the \sTeX TRAC~\cite{sTeX:online}. 
+% the \sTeX GitHub repository~\cite{sTeX:github:on}. 
 % \begin{compactenum}
 % \item none reported yet
 % \end{compactenum}
@@ -254,6 +254,17 @@
 %     $\langle$/ltxml$\rangle$}}). We keep the corresponding code fragments together,
 % since the documentation applies to both of them and to prevent them from getting out of
 % sync.
+% 
+% First the general setup for \latexml
+%
+%    \begin{macrocode}
+%<*ltxml>
+# -*- CPERL -*-
+package LaTeXML::Package::Pool;
+use strict;
+use LaTeXML::Package;
+%</ltxml>
+%    \begin{macrocode}
 %
 % \subsection{Package Options}\label{sec:impl:options}
 % 
@@ -264,17 +275,25 @@
 %    \begin{macrocode}
 %<*package>
 \DeclareOption{showmeta}{\PassOptionsToPackage{\CurrentOption}{metakeys}}
-\newif\ifexnotes\exnotesfalse\DeclareOption{notes}{\exnotestrue}
-\newif\ifhints\hintsfalse\DeclareOption{hints}{\hintstrue}
-\newif\ifsolutions\solutionsfalse\DeclareOption{solutions}{\solutionstrue}
-\newif\ifpts\ptsfalse\DeclareOption{pts}{\ptstrue}
-\newif\ifmin\minfalse\DeclareOption{min}{\mintrue}
-\newif\ifboxed\boxedfalse\DeclareOption{boxed}{\boxedtrue}
+\newif\ifexnotes\exnotesfalse
+\DeclareOption{notes}{\exnotestrue}
+\newif\ifhints\hintsfalse
+\DeclareOption{hints}{\hintstrue}
+\newif\ifsolutions\solutionsfalse
+\DeclareOption{solutions}{\solutionstrue}
+\newif\ifpts\ptsfalse
+\DeclareOption{pts}{\ptstrue}
+\newif\ifmin\minfalse
+\DeclareOption{min}{\mintrue}
+\newif\ifboxed\boxedfalse
+\DeclareOption{boxed}{\boxedtrue}
+\DeclareOption*{\PassOptionsToPackage{\CurrentOption}{omtext}}
 \ProcessOptions
 %</package>
 %    \end{macrocode}
 %
-% On the {\LaTeXML} side we only make sure that the switches are defined
+% On the {\LaTeXML} side we only make sure that the switches are defined. Since {\LaTeXML} currently does not process package options, we have
+% nothing to do.
 %    \begin{macrocode}
 %<*ltxml>
 RawTeX('
@@ -285,36 +304,26 @@ RawTeX('
 \newif\ifmin\minfalse
 \newif\ifboxed\boxedfalse
 ');
-%</ltxml>
-%    \end{macrocode}
-% Then we make sure that the necessary packages are loaded (in the right versions).
-%    \begin{macrocode}
-%<*package>
-\RequirePackage{comment}
-\RequirePackage{sref}
-\RequirePackage{mdframed}
-%\RequirePackage{marginnote}
-%</package>
-%    \end{macrocode}
-%
-% Here comes the equivalent header information for {\LaTeXML}, we also initialize the
-% package inclusions. Since {\LaTeXML} currently does not process package options, we have
-% nothing to do.
-%    \begin{macrocode}
-%<*ltxml>
-# -*- CPERL -*-
-package LaTeXML::Package::Pool;
-use strict;
-use LaTeXML::Package;
-DeclareOption('showmeta',sub {PassOptions('metakeys','sty',ToString(Digest(T_CS('\CurrentOption')))); });
 DeclareOption('notes', '');
 DeclareOption('hints', '');
 DeclareOption('solutions', '');
 DeclareOption('pts', '');
 DeclareOption('min', '');
 DeclareOption('boxed', '');
+DeclareOption(undef,sub {PassOptions('omtext','sty',ToString(Digest(T_CS('\CurrentOption')))); });  
 ProcessOptions();
-RequirePackage('sref');
+%</ltxml>
+%    \end{macrocode}
+% Then we make sure that the necessary packages are loaded (in the right versions).
+%    \begin{macrocode}
+%<*package>
+\RequirePackage{omtext}
+\RequirePackage{comment}
+\RequirePackage{mdframed}
+\RequirePackage[base]{babel}
+%</package>
+%<*ltxml>
+RequirePackage('omtext');
 %</ltxml>
 %    \end{macrocode}
 %
@@ -325,7 +334,19 @@ RegisterNamespace('prob'=>"http://omdoc.org/ontology/problems#");
 RegisterDocumentNamespace('prob'=>"http://omdoc.org/ontology/problems#");
 %</ltxml>
 %    \end{macrocode}
-%
+% 
+% \begin{macro}{\prob@*@kw}
+%   For multilinguality, we define internal macros for keywords that can be specialized in
+%   |*.ldf| files. 
+%    \begin{macrocode}
+%<*package>
+\AfterBabelLanguage{ngerman}{\input{problem-ngerman.ldf}}
+\def\prob@problem@kw{Problem}
+\def\prob@solution@kw{Solution}
+%</package>
+%    \end{macrocode}
+% \end{macro}
+% 
 % \subsection{Problems and Solutions}\label{sec:impl:probsols}
 % 
 % We now prepare the KeyVal support for problems. The key macros just set appropriate
@@ -340,18 +361,28 @@ RegisterDocumentNamespace('prob'=>"http://omdoc.org/ontology/problems#");
 \addmetakey{problem}{refnum}
 %    \end{macrocode}
 %
-% Then we set up a counter for problems
-%
+% Then we set up a counter for problems.
+% \begin{macro}{\numberproblemsin}
 %    \begin{macrocode}
-\newcounter{problem}[section]
+\newcounter{problem}
+\newcommand\numberproblemsin[1]{\@addtoreset{problem}{#1}}
 %    \end{macrocode}
-%
+% \end{macro}
+% 
+% \begin{macro}{\prob@label}
+%   We provide the macro |\prob@label| to redefine later to get context involved. 
+%    \begin{macrocode}
+\newcommand\prob@label[1]{#1} 
+%    \end{macrocode}
+% \end{macro}
+% 
 % \begin{macro}{\prob@number}
 %   We consolidate the problem number into a reusable internal macro
 % \begin{macrocode}
 \def\prob@number{\ifx\inclprob@refnum\@empty%
-\ifx\problem@refnum\@empty\thesection.\theproblem\else\problem@refnum\fi%
-\inclprob@refnum\fi}
+\ifx\problem@refnum\@empty\prob@label\theproblem%
+\else\prob@label\problem@refnum\fi%
+\else\prob@label\inclprob@refnum\fi}
 %    \end{macrocode}
 % \end{macro}
 % 
@@ -371,10 +402,10 @@ RegisterDocumentNamespace('prob'=>"http://omdoc.org/ontology/problems#");
 %
 % \begin{macro}{\prob@heading}
 %   We consolidate the problem header line into a separate internal macro that can be
-%   reused in various settings.
+%   reused in various settings. 
 % \begin{macrocode}
-\def\prob@heading{Problem \prob@number\prob@title{ }{ (}{)\strut\\}%
-\sref@label@id{Problem \prob@number}}
+\def\prob@heading{\prob@problem@kw~\prob@number\prob@title{ }{ (}{)\strut\\}%
+\sref@label@id{\prob@problem@kw~\prob@number}}
 %    \end{macrocode}
 % \end{macro}
 % 
@@ -385,9 +416,9 @@ RegisterDocumentNamespace('prob'=>"http://omdoc.org/ontology/problems#");
 % \begin{environment}{problem}
 %    \begin{macrocode}
 \newenvironment{problem}[1][]{\metasetkeys{problem}{#1}\sref@target%
+\@in@omtexttrue% we are in a statement (for inline definitions)
 \stepcounter{problem}\record@problem%
-\def\currentsectionlevel{problem\xspace}%
-\def\Currentsectionlevel{Problem\xspace}%
+\def\current@section@level{\prob@problem@kw}%
 \par\noindent\textbf\prob@heading\show@pts\show@min\rm\noindent\ignorespaces}
 {\smallskip}
 \ifboxed\surroundwithmdframed{problem}\fi
@@ -464,9 +495,9 @@ DefEnvironment('{problem} OptionalKeyVals:problem',
 % the next step is to define a helper macro that does what is needed to start a solution. 
 %    \begin{macrocode}
 \newcommand\@startsolution[1][]{\metasetkeys{soln}{#1}%
-\ifboxed\else\hrule\fi\smallskip\noindent{\bf Solution: }\begin{small}%
-\def\currentsectionlevel{solution\xspace}%
-\def\Currentsectionlevel{Solution\xspace}%
+\@in@omtexttrue% we are in a statement.
+\ifboxed\else\hrule\fi\smallskip\noindent{\textbf\prob@solution@kw: }\begin{small}%
+\def\current@section@level{\prob@solution@kw}%
 \ignorespaces}
 %    \end{macrocode}
 %
@@ -626,7 +657,7 @@ Tag('omdoc:hint',afterOpen=>\&numberIt);
 %    \begin{macrocode}
 %<*package>
 \newcounter{pts}
-\def\show@pts{\ifx\inclprob@pts\@empty% 
+\def\show@pts{\ifx\inclprob@pts\@empty%
 \ifx\problem@pts\@empty\else%
 \ifpts\marginpar{\problem@pts pt\smallskip}\addtocounter{pts}{\problem@pts}\fi%
 \fi\else% inclprob@pts nonempty

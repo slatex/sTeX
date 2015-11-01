@@ -10,36 +10,36 @@
 \ProvidesPackage{omdoc}[2014/01/12 v1.2 OMDoc document Structure]
 \DeclareOption{showmeta}{\PassOptionsToPackage{\CurrentOption}{metakeys}}
 \DeclareOption{showmods}{\PassOptionsToPackage{\CurrentOption}{modules}}
-\newcount\section@level
-\newif\ifshow@ignores\show@ignoresfalse
-\def\omdoc@class{article}\section@level=2
-\DeclareOption{report}{\def\omdoc@class{report}\section@level=1}
-\newif\ifclass@book\class@bookfalse
-\DeclareOption{book}{\def\omdoc@class{book}\section@level=0\class@booktrue}
-\DeclareOption{showignores}{\show@ignorestrue}
 \DeclareOption{extrefs}{\PassOptionsToPackage{\CurrentOption}{sref}}
-\DeclareOption*{}% accept all other options
+\DeclareOption{noauxreq}{\PassOptionsToPackage{\CurrentOption}{modules}}
+\DeclareOption{defindex}{\PassOptionsToPackage{\CurrentOption}{statements}}
+\newif\ifshow@ignores\show@ignoresfalse
+\DeclareOption{showignores}{\show@ignorestrue}
+\newcount\section@level\section@level=2
+\DeclareOption{report}{\section@level=0}
+\DeclareOption{book}{\section@level=0}
+\DeclareOption*{\PassOptionsToPackage{\CurrentOption}{sref}}
 \ProcessOptions
 \RequirePackage{sref}
 \RequirePackage{xspace}
 \RequirePackage{comment}
 \RequirePackage{etoolbox}
-\def\currentsectionlevel{document\xspace}%
-\def\Currentsectionlevel{Document\xspace}%
+\def\current@section@level{document}%
+\newcommand\currentsectionlevel{\lowercase\expandafter{\current@section@level}\xspace}%
+\newcommand\Currentsectionlevel{\expandafter\MakeUppercase\current@section@level\xspace}%
 \newcommand\at@begin@blindomgroup[1]{}
 \newenvironment{blindomgroup}
 {\advance\section@level by 1\at@begin@blindomgroup\setion@level}
 {\advance\section@level by -1}
-\newcommand\omgroup@cl[2]{%
-\def\currentsectionlevel{#1\xspace}%
-\def\Currentsectionlevel{#2\xspace}}
 \newcommand\omgroup@nonum[2]{%
 \ifx\hyper@anchor\@undefined\else\phantomsection\fi%
 \addcontentsline{toc}{#1}{#2}\@nameuse{#1}*{#2}}
-\newcommand\omgroup@num[2]{\sref@label@id{\omdoc@sect@Name~\@nameuse{the#1}}%
+\newcommand\omgroup@num[2]{%
+\sref@label@id{\omdoc@sect@name~\@nameuse{the#1}}%
 \ifx\omgroup@short\@empty\@nameuse{#1}{#2}%
 \else\@ifundefined{rdfmeta@sectioning}{\@nameuse{#1}[\omgroup@short]{#2}}%
-{\@nameuse{rdfmeta@#2@old}[\omgroup@short]{#2}}\fi}
+{\@nameuse{rdfmeta@#1@old}[\omgroup@short]{#2}}%
+\fi}
 \def\@true{true}
 \def\@false{false}
 \srefaddidkey{omgroup}
@@ -56,15 +56,14 @@
 \newif\if@backmatter\@backmatterfalse
 \newcommand\at@begin@omgroup[3][]{}
 \addmetakey{omdoc@sect}{name}
-\addmetakey{omdoc@sect}{Name}
 \addmetakey[false]{omdoc@sect}{clear}[true]
 \addmetakey{omdoc@sect}{ref}
 \addmetakey[false]{omdoc@sect}{num}[true]
 \newcommand\omdoc@sectioning[3][]{\metasetkeys{omdoc@sect}{#1}%
 \ifx\omdoc@sect@clear\@true\cleardoublepage\fi%
 \if@@num% numbering not overridden by frontmatter, etc.
-\ifx\omdoc@sect@num\@true\omgroup@num{#2}{#3}\else\omgroup@nonum{#2}{#3}\fi
-\omgroup@cl\omdoc@sect@name\omdoc@sect@Name
+\ifx\omdoc@sect@num\@true\omgroup@num{#2}{#3}\else\omgroup@nonum{#2}{#3}\fi%
+\def\current@section@level{\omdoc@sect@name}%
 \else\omgroup@nonum{#2}{#3}\fi}
 \newcommand\omgroup@redefine@addtocontents[1]{\edef\@@import{#1}%
 \@for\@I:=\@@import\do{\edef\@path{\csname module@\@I  @path\endcsname}%
@@ -84,13 +83,13 @@
 {\@ifundefined{module@\mod@id @path}{\imported@modules}\mod@id}}\fi%
 \advance\section@level by 1
 \ifcase\section@level%
-\or\omdoc@sectioning[name=part,Name=Part,clear,num]{part}{#2}%
-\or\omdoc@sectioning[name=chapter,Name=Chapter,clear,num]{chapter}{#2}%
-\or\omdoc@sectioning[name=section,Name=Section,num]{section}{#2}%
-\or\omdoc@sectioning[name=subsection,Name=Subsection,num]{subsection}{#2}%
-\or\omdoc@sectioning[name=subsubsection,Name=Subsubsection,num]{subsubsection}{#2}%
-\or\omdoc@sectioning[name=paragraph,Name=Paragraph,ref=this paragraph]{paragraph}{#2}%
-\or\omdoc@sectioning[name=subparagraph,Name=Subparagraph,ref=this subparagraph]{paragraph}{#2}%
+\or\omdoc@sectioning[name=Part,clear,num]{part}{#2}%
+\or\omdoc@sectioning[name=Chapter,clear,num]{chapter}{#2}%
+\or\omdoc@sectioning[name=Section,num]{section}{#2}%
+\or\omdoc@sectioning[name=Subsection,num]{subsection}{#2}%
+\or\omdoc@sectioning[name=Subsubsection,num]{subsubsection}{#2}%
+\or\omdoc@sectioning[name=Paragraph,ref=this paragraph]{paragraph}{#2}%
+\or\omdoc@sectioning[name=Subparagraph,ref=this subparagraph]{paragraph}{#2}%
 \fi% \ifcase
 \at@begin@omgroup[#1]\section@level{#2}}% for customization
 {\advance\section@level by -1}

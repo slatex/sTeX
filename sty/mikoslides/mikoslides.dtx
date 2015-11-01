@@ -10,8 +10,8 @@
 % 
 % \iffalse
 %<cls|package>\NeedsTeXFormat{LaTeX2e}[1999/12/01]
-%<cls>\ProvidesClass{mikoslides}[2015/10/04 v1.0 Jacobs slides Class]
-%<package>\ProvidesPackage{mikoslides}[2015/10/04 v1.0 Jacobs slides Package]
+%<cls>\ProvidesClass{mikoslides}[2015/10/25 v1.1 Jacobs slides Class]
+%<package>\ProvidesPackage{mikoslides}[2015/10/25 v1.1 Jacobs slides Package]
 %
 %<*driver>
 \documentclass{ltxdoc}
@@ -47,6 +47,8 @@
 % notes mode}
 % \changes{v0.9}{2013/08/23}{numbered sectocframes}
 % \changes{v1.0}{2014/01/07}{adding \texttt{\textbackslash frameimage}}
+% \changes{v1.1}{2015/10/25}{Removing the old title macros (use the regular ones instead)}
+% \changes{v1.1}{2015/10/25}{reinterpreting omgroup}
 % 
 % \GetFileInfo{mikoslides.cls}
 % \MakeShortVerb{\|}
@@ -231,12 +233,12 @@
 % 
 % In this section we document known limitations. If you want to help alleviate them,
 % please feel free to contact the package author. Some of them are currently discussed in
-% the \sTeX TRAC~\cite{sTeX:online}. 
+% the \sTeX GitHub repository~\cite{sTeX:github:on}. 
 % \begin{compactenum}
-% \item the class should be divided into concerns. \tracissue{1684}
-% \item when option |book| or |report| is given together with |sectocframes| chapter-level
-%   omgroups generate a spurious slide with a bare heading. This has something to do with
-%   the fact that beamer does not support |\chapter|
+% \item when option |book| which uses |\pagestyle{headings}| is given and semantic macros
+%   are given in the |omgroup| titles, then they sometimes are not defined by the time the
+%   heading is formatted. Need to look into how the headings are made. This is a problem
+%   of the underlying |omdoc| package.
 % \end{compactenum}
 % 
 % \StopEventually{\newpage\PrintIndex\newpage\PrintChanges\printbibliography}
@@ -250,10 +252,7 @@
 % since the documentation applies to both of them and to prevent them from getting out of
 % sync.
 %
-%\subsection{Initialization and Class Options}\label{sec:impl:init}
-%
-% For the {\latexml} bindings, we make sure the right perl packages are loaded.
-%
+% The general preamble for \latexml:
 %    \begin{macrocode}
 %<*ltxml.cls|ltxml.sty>
 # -*- CPERL -*-
@@ -261,33 +260,38 @@ package LaTeXML::Package::Pool;
 use strict;
 use LaTeXML::Package;
 %</ltxml.cls|ltxml.sty>
-%<*ltxml.cls>
-DeclareOption('notes', '');
-DeclareOption('slides', '');
-DeclareOption('noproblems', '');
-DeclareOption('sectocframes', '');
-DeclareOption('frameimages', '');
-DeclareOption('report', sub {PassOptions('omdoc','cls',ToString(Digest(T_CS('\CurrentOption')))); });
-DeclareOption('book', sub {PassOptions('omdoc','cls',ToString(Digest(T_CS('\CurrentOption')))); });
-DeclareOption(undef, sub {PassOptions('omdoc','cls',ToString(Digest(T_CS('\CurrentOption'))));
-                          PassOptions('beamer','cls',ToString(Digest(T_CS('\CurrentOption'))));});
-DeclareOption(undef, sub {PassOptions('mikoslides','sty',ToString(Digest(T_CS('\CurrentOption'))));});
-%</ltxml.cls>
-%<*ltxml.sty>
- DeclareOption('showmeta', sub {PassOptions('metakeys','sty',ToString(Digest(T_CS('\CurrentOption')))); });
-DeclareOption('defindex', sub {PassOptions('statements','sty',ToString(Digest(T_CS('\CurrentOption')))); });
-%</ltxml.sty>
-%<*ltxml.cls|ltxml.sty>
- ProcessOptions();
-%</ltxml.cls|ltxml.sty>
 %    \end{macrocode}
 %
-% For {\LaTeX} we define some Package Options and switches for the |mikoslides| class and activate
-% them by passing them on to |beamer.cls| the appropriate packages.
+%\subsection{Class and Package Options}\label{sec:impl:init}
+%
+% We define some Package Options and switches for the |mikoslides| class and activate them
+% by passing them on to |beamer.cls| and |omdoc.cls| and the |mikoslides| package.
 %
 %    \begin{macrocode}
 %<*cls>
 \newif\ifnotes\notesfalse
+\DeclareOption{notes}{\notestrue\PassOptionsToPackage{\CurrentOption}{mikoslides}}
+\DeclareOption{slides}{\notesfalse\PassOptionsToPackage{\CurrentOption}{mikoslides}}
+\DeclareOption*{\PassOptionsToClass{\CurrentOption}{omdoc}
+                           \PassOptionsToClass{\CurrentOption}{beamer}
+                           \PassOptionsToPackage{\CurrentOption}{mikoslides}}
+\ProcessOptions
+%</cls>
+%<*ltxml.cls>
+DeclareOption('notes', sub{PassOptions('mikoslides','sty',ToString(Digest(T_CS('\CurrentOption'))))});
+DeclareOption('slides', sub{PassOptions('mikoslides','sty',ToString(Digest(T_CS('\CurrentOption'))))});
+DeclareOption(undef, sub {PassOptions('omdoc','cls',ToString(Digest(T_CS('\CurrentOption'))));
+                                          PassOptions('mikoslides','sty',ToString(Digest(T_CS('\CurrentOption'))));
+                                          PassOptions('beamer','cls',ToString(Digest(T_CS('\CurrentOption'))));});
+ProcessOptions();
+%</ltxml.cls>
+%    \end{macrocode}
+% now we do the same for the |mikoslides| package. Note that we also have to define the
+% same switches\ednote{MK: we may think about making all of them internal}, since we might
+% use |mikoslides.sty| in a different class.
+%    \begin{macrocode}
+%<*package>
+\newif\ifnotes\notesfalse 
 \DeclareOption{notes}{\notestrue}
 \DeclareOption{slides}{\notesfalse}
 \newif\ifsectocframes\sectocframesfalse 
@@ -295,24 +299,23 @@ DeclareOption('defindex', sub {PassOptions('statements','sty',ToString(Digest(T_
 \newif\ifframeimages\frameimagesfalse 
 \DeclareOption{frameimages}{\frameimagestrue}
 \newif\if@part\@partfalse 
-\DeclareOption{report}{\@parttrue\PassOptionsToClass{\CurrentOption}{omdoc}}
-\DeclareOption{book}{\@parttrue\PassOptionsToClass{\CurrentOption}{omdoc}}
-\DeclareOption*{\PassOptionsToClass{\CurrentOption}{omdoc}
-                \PassOptionsToClass{\CurrentOption}{beamer}}
-\DeclareOption*{\PassOptionsToPackage{\CurrentOption}{mikoslides}}
-%</cls>
-%<*package>
-\DeclareOption{showmeta}{\PassOptionsToPackage{\CurrentOption}{metakeys}}
-\DeclareOption{defindex}{\PassOptionsToPackage{\CurrentOption}{statements}}
-\newif\ifnotes\notesfalse 
-\DeclareOption{notes}{\notestrue}
-\DeclareOption{slides}{\notesfalse}
+\DeclareOption{report}{\@parttrue\PassOptionsToPackage{\CurrentOption}{omdoc}}
+\DeclareOption{book}{\@parttrue\PassOptionsToPackage{\CurrentOption}{omdoc}}
 \newif\ifproblems\problemstrue
 \DeclareOption{noproblems}{\problemsfalse}
-\DeclareOption*{}% accept anything
+\DeclareOption*{\PassOptionsToPackage{\CurrentOption}{stex}
+                           \PassOptionsToPackage{\CurrentOption}{tikzinput}}
+\ProcessOptions
 %</package>
-%<cls|package>\ProcessOptions
 %<*ltxml.sty>
+DeclareOption('notes', '');
+DeclareOption('slides', '');
+DeclareOption('noproblems', '');
+DeclareOption('sectocframes', '');
+DeclareOption('frameimages', '');
+DeclareOption(undef, sub {PassOptions('stex','sty',ToString(Digest(T_CS('\CurrentOption'))));
+                                          PassOptions('tikzinput','sty',ToString(Digest(T_CS('\CurrentOption')))); });
+ProcessOptions();
 RawTeX('\newif\ifnotes\notesfalse');
 RawTeX('\newif\ifproblems\problemsfalse');
 %</ltxml.sty>
@@ -343,13 +346,11 @@ RawTeX('\newif\ifproblems\problemsfalse');
 %<*ltxml.cls>
 LoadClass('omdoc');
 RequirePackage('mikoslides');
-RequirePackage('tikzinput');
 DefConstructor('\usetheme{}','');
 %</ltxml.cls>
 %    \end{macrocode}
 % 
-% now, we load the remaining packages for both versions. \ednote{MK: eventually (when tikz
-% support is fully realized in \latexml) get rid of the standalone package} 
+% now, we load the remaining packages for both versions. 
 %
 %    \begin{macrocode}
 %<*package>
@@ -357,25 +358,19 @@ DefConstructor('\usetheme{}','');
 \RequirePackage{tikzinput}
 \RequirePackage{latexml}
 \RequirePackage{amssymb}
-\usepgflibrary{shapes}
-\usetikzlibrary{arrows}
-\usetikzlibrary{positioning}
-\usetikzlibrary{tikzmark}%experimental/beta but very useful
-\usetikzlibrary{fit}
-\RequirePackage{url}
 \RequirePackage{amsmath}
 \RequirePackage{comment}
-\RequirePackage{standalone}
 \RequirePackage{textcomp}
+\RequirePackage{url}
 %</package>
 %<*ltxml.sty>
 RequirePackage('stex'); 
+RequirePackage('tikzinput', options => ['image']); 
 RequirePackage('latexml');
 RequirePackage('amssymb');
+RequirePackage('amsmath');
 RequirePackage('graphicx');
-RequirePackage('tikz');
 RequirePackage('url');
- RequirePackage('amsmath');
 %</ltxml.sty>
 %    \end{macrocode}
 % 
@@ -404,9 +399,7 @@ DefRegister('\slideheight'     => Dimension('9cm'));
 %    \begin{macrocode}
 %<*package>
 \ifnotes%
-  \renewenvironment{note}{%
-    \ignorespaces%
-  }{}%
+  \renewenvironment{note}{\ignorespaces}{}%
 \else%
   \excludecomment{note}%
 \fi%
@@ -542,7 +535,6 @@ DefConstructor('\@frameimage{}',"<omdoc:omgroup layout='slide'>#1</omdoc:omgroup
 %</ltxml.sty>
 %    \end{macrocode}
 % \end{macro}
-
 % 
 % \subsection{Header and Footer Lines}\label{sec:impl:headfootlines}
 %
@@ -690,65 +682,6 @@ DefMacro('\date[]{}', '\@add@frontmatter{ltx:date}[role=creation]{#1}');
 DefMacro('\author[]{}', sub { andSplit(T_CS('\@author'),$_[1]); });#$
 %</ltxml.sty>
 %    \end{macrocode}
-%
-% Now, we specialize the slide environment that we have implemented above or inherited
-% from |seminar.cls| for some abbreviations, e.g. separator slides and title slides.
-%    \begin{macrocode}
-%<*package>
-\ifnotes%
-  \newrobustcmd\titleframe{\maketitle}%
-\else%
-  \newrobustcmd\titleframe{%
-    \begin{frame}%
-    \titlepage%
-    \end{frame}%
-  }%
-\fi%
-\newenvironment{titleframewith}{%
-  \begin{frame}%
-  \titlepage%
-}{%
-  \end{frame}%
-}%
-\newenvironment{ttitle}{%
-  \begin{center}%
-  \LARGE%
-  \begin{tabular}{|c|}%
-  \hline%
-}{%
-  \\\hline%
-  \end{tabular}%
-  \end{center}%
-  \vspace{1ex minus 1ex}%
-}%
-\newenvironment{ttitlejoint}[1]{%
-  \newbox\boxwith%
-  \setbox\boxwith\hbox{%
-    \begin{tabular}{c}{\em joint work with}\\#1\end{tabular}%
-  }%
-  \begin{center}%
-  \LARGE%
-  \begin{tabular}{c}%
-  \color{red}%
-}{%
-  \\\box\boxwith%
-  \end{tabular}%
-  \end{center}%
-  \vspace{1ex minus 1ex}%
-}%
-%</package>
-%<*ltxml.sty>
-DefConstructor('\titleframe',"<omdoc:ignore>titleframe elided here</omdoc:ignore>");
-DefEnvironment('{titleframewith}',
-               "<omdoc:ignore>begin elided titleframe</omdoc:ignore>"
-               . "#body"
-              ."<omdoc:ignore>end elided titleframe</omdoc:ignore>"); 
-DefEnvironment('{titleslide}',"");
-DefEnvironment('{titleslide}',"<omdoc:omgroup>#body</omdoc:omgroup>");
-DefEnvironment('{ttitle}', "\n<dc:title>#body</dc:title>");
-%</ltxml.sty>
-%    \end{macrocode}
-%
 %    \begin{macrocode}
 %      Must be first command on slide to make positioning work.
 %<*package>
@@ -758,13 +691,13 @@ DefEnvironment('{ttitle}', "\n<dc:title>#body</dc:title>");
 \newrobustcmd\putat[2]{%
   \begin{picture}(0,0)\put(#1){#2}\end{picture}%
 }%
-%</package>
 %    \end{macrocode}
 %
 % \subsection{Sectioning}
-% If the |sectocframes| option is set, then we make section frames. 
+%
+% If the |sectocframes| option is set, then we make section frames. We first define a set
+% of counters
 %    \begin{macrocode}
-%<*cls>
 \ifsectocframes%
   \if@part%
     \newcounter{mpart}%
@@ -776,27 +709,35 @@ DefEnvironment('{ttitle}', "\n<dc:title>#body</dc:title>");
   \newcounter{msubsection}[msection]%
   \newcounter{msubsubsection}[msubsection]%
   \newcounter{msubsubsubsection}[msubsubsection]%
-  \ifnotes\else% only in slides
-    \renewcommand\at@begin@omgroup[3][]{%
-      \begin{frame}%
-      \vfill\Large\centering%
-      \red{%
-      	\ifcase\section@level\or%
-          \stepcounter{mpart}Part \Roman{mpart}\or%
-          \stepcounter{mchapter}Chapter \arabic{mchapter}\or
-          \stepcounter{msection}\if@part\arabic{mchapter}.\fi\arabic{msection}\or
-          \stepcounter{msubsection}\if@part\arabic{mchapter}.\fi\arabic{msection}.\arabic{msubsection}\or
-          \stepcounter{msubsubsection}\if@part\arabic{mchapter}.\fi\arabic{msection}.\arabic{msubsection}.\arabic{msubsubsection}.\or
-          \stepcounter{msubsubsubsection}\if@part\arabic{mchapter}.\fi\arabic{msection}.\arabic{msubsection}.\arabic{msubsubsection}.\arabic{msubsubsubsection}%
-        \fi% end ifcase
-        \quad #3%
-      }%
-      \vfill%
-      \end{frame}%
+\fi% ifsectocframes 
+%    \end{macrocode}
+% and then 
+%    \begin{macrocode}
+\ifnotes\else% only in slides
+  \renewenvironment{omgroup}[2][]{%
+    \metasetkeys{omgroup}{#1}\sref@target%
+    \advance\section@level by 1% 
+    \ifsectocframes%
+    \begin{frame}%
+    \vfill\Large\centering%
+    \red{%
+    	\ifcase\section@level\or%
+        \stepcounter{mpart}Part \Roman{mpart}\or%
+        \stepcounter{mchapter}Chapter \arabic{mchapter}\or
+        \stepcounter{msection}\if@part\arabic{mchapter}.\fi\arabic{msection}\or
+        \stepcounter{msubsection}\if@part\arabic{mchapter}.\fi\arabic{msection}.\arabic{msubsection}\or
+        \stepcounter{msubsubsection}\if@part\arabic{mchapter}.\fi\arabic{msection}.\arabic{msubsection}.\arabic{msubsubsection}.\or
+        \stepcounter{msubsubsubsection}\if@part\arabic{mchapter}.\fi\arabic{msection}.\arabic{msubsection}.\arabic{msubsubsection}.\arabic{msubsubsubsection}%
+      \fi% end ifcase
+      \quad #2%
     }%
-  \fi% ifnotes
-\fi% ifsectocframes
-%</cls>
+    \vfill%
+    \end{frame}%
+    \fi %ifsectocframes
+  }
+  {\advance\section@level by -1}% 
+\fi% ifnotes
+%</package>
 %    \end{macrocode}
 %
 % \subsection{Miscellaneous}

@@ -8,17 +8,14 @@
 %% 
 \NeedsTeXFormat{LaTeX2e}[1999/12/01]
 \ProvidesClass{omdoc}[2014/01/12 v1.2 OMDoc Documents]
-\DeclareOption{showmeta}{\PassOptionsToPackage{\CurrentOption}{metakeys}}
 \def\omdoc@class{article}
-\DeclareOption{report}{\def\omdoc@class{report}\PassOptionsToPackage{\CurrentOption}{omdoc}}
-\DeclareOption{book}{\def\omdoc@class{book}\PassOptionsToPackage{\CurrentOption}{omdoc}}
-\DeclareOption{showignores}{\PassOptionsToPackage{\CurrentOption}{omdoc}}
-\DeclareOption{showmods}{\PassOptionsToPackage{\CurrentOption}{modules}}
-\DeclareOption{extrefs}{\PassOptionsToPackage{\CurrentOption}{sref}}
-\DeclareOption{noauxreq}{\PassOptionsToPackage{\CurrentOption}{modules}}
-\DeclareOption{defindex}{\PassOptionsToPackage{\CurrentOption}{statements}}
-\DeclareOption*{\PassOptionsToClass{\CurrentOption}{article}}
-\DeclareOption*{\PassOptionsToPackage{\CurrentOption}{omdoc}}
+\DeclareOption{report}{\def\omdoc@class{report}%
+\PassOptionsToPackage{\CurrentOption}{omdoc}}
+\newif\ifclass@book\class@bookfalse
+\DeclareOption{book}{\def\omdoc@class{book}\class@booktrue%
+\PassOptionsToPackage{\CurrentOption}{omdoc}}
+\DeclareOption*{\PassOptionsToClass{\CurrentOption}{\omdoc@class}
+                           \PassOptionsToPackage{\CurrentOption}{omdoc}}
 \ProcessOptions
 \LoadClass{\omdoc@class}
 \RequirePackage{etoolbox}
