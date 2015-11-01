@@ -7,37 +7,35 @@
 %% mikoslides.dtx  (with options: `package')
 %% 
 \NeedsTeXFormat{LaTeX2e}[1999/12/01]
-\ProvidesPackage{mikoslides}[2015/10/04 v1.0 Jacobs slides Package]
-\DeclareOption{showmeta}{\PassOptionsToPackage{\CurrentOption}{metakeys}}
-\DeclareOption{defindex}{\PassOptionsToPackage{\CurrentOption}{statements}}
+\ProvidesPackage{mikoslides}[2015/10/25 v1.1 Jacobs slides Package]
 \newif\ifnotes\notesfalse
 \DeclareOption{notes}{\notestrue}
 \DeclareOption{slides}{\notesfalse}
+\newif\ifsectocframes\sectocframesfalse
+\DeclareOption{sectocframes}{\sectocframestrue}
+\newif\ifframeimages\frameimagesfalse
+\DeclareOption{frameimages}{\frameimagestrue}
+\newif\if@part\@partfalse
+\DeclareOption{report}{\@parttrue\PassOptionsToPackage{\CurrentOption}{omdoc}}
+\DeclareOption{book}{\@parttrue\PassOptionsToPackage{\CurrentOption}{omdoc}}
 \newif\ifproblems\problemstrue
 \DeclareOption{noproblems}{\problemsfalse}
-\DeclareOption*{}% accept anything
+\DeclareOption*{\PassOptionsToPackage{\CurrentOption}{stex}
+                           \PassOptionsToPackage{\CurrentOption}{tikzinput}}
 \ProcessOptions
 \RequirePackage{stex}
 \RequirePackage{tikzinput}
 \RequirePackage{latexml}
 \RequirePackage{amssymb}
-\usepgflibrary{shapes}
-\usetikzlibrary{arrows}
-\usetikzlibrary{positioning}
-\usetikzlibrary{tikzmark}%experimental/beta but very useful
-\usetikzlibrary{fit}
-\RequirePackage{url}
 \RequirePackage{amsmath}
 \RequirePackage{comment}
-\RequirePackage{standalone}
 \RequirePackage{textcomp}
+\RequirePackage{url}
 \newcounter{slide}
 \newlength{\slidewidth}\setlength{\slidewidth}{12.8cm}
 \newlength{\slideheight}\setlength{\slideheight}{9cm}
 \ifnotes%
-  \renewenvironment{note}{%
-    \ignorespaces%
-  }{}%
+  \renewenvironment{note}{\ignorespaces}{}%
 \else%
   \excludecomment{note}%
 \fi%
@@ -104,7 +102,6 @@
     \fi%
   \fi%
 }% ifframeimages
-
 \newlength{\slidelogoheight}
 \ifnotes%
   \setlength{\slidelogoheight}{.4cm}%
@@ -176,53 +173,48 @@
   \raisebox{-.05cm}{\pgfuseimage{miko@big@dbend}}%
   \xspace%
 }%
-\ifnotes%
-  \newrobustcmd\titleframe{\maketitle}%
-\else%
-  \newrobustcmd\titleframe{%
-    \begin{frame}%
-    \titlepage%
-    \end{frame}%
-  }%
-\fi%
-\newenvironment{titleframewith}{%
-  \begin{frame}%
-  \titlepage%
-}{%
-  \end{frame}%
-}%
-\newenvironment{ttitle}{%
-  \begin{center}%
-  \LARGE%
-  \begin{tabular}{|c|}%
-  \hline%
-}{%
-  \\\hline%
-  \end{tabular}%
-  \end{center}%
-  \vspace{1ex minus 1ex}%
-}%
-\newenvironment{ttitlejoint}[1]{%
-  \newbox\boxwith%
-  \setbox\boxwith\hbox{%
-    \begin{tabular}{c}{\em joint work with}\\#1\end{tabular}%
-  }%
-  \begin{center}%
-  \LARGE%
-  \begin{tabular}{c}%
-  \color{red}%
-}{%
-  \\\box\boxwith%
-  \end{tabular}%
-  \end{center}%
-  \vspace{1ex minus 1ex}%
-}%
 \newrobustcmd\putgraphicsat[3]{%
   \begin{picture}(0,0)\put(#1){\includegraphics[#2]{#3}}\end{picture}%
 }%
 \newrobustcmd\putat[2]{%
   \begin{picture}(0,0)\put(#1){#2}\end{picture}%
 }%
+\ifsectocframes%
+  \if@part%
+    \newcounter{mpart}%
+    \newcounter{mchapter}%
+    \newcounter{msection}[mchapter]%
+  \else%
+    \newcounter{msection}%
+  \fi%
+  \newcounter{msubsection}[msection]%
+  \newcounter{msubsubsection}[msubsection]%
+  \newcounter{msubsubsubsection}[msubsubsection]%
+\fi% ifsectocframes
+\ifnotes\else% only in slides
+  \renewenvironment{omgroup}[2][]{%
+    \metasetkeys{omgroup}{#1}\sref@target%
+    \advance\section@level by 1%
+    \ifsectocframes%
+    \begin{frame}%
+    \vfill\Large\centering%
+    \red{%
+     \ifcase\section@level\or%
+        \stepcounter{mpart}Part \Roman{mpart}\or%
+        \stepcounter{mchapter}Chapter \arabic{mchapter}\or
+        \stepcounter{msection}\if@part\arabic{mchapter}.\fi\arabic{msection}\or
+        \stepcounter{msubsection}\if@part\arabic{mchapter}.\fi\arabic{msection}.\arabic{msubsection}\or
+        \stepcounter{msubsubsection}\if@part\arabic{mchapter}.\fi\arabic{msection}.\arabic{msubsection}.\arabic{msubsubsection}.\or
+        \stepcounter{msubsubsubsection}\if@part\arabic{mchapter}.\fi\arabic{msection}.\arabic{msubsection}.\arabic{msubsubsection}.\arabic{msubsubsubsection}%
+      \fi% end ifcase
+      \quad #2%
+    }%
+    \vfill%
+    \end{frame}%
+    \fi %ifsectocframes
+  }
+  {\advance\section@level by -1}%
+\fi% ifnotes
 \expandafter\def\csname Parent2\endcsname{}
 \ifnotes%
   \renewenvironment{columns}{%

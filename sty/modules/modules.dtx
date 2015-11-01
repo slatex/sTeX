@@ -820,19 +820,17 @@
 % 
 % We declare some switches which will modify the behavior according to the package
 % options. Generally, an option |xxx| will just set the appropriate switches to true
-% (otherwise they stay false).
+% (otherwise they stay false). The options we are not using, we pass on to the |sref|
+% package we require next.
 %    \begin{macrocode}
 %<*package>
-\DeclareOption{showmeta}{\PassOptionsToPackage{\CurrentOption}{metakeys}}
 \newif\ifmod@show\mod@showfalse
 \DeclareOption{showmods}{\mod@showtrue}
 \newif\ifaux@req\aux@reqtrue
 \DeclareOption{noauxreq}{\aux@reqfalse}
 \newif\ifmod@qualified\mod@qualifiedfalse
 \DeclareOption{qualifiedimports}{\mod@qualifiedtrue}
-%    \end{macrocode}
-% Finally, we need to declare the end of the option declaration section to {\LaTeX}.
-%    \begin{macrocode}
+\DeclareOption*{\PassOptionsToPackage{\CurrentOption}{sref}}
 \ProcessOptions
 %    \end{macrocode}
 %
@@ -844,6 +842,7 @@
 % right version). For {\latexml}, we also initialize the package inclusions.
 %    \begin{macrocode}
 \RequirePackage{sref}
+\RequirePackage{presentation}
 \RequirePackage{xspace}
 \RequirePackage{mdframed}
 \RequirePackage{xstring}
@@ -913,7 +912,8 @@
 %   work has already been done in the keyval bindings, so this is quite simple. We store
 %   the file name (without extension) and extension of the module file in the global
 %   macros |\module@|\meta{name}|@path| and |\module@|\meta{name}|@ext|, so that we can
-%   use them later. The source of these two macros, |\mod@path| and |\mod@ext|, are defined in |\requiremodules|.
+%   use them later. The source of these two macros, |\mod@path| and |\mod@ext|, are
+%   defined in |\requiremodules|.
 %    \begin{macrocode}
 \newenvironment{module}[1][]{%
   \begin{@module}[#1]%
@@ -996,12 +996,12 @@
 \addmetakey{importmodule}{load}
 \addmetakey[sms]{importmodule}{ext}
 \addmetakey[false]{importmodule}{conservative}[true]
-\newrobustcmd\importmodule[2][]{%
+\newcommand\importmodule[2][]{%
   \metasetkeys{importmodule}{#1}%
   \ifx\imported@modules\@empty%
     \edef\imported@modules{#2}%
   \else%
-    \edef\imported@modules{\imported@modules, #2}%
+    \edef\imported@modules{\imported@modules,#2}%
   \fi%
   \@exporttrue%
   \@importmodule[\importmodule@load]{#2}{\importmodule@ext}%
@@ -1011,10 +1011,15 @@
 % \end{macro}
 %
 % \begin{macro}{\@importmodule} 
-%   |\@importmodule[|\meta{file(with path, without extension)}|]{|\meta{module}|}{|\meta{extension}|}| loads
-%   \meta{file}|.|\meta{extension} (if it is given) and activates the module \meta{module}. First |\@load| will store the base file name with full path, then check if |\module@|\meta{module}|@path| is defined. If this macro is defined, that means the module has been already loaded, otherwise we load it. The actual loading will be executed by |\requiremodules|.
+%   |\@importmodule[|\meta{file(with path, without
+%   extension)}|]{|\meta{module}|}{|\meta{extension}|}| loads
+%   \meta{file}|.|\meta{extension} (if it is given) and activates the module
+%   \meta{module}. First |\@load| will store the base file name with full path, then check
+%   if |\module@|\meta{module}|@path| is defined. If this macro is defined, that means the
+%   module has been already loaded, otherwise we load it. The actual loading will be
+%   executed by |\requiremodules|.
 %    \begin{macrocode}
-\newrobustcmd\@importmodule[3][]{%
+\newcommand\@importmodule[3][]{%
   {\@importingtrue% to shut up macros while in the group opened here
   \edef\@load{#1}%
   \ifx\@load\@empty%
@@ -1678,11 +1683,11 @@
   \ifx\importmhmodule@path\@empty% if module name is not set
     \importmodule[ext=\importmhmodule@ext,id=\importmhmodule@id]{#2}%
   \else%
-    \edef\mh@@repos{\mh@currentrepos}% make a backup for current directory
-    \ifx\importmhmodule@repos\@empty% if under same directory
+    \edef\mh@@repos{\mh@currentrepos}% remember so that we can reset it. 
+    \ifx\importmhmodule@repos\@empty% if in the same repos
       \relax% no need to change mh@currentrepos, i.e, current dirctory.
     \else%
-      \mhcurrentrepos{\importmhmodule@repos}%
+      \mhcurrentrepos{\importmhmodule@repos}% change it. 
     \fi%
     \importmodule[load=\MathHub{\mh@currentrepos/source/\importmhmodule@path},%
     ext=\importmhmodule@ext,id=\importmhmodule@id]{#2}%

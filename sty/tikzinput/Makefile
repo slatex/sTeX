@@ -1,8 +1,9 @@
 PREFIX = ..
-DTX.sty.base = dcm
-DTX.cls.base = 
+DTX.sty.base = tikzinput
 TDSCOLL = stex
 CTANPREFIX = /sty
-PACKAGE = dcm
+PACKAGE = tikzinput
+
 include $(PREFIX)/make/Makefile.vars
 include $(PREFIX)/make/Makefile.in
+
