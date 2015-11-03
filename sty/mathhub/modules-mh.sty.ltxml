@@ -1,0 +1,88 @@
+DefKeyVal('mhview','id','Semiverbatim');
+DefKeyVal('mhview','fromrepos','Semiverbatim');
+DefKeyVal('mhview','torepos','Semiverbatim');
+DefKeyVal('mhview','frompath','Semiverbatim');
+DefKeyVal('mhview','topath','Semiverbatim');
+DefKeyVal('mhview','title','Semiverbatim');
+DefKeyVal('mhview','creators','Semiverbatim');
+DefKeyVal('mhview','contributors','Semiverbatim');
+DefKeyVal('mhview','display','Semiverbatim');
+DefKeyVal('mhview','ext','Semiverbatim');
+DefMacroI(T_CS('\begin{mhview}'),'OptionalKeyVals:mhview {}{}', sub {
+  my ($gullet, $keyvals, $from_arg, $to_arg) = @_;
+  my $from = ToString(Digest($from_arg));
+  my $to = ToString(Digest($to_arg));
+  AssignValue(from_module => $from);
+  AssignValue(to_module => $to);
+  my $from_repos = ToString(GetKeyVal($keyvals,'fromrepos'));
+  my $to_repos = ToString(GetKeyVal($keyvals,'torepos'));
+  my $repos = LookupValue('current_repos');
+  my $from_path = ToString(GetKeyVal($keyvals,'frompath'));
+  my $to_path = ToString(GetKeyVal($keyvals,'topath'));
+  my $ext = ToString(GetKeyVal($keyvals,'ext')) if $keyvals;
+  $ext = 'sms' unless $ext;
+  my $current_repos = LookupValue('current_repos');
+  if (!$from_repos) { $from_repos = $current_repos; }
+  if (!$to_repos) { $to_repos = $current_repos; }
+  return (
+    Tokenize("\\importMHmoduleI[repos=$from_repos,path=$from_path,ext=$ext]{$from}")->unlist,
+    Tokenize("\\importMHmoduleI[repos=$to_repos,path=$to_path,ext=$ext]{$to}")->unlist,
+    Invocation(T_CS('\begin{viewenv}'),$keyvals,$from_arg,$to_arg)->unlist
+  );
+});
+DefMacroI('\end{mhview}',undef,'\end{viewenv}');
+
+DefMacroI(T_CS('\begin{mhviewsketch}'),'OptionalKeyVals:mhview {}{}', sub {
+  my ($gullet, $keyvals, $from_arg, $to_arg) = @_;
+  my $from = ToString(Digest($from_arg));
+  my $to = ToString(Digest($to_arg));
+  my $from_repos = ToString(GetKeyVal($keyvals,'fromrepos'));
+  my $to_repos = ToString(GetKeyVal($keyvals,'torepos'));
+  my $repos = LookupValue('current_repos');
+  my $from_path = ToString(GetKeyVal($keyvals,'frompath'));
+  my $to_path = ToString(GetKeyVal($keyvals,'topath'));
+  my $ext = ToString(GetKeyVal($keyvals,'ext')) if $keyvals;
+  $ext = 'sms' unless $ext;
+  my $current_repos = LookupValue('current_repos');
+  if (!$from_repos) { $from_repos = $current_repos; }
+  if (!$to_repos) { $to_repos = $current_repos; }
+  return (
+    Tokenize("\\importMHmoduleI[repos=$from_repos,path=$from_path,ext=$ext]{$from}")->unlist,
+    Tokenize("\\importMHmoduleI[repos=$to_repos,path=$to_path,ext=$ext]{$to}")->unlist,
+    Invocation(T_CS('\begin{viewsketchenv}'),$keyvals,$from_arg,$to_arg)->unlist
+  );
+});
+DefMacroI('\end{mhviewsketch}',undef,'\end{viewsketchenv}');
+
+DefConstructor('\importmhmodule OptionalKeyVals:importmhmodule {}',
+       "<omdoc:imports "
+       . "from='?&GetKeyVal(#1,'load')(&canonical_omdoc_path(&GetKeyVal(#1,'load')))()###2'"
+               . "?&defined(&GetKeyVal(#1,'conservative'))(load='&GetKeyVal(#1,'conservative')')()/>",
+   afterDigest => \&importMHmoduleI);
+
+DefConstructor('\usemhmodule OptionalKeyVals:importmhmodule {}',
+   "<omdoc:uses from='?&GetKeyVal(#1,'load')(&canonical_omdoc_path(&GetKeyVal(#1,'load')))()###2'/>",
+   afterDigest => \&importMHmoduleI);
+
+DefConstructor('\adoptmhmodule OptionalKeyVals:importmhmodule {}',
+   "<omdoc:adopts from='?&GetKeyVal(#1,'load')(&canonical_omdoc_path(&GetKeyVal(#1,'load')))()###2'/>",
+   afterDigest => \&importMHmoduleI);
+
+RawTeX('
+\newcommand\mhinputref[2][]{\def\@repos{#1}%
+\edef\mh@@repos{\mh@currentrepos}%
+\ifx\@repos\@empty\else\mhcurrentrepos{#1}\fi%
+\inputref{\MathHub{\mh@currentrepos/source/#2}}%
+\mhcurrentrepos\mh@@repos}
+\newcommand\mhinput[2][]{\def\@repos{#1}%
+\edef\mh@@repos{\mh@currentrepos}%
+\ifx\@repos\@empty\else\mhcurrentrepos{#1}\fi%
+\input{\MathHub{\mh@currentrepos/source/#2}}%
+\mhcurrentrepos\mh@@repos}
+\newenvironment{importmhmodulevia}[3][]{\def\@repos{#1}%
+\edef\mh@@repos{\mh@currentrepos}%
+\ifx\@repos\@empty\else\mhcurrentrepos{#1}\fi%
+\gdef\@@doit{\importmhmodule[#1]{#2}{#3}}
+\begin{importmoduleenv}[load=\MathHub{\mh@currentrepos/source/#2}]{#3}}
+{\end{importmoduleenv}\aftergroup\@@doit}
+');

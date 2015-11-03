@@ -1,0 +1,22 @@
+package LaTeXML::Package::Pool;
+use strict;
+use LaTeXML::Package;
+DeclareOption(undef,sub {PassOptions('metakeys','sty',ToString(Digest(T_CS('\CurrentOption')))); });
+RequirePackage('keyval');
+DefMacro('\mhcurrentrepos{}','\@mhcurrentrepos{#1}');
+DefMacro('\@mhcurrentrepos{}','\def\mh@currentrepos{#1}\@@mhcurrentrepos{#1}');
+DefConstructor('\@@mhcurrentrepos{}','',
+  afterDigest => sub{ AssignValue('current_repos',ToString($_[1]->getArg(1)),'global'); } );
+RaxTeX('
+\def\modules@@first#1/#2;{#1}
+\newcommand\libinput[1]{\def\@libfile{\MathHub{\mh@currentrepos/lib/#1}}%
+\IfFileExists{\@libfile}{\input\@libfile}%
+{\edef\@@group{\expandafter\modules@@first\mh@currentrepos;}
+\edef\@inffile{\MathHub{\@@group/meta-inf/lib/#1}}
+\IfFileExists{\@inffile}{\input{\@inffile}}%
+{\PackageError{modules}
+  {Library file missing, cannot input #1\MessageBreak%
+    Both \@libfile.tex\MessageBreak and \@inffile.tex\MessageBreak do not exit}%
+  {Check whether the file name is correct}}}}
+');
+1;
