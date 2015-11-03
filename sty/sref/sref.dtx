@@ -371,6 +371,7 @@
 % We first set up header information for the {\latexml} binding file. 
 %    \begin{macrocode}
 %<*ltxml>
+# -*- CPERL -*-
 package LaTeXML::Package::Pool;
 use strict;
 use LaTeXML::Package;
@@ -391,8 +392,10 @@ use LaTeXML::Package;
 \ProcessOptions
 %</package>
 %<*ltxml>
-DeclareOption('extrefs','');
+DefConditional('\if@extrefs');
+DeclareOption('extrefs', sub{Digest(T_CS('\@extrefstrue')); });
 DeclareOption(undef,sub {PassOptions('metakeys','sty',ToString(Digest(T_CS('\CurrentOption')))); });
+ProcessOptions();
 %</ltxml>
 %    \end{macrocode}
 %
@@ -436,9 +439,17 @@ RequirePackage('metakeys');
 }%
 %</package>
 %<*ltxml>
+DefKeyVal('sref','linktext','Semiverbatim');
+DefKeyVal('sref','fallback','Semiverbatim');
+DefKeyVal('sref','pre','Semiverbatim');
+DefKeyVal('sref','post','Semiverbatim');
 sub withhash {'#';}
-DefConstructor('\sref[]{}[]',
- "<omdoc:oref href='&withhash()#2'/>");
+DefConstructor('\sref OptionalKeyVals:sref {}[]',
+ "<omdoc:oref ?&GetKeyVal(#1, 'part')(href='&GetKeyVal(#1, 'part')&withhash()#2')(href='&withhash()#2')>"
+."?&GetKeyVal(#1, 'fallback')(<omdoc:fallback>&GetKeyVal(#1, 'fallback')</omdoc:fallback>)()"
+."?&GetKeyVal(#1, 'pre')(<omdoc:pre>&GetKeyVal(#1, 'pre')</omdoc:pre>)()"
+."?&GetKeyVal(#1, 'post')(<omdoc:post>&GetKeyVal(#1,'post')</omdoc:post>)()"
+."</omdoc:oref>");
 Tag('omdoc:oref',afterOpen=>\&numberIt,afterClose=>\&locateIt,autoClose=>1);
 %</ltxml>
 %    \end{macrocode}
