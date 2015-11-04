@@ -90,7 +90,7 @@
 % 
 % none so far
 %
-% \subsection{\texttt{mh-modules}: MH Variants for Modules}
+% \subsection{\texttt{mh-modules}: MH Variants for Modules}\label{sec:user:modules}
 %
 % The \DescribeMacro{\importmhmodule}|importmhmodule| macro is a variant of
 % |\importmodule| with repository support. Instead of writing 
@@ -128,7 +128,22 @@
 % \DescribeMacro{\mhinputref}|\mhinputref| and \DescribeMacro{\mhinput}|\mhinput| of the
 % |\inputref| macro introduced above and normal {\LaTeX} |\input| macro.
 %
-% \subsection{ \textsf{mh-mikoslides}: Support  for MiKo Slides}\label{sec:user:mikoslides}
+% \subsection{\texttt{omtext-mh}: MH Variants for OMText}\label{sec:user:modules}
+%
+% The \DescribeMacro{\mhcgraphics}|\mhcgraphics| macro is a variant of |\mycgraphics| with
+% repository support. Instead of writing
+% \begin{verbatim}
+% \defpath{MathHub}{/user/foo/lmh/MathHub}
+% \mycgraphics{\MathHub{fooMH/bar/source/baz/foobar}}
+% \end{verbatim}
+% we can simply write (assuming that |\MathHub| is defined as above)
+% \begin{verbatim}
+% \mhcgraphics[fooMH/bar]{baz/foobar}
+% \end{verbatim}
+% Note that the |\mhcgraphics| form is more semantic, which allows more advanced document
+% management features in \textsf{MathHub}.
+% 
+% \subsection{ \textsf{mikoslides-mh}: Support  for MiKo Slides}\label{sec:user:mikoslides}
 % 
 % The \DescribeMacro{\mhframeimage}|\mhframeimage| macro is a variant of |\frameimage|
 % with repository support. Instead of writing
@@ -515,9 +530,46 @@ RawTeX('
 %</modules.ltxml>
 %    \end{macrocode}
 % 
-% \subsection{ \textsf{mh-mikoslides}: Support  for MiKo Slides}\label{sec:impl:mikoslides}
+% \subsection{\texttt{omtext-mh}: MH Variants for OMText}\label{sec:impl:mtext}
+%
+% \begin{macro}{\mh*graphics}
+%   Use the current value of |\mh@currentrepos| or the value of the |mhrepos| key if it is
+%   given in |\my*graphics|.
 % 
-% \subsection{Support for \textsf{MathHub}}\label{sec:user:mathhub}
+%    \begin{macrocode}
+%<*omtext>
+\addmetakey{Gin}{mhrepos}
+\newcommand\mhgraphics[2][]{\metasetkeys{Gin}{#1}%
+\edef\mh@@repos{\mh@currentrepos}%
+\ifx\Gin@mhrepos\@empty\mygraphics[#1]{\MathHub{\mh@currentrepos/source/#2}}%
+\else\mygraphics[#1]{\MathHub{\Gin@mhrepos/source/#2}}\fi
+\def\Gin@mhrepos{}\mhcurrentrepos\mh@@repos}
+\newcommand\mhcgraphics[2][]{\begin{center}\mhgraphics[#1]{#2}\end{center}}
+\newcommand\mhbgraphics[2][]{\fbox{\mhgraphics[#1]{#2}}}
+\newcommand\mhcbgraphics[2][]{\begin{center}\fbox{\mhgraphics[#1]{#2}}\end{center}}
+%</omtext>
+%<*omtext.ltxml>
+sub mhgraphics {
+  my ($gullet,$keyval,$arg2) = @_;
+  my $repo_path;
+  if ($keyval) {
+    $repo_path = ToString(GetKeyVal($keyval,'mhrepos')); }
+  if (! $repo_path) {
+    $repo_path = ToString(Digest(T_CS('\mh@currentrepos'))); }
+  else {
+    $keyval->setValue('mhrepos',undef); }
+  my $mathhub_base = ToString(Digest('\MathHub{}'));
+  my $finalpath = $mathhub_base.$repo_path.'/source/'.ToString($arg2);
+  return Invocation(T_CS('\@includegraphicx'), $keyval, T_OTHER($finalpath)); }#$
+DefKeyVal('Gin','mhrepos','Semiverbatim');
+DefMacro('\mhgraphics OptionalKeyVals:Gin {}', \&mhgraphics);
+DefMacro('\mhcgraphics []{}','\begin{center}\mhgraphics[#1]{#2}\end{center}');
+DefMacro('\mhbgraphics []{}','\fbox{\mhgraphics[#1]{#2}}');
+%</omtext.ltxml>
+%    \end{macrocode}
+% \end{macro}
+% 
+% \subsection{ \textsf{mh-mikoslides}: Support  for MiKo Slides}\label{sec:impl:mikoslides}
 % 
 % \begin{macro}{\mhframeimage}
 %   Use the current value of |\mh@currentrepos| or the value of the |mhrepos| key if it is
