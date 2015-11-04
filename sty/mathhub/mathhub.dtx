@@ -75,7 +75,14 @@
 % directory structure of a repository is arbitrary -- except that it starts with the
 % directory |source| because they are Math Archives in the sense
 % of~\cite{HorIacJuc:cscpnrr11}. But this structure can be hidden from the \sTeX author
-% with \textsf{MathHub}-enabled versions of the |modules| macros.
+% with \textsf{MathHub}-enabled versions of the \sTeX macros, which are defined in this
+% package.
+%
+% \paragraph{Caveat} if you want to use the \textsf{MathHub} support macros (let's call
+% them \textbf{mh-variants}), then every time a module is imported or a document fragment
+% is included from another repos, the mh-variant |\importmhmodule| must be used, so that
+% the ``current repository'' is set accordingly. To be exact, we only need to use
+% mh-variants, if the imported module or included document fragment use mh-variants.
 % 
 % \section{The User Interface}\label{sec:user}
 % 
@@ -83,7 +90,7 @@
 % 
 % none so far
 %
-% \subsection{MH Variants for Modules}
+% \subsection{\texttt{mh-modules}: MH Variants for Modules}
 %
 % The \DescribeMacro{\importmhmodule}|importmhmodule| macro is a variant of
 % |\importmodule| with repository support. Instead of writing 
@@ -117,16 +124,31 @@
 % \DescribeMacro{\adoptmhmodule}|\adoptmhmodule| macros are the analogs to |\usemodule|
 % and |\adoptmodule|.
 % 
-% \paragraph{Caveat} if you want to use the \textsf{MathHub} support macros (let's call
-% them mh-variants), then every time a module is imported or a document fragment is
-% included from another repos, the mh-variant |\importmhmodule| must be used, so that the
-% ``current repository'' is set accordingly. To be exact, we only need to use mh-variants,
-% if the imported module or included document fragment use mh-variants.
-% 
 % For this, the |modules| package supplies the mh-variants
 % \DescribeMacro{\mhinputref}|\mhinputref| and \DescribeMacro{\mhinput}|\mhinput| of the
 % |\inputref| macro introduced above and normal {\LaTeX} |\input| macro.
 %
+% \subsection{ \textsf{mh-mikoslides}: Support  for MiKo Slides}\label{sec:user:mikoslides}
+% 
+% The \DescribeMacro{\mhframeimage}|\mhframeimage| macro is a variant of |\frameimage|
+% with repository support. Instead of writing
+% \begin{verbatim}
+% \defpath{MathHub}{/user/foo/lmh/MathHub}
+% \frameimage{\MathHub{fooMH/bar/source/baz/foobar}}
+% \end{verbatim}
+% we can simply write (assuming that |\MathHub| is defined as above)
+% \begin{verbatim}
+% \mhframeimage[fooMH/bar]{baz/foobar}
+% \end{verbatim}
+% Note that the |\mhframeimage| form is more semantic, which allows more advanced document
+% management features in \textsf{MathHub}.
+% 
+% If |baz/foobar| is the ``current module'', i.e. if we are on the \textsf{MathHub} path
+% \ldots|MathHub/fooMH/bar|\ldots, then stating the repository in the first optional
+% argument is redundant, so we can just use
+% \begin{verbatim}
+% \mhframeimage{baz/foobar}
+% \end{verbatim}
 %
 % \section{Limitations}\label{sec:limitations}
 % 
@@ -493,6 +515,32 @@ RawTeX('
 %</modules.ltxml>
 %    \end{macrocode}
 % 
+% \subsection{ \textsf{mh-mikoslides}: Support  for MiKo Slides}\label{sec:impl:mikoslides}
+% 
+% \subsection{Support for \textsf{MathHub}}\label{sec:user:mathhub}
+% 
+% \begin{macro}{\mhframeimage}
+%   Use the current value of |\mh@currentrepos| or the value of the |mhrepos| key if it is
+%   given in |\frameimage|.
+%    \begin{macrocode}
+%<mikoslides>\addmetakey{Gin}{mhrepos}
+%<mikoslides.ltxml>DefKeyVal('Gin','mhrepos','Semiverbatim');
+%<mikoslides.ltxml>RawTeX('
+%<*mikoslides.ltxml|mikoslides>
+\newcommand\mhframeimage[2][]{%
+  \metasetkeys{Gin}{#1}%
+  \edef\mh@@repos{\mh@currentrepos}%
+  \ifx\Gin@mhrepos\@empty%
+    \frameimage[#1]{\MathHub{\mh@currentrepos/source/#2}}%
+  \else%
+    \frameimage[#1]{\MathHub{\Gin@mhrepos/source/#2}}%
+  \fi%
+}%
+%</mikoslides.ltxml|mikoslides>
+%<mikoslides.ltxml>');
+%    \end{macrocode}
+% \end{macro}
+%
 % \subsection{Finale}\label{sec:common}
 %
 % Finally, we need to terminate the file with a success mark for perl.
