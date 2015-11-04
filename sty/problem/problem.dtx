@@ -9,7 +9,7 @@
 % 
 % \iffalse
 %<package>\NeedsTeXFormat{LaTeX2e}[1999/12/01]
-%<package>\ProvidesPackage{problem}[2013/12/12 v1.1 Semantic Markup for Problems]
+%<package>\ProvidesPackage{problem}[2015/11/04 v1.2 Semantic Markup for Problems]
 %
 %<*driver>
 \documentclass{ltxdoc}
@@ -41,6 +41,7 @@
 % \changes{v0.9c}{2010/01/03}{based on \texttt{omd.sty} now}
 % \changes{v1.0}{2013/10/09}{adding \texttt{\textbackslash start/stopsolution}}
 % \changes{v1.1}{2013/12/12}{adding MathHub support}
+% \changes{v1.2}{2015/11/04}{moving MathHub support out to separate package}
 % 
 % \GetFileInfo{problem.sty}
 % 
@@ -185,54 +186,6 @@
 % distribution of time and reward to parts of a problem, if the |pts| and |pts| package
 % options are set. This allows to give students hints about the estimated time and the
 % points to be awarded.
-%
-% \subsection{Support for \textsf{MathHub}}\label{sec:user:mathhub}
-% 
-% Much of the \sTeX content is hosed on \textsf{MathHub} (\url{http://MathHub.info}), a
-% portal and archive for flexiformal mathematics. \textsf{MathHub} offers GIT repositories
-% (public and private escrow) for mathematical documentation projects, online and offline
-% authoring and document development infrastructure, and a rich, interactive reading
-% interface. The |modules| package supports repository-sensitive operations on
-% \textsf{MathHub}. 
-% 
-% Note that \textsf{MathHub} has two-level repository names of the form
-% \meta{group}|/|\meta{repo}, where \meta{group} is a \textsf{MathHub}-unique repository
-% group and \meta{repo} a repository name that is \meta{group}-unique. The file and
-% directory structure of a repository is arbitrary -- except that it starts with the
-% directory |source| because they are Math Archives in the sense
-% of~\cite{HorIacJuc:cscpnrr11}. But this structure can be hidden from the \sTeX author
-% with \textsf{MathHub}-enabled versions of the |modules| macros.
-% 
-% The \DescribeMacro{\includemhproblem}|\includemhproblem| macro is a variant of
-% |\importmodule| with repository support. Instead of writing 
-% \begin{verbatim}
-% \defpath{MathHub}{/user/foo/lmh/MathHub}
-% \includeproblem[pts=7]{\MathHub{fooMH/bar/source/baz/foobar}}
-% \end{verbatim}
-% we can simply write (assuming that |\MathHub| is defined as above)
-% \begin{verbatim}
-% \includemhproblem[fooMH/bar]{baz/foobar}
-% \end{verbatim}
-% Note that the |\importmhmodule| form is more semantic, which allows more advanced
-% document management features in \textsf{MathHub}. 
-% 
-% If |baz/foobar| is the ``current module'', i.e. if we are on the \textsf{MathHub} path
-% \ldots|MathHub/fooMH/bar|\ldots, then stating the repository in the first optional
-% argument is redundant, so we can just use
-% \begin{verbatim}
-% \includemhproblem{baz/foobar}
-% \end{verbatim}
-% Of course, neither {\LaTeX} nor \latexml know about the repositories when they are
-% called from a file system, so we can use the |\mhcurrentrepos| macro from the |modules|
-% package to tell them. But this is only needed to initialize the infrastructure in the
-% driver file. In particular, we do not need to set it in in each module, since the
-% |\importmhmodule| macro sets the current repository automatically.
-% 
-% \paragraph{Caveat} if you want to use the \textsf{MathHub} support macros (let's call
-% them mh-variants), then every time a module is imported or a document fragment is
-% included from another repos, the mh-variant |\importmhmodule| must be used, so that the
-% ``current repository'' is set accordingly. To be exact, we only need to use mh-variants,
-% if the imported module or included document fragment use mh-variants.
 %
 % \section{Limitations}\label{sec:limitations}
 % 
@@ -679,40 +632,6 @@ Tag('omdoc:hint',afterOpen=>\&numberIt);
 %    \end{macrocode}
 % \end{macro}
 % 
-% \subsection{Support for \textsf{MathHub}}\label{sec:user:mathhub}
-% 
-% \begin{macro}{\includemhproblem}
-%   The |\includemhproblem| saves the current value of |\mh@currentrepos| in a local macro
-%   |\mh@@repos|, resets |\mh@currentrepos| to the new value if one is given in the
-%   optional argument, and after importing resets |\mh@currentrepos| to the old value in
-%   |\mh@@repos|.
-%    \begin{macrocode}
-%<*package>
-\newcommand\includemhproblem[2][]{\metasetkeys{inclprob}{#1}%
-\edef\mh@@repos{\mh@currentrepos}%
-\ifx\inclprob@mhrepos\@empty\else\mhcurrentrepos\inclprob@mhrepos\fi%
-\input{\MathHub{\mh@currentrepos/source/#2}}%
-\mhcurrentrepos\mh@@repos\clear@inclprob@keys}
-%</package>
-%<*ltxml>
-sub includemhproblem {
-  my ($gullet,$keyval,$arg2) = @_;
-  my $repo_path;
-  if ($keyval) {
-    $repo_path = ToString(GetKeyVal($keyval,'mhrepos')); }
-  if (! $repo_path) {
-    $repo_path = ToString(Digest(T_CS('\mh@currentrepos'))); }
-  else {
-    $keyval->setValue('mhrepos',undef); }
-  my $mathhub_base = ToString(Digest('\MathHub{}'));
-  my $finalpath = $mathhub_base.$repo_path.'/source/'.ToString($arg2);
-  return Invocation(T_CS('\includeproblem'), $keyval, T_OTHER($finalpath)); }#$
-DefKeyVal('inclprob','mhrepos','Semiverbatim');
-DefMacro('\includemhproblem OptionalKeyVals:inclprob {}', \&includemhproblem);
-%</ltxml>
-%    \end{macrocode}
-% \end{macro}
-%
 % \subsection{Providing IDs Elements}\label{sec:impl:ids}
 %
 % To provide default identifiers, we tag all elements that allow |xml:id| attributes by
