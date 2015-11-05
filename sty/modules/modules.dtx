@@ -467,63 +467,6 @@
 % recursively loads all necessary files to supply the semantic macros inherited by the
 % current module.\ednote{MK: document the other keys of |module|}
 % 
-% The |\importmodule| macro has a variant
-% \DescribeMacro{importmodulevia}|\importmodulevia| that allows the specification of a
-% theory morphism to be applied.  |\importmodulevia{|\meta{thyid}|}{|\meta{assignments}|}|
-% specifies the ``source theory'' via its identifier \meta{thyid} and the morphism by
-% \meta{assignments}. There are four kinds:\ednote{MK: this needs to be consolidated and
-% researched better.}
-% \begin{compactdesc}
-% \item[symbol assignments] via
-%   \DescribeMacro{\vassign}|\vassign{|\meta{sym}|}{|\meta{exp}|}|, which defines the
-%   symbol \meta{sym} introduced in the current theory by an expression \meta{exp} in the
-%   source theory.
-% \item[function assignments] via
-%   \DescribeMacro{\fassign}|\fassign{|\meta{bvars}|}{|\meta{sym}|}{|\meta{exp}|}|, is a
-%   variant which defines a function symbol \meta{sym} introduced in the current theory by
-%   an expression \meta{exp} in the source theory on bound variables \meta{bvars}.
-% \item[term assignments] via
-%   \DescribeMacro{\tassign}|\tassign[|\meta{source-cd}|]{|\meta{tname}|}{|\meta{source-tname}|}|,
-%   which assigns to the term with name \meta{tname} in the current theory a term with
-%   name \meta{source-tname} in the theory \meta{source-cd} whose default value is the
-%   source theory.
-% \item[term text assignments] via
-%   \DescribeMacro{\ttassign}|\tassign{|\meta{tname}|}{|\meta{text}|}|, which defines a
-%   term with name \meta{tname} in the current theory via a definitional text.
-% \end{compactdesc}
-% 
-%\begin{exfig}
-% \begin{verbatim}
-% \begin{module}[id=ring]
-% \begin{importmodulevia}{monoid}
-%   \vassign{rbase}\magbase
-%   \fassign{a,b}{rtimes}{\magmaop{a}b}
-%   \vassign{rone}\monunit
-% \end{importmodulevia}
-% \symdef{rbase}{G}
-% \symdef[name=rtimes]{rtimesOp}{\cdot}
-% \symdef{rtimes}[2]{\infix\rtimesOp{#1}{#2}}
-% \symdef{rone}{1}
-% \begin{importmodulevia}{cgroup}
-%   \vassign{rplus}\magmaop
-%   \vassign{rzero}\monunit
-%   \vassign{rinvOp}\cginvOp
-% \end{importmodulevia}
-% \symdef[name=rplus]{rplusOp}{+}
-% \symdef{rplus}[2]{\infix\rplusOp{#1}{#2}}
-% \symdef[name=rminus]{rminusOp}{-}
-% \symdef{rminus}[1]{\infix\rminusOp{#1}{#2}}
-% ...
-% \end{module}
-% \end{verbatim}
-% \caption{A Module for Rings with inheritance from monoids and commutative groups}\label{fig:ring}
-% \end{exfig}
-%
-% The \DescribeMacro{\metalanguage}|\metalanguage| macro is a variant of
-% \lstinline|importmodule| that imports the meta language, i.e. the language in which the
-% meaning of the new symbols is expressed. For mathematics this is often first-order logic
-% with some set theory; see~\cite{RabKoh:WSMSML10} for discussion. 
-% 
 % \subsection{Dealing with multiple Files}\label{sec:user:multiple}
 %
 % The infrastructure presented above works well if we are dealing with small files or
@@ -670,11 +613,6 @@
 % outside the {\LaTeX} preamble. In the {\latexml} workflow, this loads the {\latexml}
 % bindings of the package specified in the first argument and generates an appropriate
 % |imports| element using the URI in the second argument.
-%
-% \subsection{Views}\label{sec:user:views}
-% 
-% A view is a mapping between modules, such that all model assumptions (axioms) of the
-% source module are satisfied in the target module. \ednote{Document and make Examples}
 %
 % \section{Limitations \& Extensions}\label{sec:limitations}
 % 
@@ -1011,38 +949,6 @@
 %    \end{macrocode}
 % \end{macro}
 %
-% \begin{macro}{\importmodulevia} 
-%   The |importmodulevia| environment just calls |\importmodule|, but to get around the
-%   group, we first define a local macro |\@@doit|, which does that and can be called with
-%   an |\aftergroup| to escape the environment grouping introduced by |importmodulevia|.
-%    \begin{macrocode}
-\newenvironment{importmodulevia}[2][]{%
-  \gdef\@@doit{\importmodule[#1]{#2}}%
-  \ifmod@show\par\noindent importing module #2 via \@@doit\fi%
-}{%
-  \aftergroup\@@doit\ifmod@show end import\fi%
-}%
-%    \end{macrocode}
-% \end{macro}
-%
-% \begin{environment}{vassign}
-%    \begin{macrocode}
-\newrobustcmd\vassign[3][]{\ifmod@show\ensuremath{#2\mapsto #3}, \fi}%
-%    \end{macrocode}
-% \end{environment}
-% 
-% \begin{environment}{tassign}
-%    \begin{macrocode}
-\newrobustcmd\tassign[3][]{\ifmod@show #2\ensuremath{\mapsto} #3, \fi}%
-%    \end{macrocode}
-% \end{environment}
-% 
-% \begin{environment}{ttassign}
-%    \begin{macrocode}
-\newrobustcmd\ttassign[3][]{\ifmod@show #2\ensuremath{\mapsto} ``#3'', \fi}%
-%    \end{macrocode}
-% \end{environment}
-% 
 % \begin{macro}{\importOMDocmodule} 
 %   for the {\LaTeX} side we can just re-use |\importmodule|, for the {\latexml} side we
 %   have a full URI anyways. So things are easy.\ednote{MK@DG: this macro is seldom used,
@@ -1509,104 +1415,6 @@
 %    \end{macrocode}
 % \end{macro}
 % 
-% \subsection{Views}\label{sec:impl:views}
-% 
-% We first prepare the ground by defining the keys for the |view| environment.
-%    \begin{macrocode}
-\srefaddidkey{view}
-\addmetakey*{view}{title}
-\addmetakey{view}{display}
-\addmetakey{view}{from}
-\addmetakey{view}{to}
-\addmetakey{view}{creators}
-\addmetakey{view}{contributors}
-\addmetakey{view}{srccite}
-\addmetakey{view}{type}
-\addmetakey[sms]{view}{ext}
-%    \end{macrocode}
-%
-% \begin{macro}{\view@heading}
-%   Then we make a convenience macro for the view heading. This can be customized. 
-%    \begin{macrocode} 
-\newcounter{view}[section]
-\newrobustcmd\view@heading[4]{%
-  \if@importing%
-  \else%
-    \stepcounter{view}%
-    \edef\@display{#3}\edef\@title{#4}%
-    \noindent%
-      \ifx\@display\st@flow%
-      \else%
-        {\textbf{View} {\thesection.\theview} from \textsf{#1} to \textsf{#2}}%
-        \sref@label@id{View \thesection.\theview}%
-        \ifx\@title\@empty%
-          \quad%
-        \else%
-          \quad(\@title)%
-        \fi%
-        \par\noindent%
-      \fi%
-      \ignorespaces%
-  \fi%
-}%ifmod@show
-%    \end{macrocode}
-% \end{macro}
-%
-% \begin{environment}{view}
-%   The |view| environment relies on the |@view| environment (used also in the \sTeX
-%   module signatures) for module bookkeeping and adds presentation (a heading and a box)
-%   if the |showmods| option is set.
-%    \begin{macrocode}
-\newenvironment{view}[3][]{%
-  \metasetkeys{view}{#1}%
-  \sref@target%
-  \begin{@view}{#2}{#3}%
-  \view@heading{#2}{#3}{\view@display}{\view@title}%
-}{%
-  \end{@view}%
-  \ignorespaces%
-}%
-\ifmod@show\surroundwithmdframed{view}\fi%
-%    \end{macrocode}
-% \end{environment}
-%
-% \begin{environment}{@view}
-%   The |@view| does the actual bookkeeping at the module level.
-%    \begin{macrocode}
-\newenvironment{@view}[2]{%from, to
-  \@importmodule[\view@from]{#1}{\view@ext}%
-  \@importmodule[\view@to]{#2}{\view@ext}%
-}{}%
-%    \end{macrocode}
-% \end{environment}
-% 
-% \begin{environment}{viewsketch}
-%   The |viewsketch| environment behaves like |view|, but only has text contents.
-%    \begin{macrocode}
-\newenvironment{viewsketch}[3][]{%
-  \metasetkeys{view}{#1}%
-  \sref@target%
-  \begin{@view}{#2}{#3}%
-  \view@heading{#2}{#3}{\view@display}{\view@title}%
-}{%
-  \end{@view}%
-}%
-\ifmod@show\surroundwithmdframed{viewsketch}\fi%
-%    \end{macrocode}
-% \end{environment}
-%
-% \begin{macro}{\obligation}
-%   The |\obligation| element does not do anything yet on the latexml
-%   side.\ednote{document above}
-%    \begin{macrocode}
-\newrobustcmd\obligation[3][]{%
-  \if@importing%
-  \else Axiom #2 is proven by \sref{#3}%
-  \fi%
-}%
-%    \end{macrocode}
-% \end{macro}
-%
 % \subsection{Deprecated Functionality}\label{sec:impl:deprecated}
 %
 % \begin{macro}{\sinput*}
@@ -1818,11 +1626,3 @@
 % LocalWords:  csymdef notationdef noauxreq noauxreq rinput ifaux reqtrue bargs
 % LocalWords:  reqfalse currmod importmoduleenv conceptdef stDMemph  tempswa mhviewsketch
 % LocalWords:  auxout omtext surroundwithmdframed ignorespaces NeedsTeXFormat
-%  LocalWords:  importmhmodule importmhmodule mhcurrentrepos mhcurrentrepos importmodules
-%  LocalWords:  mh@currentrepos NEWrequiremodules importmhmodulevia providerobustcmd
-
-% \endinput
-% Local Variables:
-% mode: doctex
-% TeX-master: t
-% End:
