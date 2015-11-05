@@ -26,7 +26,7 @@
 \floatstyle{boxed}
 \newfloat{exfig}{thp}{lop}
 \floatname{exfig}{Example}
-\newrobustcmd\tracissue[1]{\cite{sTeX:online}, \hyperlink{http://trac.kwarc.info/sTeX/ticket/#1}{issue #1}}
+\newcommand\tracissue[1]{\cite{sTeX:online}, \hyperlink{http://trac.kwarc.info/sTeX/ticket/#1}{issue #1}}
 \begin{document}\DocInput{mathhub.dtx}\end{document}
 %</driver>
 % \fi
@@ -117,9 +117,7 @@
 % need to set it in in each module, since the |\importmhmodule| macro sets the current
 % repository automatically.
 % 
-% The \DescribeMacro{\usemhmodule}|\usemhmodule| and
-% \DescribeMacro{\adoptmhmodule}|\adoptmhmodule| macros are the analogs to |\usemodule|
-% and |\adoptmodule|.
+% The \DescribeMacro{\usemhmodule}|\usemhmodule| is the analog to |\usemodule|.
 % 
 % For this, the |modules| package supplies the mh-variants
 % \DescribeMacro{\mhinputref}|\mhinputref| and \DescribeMacro{\mhinput}|\mhinput| of the
@@ -178,7 +176,7 @@
 % \begin{verbatim}
 % \includemhproblem[fooMH/bar]{baz/foobar}
 % \end{verbatim}
-% Note that the |\importmhmodule| form is more semantic, which allows more advanced
+% Note that the |\importmhproblem| form is more semantic, which allows more advanced
 % document management features in \textsf{MathHub}. 
 % 
 % \subsection{\textsf{hwexam-mh}: Support  for Assignments}\label{sec:user:hwexam}
@@ -257,7 +255,7 @@ RequirePackage('keyval');
 %   that the |\importmodule| calls there work with the correct repos.
 %    \begin{macrocode}
 %<*package>
-\newrobustcmd\mhcurrentrepos[1]{%
+\newcommand\mhcurrentrepos[1]{%
   \edef\@test{#1}% 
   \ifx\@test\mh@currentrepos% if new dir = old dir
     \relax% no need to change
@@ -266,7 +264,7 @@ RequirePackage('keyval');
   \fi%
   \@mhcurrentrepos{#1}% define mh@currentrepos
 }%
-\newrobustcmd\@mhcurrentrepos[1]{\edef\mh@currentrepos{#1}}%
+\newcommand\@mhcurrentrepos[1]{\edef\mh@currentrepos{#1}}%
 %</package>
 %<*ltxml>
 DefMacro('\mhcurrentrepos{}','\@mhcurrentrepos{#1}');
@@ -318,11 +316,12 @@ RequirePackage('mathhub');
 %    \end{macrocode}
 %
 % \begin{macro}{\importmhmodule}
-%   The |\importmhmodule[|\meta{key=value list}|]{module}| saves the current value of |\mh@currentrepos| in a local macro
-%   |\mh@@repos|, resets |\mh@currentrepos| to the new value if one is given in the
-%   optional argument, and after importing resets |\mh@currentrepos| to the old value in
-%   |\mh@@repos|. We do all the |\ifx| comparison with an |\expandafter|, since the values
-%   may be passed on from other key bindings. Parameters will be passed to |\importmodule|.
+%   The |\importmhmodule[|\meta{key=value list}|]{module}| saves the current value of
+%   |\mh@currentrepos| in a local macro |\mh@@repos|, resets |\mh@currentrepos| to the new
+%   value if one is given in the optional argument, and after importing resets
+%   |\mh@currentrepos| to the old value in |\mh@@repos|. We do all the |\ifx| comparison
+%   with an |\expandafter|, since the values may be passed on from other key
+%   bindings. Parameters will be passed to |\importmodule|.
 %    \begin{macrocode}
 %<*modules>
 \srefaddidkey{importmhmodule}%
@@ -330,7 +329,7 @@ RequirePackage('mathhub');
 \addmetakey{importmhmodule}{path}% saves the module name. E.g: naturalnumbers
 \addmetakey[sms]{importmhmodule}{ext}% saves the extension: E.g: tex
 \addmetakey[false]{importmhmodule}{conservative}[true]%
-\newrobustcmd\importmhmodule[2][]{%
+\newcommand\importmhmodule[2][]{%
   \metasetkeys{importmhmodule}{#1}%
   \ifx\importmhmodule@path\@empty% if module name is not set
     \importmodule[ext=\importmhmodule@ext,id=\importmhmodule@id]{#2}%
@@ -347,12 +346,29 @@ RequirePackage('mathhub');
   \fi%
   \ignorespaces%
 }%
+%</modules>
+%<*/modules.ltxml>
+DefKeyVal('importmhmodule','id','Semiverbatim');
+DefKeyVal('importmhmodule','repos','Semiverbatim');
+DefKeyVal('importmhmodule','path','Semiverbatim');
+DefKeyVal('importmhmodule','ext','Semiverbatim');
+DefKeyVal('importmhmodule','conservative','Semiverbatim');
+DefConstructor('\importmhmodule OptionalKeyVals:importmhmodule {}',
+	       "<omdoc:imports "
+	       . "from='?&GetKeyVal(#1,'load')(&canonical_omdoc_path(&GetKeyVal(#1,'load')))()###2'"
+               . "?&defined(&GetKeyVal(#1,'conservative'))(load='&GetKeyVal(#1,'conservative')')()/>",
+   afterDigest => \&importMHmoduleI);
+
+DefConstructor('\usemhmodule OptionalKeyVals:importmhmodule {}',
+   "<omdoc:uses from='?&GetKeyVal(#1,'load')(&canonical_omdoc_path(&GetKeyVal(#1,'load')))()###2'/>",
+   afterDigest => \&importMHmoduleI);
+%</modules.ltxml>
 %    \end{macrocode}
 % \end{macro}
 % and now the analogs
 % \begin{macro}{\usemhmodule}
 %    \begin{macrocode}
-\newrobustcmd\usemhmodule[2][]{%
+\newcommand\usemhmodule[2][]{%
   \metasetkeys{importmhmodule}{#1}%
   \ifx\importmhmodule@path\@empty%
     \usemodule[ext=\importmhmodule@ext,id=\importmhmodule@id]{#2}%
@@ -367,27 +383,6 @@ RequirePackage('mathhub');
   \fi%
   \ignorespaces%
 }%
-%    \end{macrocode}
-% \end{macro}
-%
-% \begin{macro}{\adoptmhmodule}
-%    \begin{macrocode}
-\newrobustcmd\adoptmhmodule[2][]{%
-  \metasetkeys{importmhmodule}{#1}%
-  \ifx\importmhmodule@path\@empty
-    \adoptmodule[ext=\importmhmodule@ext,id=\importmhmodule@id]{#2}%
-  \else%
-    \edef\mh@@repos{\mh@currentrepos}%
-    \ifx\importmhmodule@repos\@empty%
-    \else%
-      \mhcurrentrepos{\importmhmodule@repos}%
-    \fi%
-    \adoptmodule[load=\MathHub{\mh@currentrepos/source/\importmhmodule@path},ext=\importmhmodule@ext,id=\importmhmodule@id]{#2}%
-    \mhcurrentrepos\mh@@repos%
-  \fi%
-  \ignorespaces%
-}%
-%</modules>
 %    \end{macrocode}
 % \end{macro}
 %
@@ -543,20 +538,6 @@ DefMacroI(T_CS('\begin{mhviewsketch}'),'OptionalKeyVals:mhview {}{}', sub {
   );
 }); 
 DefMacroI('\end{mhviewsketch}',undef,'\end{viewsketchenv}');
-
-DefConstructor('\importmhmodule OptionalKeyVals:importmhmodule {}',
-	       "<omdoc:imports "
-	       . "from='?&GetKeyVal(#1,'load')(&canonical_omdoc_path(&GetKeyVal(#1,'load')))()###2'"
-               . "?&defined(&GetKeyVal(#1,'conservative'))(load='&GetKeyVal(#1,'conservative')')()/>",
-   afterDigest => \&importMHmoduleI);
-
-DefConstructor('\usemhmodule OptionalKeyVals:importmhmodule {}',
-   "<omdoc:uses from='?&GetKeyVal(#1,'load')(&canonical_omdoc_path(&GetKeyVal(#1,'load')))()###2'/>",
-   afterDigest => \&importMHmoduleI);
-
-DefConstructor('\adoptmhmodule OptionalKeyVals:importmhmodule {}',
-   "<omdoc:adopts from='?&GetKeyVal(#1,'load')(&canonical_omdoc_path(&GetKeyVal(#1,'load')))()###2'/>",
-   afterDigest => \&importMHmoduleI);
 %</modules.ltxml>
 %    \end{macrocode}
 % 
