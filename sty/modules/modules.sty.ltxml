@@ -549,6 +549,15 @@ DefMacro('\abbrtest OptionalKeyVals:symtest []{}{}','');
 # =======================================================
 Tag('omdoc:notation',afterOpen=>\&numberIt,afterClose=>\&locateIt);
 
+# =======================================================
+# 2.6. Transclusions
+# =======================================================
+DefConstructor('\inputref[]{}',
+	       "<omdoc:oref href='&canonical_omdoc_path(#2)' class='expandable'"
+	     . "?#1( name='#1')()/>");
+DefConstructor('\includeref[]{}',
+	       "<omdoc:oref href='&canonical_omdoc_path(#2)' class='expandable'"
+	     . "?#1( name='#1')()/>");
 
 # =======================================================
 # 3. Auxiliary routines:                                #
@@ -686,41 +695,11 @@ sub symdef_assemble_presentation {
   #Tokens(Invocation(T_CS('\@ensuremath'),$presentation)->unlist); 
   $presentation;}
 
-
-sub importMHmoduleI {
-  my ($stomach, $whatsit) = @_;
-  my $keyval = $whatsit->getArg(1);
-  my $id = $whatsit->getArg(2);
-  if ($keyval) {
-    my $repos = ToString($keyval->getValue('repos'));
-    my $path = ToString($keyval->getValue('path'));
-    my $current_repos = LookupValue('current_repos');
-    if (!$repos) { # Use the implicit current repository
-      $repos = $current_repos; }
-    my $defpaths = LookupValue('defpath');
-    my $load_path = ($$defpaths{MathHub}).$repos.'/source/'.$path;
-    $keyval->setValue('load',$load_path);
-    AssignValue('current_repos' => $repos, 'global');
-    importmoduleI($stomach,$whatsit);
-    AssignValue('current_repos' => $current_repos, 'global'); }
-  else {
-    importmoduleI($stomach,$whatsit);  }
-  return; }
-
-DefConstructor('\importMHmoduleI OptionalKeyVals:importmhmodule {}', '',
-   afterDigest=> \&importMHmoduleI );
-
 # =======================================================
-# 4. Forgotten Stuff                                    #
+# 4. Deprecated Stuff                                    #
 # =======================================================
 # this needs to be put into place, and maybe rethought. 
 DefConstructor('\sinputref[]{}',
-	       "<omdoc:oref href='&canonical_omdoc_path(#2)' class='expandable'"
-	     . "?#1( name='#1')()/>");
-DefConstructor('\inputref[]{}',
-	       "<omdoc:oref href='&canonical_omdoc_path(#2)' class='expandable'"
-	     . "?#1( name='#1')()/>");
-DefConstructor('\includeref[]{}',
 	       "<omdoc:oref href='&canonical_omdoc_path(#2)' class='expandable'"
 	     . "?#1( name='#1')()/>");
 
@@ -734,61 +713,6 @@ DefConstructor('\includeref[]{}',
 #  $GULLET->unread(Invocation(T_CS('\end@requiredmodule'),Tokens(Explode($module)))->unlist);
 #  LaTeXML::Package::InputContents($module);
 #  return;});
-
-DefKeyVal('view','id','Semiverbatim');
-DefKeyVal('view','from','Semiverbatim');
-DefKeyVal('view','to','Semiverbatim');
-DefKeyVal('view','title','Semiverbatim');
-DefKeyVal('view','creators','Semiverbatim');
-DefKeyVal('view','contributors','Semiverbatim');
-DefKeyVal('view','display','Semiverbatim');
-DefKeyVal('view','ext','Semiverbatim');
-DefMacroI(T_CS('\begin{view}'),'OptionalKeyVals:view {}{}', sub {
-  my ($gullet, $keyvals, $from_arg, $to_arg) = @_;
-  my $from = ToString(Digest($from_arg));
-  my $to = ToString(Digest($to_arg));
-  my $from_file = ToString(GetKeyVal($keyvals,'from'));
-  my $to_file = ToString(GetKeyVal($keyvals,'to'));
-  my $ext = ToString(GetKeyVal($keyvals,'ext')) if $keyvals;
-  $ext = 'sms' unless $ext;
-  return (
-    Tokenize("\\importmoduleI[load=$from_file]{$from}")->unlist,
-    Tokenize("\\importmoduleI[load=$to_file]{$to}")->unlist,
-    Invocation(T_CS('\begin{viewenv}'),$keyvals,$from_arg,$to_arg)->unlist
-  );
-}); 
-DefMacroI('\end{view}',undef,'\end{viewenv}');
-
-DefEnvironment('{viewenv} OptionalKeyVals:view {}{}',
-   "<omdoc:theory-inclusion from='#2' to='#3'"
-  .      " ?&defined(&GetKeyVal(#1,'id'))(xml:id='&GetKeyVal(#1,'id')')()>"
-  .  "<omdoc:morphism>#body</omdoc:morphism>"
-  ."</omdoc:theory-inclusion>");
-
-# do the same for viewsketch, pity we cannot share some code. 
-DefMacroI(T_CS('\begin{viewsketch}'),'OptionalKeyVals:view {}{}', sub {
-  my ($gullet, $keyvals, $from_arg, $to_arg) = @_;
-  my $from = ToString(Digest($from_arg));
-  my $to = ToString(Digest($to_arg));
-  my $from_file = ToString(GetKeyVal($keyvals,'from'));
-  my $to_file = ToString(GetKeyVal($keyvals,'to'));
-  my $ext = ToString(GetKeyVal($keyvals,'ext')) if $keyvals;
-  $ext = 'sms' unless $ext;
-  return (
-    Tokenize("\\importmoduleI[load=$from_file]{$from}")->unlist,
-    Tokenize("\\importmoduleI[load=$to_file]{$to}")->unlist,
-    Invocation(T_CS('\begin{viewsketchenv}'),$keyvals,$from_arg,$to_arg)->unlist
-  );
-}); 
-DefMacroI('\end{viewsketch}',undef,'\end{viewsketchenv}');
-
-DefEnvironment('{viewsketchenv} OptionalKeyVals:view {}{}',
-   "<omdoc:theory-inclusion from='#2' to='#3'"
-  .      " ?&defined(&GetKeyVal(#1,'id'))(xml:id='&GetKeyVal(#1,'id')')()>"
-  .  "#body"
-  ."</omdoc:theory-inclusion>");
-
-DefConstructor('\obligation [] {} {}',"<omdoc:obligation induced-by='#2' assertion='#3'/>");
 
 ######## temporal hack by MiKo; @DG,please remove after implementation.
 Let('\vardef', '\symdef');

@@ -158,11 +158,6 @@
 % \caption{A Module for Rings with inheritance from monoids and commutative groups}\label{fig:ring}
 % \end{exfig}
 %
-% The \DescribeMacro{\metalanguage}|\metalanguage| macro is a variant of
-% \lstinline|importmodule| that imports the meta language, i.e. the language in which the
-% meaning of the new symbols is expressed. For mathematics this is often first-order logic
-% with some set theory; see~\cite{RabKoh:WSMSML10} for discussion. 
-% 
 % \subsection{Views}\label{sec:user:views}
 % 
 % A view is a mapping between modules, such that all model assumptions (axioms) of the
@@ -236,6 +231,7 @@
 % \begin{environment}{ttassign}
 %    \begin{macrocode}
 \newrobustcmd\ttassign[3][]{\ifmod@show #2\ensuremath{\mapsto} ``#3'', \fi}%
+%</package>
 %    \end{macrocode}
 % \end{environment}
 % 
@@ -243,6 +239,7 @@
 % 
 % We first prepare the ground by defining the keys for the |view| environment.
 %    \begin{macrocode}
+%<*package>
 \srefaddidkey{view}
 \addmetakey*{view}{title}
 \addmetakey{view}{display}
@@ -253,11 +250,23 @@
 \addmetakey{view}{srccite}
 \addmetakey{view}{type}
 \addmetakey[sms]{view}{ext}
+%</package>
+%<*ltxml>
+DefKeyVal('view','id','Semiverbatim');
+DefKeyVal('view','from','Semiverbatim');
+DefKeyVal('view','to','Semiverbatim');
+DefKeyVal('view','title','Semiverbatim');
+DefKeyVal('view','creators','Semiverbatim');
+DefKeyVal('view','contributors','Semiverbatim');
+DefKeyVal('view','display','Semiverbatim');
+DefKeyVal('view','ext','Semiverbatim');
+%</ltxml>
 %    \end{macrocode}
 %
 % \begin{macro}{\view@heading}
 %   Then we make a convenience macro for the view heading. This can be customized. 
 %    \begin{macrocode} 
+%<*package>
 \newcounter{view}[section]
 \newrobustcmd\view@heading[4]{%
   \if@importing%
@@ -297,12 +306,36 @@
   \ignorespaces%
 }%
 \ifmod@show\surroundwithmdframed{view}\fi%
+%</package>
+%<*ltxml>
+DefMacroI(T_CS('\begin{view}'),'OptionalKeyVals:view {}{}', sub {
+  my ($gullet, $keyvals, $from_arg, $to_arg) = @_;
+  my $from = ToString(Digest($from_arg));
+  my $to = ToString(Digest($to_arg));
+  my $from_file = ToString(GetKeyVal($keyvals,'from'));
+  my $to_file = ToString(GetKeyVal($keyvals,'to'));
+  my $ext = ToString(GetKeyVal($keyvals,'ext')) if $keyvals;
+  $ext = 'sms' unless $ext;
+  return (
+    Tokenize("\\importmoduleI[load=$from_file]{$from}")->unlist,
+    Tokenize("\\importmoduleI[load=$to_file]{$to}")->unlist,
+    Invocation(T_CS('\begin{viewenv}'),$keyvals,$from_arg,$to_arg)->unlist
+  );
+}); 
+DefMacroI('\end{view}',undef,'\end{viewenv}');
+DefEnvironment('{viewenv} OptionalKeyVals:view {}{}',
+   "<omdoc:theory-inclusion from='#2' to='#3'"
+  .      " ?&defined(&GetKeyVal(#1,'id'))(xml:id='&GetKeyVal(#1,'id')')()>"
+  .  "<omdoc:morphism>#body</omdoc:morphism>"
+  ."</omdoc:theory-inclusion>");
+%</ltxml>
 %    \end{macrocode}
 % \end{environment}
 %
 % \begin{environment}{@view}
 %   The |@view| does the actual bookkeeping at the module level.
 %    \begin{macrocode}
+%<*package>
 \newenvironment{@view}[2]{%from, to
   \@importmodule[\view@from]{#1}{\view@ext}%
   \@importmodule[\view@to]{#2}{\view@ext}%
@@ -322,6 +355,30 @@
   \end{@view}%
 }%
 \ifmod@show\surroundwithmdframed{viewsketch}\fi%
+%</package>
+%<*ltxml>
+# do the same for viewsketch, pity we cannot share some code. 
+DefMacroI(T_CS('\begin{viewsketch}'),'OptionalKeyVals:view {}{}', sub {
+  my ($gullet, $keyvals, $from_arg, $to_arg) = @_;
+  my $from = ToString(Digest($from_arg));
+  my $to = ToString(Digest($to_arg));
+  my $from_file = ToString(GetKeyVal($keyvals,'from'));
+  my $to_file = ToString(GetKeyVal($keyvals,'to'));
+  my $ext = ToString(GetKeyVal($keyvals,'ext')) if $keyvals;
+  $ext = 'sms' unless $ext;
+  return (
+    Tokenize("\\importmoduleI[load=$from_file]{$from}")->unlist,
+    Tokenize("\\importmoduleI[load=$to_file]{$to}")->unlist,
+    Invocation(T_CS('\begin{viewsketchenv}'),$keyvals,$from_arg,$to_arg)->unlist
+  );
+}); 
+DefMacroI('\end{viewsketch}',undef,'\end{viewsketchenv}');
+DefEnvironment('{viewsketchenv} OptionalKeyVals:view {}{}',
+   "<omdoc:theory-inclusion from='#2' to='#3'"
+  .      " ?&defined(&GetKeyVal(#1,'id'))(xml:id='&GetKeyVal(#1,'id')')()>"
+  .  "#body"
+  ."</omdoc:theory-inclusion>");
+%</ltxml>
 %    \end{macrocode}
 % \end{environment}
 %
@@ -329,11 +386,16 @@
 %   The |\obligation| element does not do anything yet on the latexml
 %   side.\ednote{document above}
 %    \begin{macrocode}
+%<*package>
 \newrobustcmd\obligation[3][]{%
   \if@importing%
   \else Axiom #2 is proven by \sref{#3}%
   \fi%
 }%
+%</package>
+%<*ltxml> 
+DefConstructor('\obligation [] {} {}',"<omdoc:obligation induced-by='#2' assertion='#3'/>");
+%</ltxml>
 %    \end{macrocode}
 % \end{macro}
 %
