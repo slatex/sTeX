@@ -5,6 +5,26 @@ DeclareOption(undef,sub{PassOptions('modules','sty',ToString(Digest(T_CS('\Curre
 ProcessOptions();
 RequirePackage('modules');
 RequirePackage('mathhub');
+RawTeX('
+\newcommand\mhinputref[2][]{%
+  \def\@repos{#1}%
+  \edef\mh@@repos{\mh@currentrepos}%
+  \ifx\@repos\@empty%
+  \else%
+    \mhcurrentrepos{#1}%
+  \fi%
+  \inputref{\MathHub{\mh@currentrepos/source/#2}}%
+  \mhcurrentrepos\mh@@repos%
+  \ignorespaces%
+}%
+\let\mhinput\mhinputref%
+\newenvironment{importmhmodulevia}[3][]{%
+  \gdef\@@doit{\importmhmodule[#1]{#2}{#3}}%
+  \ifmod@show\par\noindent importing module #2 via \@@doit\fi
+}{%
+  \aftergroup\@@doit\ifmod@show end import\fi%
+}%
+');
 DefKeyVal('mhview','id','Semiverbatim');
 DefKeyVal('mhview','fromrepos','Semiverbatim');
 DefKeyVal('mhview','torepos','Semiverbatim');
@@ -74,22 +94,3 @@ DefConstructor('\usemhmodule OptionalKeyVals:importmhmodule {}',
 DefConstructor('\adoptmhmodule OptionalKeyVals:importmhmodule {}',
    "<omdoc:adopts from='?&GetKeyVal(#1,'load')(&canonical_omdoc_path(&GetKeyVal(#1,'load')))()###2'/>",
    afterDigest => \&importMHmoduleI);
-
-RawTeX('
-\newcommand\mhinputref[2][]{\def\@repos{#1}%
-\edef\mh@@repos{\mh@currentrepos}%
-\ifx\@repos\@empty\else\mhcurrentrepos{#1}\fi%
-\inputref{\MathHub{\mh@currentrepos/source/#2}}%
-\mhcurrentrepos\mh@@repos}
-\newcommand\mhinput[2][]{\def\@repos{#1}%
-\edef\mh@@repos{\mh@currentrepos}%
-\ifx\@repos\@empty\else\mhcurrentrepos{#1}\fi%
-\input{\MathHub{\mh@currentrepos/source/#2}}%
-\mhcurrentrepos\mh@@repos}
-\newenvironment{importmhmodulevia}[3][]{\def\@repos{#1}%
-\edef\mh@@repos{\mh@currentrepos}%
-\ifx\@repos\@empty\else\mhcurrentrepos{#1}\fi%
-\gdef\@@doit{\importmhmodule[#1]{#2}{#3}}
-\begin{importmoduleenv}[load=\MathHub{\mh@currentrepos/source/#2}]{#3}}
-{\end{importmoduleenv}\aftergroup\@@doit}
-');
