@@ -1,0 +1,57 @@
+package LaTeXML::Package::Pool;
+use strict;
+use LaTeXML::Package;
+DeclareOption(undef,sub{PassOptions('modules','sty',ToString(Digest(T_CS('\CurrentOption')))); });
+ProcessOptions();
+RequirePackage('modules');
+RequirePackage('mathhub');
+DefKeyVal('importmhmodule','id','Semiverbatim');
+DefKeyVal('importmhmodule','repos','Semiverbatim');
+DefKeyVal('importmhmodule','path','Semiverbatim');
+DefKeyVal('importmhmodule','ext','Semiverbatim');
+DefKeyVal('importmhmodule','conservative','Semiverbatim');
+DefConstructor('\importmhmodule OptionalKeyVals:importmhmodule {}',
+       "<omdoc:imports "
+       . "from='?&GetKeyVal(#1,'load')(&canonical_omdoc_path(&GetKeyVal(#1,'load')))()###2'"
+               . "?&defined(&GetKeyVal(#1,'conservative'))(load='&GetKeyVal(#1,'conservative')')()/>",
+   afterDigest => \&importMHmoduleI);
+
+sub importMHmoduleI {
+  my ($stomach, $whatsit) = @_;
+  my $keyval = $whatsit->getArg(1);
+  my $id = $whatsit->getArg(2);
+  if ($keyval) {
+    my $repos = ToString($keyval->getValue('repos'));
+    my $path = ToString($keyval->getValue('path'));
+    my $current_repos = LookupValue('current_repos');
+    if (!$repos) { # Use the implicit current repository
+      $repos = $current_repos; }
+    my $defpaths = LookupValue('defpath');
+    my $load_path = ($$defpaths{MathHub}).$repos.'/source/'.$path;
+    $keyval->setValue('load',$load_path);
+    AssignValue('current_repos' => $repos, 'global');
+    importmoduleI($stomach,$whatsit);
+    AssignValue('current_repos' => $current_repos, 'global'); }
+  else {
+    importmoduleI($stomach,$whatsit);  }
+  return; }
+
+DefConstructor('\importMHmoduleI OptionalKeyVals:importmhmodule {}', '',
+   afterDigest=> \&importMHmoduleI );#$
+DefConstructor('\usemhmodule OptionalKeyVals:importmhmodule {}',
+   "<omdoc:uses from='?&GetKeyVal(#1,'load')(&canonical_omdoc_path(&GetKeyVal(#1,'load')))()###2'/>",
+   afterDigest => \&importMHmoduleI);
+RawTeX('
+\newcommand\mhinputref[2][]{%
+  \def\@repos{#1}%
+  \edef\mh@@repos{\mh@currentrepos}%
+  \ifx\@repos\@empty%
+  \else%
+    \mhcurrentrepos{#1}%
+  \fi%
+  \inputref{\MathHub{\mh@currentrepos/source/#2}}%
+  \mhcurrentrepos\mh@@repos%
+  \ignorespaces%
+}%
+');
+\let\mhinput\mhinputref%

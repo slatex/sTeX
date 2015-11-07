@@ -115,18 +115,8 @@
 }%
 \newrobustcmd\usemodule[2][]{\@exportfalse\importmodule[#1]{#2}}%
 \newrobustcmd\importmodules[1]{\@for\@I:=#1\do{\activate@defs\@I}}%
-\newenvironment{importmodulevia}[2][]{%
-  \gdef\@@doit{\importmodule[#1]{#2}}%
-  \ifmod@show\par\noindent importing module #2 via \@@doit\fi%
-}{%
-  \aftergroup\@@doit\ifmod@show end import\fi%
-}%
-\newrobustcmd\vassign[3][]{\ifmod@show\ensuremath{#2\mapsto #3}, \fi}%
-\newrobustcmd\tassign[3][]{\ifmod@show #2\ensuremath{\mapsto} #3, \fi}%
-\newrobustcmd\ttassign[3][]{\ifmod@show #2\ensuremath{\mapsto} ``#3'', \fi}%
 \newrobustcmd\importOMDocmodule[3][]{\importmodule[#1]{#3}}%
 \let\metalanguage=\importmodule%
-\let\adoptmodule=\importmodule%
 \let\mod@newcommand=\providerobustcmd%
 \srefaddidkey{conceptdef}%
 \addmetakey*{conceptdef}{title}%
@@ -301,16 +291,6 @@
 \newrobustcmd\defpath[3][]{%
   \expandafter\newcommand\csname #2\endcsname[1]{#3/##1}%
 }%
-\def\modules@@first#1/#2;{#1}
-\newcommand\libinput[1]{\def\@libfile{\MathHub{\mh@currentrepos/lib/#1}}%
-\IfFileExists{\@libfile}{\input\@libfile}%
-{\edef\@@group{\expandafter\modules@@first\mh@currentrepos;}
-\edef\@inffile{\MathHub{\@@group/meta-inf/lib/#1}}
-\IfFileExists{\@inffile}{\input{\@inffile}}%
-{\PackageError{modules}
-  {Library file missing, cannot input #1\MessageBreak%
-    Both \@libfile.tex\MessageBreak and \@inffile.tex\MessageBreak do not exit}%
-  {Check whether the file name is correct}}}}
 \newrobustcmd\requiremodules[2]{%
   \mod@showfalse%
   \@importingtrue% save state and ensure silence while reading sms
@@ -321,192 +301,19 @@
 \newrobustcmd\@requiremodules[2]{%
   \if@tempswa\requiremodules{#1}{#2}\fi%
 }%
-\newrobustcmd\inputref[1]{%
+\newrobustcmd\inputref[2][]{%
   \def\@Slash{/}
-  \edef\@load{#1}%
+  \edef\@load{#2}%
   \StrChar{\@load}{1}[\@testchar]
   \ifx\@testchar\@Slash%
-    \edef\mod@path{#1}%
+    \edef\mod@path{#2}%
     \edef\mod@ext{tex}%
-    \input{#1}%
+    \input{#2}%
   \else%
-    \@rinput{#1}{tex}%
+    \@rinput{#2}{tex}%
   \fi%
 }%
 \def\requirepackage#1#2{\makeatletter\input{#1.sty}\makeatother}%
-\srefaddidkey{view}
-\addmetakey*{view}{title}
-\addmetakey{view}{display}
-\addmetakey{view}{from}
-\addmetakey{view}{to}
-\addmetakey{view}{creators}
-\addmetakey{view}{contributors}
-\addmetakey{view}{srccite}
-\addmetakey[sms]{view}{ext}
-\newcounter{view}[section]
-\newrobustcmd\view@heading[4]{%
-  \if@importing%
-  \else%
-    \stepcounter{view}%
-    \edef\@display{#3}\edef\@title{#4}%
-    \noindent%
-      \ifx\@display\st@flow%
-      \else%
-        {\textbf{View} {\thesection.\theview} from \textsf{#1} to \textsf{#2}}%
-        \sref@label@id{View \thesection.\theview}%
-        \ifx\@title\@empty%
-          \quad%
-        \else%
-          \quad(\@title)%
-        \fi%
-        \par\noindent%
-      \fi%
-      \ignorespaces%
-  \fi%
-}%ifmod@show
-\newenvironment{view}[3][]{%
-  \metasetkeys{view}{#1}%
-  \sref@target%
-  \begin{@view}{#2}{#3}%
-  \view@heading{#2}{#3}{\view@display}{\view@title}%
-}{%
-  \end{@view}%
-  \ignorespaces%
-}%
-\ifmod@show\surroundwithmdframed{view}\fi%
-\newenvironment{@view}[2]{%from, to
-  \@importmodule[\view@from]{#1}{\view@ext}%
-  \@importmodule[\view@to]{#2}{\view@ext}%
-}{}%
-\newenvironment{viewsketch}[3][]{%
-  \metasetkeys{view}{#1}%
-  \sref@target%
-  \begin{@view}{#2}{#3}%
-  \view@heading{#2}{#3}{\view@display}{\view@title}%
-}{%
-  \end{@view}%
-}%
-\ifmod@show\surroundwithmdframed{viewsketch}\fi%
-\srefaddidkey{importmhmodule}%
-\addmetakey{importmhmodule}{repos}% saves the repo's path. E.g: smglom/numberfield
-\addmetakey{importmhmodule}{path}% saves the module name. E.g: naturalnumbers
-\addmetakey[sms]{importmhmodule}{ext}% saves the extension: E.g: tex
-\addmetakey[false]{importmhmodule}{conservative}[true]%
-\newrobustcmd\importmhmodule[2][]{%
-  \metasetkeys{importmhmodule}{#1}%
-  \ifx\importmhmodule@path\@empty% if module name is not set
-    \importmodule[ext=\importmhmodule@ext,id=\importmhmodule@id]{#2}%
-  \else%
-    \edef\mh@@repos{\mh@currentrepos}% make a backup for current directory
-    \ifx\importmhmodule@repos\@empty% if under same directory
-      \relax% no need to change mh@currentrepos, i.e, current dirctory.
-    \else%
-      \mhcurrentrepos{\importmhmodule@repos}%
-    \fi%
-    \importmodule[load=\MathHub{\mh@currentrepos/source/\importmhmodule@path},%
-    ext=\importmhmodule@ext,id=\importmhmodule@id]{#2}%
-    \mhcurrentrepos{\mh@@repos}% after importing, reset to old value
-  \fi%
-  \ignorespaces%
-}%
-\newrobustcmd\usemhmodule[2][]{%
-  \metasetkeys{importmhmodule}{#1}%
-  \ifx\importmhmodule@path\@empty%
-    \usemodule[ext=\importmhmodule@ext,id=\importmhmodule@id]{#2}%
-  \else%
-    \edef\mh@@repos{\mh@currentrepos}%
-    \ifx\importmhmodule@repos\@empty%
-    \else%
-      \mhcurrentrepos{\importmhmodule@repos}%
-    \fi%
-    \usemodule[load=\MathHub{\mh@currentrepos/source/\importmhmodule@path},ext=\importmhmodule@ext,id=\importmhmodule@id]{#2}%
-    \mhcurrentrepos\mh@@repos%
-  \fi%
-  \ignorespaces%
-}%
-\newrobustcmd\adoptmhmodule[2][]{%
-  \metasetkeys{importmhmodule}{#1}%
-  \ifx\importmhmodule@path\@empty
-    \adoptmodule[ext=\importmhmodule@ext,id=\importmhmodule@id]{#2}%
-  \else%
-    \edef\mh@@repos{\mh@currentrepos}%
-    \ifx\importmhmodule@repos\@empty%
-    \else%
-      \mhcurrentrepos{\importmhmodule@repos}%
-    \fi%
-    \adoptmodule[load=\MathHub{\mh@currentrepos/source/\importmhmodule@path},ext=\importmhmodule@ext,id=\importmhmodule@id]{#2}%
-    \mhcurrentrepos\mh@@repos%
-  \fi%
-  \ignorespaces%
-}%
-\newrobustcmd\mhinputref[2][]{%
-  \def\@repos{#1}%
-  \edef\mh@@repos{\mh@currentrepos}%
-  \ifx\@repos\@empty%
-  \else%
-    \mhcurrentrepos{#1}%
-  \fi%
-  \inputref{\MathHub{\mh@currentrepos/source/#2}}%
-  \mhcurrentrepos\mh@@repos%
-  \ignorespaces%
-}%
-\let\mhinput\mhinputref%
-\newrobustcmd\mhcurrentrepos[1]{%
-  \edef\@test{#1}%
-  \ifx\@test\mh@currentrepos% if new dir = old dir
-    \relax% no need to change
-  \else%
-    \protected@write\@auxout{}{\string\@mhcurrentrepos{#1}}%
-  \fi%
-  \@mhcurrentrepos{#1}% define mh@currentrepos
-}%
-\newrobustcmd\@mhcurrentrepos[1]{\edef\mh@currentrepos{#1}}%
-\newenvironment{importmhmodulevia}[3][]{%
-  \gdef\@@doit{\importmhmodule[#1]{#2}{#3}}%
-  \ifmod@show\par\noindent importing module #2 via \@@doit\fi
-}{%
-  \aftergroup\@@doit\ifmod@show end import\fi%
-}%
-\srefaddidkey{mhview}
-\addmetakey{mhview}{display}
-\addmetakey{mhview}{creators}
-\addmetakey{mhview}{contributors}
-\addmetakey{mhview}{srccite}
-\addmetakey*{mhview}{title}
-\addmetakey{mhview}{fromrepos}
-\addmetakey{mhview}{torepos}
-\addmetakey{mhview}{frompath}
-\addmetakey{mhview}{topath}
-\addmetakey[sms]{mhview}{ext}
-\newenvironment{mhview}[3][]{% keys, from, to
-  \metasetkeys{mhview}{#1}%
-  \sref@target%
-  \begin{@mhview}{#2}{#3}%
-  \view@heading{#2}{#3}{\mhview@display}{\mhview@title}%
-}{%
-  \end{@mhview}%
-  \ignorespaces%
-}%
-\ifmod@show\surroundwithmdframed{mhview}\fi
-\newenvironment{@mhview}[2]{%from, to
-  \importmhmodule[repos=\mhview@fromrepos,path=\mhview@frompath,ext=\mhview@ext]{#1}%
-  \importmhmodule[repos=\mhview@torepos,path=\mhview@topath,ext=\mhview@ext]{#2}%
-}{}%
-\newenvironment{mhviewsketch}[3][]{%
-  \metasetkeys{mhview}{#1}%
-  \sref@target%
-  \begin{@mhview}{#2}{#3}%
-  \view@heading{#2}{#3}{\mhview@display}{\mhview@title}%
-}{%
-  \end{@mhview}%
-  \ignorespaces%
-}%
-\ifmod@show\surroundwithmdframed{mhviewsketch}\fi
-\newrobustcmd\obligation[3][]{%
-  \if@importing%
-  \else Axiom #2 is proven by \sref{#3}%
-  \fi%
-}%
 \newrobustcmd\sinput[1]{%
   \PackageError{modules}%
   {The \protect\sinput macro is deprecated}{use the \protect\input instead!}%

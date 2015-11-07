@@ -1,0 +1,56 @@
+package LaTeXML::Package::Pool;
+use strict;
+use LaTeXML::Package;
+\let\mhinput\mhinputref%
+DeclareOption(undef,sub{PassOptions('smultiling','sty',ToString(Digest(T_CS('\CurrentOption')))); });
+ProcessOptions();
+RequirePackage('smultiling');
+RequirePackage('mathhub');
+DefKeyVal('mhmodnl','title','Semiverbatim');
+DefKeyVal('mhmodnl','repos','Semiverbatim');
+DefKeyVal('mhmodnl','path','Semiverbatim');
+DefKeyVal('mhmodnl','creators','Semiverbatim');
+DefKeyVal('mhmodnl','contributors','Semiverbatim');
+DefKeyVal('mhmodnl','primary','Semiverbatim');
+DefEnvironment('{mhmodnl} OptionalKeyVals:mhmodnl {}{}',
+         "?#excluded()(<omdoc:theory xml:id='#2.#3' >"
+         .   "?&defined(&GetKeyVal(#1,'creators'))(<dc:creator>&GetKeyVal(#1,'creators')</dc:creator>)()"
+         .   "?&defined(&GetKeyVal(#1,'title'))(<dc:title>&GetKeyVal(#1,'title')</dc:title>)()"
+         .   "?&defined(&GetKeyVal(#1,'contributors'))(<dc:contributor>&GetKeyVal(#1,'contributors')</dc:contributor>)()"
+         .   "<omdoc:imports from='?&GetKeyVal(#1,'load')(&canonical_omdoc_path(&GetKeyVal(#1,'load')))()###2'/>"
+         .   "#body"
+         . "</omdoc:theory>)",
+  afterDigestBegin=>sub {
+    my ($stomach, $whatsit) = @_;
+    my $keyval = $whatsit->getArg(1);
+    my $signature = ToString($whatsit->getArg(2));
+    my $language = ToString($whatsit->getArg(3));
+    my $repos = ToString(GetKeyVal($keyval,'torepos'));
+    my $current_repos = LookupValue('current_repos');
+    if (!$repos) { $repos = $current_repos; }
+    my $defpaths = LookupValue('defpath');
+    my $load_path = ($$defpaths{MathHub}).$repos.'/source/'.$signature;
+
+    if ($keyval) {
+      # If we're not given load, AND the langfiles option is in effect,
+      # default to #2
+      if ((! $keyval->getValue('path')) && (LookupValue('smultiling_langfiles'))) {
+        $keyval->setValue('load',$load_path); }
+      # Always load a TeX file
+      $keyval->setValue('ext','tex');
+      $keyval->setValue('id',"$signature.$language"); }
+    module_afterDigestBegin(@_);
+    importmoduleI(@_);
+    return; },
+  afterDigest=>sub {
+    module_afterDigest(@_); });
+RawTeX('
+\newenvironment{mhviewsig}[4][]{\def\@test{#1}\ifx\@test\@empty%
+\begin{mhview}[id=#2,ext=tex]{#3}{#4}\else%
+\begin{mhview}[id=#2,#1,ext=tex]{#3}{#4}\fi}
+{\end{mhview}}
+\newenvironment{mhviewnl}[5][]{\def\@test{#1}\ifx\@test\@empty%
+\begin{mhviewsketch}[id=#2.#5,ext=tex]{#3}{#4}\else%
+\begin{mhviewsketch}[id=#2.#5,#1,ext=tex]{#3}{#4}\fi}
+{\end{mhviewsketch}}
+');

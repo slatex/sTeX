@@ -1,0 +1,399 @@
+% \iffalse meta-comment
+% An Infrastructure for Structures and Views
+% Copyright (C) 2004-2013 Michael Kohlhase, all rights reserved
+%               this file is released under the
+%               LaTeX Project Public License (LPPL)
+%
+% The original of this file is in the public repository at 
+% http://github.com/KWARC/sTeX/
+% \fi
+%  
+% \iffalse
+%<package>\NeedsTeXFormat{LaTeX2e}[1999/12/01]
+%<package>\ProvidesPackage{structview}[2015/04/02 v0.9 Structures and Views]
+%
+%<*driver>
+\documentclass{ltxdoc}
+\usepackage{stex-logo,structview}
+\usepackage{url,array,float,textcomp}
+\usepackage[show]{ed}
+\usepackage[hyperref=auto,style=alphabetic]{biblatex}
+\addbibresource{kwarcpubs.bib}
+\addbibresource{extpubs.bib}
+\addbibresource{kwarccrossrefs.bib}
+\addbibresource{extcrossrefs.bib}
+\usepackage{listings}
+\usepackage{amsfonts}
+\usepackage{../ctangit}
+\usepackage{xspace}
+\usepackage{hyperref}
+\makeindex
+\floatstyle{boxed}
+\newfloat{exfig}{thp}{lop}
+\floatname{exfig}{Example}
+\def\tracissue#1{\cite{sTeX:online}, \hyperlink{http://trac.kwarc.info/sTeX/ticket/#1}{issue #1}}
+\begin{document}\DocInput{structview.dtx}\end{document} 
+%</driver>
+% \fi
+% 
+% \iffalse\CheckSum{926}\fi
+%
+% \changes{v0.9}{2015/11/05}{Moved out of the \texttt{modules} package}
+% 
+% \GetFileInfo{modules.sty}
+% 
+% \MakeShortVerb{\|}
+%\def\scsys#1{{{\sc #1}}\index{#1@{\sc #1}}\xspace}
+% \def\xml{\scsys{Xml}}
+% \def\mathml{\scsys{MathML}}
+% \def\omdoc{\scsys{OMDoc}}
+% \def\openmath{\scsys{OpenMath}}
+% \def\latexml{\scsys{LaTeXML}}
+% \def\perl{\scsys{Perl}}
+% \def\cmathml{Content-{\sc MathML}\index{Content {\sc MathML}}\index{MathML@{\sc MathML}!content}}
+% \def\activemath{\scsys{ActiveMath}}
+% \def\twin#1#2{\index{#1!#2}\index{#2!#1}}
+% \def\twintoo#1#2{{#1 #2}\twin{#1}{#2}}
+% \def\atwin#1#2#3{\index{#1!#2!#3}\index{#3!#2 (#1)}}
+% \def\atwintoo#1#2#3{{#1 #2 #3}\atwin{#1}{#2}{#3}}
+% \def\cT{\mathcal{T}}\def\cD{\mathcal{D}}
+% \title{{\texttt{structview.sty}}: Structures and Views in {\stex}\thanks{Version {\fileversion} (last revised
+%        {\filedate})}}
+%    \author{Michael Kohlhase\\
+%            Jacobs University, Bremen\\
+%            \url{http://kwarc.info/kohlhase}}
+% \maketitle
+%
+% \begin{abstract}
+%   The |structview| package is part of the {\stex} collection, a version of {\TeX/\LaTeX}
+%   that allows to markup {\TeX/\LaTeX} documents semantically without leaving the
+%   document format, essentially turning {\TeX/\LaTeX} into a document format for
+%   mathematical knowledge management (MKM).
+%
+%   This package supplies infrastructure for \omdoc structures and views: complex semantic
+%   relations between modules/theories.
+% \end{abstract}
+%
+% \newpage\setcounter{tocdepth}{2}\tableofcontents\newpage
+%
+% \section{Introduction}\label{sec:intro}
+% \ednote{What are structures and views?}
+% \section{The User Interface}
+%
+% The main contributions of the |modules| package are the |module| environment, which
+% allows for lexical scoping of semantic macros with inheritance and the |\symdef| macro
+% for declaration of semantic macros that underly the |module| scoping.
+% 
+% \subsection{Package Options}\label{sec:options}
+%
+% The |modules| package takes two options: If we set
+% \DescribeMacro{showmods}|showmods|\ednote{This mechanism does not work yet, since we
+% cannot disable it when importing modules and that leads to unwanted boxes. What we need
+% to do instead is to tweak the sms utility to use an internal version that never shows
+% anything during sms reading.}, then the views (see Section~\ref{sec:user:views}) are
+% shown. If we set the \DescribeMacro{qualifiedimports}|qualifiedimports| option, then
+% qualified imports are enabled. Qualified imports give more flexibility in module
+% inheritance, but consume more internal memory. As qualified imports are not fully
+% implemented at the moment, they are turned off by default see
+% Limitation~\ref{sec:limitations:qualified-imports}. The option
+% \DescribeMacro{noauxreq}|noauxreq| prohibits the registration of |\@requiremodules|
+% commands in the |aux| file. They are necessary for preloading the module signatures so
+% that entries in the table of contents can have semantic macros; but as they sometimes
+% cause trouble the option allows to turn off preloading.
+% 
+% If the \DescribeMacro{showmeta}|showmeta| is set, then the metadata keys are shown
+% (see~\cite{Kohlhase:metakeys:ctan} for details and customization options).
+% 
+% \subsection{Structures}\label{sec:user:structures}
+% 
+% The |\importmodule| macro has a variant
+% \DescribeMacro{importmodulevia}|\importmodulevia| that allows the specification of a
+% theory morphism to be applied.  |\importmodulevia{|\meta{thyid}|}{|\meta{assignments}|}|
+% specifies the ``source theory'' via its identifier \meta{thyid} and the morphism by
+% \meta{assignments}. There are four kinds:\ednote{MK: this needs to be consolidated and
+% researched better.}
+% \begin{compactdesc}
+% \item[symbol assignments] via
+%   \DescribeMacro{\vassign}|\vassign{|\meta{sym}|}{|\meta{exp}|}|, which defines the
+%   symbol \meta{sym} introduced in the current theory by an expression \meta{exp} in the
+%   source theory.
+% \item[function assignments] via
+%   \DescribeMacro{\fassign}|\fassign{|\meta{bvars}|}{|\meta{pat}|}{|\meta{exp}|}|, is a
+%   variant which defines a function symbol \meta{sym} introduced in the current theory by
+%   mapping a pattern expression \meta{pat} (\meta{sym} applied to \meta{bvars}) to an
+%   expression \meta{exp} in the source theory on bound variables \meta{bvars}.
+% \item[term assignments] via
+%   \DescribeMacro{\tassign}|\tassign[|\meta{source-cd}|]{|\meta{tname}|}{|\meta{source-tname}|}|,
+%   which assigns to the term with name \meta{tname} in the current theory a term with
+%   name \meta{source-tname} in the theory \meta{source-cd} whose default value is the
+%   source theory.
+% \item[term text assignments] via
+%   \DescribeMacro{\ttassign}|\tassign{|\meta{tname}|}{|\meta{text}|}|, which defines a
+%   term with name \meta{tname} in the current theory via a definitional text.
+% \end{compactdesc}
+% 
+%\begin{exfig}
+% \begin{verbatim}
+% \begin{module}[id=ring]
+% \begin{importmodulevia}{monoid}
+%   \vassign{rbase}\magbase
+%   \fassign{a,b}{\rtimes{A}B}{\magmaop{a}b}
+%   \vassign{rone}\monunit
+% \end{importmodulevia}
+% \symdef{rbase}{G}
+% \symdef[name=rtimes]{rtimesOp}{\cdot}
+% \symdef{rtimes}[2]{\infix\rtimesOp{#1}{#2}}
+% \symdef{rone}{1}
+% \begin{importmodulevia}{cgroup}
+%   \vassign{rplus}\magmaop
+%   \vassign{rzero}\monunit
+%   \vassign{rinvOp}\cginvOp
+% \end{importmodulevia}
+% \symdef[name=rplus]{rplusOp}{+}
+% \symdef{rplus}[2]{\infix\rplusOp{#1}{#2}}
+% \symdef[name=rminus]{rminusOp}{-}
+% \symdef{rminus}[1]{\infix\rminusOp{#1}{#2}}
+% ...
+% \end{module}
+% \end{verbatim}
+% \caption{A Module for Rings with inheritance from monoids and commutative groups}\label{fig:ring}
+% \end{exfig}
+%
+% \subsection{Views}\label{sec:user:views}
+% 
+% A view is a mapping between modules, such that all model assumptions (axioms) of the
+% source module are satisfied in the target module. \ednote{Document and make Examples}
+%
+% \section{Limitations \& Extensions}\label{sec:limitations}
+% 
+% In this section we will discuss limitations and possible extensions of the |modules|
+% package. Any contributions and extension ideas are welcome; please discuss ideas,
+% requests, fixes, etc on the {\sTeX} TRAC~\cite{sTeX:online}.
+% 
+% \section{The Implementation}\label{sec:impl} 
+%
+% The |modules| package generates two files: the {\LaTeX} package (all the code between
+% {\textlangle\textsf{*package}\textrangle} and {\textsf{\textlangle/package\textrangle}})
+% and the {\latexml} bindings (between {\textsf{\textlangle*ltxml\textrangle}} and
+% {\textsf{\textlangle/ltxml\textrangle}}). We keep the corresponding code fragments
+% together, since the documentation applies to both of them and to prevent them from
+% getting out of sync.
+%
+% \subsection{Package Options}\label{sec:impl:options}
+% 
+% We declare some switches which will modify the behavior according to the package
+% options. Generally, an option |xxx| will just set the appropriate switches to true
+% (otherwise they stay false). The options we are not using, we pass on to the |sref|
+% package we require next.
+%    \begin{macrocode}
+%<*package>
+\DeclareOption*{\PassOptionsToPackage{\CurrentOption}{modules}}
+\ProcessOptions
+%    \end{macrocode}
+%
+% {\latexml} does not support module options yet, so we do not have to do anything here
+% for the {\latexml} bindings. We only set up the {\perl} packages (and tell {\texttt{emacs}}
+% about the appropriate mode for convenience  
+% 
+% The next measure is to ensure that the |sref| and |xcomment| packages are loaded (in the
+% right version). For {\latexml}, we also initialize the package inclusions.
+%    \begin{macrocode}
+\RequirePackage{modules}
+%    \end{macrocode}
+%
+% \subsection{Structures}\label{sec:impl:structures}
+% 
+% \begin{macro}{\importmodulevia} 
+%   The |importmodulevia| environment just calls |\importmodule|, but to get around the
+%   group, we first define a local macro |\@@doit|, which does that and can be called with
+%   an |\aftergroup| to escape the environment grouping introduced by |importmodulevia|.
+%    \begin{macrocode}
+\newenvironment{importmodulevia}[2][]{%
+  \gdef\@@doit{\importmodule[#1]{#2}}%
+  \ifmod@show\par\noindent importing module #2 via \@@doit\fi%
+}{%
+  \aftergroup\@@doit\ifmod@show end import\fi%
+}%
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{environment}{\*assign}
+%    \begin{macrocode}
+\newrobustcmd\vassign[3][]{\ifmod@show\ensuremath{#2\mapsto #3}, \fi}%
+\newrobustcmd\tassign[3][]{\ifmod@show #2\ensuremath{\mapsto} #3, \fi}%
+\newrobustcmd\fassign[4][]{\ifmod@show \ensuremath{#3\mapsto #4}, \fi}%
+\newrobustcmd\ttassign[3][]{\ifmod@show #2\ensuremath{\mapsto} ``#3'', \fi}%
+%</package>
+%    \end{macrocode}
+% \end{environment}
+% 
+% \subsection{Views}\label{sec:impl:views}
+% 
+% We first prepare the ground by defining the keys for the |view| environment.
+%    \begin{macrocode}
+%<*package>
+\srefaddidkey{view}
+\addmetakey*{view}{title}
+\addmetakey{view}{display}
+\addmetakey{view}{from}
+\addmetakey{view}{to}
+\addmetakey{view}{creators}
+\addmetakey{view}{contributors}
+\addmetakey{view}{srccite}
+\addmetakey{view}{type}
+\addmetakey[sms]{view}{ext}
+%</package>
+%<*ltxml>
+DefKeyVal('view','id','Semiverbatim');
+DefKeyVal('view','from','Semiverbatim');
+DefKeyVal('view','to','Semiverbatim');
+DefKeyVal('view','title','Semiverbatim');
+DefKeyVal('view','creators','Semiverbatim');
+DefKeyVal('view','contributors','Semiverbatim');
+DefKeyVal('view','display','Semiverbatim');
+DefKeyVal('view','ext','Semiverbatim');
+%</ltxml>
+%    \end{macrocode}
+%
+% \begin{macro}{\view@heading}
+%   Then we make a convenience macro for the view heading. This can be customized. 
+%    \begin{macrocode} 
+%<*package>
+\newcounter{view}[section]
+\newrobustcmd\view@heading[4]{%
+  \if@importing%
+  \else%
+    \stepcounter{view}%
+    \edef\@display{#3}\edef\@title{#4}%
+    \noindent%
+      \ifx\@display\st@flow%
+      \else%
+        {\textbf{View} {\thesection.\theview} from \textsf{#1} to \textsf{#2}}%
+        \sref@label@id{View \thesection.\theview}%
+        \ifx\@title\@empty%
+          \quad%
+        \else%
+          \quad(\@title)%
+        \fi%
+        \par\noindent%
+      \fi%
+      \ignorespaces%
+  \fi%
+}%ifmod@show
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{environment}{view}
+%   The |view| environment relies on the |@view| environment (used also in the \sTeX
+%   module signatures) for module bookkeeping and adds presentation (a heading and a box)
+%   if the |showmods| option is set.
+%    \begin{macrocode}
+\newenvironment{view}[3][]{%
+  \metasetkeys{view}{#1}%
+  \sref@target%
+  \begin{@view}{#2}{#3}%
+  \view@heading{#2}{#3}{\view@display}{\view@title}%
+}{%
+  \end{@view}%
+  \ignorespaces%
+}%
+\ifmod@show\surroundwithmdframed{view}\fi%
+%</package>
+%<*ltxml>
+DefMacroI(T_CS('\begin{view}'),'OptionalKeyVals:view {}{}', sub {
+  my ($gullet, $keyvals, $from_arg, $to_arg) = @_;
+  my $from = ToString(Digest($from_arg));
+  my $to = ToString(Digest($to_arg));
+  my $from_file = ToString(GetKeyVal($keyvals,'from'));
+  my $to_file = ToString(GetKeyVal($keyvals,'to'));
+  my $ext = ToString(GetKeyVal($keyvals,'ext')) if $keyvals;
+  $ext = 'sms' unless $ext;
+  return (
+    Tokenize("\\importmoduleI[load=$from_file]{$from}")->unlist,
+    Tokenize("\\importmoduleI[load=$to_file]{$to}")->unlist,
+    Invocation(T_CS('\begin{viewenv}'),$keyvals,$from_arg,$to_arg)->unlist
+  );
+}); 
+DefMacroI('\end{view}',undef,'\end{viewenv}');
+DefEnvironment('{viewenv} OptionalKeyVals:view {}{}',
+   "<omdoc:theory-inclusion from='#2' to='#3'"
+  .      " ?&defined(&GetKeyVal(#1,'id'))(xml:id='&GetKeyVal(#1,'id')')()>"
+  .  "<omdoc:morphism>#body</omdoc:morphism>"
+  ."</omdoc:theory-inclusion>");
+%</ltxml>
+%    \end{macrocode}
+% \end{environment}
+%
+% \begin{environment}{@view}
+%   The |@view| does the actual bookkeeping at the module level.
+%    \begin{macrocode}
+%<*package>
+\newenvironment{@view}[2]{%from, to
+  \@importmodule[\view@from]{#1}{\view@ext}%
+  \@importmodule[\view@to]{#2}{\view@ext}%
+}{}%
+%    \end{macrocode}
+% \end{environment}
+% 
+% \begin{environment}{viewsketch}
+%   The |viewsketch| environment behaves like |view|, but only has text contents.
+%    \begin{macrocode}
+\newenvironment{viewsketch}[3][]{%
+  \metasetkeys{view}{#1}%
+  \sref@target%
+  \begin{@view}{#2}{#3}%
+  \view@heading{#2}{#3}{\view@display}{\view@title}%
+}{%
+  \end{@view}%
+}%
+\ifmod@show\surroundwithmdframed{viewsketch}\fi%
+%</package>
+%<*ltxml>
+# do the same for viewsketch, pity we cannot share some code. 
+DefMacroI(T_CS('\begin{viewsketch}'),'OptionalKeyVals:view {}{}', sub {
+  my ($gullet, $keyvals, $from_arg, $to_arg) = @_;
+  my $from = ToString(Digest($from_arg));
+  my $to = ToString(Digest($to_arg));
+  my $from_file = ToString(GetKeyVal($keyvals,'from'));
+  my $to_file = ToString(GetKeyVal($keyvals,'to'));
+  my $ext = ToString(GetKeyVal($keyvals,'ext')) if $keyvals;
+  $ext = 'sms' unless $ext;
+  return (
+    Tokenize("\\importmoduleI[load=$from_file]{$from}")->unlist,
+    Tokenize("\\importmoduleI[load=$to_file]{$to}")->unlist,
+    Invocation(T_CS('\begin{viewsketchenv}'),$keyvals,$from_arg,$to_arg)->unlist
+  );
+}); 
+DefMacroI('\end{viewsketch}',undef,'\end{viewsketchenv}');
+DefEnvironment('{viewsketchenv} OptionalKeyVals:view {}{}',
+   "<omdoc:theory-inclusion from='#2' to='#3'"
+  .      " ?&defined(&GetKeyVal(#1,'id'))(xml:id='&GetKeyVal(#1,'id')')()>"
+  .  "#body"
+  ."</omdoc:theory-inclusion>");
+%</ltxml>
+%    \end{macrocode}
+% \end{environment}
+%
+% \begin{macro}{\obligation}
+%   The |\obligation| element does not do anything yet on the latexml
+%   side.\ednote{document above}
+%    \begin{macrocode}
+%<*package>
+\newrobustcmd\obligation[3][]{%
+  \if@importing%
+  \else Axiom #2 is proven by \sref{#3}%
+  \fi%
+}%
+%</package>
+%<*ltxml> 
+DefConstructor('\obligation [] {} {}',"<omdoc:obligation induced-by='#2' assertion='#3'/>");
+%</ltxml>
+%    \end{macrocode}
+% \end{macro}
+%
+% \Finale
+\endinput
+%%% Local Variables: 
+%%% mode: doctex
+%%% TeX-master: t
+%%% End: 
