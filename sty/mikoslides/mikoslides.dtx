@@ -10,8 +10,8 @@
 % 
 % \iffalse
 %<cls|package>\NeedsTeXFormat{LaTeX2e}[1999/12/01]
-%<cls>\ProvidesClass{mikoslides}[2015/10/25 v1.1 Jacobs slides Class]
-%<package>\ProvidesPackage{mikoslides}[2015/10/25 v1.1 Jacobs slides Package]
+%<cls>\ProvidesClass{mikoslides}[2015/11/04 v1.1 Jacobs slides Class]
+%<package>\ProvidesPackage{mikoslides}[2015/11/04 v1.1 Jacobs slides Package]
 %
 %<*driver>
 \documentclass{ltxdoc}
@@ -49,6 +49,7 @@
 % \changes{v1.0}{2014/01/07}{adding \texttt{\textbackslash frameimage}}
 % \changes{v1.1}{2015/10/25}{Removing the old title macros (use the regular ones instead)}
 % \changes{v1.1}{2015/10/25}{reinterpreting omgroup}
+% \changes{v1.1}{2015/11/04}{moving MathHub support out to separate package}
 % 
 % \GetFileInfo{mikoslides.cls}
 % \MakeShortVerb{\|}
@@ -181,54 +182,6 @@
 %
 % \subsection{Miscellaneous}\label{sec:user:misc}
 %
-% \subsection{Support for \textsf{MathHub}}\label{sec:user:mathhub}
-% 
-% Much of the \sTeX content is hosed on \textsf{MathHub} (\url{http://MathHub.info}), a
-% portal and archive for flexiformal mathematics. \textsf{MathHub} offers GIT repositories
-% (public and private escrow) for mathematical documentation projects, online and offline
-% authoring and document development infrastructure, and a rich, interactive reading
-% interface. The |modules| package supports repository-sensitive operations on
-% \textsf{MathHub}.
-% 
-% Note that \textsf{MathHub} has two-level repository names of the form
-% \meta{group}|/|\meta{repo}, where \meta{group} is a \textsf{MathHub}-unique repository
-% group and \meta{repo} a repository name that is \meta{group}-unique. The file and
-% directory structure of a repository is arbitrary -- except that it starts with the
-% directory |source| because they are Math Archives in the sense
-% of~\cite{HorIacJuc:cscpnrr11}. But this structure can be hidden from the \sTeX author
-% with \textsf{MathHub}-enabled versions of the |modules| macros.
-% 
-% The \DescribeMacro{\mhframeimage}|\mhframeimage| macro is a variant of |\frameimage|
-% with repository support. Instead of writing
-% \begin{verbatim}
-% \defpath{MathHub}{/user/foo/lmh/MathHub}
-% \frameimage{\MathHub{fooMH/bar/source/baz/foobar}}
-% \end{verbatim}
-% we can simply write (assuming that |\MathHub| is defined as above)
-% \begin{verbatim}
-% \mhframeimage[fooMH/bar]{baz/foobar}
-% \end{verbatim}
-% Note that the |\mhframeimage| form is more semantic, which allows more advanced document
-% management features in \textsf{MathHub}.
-% 
-% If |baz/foobar| is the ``current module'', i.e. if we are on the \textsf{MathHub} path
-% \ldots|MathHub/fooMH/bar|\ldots, then stating the repository in the first optional
-% argument is redundant, so we can just use
-% \begin{verbatim}
-% \mhframeimage{baz/foobar}
-% \end{verbatim}
-% Of course, neither {\LaTeX} nor \latexml know about the repositories when they are
-% called from a file system, so we can use the |\mhcurrentrepos| macro from the |modules|
-% package to tell them. But this is only needed to initialize the infrastructure in the
-% driver file. In particular, we do not need to set it in in each module, since the
-% |\importmhmodule| macro sets the current repository automatically.
-% 
-% \paragraph{Caveat} if you want to use the \textsf{MathHub} support macros (let's call
-% them mh-variants), then every time a module is imported or a document fragment is
-% included from another repos, the mh-variant |\importmhmodule| must be used, so that the
-% ``current repository'' is set accordingly. To be exact, we only need to use mh-variants,
-% if the imported module or included document fragment use mh-variants.
-%
 % \section{Limitations}\label{sec:limitations}
 % 
 % In this section we document known limitations. If you want to help alleviate them,
@@ -355,6 +308,7 @@ DefConstructor('\usetheme{}','');
 %    \begin{macrocode}
 %<*package>
 \RequirePackage{stex}
+\RequirePackage{smglom}
 \RequirePackage{tikzinput}
 \RequirePackage{latexml}
 \RequirePackage{amssymb}
@@ -365,6 +319,7 @@ DefConstructor('\usetheme{}','');
 %</package>
 %<*ltxml.sty>
 RequirePackage('stex'); 
+RequirePackage('smglom');
 RequirePackage('tikzinput', options => ['image']); 
 RequirePackage('latexml');
 RequirePackage('amssymb');
@@ -848,30 +803,6 @@ DefEnvironment('{problems}','#body');
 %</ltxml.sty>
 %    \end{macrocode}
 %
-% \subsection{Support for \textsf{MathHub}}\label{sec:user:mathhub}
-% 
-% \begin{macro}{\mhframeimage}
-%   Use the current value of |\mh@currentrepos| or the value of the |mhrepos| key if it is
-%   given in |\frameimage|.
-%    \begin{macrocode}
-%<package>\addmetakey{Gin}{mhrepos}
-%<ltxml.sty>DefKeyVal('Gin','mhrepos','Semiverbatim');
-%<ltxml.sty>RawTeX('
-%<*ltxml.sty|package>
-\newcommand\mhframeimage[2][]{%
-  \metasetkeys{Gin}{#1}%
-  \edef\mh@@repos{\mh@currentrepos}%
-  \ifx\Gin@mhrepos\@empty%
-    \frameimage[#1]{\MathHub{\mh@currentrepos/source/#2}}%
-  \else%
-    \frameimage[#1]{\MathHub{\Gin@mhrepos/source/#2}}%
-  \fi%
-}%
-%</ltxml.sty|package>
-%<ltxml.sty>');
-%    \end{macrocode}
-% \end{macro}
-%
 % \subsection{Finale}
 %
 % Finally, we set the slide body font to the sans serif, and we terminate the {\latexml}
@@ -921,8 +852,6 @@ DefEnvironment('{problems}','#body');
 % LocalWords:  columnbox lrbox needwrapper unlist omtext bgroup autoclose pgf readXToken
 % LocalWords:  mygraphics doctex NeedsTeXFormat textbackslash userdefinedwidth foobar
 %  LocalWords:  includegrahics smalltextwarning msubsubsection msubsubsubsection ldots
-%  LocalWords:  mhframeimage mhframeimage mhcurrentrepos importmhmodule mh-variants Deyan
-%  LocalWords:  mh-variant bigtextwarning setbox mh@currentrepos mhrepos Semiverbatim
 %  LocalWords:  frameimages frameimages ifframeimages frameimagesfalse frameimagestrue
 %  LocalWords:  expandafter csname endcsname specializes customization flexiformal colors
 %  LocalWords:  initialize Initialization defindex realized itemize newrobustcmd
