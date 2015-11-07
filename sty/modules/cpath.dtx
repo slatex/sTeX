@@ -1,0 +1,137 @@
+% \iffalse meta-comment
+% A path canonicalizer
+%
+% The original of this file is in the public repository at 
+% http://github.com/KWARC/sTeX/
+% \fi
+%  
+% \iffalse
+%<package>\NeedsTeXFormat{LaTeX2e}[1999/12/01]
+%<package>\ProvidesPackage{cpath}[2015/11/07 v1.0]
+%
+%<*driver>
+\documentclass{ltxdoc}
+\usepackage{cpath}
+\usepackage{url,array,float,textcomp}
+\begin{document}\DocInput{cpath.dtx}\end{document} 
+%</driver>
+% \fi
+% \title{\texttt{cpath.sty}: A path canonicalizer}
+% \author{Jinbo Zhang\\
+%         Jacobs University, Bremen}
+% \maketitle
+% 
+% \begin{abstract}
+%   The package offers a path canonicalizer, which is used in package \texttt{modules}, 
+%   in order to support modules specified with relative path.
+% \end{abstract} 
+% 
+% \newpage
+% \tableofcontents
+% \newpage
+% 
+% \section{Usage}
+%
+% By calling |\@cpath{|\meta{path}|}|, the canonicalized path will be stored in |\@CanPath|.\\
+% To print a canonicalized path, simply use |\cpath{|\meta{path}|}|.
+%
+% \section{Examples}
+%
+% \begin{tabular}{|l|l|}
+%	\hline
+%   path & canonicalized path \\
+%   \hline
+%   aaa & \cpath{aaa} \\
+%   ../../aaa & \cpath{../../aaa} \\
+%   aaa/bbb & \cpath{aaa/bbb} \\
+%   aaa/.. & \cpath{aaa/..} \\
+%   ../../aaa/bbb & \cpath{../../aaa/bbb} \\
+%   ../aaa/../bbb & \cpath{../aaa/../bbb} \\
+%   ../aaa/bbb & \cpath{../aaa/bbb} \\
+%   aaa/bbb/../ddd & \cpath{aaa/bbb/../ddd} \\
+%   aaa/bbb/../.. & \cpath{aaa/bbb/../..} \\
+%   \hline
+% \end{tabular}
+%
+% \section{The Implementation} 
+%
+%    \begin{macrocode}
+\RequirePackage{xstring}
+\RequirePackage{forloop}
+\RequirePackage{calc}
+%    \end{macrocode}
+% We first create some counters. |AddrNum| will count the number of sections in the input path, |iLoop| will be used as the loop iterator, |iName| will be used for generating names such as |Addri|, |Addrii|, |RealAddrNum| will count the number of sections in the canonicalized path, |Cutable| will count the number of sections besides |..|.
+%    \begin{macrocode}
+\newcounter{AddrNum}
+\newcounter{iLoop}
+\newcounter{iName}
+\newcounter{RealAddrNum}
+\newcounter{Cutable}
+%    \end{macrocode}
+% We define two macros for later comparison.
+%    \begin{macrocode}
+\def\@ToTop{..}
+\def\@Slash{/}
+%    \end{macrocode}
+% Then we split the input path.
+%    \begin{macrocode}
+\def\@MultiAddrs#1/#2\@nil{%
+  \def\CurArg{#1}%
+  \def\NextArg{#2}%
+  \ifx\@empty\CurArg% for the first one
+  \else%
+    \stepcounter{AddrNum}%   
+    \expandafter\edef\csname Addr\roman{AddrNum}\endcsname{#1}% storing 
+  \fi%
+  \ifx\@empty\NextArg% for the last one
+    \let\next\@gobble%
+  \fi%
+  \next#2\@nil% recursion
+}% 
+%    \end{macrocode}
+% Implement |\@cpath|.
+%    \begin{macrocode}
+\def\@cpath#1{%
+  \let\next\@MultiAddrs%
+  \setcounter{AddrNum}{0}%
+  \setcounter{iLoop}{0}%
+  \setcounter{iName}{0}%
+  \setcounter{RealAddrNum}{0}%
+  \setcounter{Cutable}{0}%
+  \def\@CurrPath{}%
+  \def\@CanPath{}%
+  \def\@TempPath{}%
+  \def\@Rubbish{}%
+  \expandafter\next#1/\@nil% recursion starts
+  \forloop{iLoop}{0}{\value{iLoop} < \value{AddrNum}}{%
+    \stepcounter{iName}%
+    \edef\@CurrPath{\csname Addr\roman{iName}\endcsname}%
+    \ifx\@CurrPath\@ToTop%
+	  \ifnum\value{Cutable} = 0%
+        \edef\@CanPath{\@CanPath\csname Addr\roman{iName}\endcsname/}%
+        \stepcounter{RealAddrNum}%
+      \else%
+        % cut the last part, and add a slash at the end
+        \StrCut[\value{RealAddrNum}]{/\@CanPath}{/}\@TempPath\@Rubbish%
+        \StrCut[1]{\@TempPath/}{/}\@Rubbish\@CanPath%
+        \addtocounter{RealAddrNum}{-1}%
+        \addtocounter{Cutable}{-1}%
+      \fi%
+    \else%
+      \edef\@CanPath{\@CanPath\csname Addr\roman{iName}\endcsname/}%
+      \stepcounter{RealAddrNum}%
+      \stepcounter{Cutable}%
+    \fi%
+  }%
+  \StrCut[\value{RealAddrNum}]{\@CanPath}{/}\@CanPath\@Rubbish% cut last /
+}%
+%    \end{macrocode}
+% Implement |\cpath| to print the canonicalized path.
+%    \begin{macrocode}
+\newcommand\cpath[1]{% print canonical path
+	\@cpath{#1}%
+	\@CanPath%
+}%
+%    \end{macrocode}
+% \Finale
+\endinput
