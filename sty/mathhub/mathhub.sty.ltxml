@@ -1,6 +1,8 @@
+# -*- CPERL -*-
 package LaTeXML::Package::Pool;
 use strict;
 use LaTeXML::Package;
+use LaTeXML::Util::Pathname;
 DeclareOption(undef,sub {});
 ProcessOptions();
 RequirePackage('keyval');
@@ -9,8 +11,17 @@ DefMacro('\@mhcurrentrepos{}','\def\mh@currentrepos{#1}\@@mhcurrentrepos{#1}');
 DefConstructor('\@@mhcurrentrepos{}','',
   afterDigest => sub{ AssignValue('current_repos',ToString($_[1]->getArg(1)),'global'); } );
 DefMacro('\modules@@first#1/#2;','#1');
-DefMacro('\libinput{}', '\def\@libfile{\MathHub{\mh@currentrepos/lib/#1}}');
-\let\mhinput\mhinputref%
+DefMacro('\libinput {}', sub{
+    my ($gullet, $name) = @_;
+    $name = ToString($name);
+    #Relative paths for recursive search
+    my $libpath = "../../../lib/";
+    my $inffile = "../../../META-INF/";
+    my $file = pathname_find($name, types => ['tex'], paths =>
+    $libpath);
+    $file = pathname_find($name, types=>['tex'], paths=>inffile) unless $file;
+    # Singal error if the file cannot be found
+    LaTeXML::Package::InputContent($file, noerror=>1); });
 sub includemhassignment {
   my ($gullet,$keyval,$arg2) = @_;
   my $repo_path;
