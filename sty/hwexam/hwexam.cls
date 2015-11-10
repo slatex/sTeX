@@ -13,7 +13,7 @@
 \ProcessOptions
 \LoadClass{omdoc}
 \RequirePackage{stex}
-\RequirePackage{hwexam}
+\RequirePackage{hwexam-mh}
 \RequirePackage{tikzinput}
 \RequirePackage{graphicx}
 \RequirePackage{a4wide}
