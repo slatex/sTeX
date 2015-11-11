@@ -29,7 +29,7 @@
   \newcounter{Hfootnote}
   \usetheme{Jacobs}
 \fi
-\RequirePackage{mikoslides}
+\RequirePackage{mikoslides-mh}
 \endinput
 %%
 %% End of file `mikoslides.cls'.
