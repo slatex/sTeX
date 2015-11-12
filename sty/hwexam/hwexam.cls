@@ -9,11 +9,12 @@
 \NeedsTeXFormat{LaTeX2e}[1999/12/01]
 \ProvidesClass{hwexam}[2015/11/04 v1.1 assignment and exam documents]
 \DeclareOption*{\PassOptionsToPackage{\CurrentOption}{hwexam}
+                           \PassOptionsToPackage{\CurrentOption}{tikzinput}
                            \PassOptionsToClass{\CurrentOption}{omdoc}}
 \ProcessOptions
 \LoadClass{omdoc}
 \RequirePackage{stex}
-\RequirePackage{hwexam-mh}
+\RequirePackage{hwexam}
 \RequirePackage{tikzinput}
 \RequirePackage{graphicx}
 \RequirePackage{a4wide}
