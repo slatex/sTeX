@@ -1,7 +1,7 @@
 # recurse into the directories. 
 DISTDIRS = cmath cmathml cnx dcm hwexam metakeys mikoslides modules omdoc omtext\
 	   presentation problem rdfmeta reqdoc sproof sref statements workaddress\
-           smultiling tikzinput smglom
+           smultiling tikzinput smglom mathhub structview
 MAKEDIRS = $(DISTDIRS) #physml owl2onto
 
 all ltxml package doc filedate checksum enablechecksum disablechecksum clean distclean: 

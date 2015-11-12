@@ -179,6 +179,17 @@
 % together, since the documentation applies to both of them and to prevent them from
 % getting out of sync.
 %
+% First the general setup for \latexml
+%
+%    \begin{macrocode}
+%<*ltxml>
+# -*- CPERL -*-
+package LaTeXML::Package::Pool;
+use strict;
+use LaTeXML::Package;
+%</ltxml>
+%    \begin{macrocode}
+%
 % \subsection{Package Options}\label{sec:impl:options}
 % 
 % We declare some switches which will modify the behavior according to the package
@@ -187,18 +198,28 @@
 % package we require next.
 %    \begin{macrocode}
 %<*package>
+\newif\if@structview@mh@\@structview@mh@false
+\DeclareOption{mh}{\@structview@mh@true}
 \DeclareOption*{\PassOptionsToPackage{\CurrentOption}{modules}}
 \ProcessOptions
+%</package>
+%<*ltxml>
+DeclareOption(undef,sub {PassOptions('modules','sty',ToString(Digest(T_CS('\CurrentOption')))); });  
+ProcessOptions();
+%</ltxml>
 %    \end{macrocode}
 %
-% {\latexml} does not support module options yet, so we do not have to do anything here
-% for the {\latexml} bindings. We only set up the {\perl} packages (and tell {\texttt{emacs}}
-% about the appropriate mode for convenience  
-% 
 % The next measure is to ensure that the |sref| and |xcomment| packages are loaded (in the
 % right version). For {\latexml}, we also initialize the package inclusions.
 %    \begin{macrocode}
+%<*package>
+\if@structview@mh@\RequirePackage{structview-mh}\fi
 \RequirePackage{modules}
+%</package>
+%<*ltxml>
+RequirePackage('structview-mh');### make contingent of the 'mh' option
+RequirePackage('modules');
+%</ltxml>
 %    \end{macrocode}
 %
 % \subsection{Structures}\label{sec:impl:structures}
@@ -208,6 +229,7 @@
 %   group, we first define a local macro |\@@doit|, which does that and can be called with
 %   an |\aftergroup| to escape the environment grouping introduced by |importmodulevia|.
 %    \begin{macrocode}
+%<*package>
 \newenvironment{importmodulevia}[2][]{%
   \gdef\@@doit{\importmodule[#1]{#2}}%
   \ifmod@show\par\noindent importing module #2 via \@@doit\fi%
