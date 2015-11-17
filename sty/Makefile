@@ -1,6 +1,6 @@
 # recurse into the directories. 
 DISTDIRS = cmath cmathml cnx dcm hwexam metakeys mikoslides modules omdoc omtext\
-	   presentation problem rdfmeta reqdoc sproof sref statements workaddress\
+	   presentation problem rdfmeta reqdoc sproof statements workaddress\
            smultiling tikzinput smglom
 MAKEDIRS = $(DISTDIRS) #physml owl2onto
 
