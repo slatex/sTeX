@@ -10,8 +10,8 @@
 %   
 % \iffalse
 %<package|cls>\NeedsTeXFormat{LaTeX2e}[1999/12/01]
-%<package>\ProvidesPackage{omdoc}[2014/01/12 v1.2 OMDoc document Structure]
-%<cls>\ProvidesClass{omdoc}[2014/01/12 v1.2 OMDoc Documents]
+%<package>\ProvidesPackage{omdoc}[2015/11/18 v1.3 OMDoc document Structure]
+%<cls>\ProvidesClass{omdoc}[2015/11/18 v1.3 OMDoc Documents]
 %
 %<*driver>
 \documentclass{ltxdoc}
@@ -44,6 +44,8 @@
 % \changes{v1.0}{2010/05/25}{separated out \texttt{omtext.dtx}}
 % \changes{v1.1}{2012/02/14}{integrated \texttt{etoolbox} package}
 % \changes{v1.2}{2014/01/12}{front/backmatter}
+% \changes{v1.3}{2015/11/18}{removing keyval arg from document in favor of
+% \texttt{\textbackslash documentkeys} macro}
 %
 % 
 % \MakeShortVerb{\|}
@@ -122,10 +124,13 @@
 % 
 % \begin{omgroup}[id=sec:user:struct]{Document Structure}
 % 
-%   The top-level \DescribeEnv{document}|document| environment is augmented with an
-%   optional key/value argument that can be used to give metadata about the document. For
-%   the moment only the \DescribeMacro{id}|id| key is used to give an identifier to the
-%   \texttt{omdoc} element resulting from the {\latexml} transformation.
+%   The top-level \DescribeEnv{document}|document| environment can be given key/value
+%   information by the \DescribeMacro{\documentkeys}|\documentkeys| macro in the
+%   preamble\footnote{We cannot patch the document environment to accept an optional
+%   argument, since other packages we load already do; pity.}. This can be used to give
+%   metadata about the document. For the moment only the \DescribeMacro{id}|id| key is
+%   used to give an identifier to the \texttt{omdoc} element resulting from the {\latexml}
+%   transformation.
 % 
 %   The structure of the document is given by the \DescribeEnv{omgroup}|omgroup|
 %   environment just like in {\omdoc}. In the {\LaTeX} route, the |omgroup| environment is
@@ -385,16 +390,19 @@ RequirePackage('omdoc');
 %   is picked up by {\latexml}.
 %    \begin{macrocode}
 %<*cls>
-\let\orig@document=\document
 \srefaddidkey{document}
-\renewcommand{\document}[1][]{\metasetkeys{document}{#1}\orig@document}
+\newcommand\documentkeys[1]{\metasetkeys{document}{#1}}
 %</cls>
 %<*ltxml.cls>
 sub xmlBase {
   my $baseuri = LookupValue('URLBASE');
   $baseuri =~ s/\/$//g; # No trailing slashes
   Tokenize($baseuri); }
-DefEnvironment('{document} OptionalKeyVals:omdoc',
+DefConstructor('\documentkeys RequiredKeyVals:omdoc',
+                          sub { activateKeys($_[1]); return; })
+## @angerhang: this needs to be implemented. 
+sub activateKeys {} 
+DefEnvironment('{document}',
        "<omdoc:omdoc "
       .    "?&GetKeyVal(#1,'id')(xml:id='&GetKeyVal(#1,'id')')"
       .     "(?&Tokenize(&LookupValue('SOURCEBASE'))"
