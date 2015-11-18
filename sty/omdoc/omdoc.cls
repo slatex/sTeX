@@ -7,7 +7,7 @@
 %% omdoc.dtx  (with options: `cls')
 %% 
 \NeedsTeXFormat{LaTeX2e}[1999/12/01]
-\ProvidesClass{omdoc}[2014/01/12 v1.2 OMDoc Documents]
+\ProvidesClass{omdoc}[2015/11/18 v1.3 OMDoc Documents]
 \def\omdoc@class{article}
 \DeclareOption{report}{\def\omdoc@class{report}%
 \PassOptionsToPackage{\CurrentOption}{omdoc}}
@@ -20,9 +20,8 @@
 \LoadClass{\omdoc@class}
 \RequirePackage{etoolbox}
 \RequirePackage{omdoc}
-\let\orig@document=\document
 \srefaddidkey{document}
-\renewcommand{\document}[1][]{\metasetkeys{document}{#1}\orig@document}
+\newcommand\documentkeys[1]{\metasetkeys{document}{#1}}
 \ifclass@book
 \renewenvironment{frontmatter}
 {\@frontmattertrue\cleardoublepage\@mainmatterfalse\pagenumbering{roman}}
