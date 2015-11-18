@@ -22,6 +22,7 @@
 \RequirePackage{amsmath}
 \newcommand\assig@default@type{\hwexam@assignment@kw}
 \addmetakey[\assig@default@type]{document}{hwexamtype}
+\def\document@hwexamtype{\assig@default@type}
 \endinput
 %%
 %% End of file `hwexam.cls'.
