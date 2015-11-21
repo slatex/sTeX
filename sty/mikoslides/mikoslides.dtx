@@ -231,11 +231,8 @@ use LaTeXML::Package;
 \ProcessOptions
 %</cls>
 %<*ltxml.cls>
-DeclareOption('notes', sub{PassOptions('mikoslides','sty',ToString(Digest(T_CS('\CurrentOption'))))});
-DeclareOption('slides', sub{PassOptions('mikoslides','sty',ToString(Digest(T_CS('\CurrentOption'))))});
 DeclareOption(undef, sub {PassOptions('omdoc','cls',ToString(Digest(T_CS('\CurrentOption'))));
-                                          PassOptions('mikoslides','sty',ToString(Digest(T_CS('\CurrentOption'))));
-                                          PassOptions('beamer','cls',ToString(Digest(T_CS('\CurrentOption'))));});
+                                          PassOptions('mikoslides','sty',ToString(Digest(T_CS('\CurrentOption'))));});
 ProcessOptions();
 %</ltxml.cls>
 %    \end{macrocode}
@@ -244,6 +241,10 @@ ProcessOptions();
 % use |mikoslides.sty| in a different class.
 %    \begin{macrocode}
 %<*package>
+\newif\if@mikoslides@mh@\@mikoslides@mh@false
+\DeclareOption{mh}{\@mikoslides@mh@true
+  \PassOptionsToPackage{\CurrentOption}{stex}
+  \PassOptionsToPackage{\CurrentOption}{tikzinput}}
 \newif\ifnotes\notesfalse 
 \DeclareOption{notes}{\notestrue}
 \DeclareOption{slides}{\notesfalse}
@@ -266,6 +267,9 @@ DeclareOption('slides', '');
 DeclareOption('noproblems', '');
 DeclareOption('sectocframes', '');
 DeclareOption('frameimages', '');
+DeclareOption('mh', sub { AssignValue ('@mikoslides' => 1,'global');
+                       PassOptions('stex','sty',ToString(Digest(T_CS('\CurrentOption'))));
+                       PassOptions('tikzinput','sty',ToString(Digest(T_CS('\CurrentOption'))));});
 DeclareOption(undef, sub {PassOptions('stex','sty',ToString(Digest(T_CS('\CurrentOption'))));
                                           PassOptions('tikzinput','sty',ToString(Digest(T_CS('\CurrentOption')))); });
 ProcessOptions();
@@ -274,10 +278,12 @@ RawTeX('\newif\ifproblems\problemsfalse');
 %</ltxml.sty>
 %    \end{macrocode}
 %
-% Depending on the options, we either load the |article|-based |omdoc| or the |beamer| class. In the first
-% case, we also have to make the |beamer|-specific things available to |article| via the
-% |beamerarticle| package. We use options to avoid loading theorem-like environments,
-% since we want to use our own from the $\sTeX$ packages. 
+% Depending on the options, we either load the |article|-based |omdoc| or the |beamer|
+% class. In the first case, we also have to make the |beamer|-specific things available to
+% |article| via the |beamerarticle| package. We use options to avoid loading theorem-like
+% environments, since we want to use our own from the $\sTeX$ packages. On the \latexml
+% side we just load the omdoc class and provide the |\usetheme| macro that would otherwise
+% from the the |beamer| class.
 %    \begin{macrocode}
 %<*cls>
 \ifnotes
@@ -294,11 +300,11 @@ RawTeX('\newif\ifproblems\problemsfalse');
   \newcounter{Hfootnote}
   \usetheme{Jacobs}
 \fi
-\RequirePackage{mikoslides-mh}
+\RequirePackage{mikoslides}
 %</cls>
 %<*ltxml.cls>
 LoadClass('omdoc');
-RequirePackage('mikoslides-mh');
+RequirePackage('mikoslides');
 DefConstructor('\usetheme{}','');
 %</ltxml.cls>
 %    \end{macrocode}
@@ -307,6 +313,7 @@ DefConstructor('\usetheme{}','');
 %
 %    \begin{macrocode}
 %<*package>
+\if@mikoslides@mh@\RequirePackage{mikoslides-mh}\fi
 \RequirePackage{stex}
 \RequirePackage{smglom}
 \RequirePackage{tikzinput}
@@ -318,6 +325,7 @@ DefConstructor('\usetheme{}','');
 \RequirePackage{url}
 %</package>
 %<*ltxml.sty>
+if(LookupValue('@mikoslides')) {RequirePackage('mikoslides-mh');}		
 RequirePackage('stex'); 
 RequirePackage('smglom');
 RequirePackage('tikzinput', options => ['image']); 
