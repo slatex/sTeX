@@ -23,7 +23,7 @@
 \addbibresource{kwarccrossrefs.bib}
 \addbibresource{extcrossrefs.bib}
 \usepackage{stex-logo}
-\usepackage{../ctangit}
+\usepackage{ctangit}
 \usepackage{hyperref}
 \makeindex
 \floatstyle{boxed}
@@ -73,6 +73,9 @@
 % 
 % \subsection{Package and Class Options}\label{sec:user:options}
 % 
+% The |hwexam| class takes the \DescribeMacro{mh}|mh| option that turns on MathHub
+% support.
+%
 % The |hwexam| package and class take the options |solutions|, |notes|, |hints|, |pts|,
 % |min|, and |boxed| that are just passed on to the |problems| package (cf. its
 % documentation for a description of the intended behavior).
@@ -202,12 +205,14 @@ use Cwd qw(cwd abs_path);
 %    \begin{macrocode}
 %<*cls>
 \DeclareOption*{\PassOptionsToPackage{\CurrentOption}{hwexam}
+                           \PassOptionsToPackage{\CurrentOption}{tikzinput}
                            \PassOptionsToClass{\CurrentOption}{omdoc}}
 \ProcessOptions
 %</cls>
 %<*ltxml.cls>
-DeclareOption(undef,sub {PassOptions('hwexam','sty',ToString(Digest(T_CS('\CurrentOption')))); }); 
-DeclareOption(undef,sub {PassOptions('omdoc','cls',ToString(Digest(T_CS('\CurrentOption')))); }); 
+DeclareOption(undef,sub {PassOptions('hwexam','sty',ToString(Digest(T_CS('\CurrentOption')))); 
+                                         PassOptions('tikzinput','cls',ToString(Digest(T_CS('\CurrentOption'))));
+                                         PassOptions('omdoc','cls',ToString(Digest(T_CS('\CurrentOption')))); });  
 ProcessOptions();
 %</ltxml.cls>
 %    \end{macrocode}
@@ -219,7 +224,7 @@ ProcessOptions();
 %<*cls>
 \LoadClass{omdoc}
 \RequirePackage{stex}
-\RequirePackage{hwexam-mh}
+\RequirePackage{hwexam}
 \RequirePackage{tikzinput}
 \RequirePackage{graphicx}
 \RequirePackage{a4wide}
@@ -228,9 +233,9 @@ ProcessOptions();
 \RequirePackage{amsmath}
 %</cls>
 %<*ltxml.cls>
-LoadClass('omdoc');
+LoadClass('omdoc'); 
 RequirePackage('stex');
-RequirePackage('hwexam-mh');
+RequirePackage('hwexam');
 RequirePackage('tikzinput', options => ['image']); 
 RequirePackage('graphicx');
 RequirePackage('amssymb');
@@ -258,6 +263,8 @@ RequirePackage('amsmath');
 %
 %    \begin{macrocode}
 %<*package>
+\newif\if@hwexam@mh@\@hwexam@mh@false
+\DeclareOption{mh}{\@hwexam@mh@true}
 \newif\iftest\testfalse
 \DeclareOption{test}{\testtrue}
 \newif\ifmultiple\multiplefalse
@@ -270,6 +277,7 @@ RequirePackage('amsmath');
 %    \begin{macrocode}
 %<*package>
 \RequirePackage{keyval}[1997/11/10]
+\if@hwexam@mh@\RequirePackage{hwexam-mh}\fi
 \RequirePackage{problem}
 %</package>
 %    \end{macrocode}
@@ -279,10 +287,13 @@ RequirePackage('amsmath');
 % do. 
 %    \begin{macrocode}
 %<*ltxml.sty>
+DeclareOption('mh', sub { AssignValue('@hwexam' => 1,'global');
+PassOptions('problem','sty',ToString(Digest(T_CS('\CurrentOption'))));});
 DeclareOption('test', '');
 DeclareOption('multiple', '');
 DeclareOption(undef, sub {PassOptions('problem','sty',ToString(Digest(T_CS('\CurrentOption')))); });
 ProcessOptions();
+if (LookupValue('@hwexam')){RequirePackage('hwexam-mh');}
 RequirePackage('problem');
 %    \end{macrocode}
 %
