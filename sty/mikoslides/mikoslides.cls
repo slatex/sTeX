@@ -7,7 +7,7 @@
 %% mikoslides.dtx  (with options: `cls')
 %% 
 \NeedsTeXFormat{LaTeX2e}[1999/12/01]
-\ProvidesClass{mikoslides}[2015/11/04 v1.1 Jacobs slides Class]
+\ProvidesClass{mikoslides}[2015/11/21 v1.1 Jacobs slides Class]
 \newif\ifnotes\notesfalse
 \DeclareOption{notes}{\notestrue\PassOptionsToPackage{\CurrentOption}{mikoslides}}
 \DeclareOption{slides}{\notesfalse\PassOptionsToPackage{\CurrentOption}{mikoslides}}
