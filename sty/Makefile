@@ -4,7 +4,7 @@ DISTDIRS = cmath cmathml cnx dcm hwexam metakeys mikoslides modules omdoc omtext
            smultiling tikzinput smglom mathhub structview
 MAKEDIRS = $(DISTDIRS) #physml owl2onto
 
-all ltxml package doc filedate checksum enablechecksum disablechecksum clean distclean: 
+all ltxml package doc ltds lctan filedate checksum enablechecksum disablechecksum clean distclean: 
 	@for d in $(MAKEDIRS); do (cd $$d && $(MAKE) -$(MAKEFLAGS) $@) || exit $$?; done
 
 TDSCOLL = stex
