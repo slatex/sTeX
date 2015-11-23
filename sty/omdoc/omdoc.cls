@@ -20,6 +20,8 @@
 \LoadClass{\omdoc@class}
 \RequirePackage{etoolbox}
 \RequirePackage{omdoc}
+\srefaddidkey{document}
+\newcommand\documentkeys[1]{\metasetkeys{document}{#1}}
 \let\orig@document=\document
 \srefaddidkey{document}
 \renewcommand{\document}[1][]{\metasetkeys{document}{#1}\orig@document}
