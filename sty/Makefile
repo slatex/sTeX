@@ -14,24 +14,3 @@ TDS.src =
 
 include make/Makefile.ctan
 
-# generate the documentation
-stex.pdf: stex.tex $(SOURCS)
-	pdflatex $(firstword $<)
-	@if (grep Citation $(patsubst %.tex, %.log, $(firstword $<)) > /dev/null);\
-	    then bibtex $(patsubst %.tex, %, $(firstword $<));fi
-	@if (grep "Writing glossary file" $(patsubst %.tex, %.log, $(firstword $<)) > /dev/null);\
-	   then makeindex -s gglo.ist\
-		-o $(patsubst %.tex, %.gls, $(firstword $<))\
-		$(patsubst %.tex, %.glo, $(firstword $<)); fi
-	@if (grep "Writing index file" $(patsubst %.tex, %.log, $(firstword $<)) > /dev/null);\
-	   then makeindex -s stex.ist\
-		-o $(patsubst %.tex, %.ind, $(firstword $<))\
-		$(patsubst %.tex, %.idx, $(firstword $<)); fi
-	@if (grep Rerun $(patsubst %.tex, %.log, $(firstword $<)) > /dev/null);\
-	   then pdflatex $(firstword $<); fi
-	@if (grep Rerun $(patsubst %.tex, %.log, $(firstword $<)) > /dev/null);\
-	    then pdflatex $(firstword $<); fi
-
-# auxiliary for debugging
-echo:
-	echo $(DISTDIRS)
