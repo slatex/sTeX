@@ -681,44 +681,46 @@ sub dashed { join('-',map($_->toString,@_));}#$
 %<*ltxml>
 sub makeNCName {
   my ($name) = @_;
-  my $ncname=$name;
+  my $ncname = ToString($name);
   $ncname=~s/\s/_/g;  #Spaces to underscores
   $ncname="_$ncname" if $ncname!~/^(\w|_)/;  #Ensure start with letter or underscore
   ##More to come...
-  $ncname;
+  return $ncname;
 }
 %</ltxml>
 %    \end{macrocode}
 % The following functions are strictly utility functions that makes our life easier later on
 %    \begin{macrocode}
 %<*ltxml>
+
+sub unpack_refs {
+  my @unpacked = ();
+  foreach my $input(@_) {
+    if ((ref $input) && ($input =~ /ARRAY/) && ($input !~ /LaTeXML/)) {
+      push(@unpacked, unpack_refs(@$input)); }
+    else {
+      push(@unpacked, ToString($input)); }
+  }
+  return @unpacked;
+}
 sub simple_wrapper {
   #Deref if array reference
-  my @input;
-  foreach (@_) {
-  if (ref $_ && $_ =~ /ARRAY/ && $_ !~ /LaTeXML/) {
-      @input=(@input,@$_);
-    } else
-      { push (@input,$_); }
-  }
+  my @input = unpack_refs(@_);
   return '' if (!@input);
-  @input = map(split(/\s*,\s*/,ToString($_)),@input);
+  @input = map(split(/\s*,\s*/,$_),@input);
   my $output=join(" ",@input);
+
   $output=~s/(^ )|[{}]//g; #remove leading space and list separator brackets
   $output||'';
 }
 sub hash_wrapper{
   #Deref if array reference
-  my @input;
-  foreach (@_) {
-  if (ref $_ && $_ =~ /ARRAY/ && $_ !~ /LaTeXML/) {
-      @input=(@input,@$_);
-    } else
-      { push (@input,$_); }
-  }
+  my @input = unpack_refs(@_);
   return '' if (!@input);
-  @input = sort map(split(/\s*,\s*/,ToString($_)),@input);
+  @input = sort map(split(/\s*,\s*/,$_),@input);
   my $output=join(".sym #",@input);
+  print STDERR "\n\nWTF: $output\n\n";
+
   $output=~s/(^\.sym )|[{}]//g; #remove leading space and list separator brackets
   "#$output"||'';
 }
@@ -1579,18 +1581,20 @@ sub defHelper{
   my ($stomach, $whatsit, $defOption) = @_;
   my $addr = LookupValue('defs');
   my $name = $whatsit->getArg(1);
-  $name = $name->toString if $name;
-  my %choose_Option = (
-                      definiendum => sub {$whatsit->getArg(2);},
-                      defi => sub {$whatsit->getArg(2);},
-                      adefi => sub {$whatsit->getArg(3);},
-                      defii => sub {$whatsit->getArg(2)->toString.'-'.$whatsit->getArg(3)->toString;},
-                      adefii => sub {$whatsit->getArg(3)->toString.'-'.$whatsit->getArg(4)->toString;},
-                      defiii => sub {$whatsit->getArg(2)->toString.'-'.$whatsit->getArg(3)->toString.'-'.$whatsit->getArg(4)->toString;},
-                      adefiii => sub {$whatsit->getArg(3)->toString.'-'.$whatsit->getArg(4)->toString.'-'.$whatsit->getArg(5)->toString;} 
-                      );
-  $name = $name || $choose_Option{$defOption}->();
-  $whatsit->setProperty(name=>$name->toString) if ref($name);
+  if (!$name) {
+    my %choose_Option = (
+                        definiendum => sub {$whatsit->getArg(2);},
+                        defi => sub {$whatsit->getArg(2);},
+                        adefi => sub {$whatsit->getArg(3);},
+                        defii => sub {$whatsit->getArg(2)->toString.'-'.$whatsit->getArg(3)->toString;},
+                        adefii => sub {$whatsit->getArg(3)->toString.'-'.$whatsit->getArg(4)->toString;},
+                        defiii => sub {$whatsit->getArg(2)->toString.'-'.$whatsit->getArg(3)->toString.'-'.$whatsit->getArg(4)->toString;},
+                        adefiii => sub {$whatsit->getArg(3)->toString.'-'.$whatsit->getArg(4)->toString.'-'.$whatsit->getArg(5)->toString;}
+                        );
+    $name = $choose_Option{$defOption}->();
+  }
+  $name = ToString($name) || "";
+  $whatsit->setProperty(name=>$name) if $name;
   push(@$addr, $name) if ($addr and $name);
   $whatsit->setProperty('defindex', IfCondition(T_CS('\if@defindex')));
   $whatsit->setProperty(theory=>(LookupValue('modnl_signature') || LookupValue('current_module')));
