@@ -301,24 +301,32 @@ use Cwd qw(abs_path);
 %<*cls>
 \def\omdoc@class{article}
 \DeclareOption{report}{\def\omdoc@class{report}%
-\PassOptionsToPackage{\CurrentOption}{omdoc}}
+  \PassOptionsToPackage{\CurrentOption}{omdoc}
+  \PassOptionsToPackage{\CurrentOption}{stex}}
 \newif\ifclass@book\class@bookfalse 
 \DeclareOption{book}{\def\omdoc@class{book}\class@booktrue%
-\PassOptionsToPackage{\CurrentOption}{omdoc}}
+  \PassOptionsToPackage{\CurrentOption}{omdoc}
+  \PassOptionsToPackage{\CurrentOption}{stex}}
 %    \end{macrocode}
 % the rest of the options are only passed on to |omdoc.sty| and the class selected by the
 % first options.  
 %    \begin{macrocode}
 \DeclareOption*{\PassOptionsToClass{\CurrentOption}{\omdoc@class}
-                           \PassOptionsToPackage{\CurrentOption}{omdoc}}
+                           \PassOptionsToPackage{\CurrentOption}{omdoc}
+                           \PassOptionsToPackage{\CurrentOption}{stex}}
 \ProcessOptions
 %</cls>
 %<*ltxml.cls>
 AssignValue('omdoc@class'=>'article');
-DeclareOption('report', sub {AssignValue('omdoc@class' => 'report'); });
-DeclareOption('book', sub {AssignValue('omdoc@class' => 'book'); });
+DeclareOption('report', sub {AssignValue('omdoc@class' => 'report'); 
+  PassOptions('stex','sty',ToString(Digest(T_CS('\CurrentOption'))));
+  PassOptions('omdoc','sty',ToString(Digest(T_CS('\CurrentOption'))));});
+DeclareOption('book', sub {AssignValue('omdoc@class' => 'book'); 
+  PassOptions('stex','sty',ToString(Digest(T_CS('\CurrentOption'))));
+  PassOptions('omdoc','sty',ToString(Digest(T_CS('\CurrentOption'))));});
 DeclareOption(undef, sub  {PassOptions('article','cls',ToString(Digest(T_CS('\CurrentOption'))));
-                                          PassOptions('omdoc','sty',ToString(Digest(T_CS('\CurrentOption'))));});
+  PassOptions('omdoc','sty',ToString(Digest(T_CS('\CurrentOption'))));
+  PassOptions('stex','sty',ToString(Digest(T_CS('\CurrentOption'))));}); 
 ProcessOptions();
 %</ltxml.cls>
 %    \end{macrocode}
@@ -331,6 +339,7 @@ ProcessOptions();
 \LoadClass{\omdoc@class}
 \RequirePackage{etoolbox}
 \RequirePackage{omdoc}
+\RequirePackage{stex}
 %</cls>
 %<*ltxml.cls>
 my $class = LookupValue('omdoc@class');
@@ -373,6 +382,7 @@ RelaxNGSchema('omdoc+ltxml',
 %    \begin{macrocode}
 %<*ltxml.cls>
 RequirePackage('omdoc');
+RequirePackage('stex');
 %</ltxml.cls>
 %    \end{macrocode}
 % \end{omgroup}
@@ -384,7 +394,7 @@ RequirePackage('omdoc');
 %
 % \begin{environment}{document}
 %   For the moment we do not use them on the {\LaTeX} level, but the document identifier
-%   is picked up by {\latexml}.
+%   is picked up by {\latexml}.\ednote{faking documentkeys for now. @HANG, please implement}
 %    \begin{macrocode}
 %<*cls>
 \srefaddidkey{document}
@@ -394,6 +404,7 @@ RequirePackage('omdoc');
 \renewcommand{\document}[1][]{\metasetkeys{document}{#1}\orig@document}
 %</cls>
 %<*ltxml.cls>
+DefConstructor('\documentkeys{}','');
 sub xmlBase {
   my $baseuri = LookupValue('URLBASE');
   $baseuri =~ s/\/$//g; # No trailing slashes
