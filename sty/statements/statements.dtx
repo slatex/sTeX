@@ -10,7 +10,7 @@
 %  
 % \iffalse
 %<package>\NeedsTeXFormat{LaTeX2e}[1999/12/01]
-%<package>\ProvidesPackage{statements}[2015/04/03 v1.2 Semantic Markup for Statements]
+%<package>\ProvidesPackage{statements}[2015/11/22 v1.2 Semantic Markup for Statements]
 %
 %<*driver>
 \documentclass{ltxdoc}
@@ -24,7 +24,7 @@
 \addbibresource{kwarccrossrefs.bib}
 \addbibresource{extcrossrefs.bib}
 \usepackage{stex-logo}
-\usepackage{../ctangit}
+\usepackage{ctangit}
 \usepackage{hyperref}
 \makeindex
 \floatstyle{boxed}
@@ -35,7 +35,7 @@
 %</driver>
 % \fi
 % 
-% \iffalse\CheckSum{621}\fi
+% \iffalse\CheckSum{891}\fi
 %
 % \changes{v0.9}{2005/06/14}{First Version with Documentation}
 % \changes{v0.9a}{2005/07/01}{Completed Documentation}
@@ -459,11 +459,6 @@
 % used for inline examples, e.g. ``\ldots mammals, e.g. goats''. Note that we have used an
 % inline example for an inline example.
 %
-% As examples need to import foreign vocabularies (those used to construct the example),
-% the example environment provides the |\usevocab| command, a special variant of
-% |\importmodule| that is only available in the |example| environment and the argument of
-% |\inlineex|.
-% 
 %
 % \subsection{Cross-Referencing Symbols and Concepts}\label{sec:user:crossref}
 %
@@ -638,8 +633,7 @@ use LaTeXML::Package;
 %<*ltxml>
 DefConditional('\if@defindex');
 DeclareOption('defindex', sub{Digest(T_CS('\@defindextrue')); });
-DeclareOption(undef,sub{PassOptions('omtext','sty',ToString(Digest(T_CS('\CurrentOption'))));
-                                        PassOptions('modules','sty',ToString(Digest(T_CS('\CurrentOption')))); });
+DeclareOption(undef,sub{PassOptions('omtext','sty',ToString(Digest(T_CS('\CurrentOption')))); });
 ProcessOptions();
 %</ltxml>
 %    \end{macrocode}
@@ -649,7 +643,7 @@ ProcessOptions();
 % we need the |ntheorem| package for presenting statements. For {\latexml}, we also
 % initialize the package inclusions, there we do not need |ntheorem|, since the XML does
 % not do the presentation.
-%    \begin{macrocode}
+%    \begin{macrocode}x
 %<*package>
 \RequirePackage{omtext}
 \RequirePackage[base]{babel}
@@ -658,7 +652,6 @@ ProcessOptions();
 %</package>
 %<*ltxml>
 RequirePackage('omtext');
-RequirePackage('modules');
 %</ltxml>
 %    \end{macrocode}
 % Now, we define an auxiliary function that lowercases strings
@@ -676,44 +669,46 @@ sub dashed { join('-',map($_->toString,@_));}#$
 %<*ltxml>
 sub makeNCName {
   my ($name) = @_;
-  my $ncname=$name;
+  my $ncname = ToString($name);
   $ncname=~s/\s/_/g;  #Spaces to underscores
   $ncname="_$ncname" if $ncname!~/^(\w|_)/;  #Ensure start with letter or underscore
   ##More to come...
-  $ncname;
+  return $ncname;
 }
 %</ltxml>
 %    \end{macrocode}
 % The following functions are strictly utility functions that makes our life easier later on
 %    \begin{macrocode}
 %<*ltxml>
+
+sub unpack_refs {
+  my @unpacked = ();
+  foreach my $input(@_) {
+    if ((ref $input) && ($input =~ /ARRAY/) && ($input !~ /LaTeXML/)) {
+      push(@unpacked, unpack_refs(@$input)); }
+    else {
+      push(@unpacked, ToString($input)); }
+  }
+  return @unpacked;
+}
 sub simple_wrapper {
   #Deref if array reference
-  my @input;
-  foreach (@_) {
-  if (ref $_ && $_ =~ /ARRAY/ && $_ !~ /LaTeXML/) {
-      @input=(@input,@$_);
-    } else
-      { push (@input,$_); }
-  }
+  my @input = unpack_refs(@_);
   return '' if (!@input);
-  @input = map(split(/\s*,\s*/,ToString($_)),@input);
+  @input = map(split(/\s*,\s*/,$_),@input);
   my $output=join(" ",@input);
+
   $output=~s/(^ )|[{}]//g; #remove leading space and list separator brackets
   $output||'';
 }
 sub hash_wrapper{
   #Deref if array reference
-  my @input;
-  foreach (@_) {
-  if (ref $_ && $_ =~ /ARRAY/ && $_ !~ /LaTeXML/) {
-      @input=(@input,@$_);
-    } else
-      { push (@input,$_); }
-  }
+  my @input = unpack_refs(@_);
   return '' if (!@input);
-  @input = sort map(split(/\s*,\s*/,ToString($_)),@input);
+  @input = sort map(split(/\s*,\s*/,$_),@input);
   my $output=join(".sym #",@input);
+  print STDERR "\n\nWTF: $output\n\n";
+
   $output=~s/(^\.sym )|[{}]//g; #remove leading space and list separator brackets
   "#$output"||'';
 }
@@ -836,7 +831,6 @@ DefStatement('{assertion} OptionalKeyVals:omtext',
 %   particular, the usevocab should only be defined in example}
 %    \begin{macrocode}
 %<*package>
-\let\usevocab=\usemodule
 \def\st@example@initialize{}\def\st@example@terminate{}
 \define@statement@env{example}
 \def\st@example@kw{Example}
@@ -844,7 +838,6 @@ DefStatement('{assertion} OptionalKeyVals:omtext',
 \newtheorem{STexampleEnv}[STtheoremAssEnv]{\st@example@kw}
 %</package>
 %<*ltxml>
-DefMacro('\usevocab','\usemodule');
 DefStatement('{example} OptionalKeyVals:omtext',
        "<omdoc:example "
        . "?&GetKeyVal(#1,'id')(xml:id='&GetKeyVal(#1,'id')')() "
@@ -1289,7 +1282,7 @@ DefConstructor('\defiii[]{}{}{} OptionalKeyVals:DEF',
 		 ."?#defindex(</omdoc:idt><omdoc:ide index='default'><omdoc:idp>#2</omdoc:idp><omdoc:idp>#3</omdoc:idp><omdoc:idp>#4</omdoc:idp></omdoc:ide></omdoc:idx>)",
        afterDigest => sub { defHelper(@_, 'defiii'); },
 	       alias=>'\defiii');
-DefConstructor('\defiii[]{}{}{} OptionalKeyVals:DEF',
+DefConstructor('\defiiis[]{}{}{} OptionalKeyVals:DEF',
 		 "?#defindex(<omdoc:idx><omdoc:idt>)"
 	         . "<omdoc:term role='definiendum' cd='#theory' name='?#1(#1)(&dashed(#2,#3,#4))'>#2 #3 #4s</omdoc:term>"
 		 ."?#defindex(</omdoc:idt><omdoc:ide index='default'><omdoc:idp>#2</omdoc:idp><omdoc:idp>#3</omdoc:idp><omdoc:idp>#4</omdoc:idp></omdoc:ide></omdoc:idx>)",
@@ -1574,18 +1567,20 @@ sub defHelper{
   my ($stomach, $whatsit, $defOption) = @_;
   my $addr = LookupValue('defs');
   my $name = $whatsit->getArg(1);
-  $name = $name->toString if $name;
-  my %choose_Option = (
-                      definiendum => sub {$whatsit->getArg(2);},
-                      defi => sub {$whatsit->getArg(2);},
-                      adefi => sub {$whatsit->getArg(3);},
-                      defii => sub {$whatsit->getArg(2)->toString.'-'.$whatsit->getArg(3)->toString;},
-                      adefii => sub {$whatsit->getArg(3)->toString.'-'.$whatsit->getArg(4)->toString;},
-                      defiii => sub {$whatsit->getArg(2)->toString.'-'.$whatsit->getArg(3)->toString.'-'.$whatsit->getArg(4)->toString;},
-                      adefiii => sub {$whatsit->getArg(3)->toString.'-'.$whatsit->getArg(4)->toString.'-'.$whatsit->getArg(5)->toString;} 
-                      );
-  $name = $name || $choose_Option{$defOption}->();
-  $whatsit->setProperty(name=>$name->toString) if ref($name);
+  if (!$name) {
+    my %choose_Option = (
+                        definiendum => sub {$whatsit->getArg(2);},
+                        defi => sub {$whatsit->getArg(2);},
+                        adefi => sub {$whatsit->getArg(3);},
+                        defii => sub {$whatsit->getArg(2)->toString.'-'.$whatsit->getArg(3)->toString;},
+                        adefii => sub {$whatsit->getArg(3)->toString.'-'.$whatsit->getArg(4)->toString;},
+                        defiii => sub {$whatsit->getArg(2)->toString.'-'.$whatsit->getArg(3)->toString.'-'.$whatsit->getArg(4)->toString;},
+                        adefiii => sub {$whatsit->getArg(3)->toString.'-'.$whatsit->getArg(4)->toString.'-'.$whatsit->getArg(5)->toString;}
+                        );
+    $name = $choose_Option{$defOption}->();
+  }
+  $name = ToString($name) || "";
+  $whatsit->setProperty(name=>$name) if $name;
   push(@$addr, $name) if ($addr and $name);
   $whatsit->setProperty('defindex', IfCondition(T_CS('\if@defindex')));
   $whatsit->setProperty(theory=>(LookupValue('modnl_signature') || LookupValue('current_module')));
@@ -1668,7 +1663,7 @@ sub defHelper{
 % LocalWords:  STdefinitionEnv STnotationEnv printbibliography langle ncname
 % LocalWords:  theoremstyle sym newenvironment ifx csname endcsname inlineex
 % LocalWords:  currentlabel theorembodyfont itshape theoremheaderfont bfseries
-% LocalWords:  normalfont newtheorem upshape srefaddidkey  definendum usevocab
+% LocalWords:  normalfont newtheorem upshape srefaddidkey  definendum 
 % LocalWords:  newcommand indef newif ifst indeffalse indeftrue attr whatsit
 % LocalWords:  STdefinitionEnvKeyword notemph modulename ifundefined atwin defi
 % LocalWords:  expandafter providecommand nameuse doctex ctancite funval defii

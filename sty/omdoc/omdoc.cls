@@ -7,21 +7,26 @@
 %% omdoc.dtx  (with options: `cls')
 %% 
 \NeedsTeXFormat{LaTeX2e}[1999/12/01]
-\ProvidesClass{omdoc}[2015/11/18 v1.3 OMDoc Documents]
+\ProvidesClass{omdoc}[2015/11/22 v1.2 OMDoc Documents]
 \def\omdoc@class{article}
 \DeclareOption{report}{\def\omdoc@class{report}%
-\PassOptionsToPackage{\CurrentOption}{omdoc}}
+  \PassOptionsToPackage{\CurrentOption}{omdoc}
+  \PassOptionsToPackage{\CurrentOption}{stex}}
 \newif\ifclass@book\class@bookfalse
 \DeclareOption{book}{\def\omdoc@class{book}\class@booktrue%
-\PassOptionsToPackage{\CurrentOption}{omdoc}}
+  \PassOptionsToPackage{\CurrentOption}{omdoc}
+  \PassOptionsToPackage{\CurrentOption}{stex}}
 \DeclareOption*{\PassOptionsToClass{\CurrentOption}{\omdoc@class}
-                           \PassOptionsToPackage{\CurrentOption}{omdoc}}
+                           \PassOptionsToPackage{\CurrentOption}{omdoc}
+                           \PassOptionsToPackage{\CurrentOption}{stex}}
 \ProcessOptions
 \LoadClass{\omdoc@class}
 \RequirePackage{etoolbox}
 \RequirePackage{omdoc}
+\RequirePackage{stex}
 \srefaddidkey{document}
 \newcommand\documentkeys[1]{\metasetkeys{document}{#1}}
+\let\orig@document=\document
 \ifclass@book
 \renewenvironment{frontmatter}
 {\@frontmattertrue\cleardoublepage\@mainmatterfalse\pagenumbering{roman}}
@@ -38,6 +43,7 @@
 \else
 \newenvironment{backmatter}{\@backmattertrue}{\@backmatterfalse}
 \fi
+
 \endinput
 %%
 %% End of file `omdoc.cls'.

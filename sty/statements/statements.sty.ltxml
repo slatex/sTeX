@@ -3,49 +3,52 @@ package LaTeXML::Package::Pool;
 use strict;
 use LaTeXML::Package;
 DefConditional('\if@defindex');
+DeclareOption('mh', sub {AssignValue('@statements' => 1,'global');
+     PassOptions('omtext','sty',ToString(Digest(T_CS('\CurrentOption'))));});
 DeclareOption('defindex', sub{Digest(T_CS('\@defindextrue')); });
-DeclareOption(undef,sub{PassOptions('omtext','sty',ToString(Digest(T_CS('\CurrentOption'))));
-                                        PassOptions('modules','sty',ToString(Digest(T_CS('\CurrentOption')))); });
+DeclareOption(undef,sub{PassOptions('omtext','sty',ToString(Digest(T_CS('\CurrentOption')))); });
 ProcessOptions();
+if(LookupValue('@statements')) {RequirePackage('statements-mh');}
 RequirePackage('omtext');
-RequirePackage('modules');
 sub lowcase {my ($string) = @_; $string ? return lc(ToString($string)) : return('')}#$
 sub dashed { join('-',map($_->toString,@_));}#$
 sub makeNCName {
   my ($name) = @_;
-  my $ncname=$name;
+  my $ncname = ToString($name);
   $ncname=~s/\s/_/g;  #Spaces to underscores
   $ncname="_$ncname" if $ncname!~/^(\w|_)/;  #Ensure start with letter or underscore
   ##More to come...
-  $ncname;
+  return $ncname;
+}
+
+sub unpack_refs {
+  my @unpacked = ();
+  foreach my $input(@_) {
+    if ((ref $input) && ($input =~ /ARRAY/) && ($input !~ /LaTeXML/)) {
+      push(@unpacked, unpack_refs(@$input)); }
+    else {
+      push(@unpacked, ToString($input)); }
+  }
+  return @unpacked;
 }
 sub simple_wrapper {
   #Deref if array reference
-  my @input;
-  foreach (@_) {
-  if (ref $_ && $_ =~ /ARRAY/ && $_ !~ /LaTeXML/) {
-      @input=(@input,@$_);
-    } else
-      { push (@input,$_); }
-  }
+  my @input = unpack_refs(@_);
   return '' if (!@input);
-  @input = map(split(/\s*,\s*/,ToString($_)),@input);
+  @input = map(split(/\s*,\s*/,$_),@input);
   my $output=join(" ",@input);
+
   $output=~s/(^ )|[{}]//g; #remove leading space and list separator brackets
   $output||'';
 }
 sub hash_wrapper{
   #Deref if array reference
-  my @input;
-  foreach (@_) {
-  if (ref $_ && $_ =~ /ARRAY/ && $_ !~ /LaTeXML/) {
-      @input=(@input,@$_);
-    } else
-      { push (@input,$_); }
-  }
+  my @input = unpack_refs(@_);
   return '' if (!@input);
-  @input = sort map(split(/\s*,\s*/,ToString($_)),@input);
+  @input = sort map(split(/\s*,\s*/,$_),@input);
   my $output=join(".sym #",@input);
+  print STDERR "\n\nWTF: $output\n\n";
+
   $output=~s/(^\.sym )|[{}]//g; #remove leading space and list separator brackets
   "#$output"||'';
 }
@@ -57,7 +60,6 @@ DefStatement('{assertion} OptionalKeyVals:omtext',
   .   "?&GetKeyVal(#1,'title')(<dc:title>&GetKeyVal(#1,'title')</dc:title>)()"
  .  "<omdoc:CMP>#body"
   ."</omdoc:assertion>\n");
-DefMacro('\usevocab','\usemodule');
 DefStatement('{example} OptionalKeyVals:omtext',
        "<omdoc:example "
        . "?&GetKeyVal(#1,'id')(xml:id='&GetKeyVal(#1,'id')')() "
@@ -223,7 +225,7 @@ DefConstructor('\defiii[]{}{}{} OptionalKeyVals:DEF',
  ."?#defindex(</omdoc:idt><omdoc:ide index='default'><omdoc:idp>#2</omdoc:idp><omdoc:idp>#3</omdoc:idp><omdoc:idp>#4</omdoc:idp></omdoc:ide></omdoc:idx>)",
        afterDigest => sub { defHelper(@_, 'defiii'); },
        alias=>'\defiii');
-DefConstructor('\defiii[]{}{}{} OptionalKeyVals:DEF',
+DefConstructor('\defiiis[]{}{}{} OptionalKeyVals:DEF',
  "?#defindex(<omdoc:idx><omdoc:idt>)"
          . "<omdoc:term role='definiendum' cd='#theory' name='?#1(#1)(&dashed(#2,#3,#4))'>#2 #3 #4s</omdoc:term>"
  ."?#defindex(</omdoc:idt><omdoc:ide index='default'><omdoc:idp>#2</omdoc:idp><omdoc:idp>#3</omdoc:idp><omdoc:idp>#4</omdoc:idp></omdoc:ide></omdoc:idx>)",
@@ -348,18 +350,20 @@ sub defHelper{
   my ($stomach, $whatsit, $defOption) = @_;
   my $addr = LookupValue('defs');
   my $name = $whatsit->getArg(1);
-  $name = $name->toString if $name;
-  my %choose_Option = (
-                      definiendum => sub {$whatsit->getArg(2);},
-                      defi => sub {$whatsit->getArg(2);},
-                      adefi => sub {$whatsit->getArg(3);},
-                      defii => sub {$whatsit->getArg(2)->toString.'-'.$whatsit->getArg(3)->toString;},
-                      adefii => sub {$whatsit->getArg(3)->toString.'-'.$whatsit->getArg(4)->toString;},
-                      defiii => sub {$whatsit->getArg(2)->toString.'-'.$whatsit->getArg(3)->toString.'-'.$whatsit->getArg(4)->toString;},
-                      adefiii => sub {$whatsit->getArg(3)->toString.'-'.$whatsit->getArg(4)->toString.'-'.$whatsit->getArg(5)->toString;}
-                      );
-  $name = $name || $choose_Option{$defOption}->();
-  $whatsit->setProperty(name=>$name->toString) if ref($name);
+  if (!$name) {
+    my %choose_Option = (
+                        definiendum => sub {$whatsit->getArg(2);},
+                        defi => sub {$whatsit->getArg(2);},
+                        adefi => sub {$whatsit->getArg(3);},
+                        defii => sub {$whatsit->getArg(2)->toString.'-'.$whatsit->getArg(3)->toString;},
+                        adefii => sub {$whatsit->getArg(3)->toString.'-'.$whatsit->getArg(4)->toString;},
+                        defiii => sub {$whatsit->getArg(2)->toString.'-'.$whatsit->getArg(3)->toString.'-'.$whatsit->getArg(4)->toString;},
+                        adefiii => sub {$whatsit->getArg(3)->toString.'-'.$whatsit->getArg(4)->toString.'-'.$whatsit->getArg(5)->toString;}
+                        );
+    $name = $choose_Option{$defOption}->();
+  }
+  $name = ToString($name) || "";
+  $whatsit->setProperty(name=>$name) if $name;
   push(@$addr, $name) if ($addr and $name);
   $whatsit->setProperty('defindex', IfCondition(T_CS('\if@defindex')));
   $whatsit->setProperty(theory=>(LookupValue('modnl_signature') || LookupValue('current_module')));
