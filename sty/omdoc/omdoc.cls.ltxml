@@ -34,14 +34,25 @@ RelaxNGSchema('omdoc+ltxml',
        'ltx'=>"http://dlmf.nist.gov/LaTeXML");
 RequirePackage('omdoc');
 RequirePackage('stex');
-DefConstructor('\documentkeys{}','');
 sub xmlBase {
   my $baseuri = LookupValue('URLBASE');
   $baseuri =~ s/\/$//g; # No trailing slashes
   Tokenize($baseuri); }
-DefEnvironment('{document} OptionalKeyVals:omdoc',
+DefConstructor('\documentkeys RequiredKeyVals:omdoc',
+                          sub { activateKeys($_[1]); return; });
+sub activateKeys {
+  my ($kv) = @_;
+  if ($kv) {
+    my @pairs = $kv->getPairs();
+    while(@pairs) {
+       my ($key, $val) = (shift(@pairs), shift(@pairs));
+       AssignValue('DOCUMENT'.$key => $val);
+   }
+ }
+return; }
+DefEnvironment('{document}',
        "<omdoc:omdoc "
-      .    "?&GetKeyVal(#1,'id')(xml:id='&GetKeyVal(#1,'id')')"
+      .    "?&LookupValue('DOCUMENTid')(xml:id='&LookupValue('DOCUMENTid')')"
       .     "(?&Tokenize(&LookupValue('SOURCEBASE'))"
       .      "(xml:id='&Tokenize(&LookupValue('SOURCEBASE')).omdoc')()) "
       .    "?&Tokenize(&LookupValue('URLBASE'))"
@@ -51,7 +62,7 @@ DefEnvironment('{document} OptionalKeyVals:omdoc',
   beforeDigest=> sub { AssignValue(inPreamble=>0); },
   afterDigest=> sub { $_[0]->getGullet->flush; return; },
   afterDigestBegin => sub {
-    $_[1]->setProperty(id => Expand(T_CS('\thedocument@ID')));
+    $_[1]->setProperty(id => LookupValue('DOCUMENTid'));
     if (my $ops = LookupValue('@at@begin@document')) {
       Digest(Tokens(@$ops)); }
     else {
