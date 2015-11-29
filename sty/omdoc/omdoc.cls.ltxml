@@ -4,6 +4,7 @@ use strict;
 use LaTeXML::Package;
 use LaTeXML::Util::Pathname;
 use Cwd qw(abs_path);
+use Data::Dumper;
 DeclareOption('report',sub {PassOptions('omdoc','sty',ToString(Digest(T_CS('\CurrentOption')))); });
 DeclareOption('book',sub {PassOptions('omdoc','sty',ToString(Digest(T_CS('\CurrentOption')))); });
 DeclareOption(undef,sub
@@ -31,10 +32,21 @@ sub xmlBase {
   my $baseuri = LookupValue('URLBASE');
   $baseuri =~ s/\/$//g; # No trailing slashes
   Tokenize($baseuri); }
-DefConstructor('\documentkeys RequiredKeyVals:omdoc',
-                          sub { activateKeys($_[1]); return; })
+DefMacro('\documentkeys RequiredKeyVals:omdoc',
+	   sub { activateKeys($_[1]); return; });
+  
 ## @angerhang: this needs to be implemented.
-sub activateKeys {}
+  sub activateKeys {
+    my ($kv) = @_;
+    if ($kv) {
+      my @pairs = $kv->getPairs();
+      while(@pairs) {
+	my ($key, $val) = (shift(@pairs), shift(@pairs));
+	AssignValue('document@'.$key => $val);
+      }
+    }
+    return; }
+  
 DefEnvironment('{document}',
        "<omdoc:omdoc "
       .    "?&GetKeyVal(#1,'id')(xml:id='&GetKeyVal(#1,'id')')"
