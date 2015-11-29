@@ -26,6 +26,8 @@
 \RequirePackage{stex}
 \srefaddidkey{document}
 \newcommand\documentkeys[1]{\metasetkeys{document}{#1}}
+\srefaddidkey{document}
+\newcommand\documentkeys[1]{\metasetkeys{document}{#1}}
 \let\orig@document=\document
 \ifclass@book
 \renewenvironment{frontmatter}
