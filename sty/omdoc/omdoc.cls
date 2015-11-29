@@ -26,9 +26,9 @@
 \RequirePackage{stex}
 \srefaddidkey{document}
 \newcommand\documentkeys[1]{\metasetkeys{document}{#1}}
-\srefaddidkey{document}
-\newcommand\documentkeys[1]{\metasetkeys{document}{#1}}
 \let\orig@document=\document
+\srefaddidkey{document}
+\renewcommand{\document}[1][]{\metasetkeys{document}{#1}\orig@document}
 \ifclass@book
 \renewenvironment{frontmatter}
 {\@frontmattertrue\cleardoublepage\@mainmatterfalse\pagenumbering{roman}}
