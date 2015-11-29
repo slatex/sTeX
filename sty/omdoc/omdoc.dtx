@@ -10,8 +10,8 @@
 %   
 % \iffalse
 %<package|cls>\NeedsTeXFormat{LaTeX2e}[1999/12/01]
-%<package>\ProvidesPackage{omdoc}[2015/11/18 v1.3 OMDoc document Structure]
-%<cls>\ProvidesClass{omdoc}[2015/11/18 v1.3 OMDoc Documents]
+%<package>\ProvidesPackage{omdoc}[2015/11/22 v1.2 OMDoc document Structure]
+%<cls>\ProvidesClass{omdoc}[2015/11/22 v1.2 OMDoc Documents]
 %
 %<*driver>
 \documentclass{ltxdoc}
@@ -22,7 +22,7 @@
 \addbibresource{extpubs.bib}
 \addbibresource{kwarccrossrefs.bib}
 \addbibresource{extcrossrefs.bib}
-\usepackage{stex-logo}\usepackage{../ctangit}
+\usepackage{stex-logo}\usepackage{ctangit}
 \usepackage{hyperref}
 \makeindex
 \floatstyle{boxed}
@@ -33,7 +33,7 @@
 %</driver>
 % \fi
 % 
-%\iffalse\CheckSum{382}\fi
+%\iffalse\CheckSum{411}\fi
 % 
 % \changes{v0.1}{2006/1/17}{First Version}
 % \changes{v0.2}{2006/7/11}{added OMDoc class}
@@ -234,11 +234,12 @@
 %   previously stored content. If the |\STRlabel| macro was in a different file, then we
 %   can give a URL \meta{URL} that lets {\latexml} generate the correct reference.
 %
-% \DescribeMacro{\STRsemantics} The |\STRlabel| macro has a variant |\STRsemantics|, where
-% the label argument is optional, and which takes a third argument, which is ignored in
-% {\LaTeX}. This allows to specify the meaning of the content (whatever that may mean) in
-% cases, where the source document is not formatted for presentation, but is transformed
-% into some content markup format.
+%   \DescribeMacro{\STRsemantics} The |\STRlabel| macro has a variant |\STRsemantics|,
+%   where the label argument is optional, and which takes a third argument, which is
+%   ignored in {\LaTeX}. This allows to specify the meaning of the content (whatever that
+%   may mean) in cases, where the source document is not formatted for presentation, but
+%   is transformed into some content markup format.\ednote{document LMID und LMXREf here
+%   if we decide to keep them.}
 % \end{omgroup}
 % 
 % \begin{omgroup}[id=sec:user:colors]{Colors}
@@ -305,24 +306,32 @@ use Cwd qw(abs_path);
 %<*cls>
 \def\omdoc@class{article}
 \DeclareOption{report}{\def\omdoc@class{report}%
-\PassOptionsToPackage{\CurrentOption}{omdoc}}
+  \PassOptionsToPackage{\CurrentOption}{omdoc}
+  \PassOptionsToPackage{\CurrentOption}{stex}}
 \newif\ifclass@book\class@bookfalse 
 \DeclareOption{book}{\def\omdoc@class{book}\class@booktrue%
-\PassOptionsToPackage{\CurrentOption}{omdoc}}
+  \PassOptionsToPackage{\CurrentOption}{omdoc}
+  \PassOptionsToPackage{\CurrentOption}{stex}}
 %    \end{macrocode}
 % the rest of the options are only passed on to |omdoc.sty| and the class selected by the
 % first options.  
 %    \begin{macrocode}
 \DeclareOption*{\PassOptionsToClass{\CurrentOption}{\omdoc@class}
-                           \PassOptionsToPackage{\CurrentOption}{omdoc}}
+                           \PassOptionsToPackage{\CurrentOption}{omdoc}
+                           \PassOptionsToPackage{\CurrentOption}{stex}}
 \ProcessOptions
 %</cls>
 %<*ltxml.cls>
-DeclareOption('report',sub {PassOptions('omdoc','sty',ToString(Digest(T_CS('\CurrentOption')))); });
-DeclareOption('book',sub {PassOptions('omdoc','sty',ToString(Digest(T_CS('\CurrentOption')))); });
-DeclareOption(undef,sub
-{PassOptions('article','cls',ToString(Digest(T_CS('\CurrentOption'))));
+AssignValue('omdoc@class'=>'article');
+DeclareOption('report', sub {AssignValue('omdoc@class' => 'report'); 
+  PassOptions('stex','sty',ToString(Digest(T_CS('\CurrentOption'))));
   PassOptions('omdoc','sty',ToString(Digest(T_CS('\CurrentOption'))));});
+DeclareOption('book', sub {AssignValue('omdoc@class' => 'book'); 
+  PassOptions('stex','sty',ToString(Digest(T_CS('\CurrentOption'))));
+  PassOptions('omdoc','sty',ToString(Digest(T_CS('\CurrentOption'))));});
+DeclareOption(undef, sub  {PassOptions('article','cls',ToString(Digest(T_CS('\CurrentOption'))));
+  PassOptions('omdoc','sty',ToString(Digest(T_CS('\CurrentOption'))));
+  PassOptions('stex','sty',ToString(Digest(T_CS('\CurrentOption'))));}); 
 ProcessOptions();
 %</ltxml.cls>
 %    \end{macrocode}
@@ -335,9 +344,11 @@ ProcessOptions();
 \LoadClass{\omdoc@class}
 \RequirePackage{etoolbox}
 \RequirePackage{omdoc}
+\RequirePackage{stex}
 %</cls>
 %<*ltxml.cls>
-LoadClass('article');
+my $class = LookupValue('omdoc@class');
+LoadClass($class);
 %</ltxml.cls>
 %    \end{macrocode}
 % \end{omgroup}
@@ -376,6 +387,7 @@ RelaxNGSchema('omdoc+ltxml',
 %    \begin{macrocode}
 %<*ltxml.cls>
 RequirePackage('omdoc');
+RequirePackage('stex');
 %</ltxml.cls>
 %    \end{macrocode}
 % \end{omgroup}
@@ -387,11 +399,12 @@ RequirePackage('omdoc');
 %
 % \begin{environment}{document}
 %   For the moment we do not use them on the {\LaTeX} level, but the document identifier
-%   is picked up by {\latexml}.
+%   is picked up by {\latexml}.\ednote{faking documentkeys for now. @HANG, please implement}
 %    \begin{macrocode}
 %<*cls>
 \srefaddidkey{document}
 \newcommand\documentkeys[1]{\metasetkeys{document}{#1}}
+\let\orig@document=\document
 %</cls>
 %<*ltxml.cls>
 sub xmlBase {
@@ -401,7 +414,15 @@ sub xmlBase {
 DefConstructor('\documentkeys RequiredKeyVals:omdoc',
                           sub { activateKeys($_[1]); return; })
 ## @angerhang: this needs to be implemented. 
-sub activateKeys {} 
+sub activateKeys {
+  my ($kv) = @_;
+  if ($kv) {
+    my @pairs = $kv->getPairs();
+    while(@pairs) { 
+       my ($key, $val) = (shift(@pairs), shift(@pairs));
+       AssignValue('document@'.$key => $val);
+   } } return; }
+
 DefEnvironment('{document}',
        "<omdoc:omdoc "
       .    "?&GetKeyVal(#1,'id')(xml:id='&GetKeyVal(#1,'id')')"
@@ -438,30 +459,11 @@ Tag('omdoc:omdoc', 'afterOpen:late'=>\&insertFrontMatter,
 %
 % \begin{omgroup}[id=sec:impl:options]{Package Options}
 %
-%   The package options come in two parts: the first we only pass on to the various other
-%   \sTeX packages. 
-%    \begin{macrocode}
-%<*package>
-\DeclareOption{showmeta}{\PassOptionsToPackage{\CurrentOption}{metakeys}}
-\DeclareOption{showmods}{\PassOptionsToPackage{\CurrentOption}{modules}}
-\DeclareOption{extrefs}{\PassOptionsToPackage{\CurrentOption}{sref}}
-\DeclareOption{noauxreq}{\PassOptionsToPackage{\CurrentOption}{modules}}
-\DeclareOption{defindex}{\PassOptionsToPackage{\CurrentOption}{statements}}
-%</package>
-%<*ltxml.sty>
-DeclareOption('showmeta',sub {PassOptions('metakeys','sty',ToString(Digest(T_CS('\CurrentOption')))); });
-DeclareOption('showmods',sub {PassOptions('modules','sty',ToString(Digest(T_CS('\CurrentOption')))); });
-DeclareOption('extrefs',sub {PassOptions('sref','sty',ToString(Digest(T_CS('\CurrentOption')))); });
-DeclareOption('noauxreq',sub {PassOptions('modules','sty',ToString(Digest(T_CS('\CurrentOption')))); });
-DeclareOption('defindex',sub {PassOptions('statements','sty',ToString(Digest(T_CS('\CurrentOption')))); });
-%</ltxml.sty>
-%    \end{macrocode}
-% 
-% For the rest we declare some switches which will modify the behavior according to the
-% package options. Generally, an option |xxx| will just set the appropriate switches to
-% true (otherwise they stay false). The |report| and |book| options affect the sectioning
-% behavior of the |omgroup| environment via the
-% \DescribeMacro{\section@level}|\section@level| macro later.
+%   We declare some switches which will modify the behavior according to the package
+%   options. Generally, an option |xxx| will just set the appropriate switches to true
+%   (otherwise they stay false). The |report| and |book| options affect the sectioning
+%   behavior of the |omgroup| environment via the
+%   \DescribeMacro{\section@level}|\section@level| macro later.
 %
 %    \begin{macrocode}
 %<*package>
@@ -474,10 +476,7 @@ DeclareOption('defindex',sub {PassOptions('statements','sty',ToString(Digest(T_C
 \ProcessOptions
 %</package>
 %<*ltxml.sty>
-DeclareOption('showignores',''); 
-DeclareOption('report','');
-DeclareOption('book','');
-DeclareOption(undef, '');
+DeclareOption(undef, sub {PassOptions('sref','sty',ToString(Digest(T_CS('\CurrentOption')))); }); 
 ProcessOptions();
 %</ltxml.sty>
 %    \end{macrocode}
@@ -494,7 +493,6 @@ ProcessOptions();
 %<*ltxml.sty>
 RequirePackage('sref'); 
 RequirePackage('xspace'); 
-RequirePackage('omtext');
 %</ltxml.sty>
 %    \end{macrocode}
 % \end{omgroup}
@@ -782,7 +780,28 @@ Tag('omdoc:ignore',afterOpen=>\&numberIt,afterClose=>\&locateIt);
 % \end{omgroup}
 % 
 % \begin{omgroup}[id=sec:impl:share]{Structure Sharing}
-%
+%   \ednote{The following is simply copied over from the |latexml| package, which we
+%   eliminated, we should integrate better.}
+%    \begin{macrocode}
+%<*package>
+\providecommand{\lxDocumentID}[1]{}%
+\def\LXMID#1#2{\expandafter\gdef\csname xmarg#1\endcsname{#2}\csname xmarg#1\endcsname}
+\def\LXMRef#1{\csname xmarg#1\endcsname}
+%</package>
+%<*ltxml>
+# Set the id to used for the top-level document
+DefMacro('\lxDocumentID{}', '\def\thedocument@ID{#1}');
+
+# \LXMID{id}{math}  Associate the identifier id with the given math expression.
+DefMacro('\LXMID{}{}', '\@XMArg{#1}{#2}');
+
+# \LXRef{id} Refer to the math expression associated with id.
+# In presentation, this is similar to using a shorthand macro.
+# In content situations, an XMRef is generated.
+DefMacro('\LXMRef{}', '\@XMRef{#1}');
+%</ltxml>
+%    \end{macrocode}
+
 % \begin{macro}{\STRlabel}
 %    The main macro, it it used to attach a label to some text expansion. Later on, using the
 %    |\STRcopy| macro, the author can use this label to get the expansion originally assigned.

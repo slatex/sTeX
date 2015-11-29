@@ -4,14 +4,19 @@ use strict;
 use LaTeXML::Package;
 use LaTeXML::Util::Pathname;
 use Cwd qw(abs_path);
-use Data::Dumper;
-DeclareOption('report',sub {PassOptions('omdoc','sty',ToString(Digest(T_CS('\CurrentOption')))); });
-DeclareOption('book',sub {PassOptions('omdoc','sty',ToString(Digest(T_CS('\CurrentOption')))); });
-DeclareOption(undef,sub
-{PassOptions('article','cls',ToString(Digest(T_CS('\CurrentOption'))));
+AssignValue('omdoc@class'=>'article');
+DeclareOption('report', sub {AssignValue('omdoc@class' => 'report');
+  PassOptions('stex','sty',ToString(Digest(T_CS('\CurrentOption'))));
   PassOptions('omdoc','sty',ToString(Digest(T_CS('\CurrentOption'))));});
+DeclareOption('book', sub {AssignValue('omdoc@class' => 'book');
+  PassOptions('stex','sty',ToString(Digest(T_CS('\CurrentOption'))));
+  PassOptions('omdoc','sty',ToString(Digest(T_CS('\CurrentOption'))));});
+DeclareOption(undef, sub  {PassOptions('article','cls',ToString(Digest(T_CS('\CurrentOption'))));
+  PassOptions('omdoc','sty',ToString(Digest(T_CS('\CurrentOption'))));
+  PassOptions('stex','sty',ToString(Digest(T_CS('\CurrentOption'))));});
 ProcessOptions();
-LoadClass('article');
+my $class = LookupValue('omdoc@class');
+LoadClass($class);
 RegisterNamespace('omdoc'=>"http://omdoc.org/ns");
 RegisterNamespace('om'=>"http://www.openmath.org/OpenMath");
 RegisterNamespace('m'=>"http://www.w3.org/1998/Math/MathML");
@@ -28,25 +33,23 @@ RelaxNGSchema('omdoc+ltxml',
        'stex'=>"http://kwarc.info/ns/sTeX",
        'ltx'=>"http://dlmf.nist.gov/LaTeXML");
 RequirePackage('omdoc');
+RequirePackage('stex');
 sub xmlBase {
   my $baseuri = LookupValue('URLBASE');
   $baseuri =~ s/\/$//g; # No trailing slashes
   Tokenize($baseuri); }
-DefMacro('\documentkeys RequiredKeyVals:omdoc',
-	   sub { activateKeys($_[1]); return; });
-  
+DefConstructor('\documentkeys RequiredKeyVals:omdoc',
+                          sub { activateKeys($_[1]); return; })
 ## @angerhang: this needs to be implemented.
-  sub activateKeys {
-    my ($kv) = @_;
-    if ($kv) {
-      my @pairs = $kv->getPairs();
-      while(@pairs) {
-	my ($key, $val) = (shift(@pairs), shift(@pairs));
-	AssignValue('document@'.$key => $val);
-      }
-    }
-    return; }
-  
+sub activateKeys {
+  my ($kv) = @_;
+  if ($kv) {
+    my @pairs = $kv->getPairs();
+    while(@pairs) {
+       my ($key, $val) = (shift(@pairs), shift(@pairs));
+       AssignValue('document@'.$key => $val);
+   } } return; }
+
 DefEnvironment('{document}',
        "<omdoc:omdoc "
       .    "?&GetKeyVal(#1,'id')(xml:id='&GetKeyVal(#1,'id')')"
@@ -75,4 +78,5 @@ Tag('omdoc:omdoc', 'afterOpen:late'=>\&insertFrontMatter,
        afterOpen=>\&numberIt,afterClose=>\&locateIt);
 DefEnvironment('{frontmatter}','#body');
 DefEnvironment('{backmatter}','#body');
+
 1;

@@ -9,12 +9,6 @@ all clean distclean:
 package doc filedate checksum enablechecksum disablechecksum: 
 	@for d in $(DTXDIRS); do (cd $$d && $(MAKE) -$(MAKEFLAGS) $@) done
 
-ci: 
-	svn $@ -m'draining'
-
-cleanup: 
-	svn $@ 
-
 TDS.tex = 
 TDS.doc = README
 TDS.src = 
