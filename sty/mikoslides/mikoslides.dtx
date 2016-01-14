@@ -198,23 +198,6 @@
 % 
 %\section{The Implementation}\label{sec:impl}
 %
-% The |mikoslides| package generates two files: the {\LaTeX} package (all the code between
-% {\textsf{$\langle$*package$\rangle$}} and {\textsf{$\langle$/package$\rangle$}}) and the
-% {\latexml} bindings (between {\textsf{$\langle$*ltxml$\rangle$ and
-%     $\langle$/ltxml$\rangle$}}). We keep the corresponding code fragments together,
-% since the documentation applies to both of them and to prevent them from getting out of
-% sync.
-%
-% The general preamble for \latexml:
-%    \begin{macrocode}
-%<*ltxml.cls|ltxml.sty>
-# -*- CPERL -*-
-package LaTeXML::Package::Pool;
-use strict;
-use LaTeXML::Package;
-%</ltxml.cls|ltxml.sty>
-%    \end{macrocode}
-%
 %\subsection{Class and Package Options}\label{sec:impl:init}
 %
 % We define some Package Options and switches for the |mikoslides| class and activate them
@@ -230,11 +213,6 @@ use LaTeXML::Package;
                            \PassOptionsToPackage{\CurrentOption}{mikoslides}}
 \ProcessOptions
 %</cls>
-%<*ltxml.cls>
-DeclareOption(undef, sub {PassOptions('omdoc','cls',ToString(Digest(T_CS('\CurrentOption'))));
-                                          PassOptions('mikoslides','sty',ToString(Digest(T_CS('\CurrentOption'))));});
-ProcessOptions();
-%</ltxml.cls>
 %    \end{macrocode}
 % now we do the same for the |mikoslides| package. Note that we also have to define the
 % same switches\ednote{MK: we may think about making all of them internal}, since we might
@@ -263,21 +241,6 @@ ProcessOptions();
                            \PassOptionsToPackage{\CurrentOption}{tikzinput}}
 \ProcessOptions
 %</package>
-%<*ltxml.sty>
-DeclareOption('notes', '');
-DeclareOption('slides', '');
-DeclareOption('noproblems', '');
-DeclareOption('sectocframes', '');
-DeclareOption('frameimages', '');
-DeclareOption('mh', sub { AssignValue ('@mikoslides' => 1,'global');
-                       PassOptions('stex','sty',ToString(Digest(T_CS('\CurrentOption'))));
-                       PassOptions('tikzinput','sty',ToString(Digest(T_CS('\CurrentOption'))));});
-DeclareOption(undef, sub {PassOptions('stex','sty',ToString(Digest(T_CS('\CurrentOption'))));
-                                          PassOptions('tikzinput','sty',ToString(Digest(T_CS('\CurrentOption')))); });
-ProcessOptions();
-RawTeX('\newif\ifnotes\notesfalse');
-RawTeX('\newif\ifproblems\problemsfalse');
-%</ltxml.sty>
 %    \end{macrocode}
 %
 % Depending on the options, we either load the |article|-based |omdoc| or the |beamer|
@@ -304,11 +267,6 @@ RawTeX('\newif\ifproblems\problemsfalse');
 \fi
 \RequirePackage{mikoslides}
 %</cls>
-%<*ltxml.cls>
-LoadClass('omdoc');
-RequirePackage('mikoslides');
-DefConstructor('\usetheme{}','');
-%</ltxml.cls>
 %    \end{macrocode}
 % 
 % now, we load the remaining packages for both versions. 
@@ -325,16 +283,6 @@ DefConstructor('\usetheme{}','');
 \RequirePackage{textcomp}
 \RequirePackage{url}
 %</package>
-%<*ltxml.sty>
-if(LookupValue('@mikoslides')) {RequirePackage('mikoslides-mh');}		
-RequirePackage('stex'); 
-RequirePackage('smglom');
-RequirePackage('tikzinput', options => ['image']); 
-RequirePackage('amssymb');
-RequirePackage('amsmath');
-RequirePackage('graphicx');
-RequirePackage('url');
-%</ltxml.sty>
 %    \end{macrocode}
 % 
 % \subsection{Notes and Slides}\label{sec:impl:noteslides}
@@ -348,10 +296,6 @@ RequirePackage('url');
 \newlength{\slidewidth}\setlength{\slidewidth}{12.8cm}
 \newlength{\slideheight}\setlength{\slideheight}{9cm}
 %</package>
-%<*ltxml.sty>
-DefRegister('\slidewidth'     => Dimension('13.6cm'));
-DefRegister('\slideheight'     => Dimension('9cm'));
-%</ltxml.sty>
 %    \end{macrocode}
 % 
 % \begin{environment}{note}
@@ -367,9 +311,6 @@ DefRegister('\slideheight'     => Dimension('9cm'));
   \excludecomment{note}%
 \fi%
 %</package>
-%<*ltxml.sty>
-DefEnvironment('{note}','#body');
-%</ltxml.sty>
 %    \end{macrocode}
 % \end{environment}
 % 
@@ -442,14 +383,6 @@ DefEnvironment('{note}','#body');
     \medskip\miko@slidelabel\end{mdframed}%
   }%
 %</package>
-%<*ltxml.sty>
-DefEnvironment('{frame}[]',
-   "<omdoc:omgroup layout='slide'>"
-  .  "#body\n"
-  ."</omdoc:omgroup>\n\n",
- afterDigestBegin=>sub {
-   $_[1]->setProperty(theory=>LookupValue('current_module')); });
-%</ltxml.sty>#$
 %    \end{macrocode}
 % \end{environment}
 % 
@@ -460,10 +393,6 @@ DefEnvironment('{frame}[]',
   \renewcommand{\frametitle}[1]{{\Large\bf\sf\color{blue}{#1}}\medskip}%
 \fi %ifnotes
 %</package>
-%<*ltxml.sty>
-DefConstructor('\frametitle{}',
-  "\n<omdoc:metadata><dc:title>#1</dc:title></omdoc:metadata>");
-%</ltxml.sty>
 %    \end{macrocode}
 % \end{macro}
 % 
@@ -492,10 +421,6 @@ DefConstructor('\frametitle{}',
   \fi%
 }% ifframeimages
 %</package>
-%<*ltxml.sty>
-DefMacro('\frameimage[]{}','\@frameimage{\includegrahics[#1,width=\slidewidth]{#2}}');
-DefConstructor('\@frameimage{}',"<omdoc:omgroup layout='slide'>#1</omdoc:omgroup>\n");
-%</ltxml.sty>
 %    \end{macrocode}
 % \end{macro}
 % 
@@ -599,10 +524,6 @@ DefConstructor('\@frameimage{}',"<omdoc:omgroup layout='slide'>#1</omdoc:omgroup
 \def\stDMemph#1{{\textcolor{blue}{#1}}}
 \def\@@lec#1{(\textcolor{green}{#1})}
 %</package>
-%<*ltxml.sty>
-#DefMacro('\defemph{}','{\textcolor{magenta}{#1}}');
-#DefMacro('\notemph{}','{\textcolor{magenta}{#1}}');
-%</ltxml.sty>
 %    \end{macrocode}
 %
 % I like to use the dangerous bend symbol for warnings, so we provide it here.
@@ -627,10 +548,6 @@ DefConstructor('\@frameimage{}',"<omdoc:omgroup layout='slide'>#1</omdoc:omgroup
   \xspace%
 }%
 %</package>
-%<*ltxml.sty>
-DefMacro('\textwarning','\@textwarning\xspace');
-DefConstructor('\@textwarning',"");
-%</ltxml.sty>
 %    \end{macrocode}
 % \end{macro}
 % 
@@ -639,11 +556,6 @@ DefConstructor('\@textwarning',"");
 % We need to redefine the frontmatter macros inherited from the |beamer| class for
 % LaTeXML, since there they take an optional argument.
 %    \begin{macrocode}
-%<*ltxml.sty>
-DefMacro('\title[]{}', '\@add@frontmatter{ltx:title}{#1}');
-DefMacro('\date[]{}', '\@add@frontmatter{ltx:date}[role=creation]{#1}');
-DefMacro('\author[]{}', sub { andSplit(T_CS('\@author'),$_[1]); });#$
-%</ltxml.sty>
 %    \end{macrocode}
 %    \begin{macrocode}
 %      Must be first command on slide to make positioning work.
@@ -730,71 +642,9 @@ DefMacro('\author[]{}', sub { andSplit(T_CS('\@author'),$_[1]); });#$
   }%
 \fi%
 %</package>
-%<*ltxml.sty>
-DefEnvironment('{columns}',"#body");
-DefEnvironment('{column}{}',"#body");
-%    \end{macrocode}
-%
-% We also need to deal with overlay specifications introduced by the |beamer|
-% class.\ednote{this is just to keep latexml quiet, no real functionality here.}
-%
-% \ednote{Deyan: We reuse the CMP itemizations defined in the omdoc.cls.ltxml binding,
-%   adjusting the parameters to be overlay-sensitive }
-%    \begin{macrocode}
-DefConstructor('\uncover','#1');
-#Define a Beamer Overlay Parameter type
- DefParameterType('BeamerOverlay', sub {
-   my ($gullet) = @_;
-   my $tok = $gullet->readXToken;
-   if (ref $tok && ToString($tok) eq '<') {
-     $gullet->readUntil(T_OTHER('>'));
-   } else {
-     $gullet->unread($tok) if ref $tok;
-     undef; }},
-     reversion=> sub {
- (T_OTHER('<'), $_[0]->revert, T_OTHER('>'));
-       });
-
-#Take the "from" field of the overlay range
-sub overlayFrom {
-  return "" unless defined $_[0];
-  my $overlay=ToString($_[0]); $overlay =~ /^(\d+)/; $1;}
-
-#Reuse the CMP itemizations, only adjust the \item constructors.
-DefMacro('\beamer@group@item[] OptionalBeamerOverlay IfBeginFollows', sub {
-  my($gullet,$tag,$overlay,$needwrapper)=@_;
-  $overlay=$overlay||T_OTHER("");
-  ( T_CS('\group@item@maybe@unwrap'),
-    ($needwrapper ? (Invocation(T_CS('\beamer@group@item@wrap'),$tag,$overlay)->unlist) : ()) ); });
-DefConstructor('\beamer@group@item@wrap {} OptionalBeamerOverlay',
-       "<omdoc:omtext ?#2(overlay='&overlayFrom(#2)')()>"
-       . "?#1(<dc:title>#1</dc:title>)()"
-             . "<omdoc:CMP>",
-       beforeDigest=>sub {
- Let('\group@item@maybe@unwrap','\group@item@unwrap');
- #$_[0]->bgroup;
-return; },
-       properties=>sub{ RefStepItemCounter(); });
-#DefConstructor('\beamer@itemize@item[] OptionalBeamerOverlay',
-#       "<omdoc:li ?#2(overlay='&overlayFrom(#2)')() >"
-#     . "?#1(<dc:title>#1</dc:title>)()",
-#       properties=>sub{ RefStepItemCounter(); });
-DefConstructor('\beamer@enumerate@item[] OptionalBeamerOverlay',
-       "<omdoc:li ?#2(overlay='&overlayFrom(#2)')() >"
-     . "?#1(<dc:title>#1</dc:title>)()",
-       properties=>sub{ RefStepItemCounter(); });
-DefConstructor('\beamer@description@item[] OptionalBeamerOverlay',
-       "<omdoc:di ?#2(overlay='&overlayFrom(#2)')() >"
-       . "?#1(<omdoc:dt>#1</omdoc:dt>)()<omdoc:dd>", # trust di and dt to autoclose
-       properties=>sub{ RefStepItemCounter(); });
-%</ltxml.sty>#$
 %    \end{macrocode}
 % Now, some things that are imported from the |pgf| and |beamer| packages: 
 %    \begin{macrocode}
-%<*ltxml.sty>
-DefMacro('\putgraphicsat{}{}{}','\mygraphics[#2]{#3}');
-DefMacro('\putat{}{}','#2');
-%</ltxml.sty>
 %    \end{macrocode}
 % 
 %
@@ -806,18 +656,6 @@ DefMacro('\putat{}{}','#2');
   \excludecomment{problems}%
 \fi%
 %</package>
-%<*ltxml.sty>
-DefEnvironment('{problems}','#body');
-%</ltxml.sty>
-%    \end{macrocode}
-%
-% \subsection{Finale}
-%
-% Finally, we set the slide body font to the sans serif, and we terminate the {\latexml}
-% bindings file with a success mark for perl.
-%    \begin{macrocode}
-%<package>\ifnotes\else\sf\fi
-%<ltxml.sty|ltxml.cls>1;
 %    \end{macrocode}
 % \Finale
 \endinput

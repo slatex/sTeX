@@ -156,15 +156,6 @@
 % the |document| environment and the |ontology| element corresponds to it, whereas the
 % package provides the concrete functionality.
 % 
-% |owl2onto.dtx| generates four files: |owl2onto.cls| (all the code between
-% {\textsf{$\langle$*cls$\rangle$}} and {\textsf{$\langle$/cls$\rangle$}}), |owl2onto.sty|
-% (between {\textsf{$\langle$*package$\rangle$}} and
-% {\textsf{$\langle$/package$\rangle$}}) and their {\latexml} bindings (between
-% {\textsf{$\langle$*ltxml.cls$\rangle$}} and {\textsf{$\langle$/ltxml.cls$\rangle$}} and
-% {\textsf{$\langle$*ltxml.sty$\rangle$}} and {\textsf{$\langle$/ltxml.sty$\rangle$
-% respetively}}). We keep the corresponding code fragments together, since the
-% documentation applies to both of them and to prevent them from getting out of sync.
-%
 % \subsection{The \texttt{owl2onto} Class}
 % 
 % We first define the |owl2onto| class, which on the {\LaTeX} side just calls the article
@@ -178,43 +169,6 @@
 \RequirePackage{modules}
 \RequirePackage{owl2onto}
 %</cls>
-%<*cltxml>
-# -*- CPERL -*-
-package LaTeXML::Package::Pool;
-use strict;
-use LaTeXML::Global;
-use LaTeXML::Package;
-DeclareOption('showmeta',sub {PassOptions('metakeys','sty',ToString(Digest(T_CS('\CurrentOption')))); });
-DeclareOption(undef,sub {PassOptions('article','cls',ToString(Digest(T_CS('\CurrentOption')))); });		 
-ProcessOptions();	
-LoadClass('article');
-RequirePackage('modules');
-RequirePackage('owl2onto');
-%</cltxml>
-%    \end{macrocode}
-% 
-% Now, we also need to register the namespace prefixes for {\latexml} to use. 
-% 
-%    \begin{macrocode}
-%<*cltxml>
-RegisterNamespace('owl'=>"http://www.w3.org/2002/07/owl#");
-RegisterNamespace('stex'=>"http://kwarc.info/ns/sTeX");
-RegisterNamespace('ltx'=>"http://dlmf.nist.gov/LaTeXML");
-RegisterNamespace('omdoc'=>"http://omdoc.org/ns");
-%</cltxml>
-%    \end{macrocode}
-% 
-% Since we are dealing with a class, we need to set up the document type in the {\latexml}
-% bindings.
-% 
-%    \begin{macrocode}
-%<*cltxml>
-RelaxNGSchema('owl2+ltxml',
-        '#default'=>"http://www.w3.org/2002/07/owl#",
-        'omdoc'=>"http://omdoc.org/ns",
-        'ltx'=>"http://dlmf.nist.gov/LaTeXML",
-        'stex'=>"http://kwarc.info/ns/sTeX");
-%</cltxml>
 %    \end{macrocode}
 % 
 % The |owl2onto| class also supplies the top-level |document| environment, which we
@@ -233,17 +187,6 @@ RelaxNGSchema('owl2+ltxml',
 \ifx\sref@id\@empty\begin{module}\else\begin{module}[id=\sref@id]\fi}
 \newcommand\endontology{\end{module}\enddocument}
 %</cls>
-%<*cltxml>
-DefEnvironment('{ontology} OptionalKeyVals:omdoc',
-	       "<owl:Ontology "
-	      .    "?&GetKeyVal(#1,'id')(xml:id='&GetKeyVal(#1,'id')')() "
-              .    "?&GetKeyVal(#1,'baseURI')(xml:base='&GetKeyVal(#1,'baseURI')/')() "
-              .    "?&GetKeyVal(#1,'baseURI')(ontologyIRI='&GetKeyVal(#1,'baseURI')')()>"
-             .   "#body"
-	      ."</owl:Ontology>",
-	       beforeDigest=> sub { AssignValue(inPreamble=>0); },
-	       afterDigest=> sub { $_[0]->getGullet->flush; return; });#$
-%</cltxml>
 %    \end{macrocode}
 % \end{environment}
 % 
@@ -258,13 +201,6 @@ DefEnvironment('{ontology} OptionalKeyVals:omdoc',
 \RequirePackage{amstext}
 \RequirePackage{presentation}
 %</package>
-%<*sltxml>
-# -*- CPERL -*-
-package LaTeXML::Package::Pool;
-use strict;
-use LaTeXML::Global;
-use LaTeXML::Package;
-%</sltxml>
 %    \end{macrocode}
 %
 % We first ste up a utility macro that allows us to export values
@@ -293,32 +229,6 @@ use LaTeXML::Package;
 \fi
 \noindent\textbf{\declaration@type: \declaration@name}\par\noindent #2\par\noindent}
 %</package>
-%<*sltxml>
-DefMacro('\declaration OptionalKeyVals:declaration {}', sub {
- my ($self,@args)=@_;
- my $name = ToString(KeyVal($args[0],'name')) if $args[0];
- my $cseq = ToString(KeyVal($args[0],'cseq')) if $args[0];
- DefConstructor("\\".$cseq,"<XMTok name='$name'/>",
-		properties=>{mode=>'math',requiremath=>1}) 
-                if ($cseq && $name);
- (Invocation(T_CS('\@declaration'),@args)->unlist);
-});
-DefConstructor('\@declaration OptionalKeyVals:declaration {}', sub {
-  my ($document, $keyval, $arg, %properties) = @_;
-  my $type = ToString(KeyVal($keyval,'type'));
-  my $name = ToString(KeyVal($keyval,'name'));
-  $document->openElement('owl:Declaration');
-  $document->insertElement('owl:'.$type,undef,(IRI=>$name)) if $type;
-  $document->closeElement('owl:Declaration');
-  if (defined $arg) {
-    $document->openElement('owl:AnnotationAssertion');
-    $document->insertElement('owl:AnnotationProperty',undef,(IRI=>'http://www.w3.org/2000/01/rdf-schema#comment'));
-    $document->insertElement('owl:IRI',$name);
-    $document->insertElement('owl:Literal',$arg);
-    $document->closeElement('owl:AnnotationAssertion');
-  }
-});#$
-%</sltxml>
 %    \end{macrocode}
 % \end{macro}
 % 
@@ -332,15 +242,6 @@ DefConstructor('\@declaration OptionalKeyVals:declaration {}', sub {
 \newcommand\axiom[3][]{\metasetkeys{axiom}{#1}%
 \noindent\textbf{Axiom:} #2\par\noindent #3\par\noindent}
 %</package>
-%<*sltxml>
-DefConstructor('\axiom OptionalKeyVals:axiom {}{}',
-           "<owl:Axiom>#2"
-          ."?#3(<owl:Annotation>"
-          .      "<owl:AnnotationProperty IRI='http://www.w3.org/2000/01/rdf-schema#comment'/>"
-          .      "<owl:Literal>#3</owl:Literal>"
-          .    "</owl:Annotation>)()"
-          ."</owl:Axiom>");
-%</sltxml>
 %    \end{macrocode}
 % \end{macro}
 % 
@@ -353,30 +254,6 @@ DefConstructor('\axiom OptionalKeyVals:axiom {}{}',
 %</package>
 %    \end{macrocode}
 % \end{macro}
-% 
-% \subsection{Providing IDs}\label{sec:impl:ids}
-%
-% To provide default identifiers, we tag all \omdoc
-% elements that allow |xml:id| attributes by executing the |numberIt| procedure from |omdoc.sty.ltxml|.
-% 
-%    \begin{macrocode}
-%<*ltxml>
-Tag('owl:Ontology',afterOpen=>\&numberIt,afterClose=>\&locateIt);
-Tag('owl:Declaration',afterOpen=>\&numberIt,afterClose=>\&locateIt);
-Tag('owl:AnnotationAssertion',afterOpen=>\&numberIt,afterClose=>\&locateIt);
-Tag('owl:AnnotationProperty',afterOpen=>\&numberIt,afterClose=>\&locateIt);
-Tag('owl:IRI',afterOpen=>\&numberIt,afterClose=>\&locateIt);
-Tag('owl:Literal',afterOpen=>\&numberIt,afterClose=>\&locateIt);
-Tag('owl:Axiom',afterOpen=>\&numberIt,afterClose=>\&locateIt);
-%</ltxml>
-%    \end{macrocode}
-%
-% \subsection{Finale}
-%
-% Finally, we need to terminate the file with a success mark for perl.
-%    \begin{macrocode}
-%<cltxml|sltxml>1;
-%    \end{macrocode}
 % \Finale
 \endinput
 % \iffalse

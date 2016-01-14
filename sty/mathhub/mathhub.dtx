@@ -210,35 +210,13 @@
 %
 % \section{Implementation}\label{sec:impl}
 %
-% The |sref| package generates two files: the {\LaTeX} package (all the code between
-% {\textsf{$\langle$*package$\rangle$}} and {\textsf{$\langle$/package$\rangle$}}) and the
-% {\latexml} bindings (between {\textsf{$\langle$*ltxml$\rangle$ and
-%     $\langle$/ltxml$\rangle$}}). We keep the corresponding code fragments together,
-% since the documentation applies to both of them and to prevent them from getting out of
-% sync.
-%
-% We first set up header information for the {\latexml} binding files an the base package.
-%    \begin{macrocode}
-%<*ltxml|modules.ltxml|structview.ltxml|omtext.ltxml|smultiling.ltxml|mikoslides.ltxml|problem.ltxml|hwexam.ltxml|tikzinput.ltxml>
-# -*- CPERL -*-
-package LaTeXML::Package::Pool;
-use strict;
-use LaTeXML::Package;
-use LaTeXML::Util::Pathname;
-%</ltxml|modules.ltxml|structview.ltxml|omtext.ltxml|smultiling.ltxml|mikoslides.ltxml|problem.ltxml|hwexam.ltxml|tikzinput.ltxml>
-%<package>\ProvidesPackage{mathhub}[2015/11/22 v1.0 sTeX Support for MathHub.info]
-%    \end{macrocode}
-% 
-% Then we need to set up the packages by requiring the |metakeys| package~\ctancite{Kohlhase:metakeys}
-% to be loaded (in the right version).
+% We need to set up the packages by requiring the |metakeys|
+% package~\ctancite{Kohlhase:metakeys} to be loaded (in the right version).
 %
 %    \begin{macrocode}
 %<*package>
 \RequirePackage{keyval}
 %</package>
-%<*ltxml>  
-RequirePackage('keyval');
-%</ltxml> 
 %    \end{macrocode}
 % 
 % \subsection{General Infrastructure}
@@ -261,12 +239,6 @@ RequirePackage('keyval');
 }%
 \newcommand\@mhcurrentrepos[1]{\edef\mh@currentrepos{#1}}%
 %</package>
-%<*ltxml>
-DefMacro('\mhcurrentrepos{}','\@mhcurrentrepos{#1}');
-DefMacro('\@mhcurrentrepos{}','\def\mh@currentrepos{#1}\@@mhcurrentrepos{#1}');
-DefConstructor('\@@mhcurrentrepos{}','',
-  afterDigest => sub{ AssignValue('current_repos',ToString($_[1]->getArg(1)),'global'); } );
-%</ltxml>#$
 %    \end{macrocode}
 % \end{macro}
 % \begin{macro}{\libinput}
@@ -285,23 +257,6 @@ DefConstructor('\@@mhcurrentrepos{}','',
     Both \@libfile.tex\MessageBreak and \@inffile.tex\MessageBreak do not exist}%
   {Check whether the file name is correct}}}}
 %</package>
-%<*ltxml>
-DefMacro('\modules@@first#1/#2;','#1');
-DefMacro('\libinput {}', sub{
-    my ($gullet, $name) = @_;
-    my $mathhub_base = ToString(Digest('\MathHub{}'));
-    my $repos = LookupValue('current_repos');
-    # file name to search for
-    $name = ToString($name);
-    #Relative paths for recursive search
-    my $reponame = substr($repos, 0, index($repos, '/'));
-    my $FIRSTLIB = $mathhub_base . $repos . '/lib' ;
-    my $SECONDLIB = $mathhub_base . $reponame . '/meta-inf/lib';
-    my $file = pathname_find($name, types => ['tex'], paths =>[$FIRSTLIB]);
-    $file = pathname_find($name, types=>['tex'], paths=>[$SECONDLIB]) unless $file;
-    # Singal error if the file cannot be found
-    LaTeXML::Package::InputContent($file, noerror=>1); });
-%</ltxml>
 %    \end{macrocode}
 % \end{macro}
 %
@@ -314,9 +269,6 @@ DefMacro('\libinput {}', sub{
 \ProvidesPackage{modules-mh}[2015/11/22 v1.0 MathHub support for the sTeX modules package]
 \RequirePackage{mathhub}
 %</modules>
-%<*modules.ltxml>
-RequirePackage('mathhub');
-%</modules.ltxml>
 %    \end{macrocode}
 %
 % \begin{macro}{\importmhmodule}
@@ -351,41 +303,6 @@ RequirePackage('mathhub');
   \ignorespaces%
 }%
 %</modules>
-%<*modules.ltxml>
-DefKeyVal('importmhmodule','id','Semiverbatim');
-DefKeyVal('importmhmodule','repos','Semiverbatim');
-DefKeyVal('importmhmodule','path','Semiverbatim');
-DefKeyVal('importmhmodule','ext','Semiverbatim');
-DefKeyVal('importmhmodule','conservative','Semiverbatim');
-DefConstructor('\importmhmodule OptionalKeyVals:importmhmodule Semiverbatim',
-	       "<omdoc:imports "
-	       . "from='?&GetKeyVal(#1,'load')(&canonical_omdoc_path(&GetKeyVal(#1,'load')))()###2'"
-               . "?&defined(&GetKeyVal(#1,'conservative'))(load='&GetKeyVal(#1,'conservative')')()/>",
-   afterDigest => \&importMHmoduleI);
-
-sub importMHmoduleI {
-  my ($stomach, $whatsit) = @_;
-  my $keyval = $whatsit->getArg(1);
-  my $id = $whatsit->getArg(2);
-  if ($keyval) {
-    my $repos = ToString($keyval->getValue('repos'));
-    my $path = ToString($keyval->getValue('path'));
-    my $current_repos = LookupValue('current_repos');
-    if (!$repos) { # Use the implicit current repository
-      $repos = $current_repos; }
-    my $defpaths = LookupValue('defpath');
-    my $load_path = ($$defpaths{MathHub}).$repos.'/source/'.$path;
-    $keyval->setValue('load',$load_path);
-    AssignValue('current_repos' => $repos, 'global');
-    importmoduleI($stomach,$whatsit);
-    AssignValue('current_repos' => $current_repos, 'global'); }
-  else {
-    importmoduleI($stomach,$whatsit);  }
-  return; }
-
-DefConstructor('\importMHmoduleI OptionalKeyVals:importmhmodule Semiverbatim', '',
-   afterDigest=> \&importMHmoduleI );#$
-%</modules.ltxml>
 %    \end{macrocode}
 % \end{macro}
 % and now the analogs
@@ -408,18 +325,12 @@ DefConstructor('\importMHmoduleI OptionalKeyVals:importmhmodule Semiverbatim', '
   \ignorespaces%
 }%
 %</modules>
-%<*modules.ltxml>
-DefConstructor('\usemhmodule OptionalKeyVals:importmhmodule Semiverbatim',
-   "<omdoc:uses from='?&GetKeyVal(#1,'load')(&canonical_omdoc_path(&GetKeyVal(#1,'load')))()###2'/>",
-   afterDigest => \&importMHmoduleI);
-%</modules.ltxml>
 %    \end{macrocode}
 % \end{macro}
 %
 % \begin{macro}{\mhinputref}
 %    \begin{macrocode}
-%<modules.ltxml>RawTeX('
-%<*modules|modules.ltxml>
+%<*modules>
 \newcommand\mhinputref[2][]{%
   \def\@repos{#1}%
   \edef\mh@@repos{\mh@currentrepos}%
@@ -431,8 +342,7 @@ DefConstructor('\usemhmodule OptionalKeyVals:importmhmodule Semiverbatim',
   \mhcurrentrepos\mh@@repos%
   \ignorespaces%
 }%
-%</modules|modules.ltxml>
-%<modules.ltxml>');
+%</modules>
 %    \end{macrocode}
 % \end{macro}
 %
@@ -453,9 +363,6 @@ DefConstructor('\usemhmodule OptionalKeyVals:importmhmodule Semiverbatim',
 \ProvidesPackage{omtext-mh}[2015/11/22 v1.0 MathHub support for the sTeX omtext package]
 \RequirePackage{mathhub}
 %</omtext>
-%<*omtext.ltxml>
-RequirePackage('mathhub');
-%</omtext.ltxml>
 %    \end{macrocode}
 %
 % \begin{macro}{\mh*graphics}
@@ -475,24 +382,6 @@ RequirePackage('mathhub');
 \newcommand\mhbgraphics[2][]{\fbox{\mhgraphics[#1]{#2}}}
 \newcommand\mhcbgraphics[2][]{\begin{center}\fbox{\mhgraphics[#1]{#2}}\end{center}}
 %</omtext>
-%<*omtext.ltxml>
-sub mhgraphics {
-  my ($gullet,$keyval,$arg2) = @_;
-  my $repo_path;
-  if ($keyval) {
-    $repo_path = ToString(GetKeyVal($keyval,'mhrepos')); }
-  if (! $repo_path) {
-    $repo_path = ToString(Digest(T_CS('\mh@currentrepos'))); }
-  else {
-    $keyval->setValue('mhrepos',undef); }
-  my $mathhub_base = ToString(Digest('\MathHub{}'));
-  my $finalpath = $mathhub_base.$repo_path.'/source/'.ToString($arg2);
-  return Invocation(T_CS('\@includegraphicx'), $keyval, T_OTHER($finalpath)); }#$
-DefKeyVal('Gin','mhrepos','Semiverbatim');
-DefMacro('\mhgraphics OptionalKeyVals:Gin {}', \&mhgraphics);
-DefMacro('\mhcgraphics []{}','\begin{center}\mhgraphics[#1]{#2}\end{center}');
-DefMacro('\mhbgraphics []{}','\fbox{\mhgraphics[#1]{#2}}');
-%</omtext.ltxml>
 %    \end{macrocode}
 % \end{macro}
 % 
@@ -505,9 +394,6 @@ DefMacro('\mhbgraphics []{}','\fbox{\mhgraphics[#1]{#2}}');
 \ProvidesPackage{smultiling-mh}[2015/11/22 v1.0 MathHub support for the sTeX smultiling package]
 \RequirePackage{mathhub}
 %</smultiling>
-%<*smultiling.ltxml>
-RequirePackage('mathhub');
-%</smultiling.ltxml>
 %    \end{macrocode}
 %
 % \begin{macro}{mhmodnl:*}
@@ -521,14 +407,6 @@ RequirePackage('mathhub');
 \addmetakey{mhmodnl}{srccite}
 \addmetakey{primary}{mhmodnl}[yes]
 %</smultiling>
-%<*smultiling.ltxml>
-DefKeyVal('mhmodnl','title','Semiverbatim');
-DefKeyVal('mhmodnl','repos','Semiverbatim'); 
-DefKeyVal('mhmodnl','path','Semiverbatim'); 
-DefKeyVal('mhmodnl','creators','Semiverbatim');
-DefKeyVal('mhmodnl','contributors','Semiverbatim');
-DefKeyVal('mhmodnl','primary','Semiverbatim');
-%</smultiling.ltxml>
 %    \end{macrocode}
 % \end{macro}
 %
@@ -545,40 +423,6 @@ DefKeyVal('mhmodnl','primary','Semiverbatim');
 \fi}
 {\end{module}}
 %</smultiling>
-%<*smultiling.ltxml>
-DefEnvironment('{mhmodnl} OptionalKeyVals:mhmodnl Semiverbatim Semiverbatim',
-         "?#excluded()(<omdoc:theory xml:id='#2.#3' >"
-         .   "?&defined(&GetKeyVal(#1,'creators'))(<dc:creator>&GetKeyVal(#1,'creators')</dc:creator>)()"
-         .   "?&defined(&GetKeyVal(#1,'title'))(<dc:title>&GetKeyVal(#1,'title')</dc:title>)()"
-         .   "?&defined(&GetKeyVal(#1,'contributors'))(<dc:contributor>&GetKeyVal(#1,'contributors')</dc:contributor>)()"
-         .   "<omdoc:imports from='?&GetKeyVal(#1,'load')(&canonical_omdoc_path(&GetKeyVal(#1,'load')))()###2'/>"
-         .   "#body"
-         . "</omdoc:theory>)",
-  afterDigestBegin=>sub {
-    my ($stomach, $whatsit) = @_;
-    my $keyval = $whatsit->getArg(1);
-    my $signature = ToString($whatsit->getArg(2));
-    my $language = ToString($whatsit->getArg(3));
-    my $repos = ToString(GetKeyVal($keyval,'torepos'));
-    my $current_repos = LookupValue('current_repos');
-    if (!$repos) { $repos = $current_repos; }
-    my $defpaths = LookupValue('defpath');
-    my $load_path = ($$defpaths{MathHub}).$repos.'/source/'.$signature;
-
-    if ($keyval) {
-      # If we're not given load, AND the langfiles option is in effect,
-      # default to #2
-      if ((! $keyval->getValue('path')) && (LookupValue('smultiling_langfiles'))) {
-        $keyval->setValue('load',$load_path); }
-      # Always load a TeX file
-      $keyval->setValue('ext','tex');
-      $keyval->setValue('id',"$signature.$language"); }
-    module_afterDigestBegin(@_);
-    importmoduleI(@_);
-    return; },
-  afterDigest=>sub {
-    module_afterDigest(@_); });
-%</smultiling.ltxml>%$
 %    \end{macrocode}
 % \end{environment}
 %
@@ -586,8 +430,7 @@ DefEnvironment('{mhmodnl} OptionalKeyVals:mhmodnl Semiverbatim Semiverbatim',
 %   The |mhviewsig| environment is just a layer over the |mhview| environment with the keys
 %   suitably adapted.
 %    \begin{macrocode}
-%<smultiling.ltxml>RawTeX('
-%<*smultiling|smultiling.ltxml>
+%<*smultiling>
 \newenvironment{mhviewsig}[4][]{\def\@test{#1}\ifx\@test\@empty%
 \begin{mhview}[id=#2,ext=tex]{#3}{#4}\else%
 \begin{mhview}[id=#2,#1,ext=tex]{#3}{#4}\fi}
@@ -605,8 +448,7 @@ DefEnvironment('{mhmodnl} OptionalKeyVals:mhmodnl Semiverbatim Semiverbatim',
 \begin{mhviewsketch}[id=#2.#3,ext=tex]{#4}{#5}\else%
 \begin{mhviewsketch}[id=#2.#3,#1,ext=tex]{#4}{#5}\fi}
 {\end{mhviewsketch}}
-%</smultiling|smultiling.ltxml>
-%<smultiling.ltxml>');
+%</smultiling>
 %    \end{macrocode}
 % \end{environment}
 %
@@ -620,23 +462,18 @@ DefEnvironment('{mhmodnl} OptionalKeyVals:mhmodnl Semiverbatim Semiverbatim',
 \ProvidesPackage{structview-mh}[2015/11/22 v1.0 MathHub support for the sTeX structview package]
 \RequirePackage{mathhub}
 %</structview>
-%<*structview.ltxml>
-RequirePackage('mathhub');
-%</structview.ltxml>
 %    \end{macrocode}
 %
 % \begin{environment}{importmhmodulevia}
 %    \begin{macrocode}
-%<structview.ltxml>RawTeX('
-%<*structview|structview.ltxml>
+%<*structview>
 \newenvironment{importmhmodulevia}[3][]{%
   \gdef\@@doit{\importmhmodule[#1]{#2}{#3}}%
   \ifmod@show\par\noindent importing module #2 via \@@doit\fi
 }{%
   \aftergroup\@@doit\ifmod@show end import\fi%
 }%
-%</structview|structview.ltxml>
-%<structview.ltxml>');
+%</structview>
 %    \end{macrocode}
 % \end{environment}
 %
@@ -654,19 +491,6 @@ RequirePackage('mathhub');
 \addmetakey{mhview}{topath}
 \addmetakey[sms]{mhview}{ext}
 %</structview>
-%<*structview.ltxml>
-DefKeyVal('mhview','id','Semiverbatim');
-DefKeyVal('mhview','display','Semiverbatim'); 
-DefKeyVal('mhview','creators','Semiverbatim'); 
-DefKeyVal('mhview','contributors','Semiverbatim'); 
-DefKeyVal('mhview','srccite','Semiverbatim');
-DefKeyVal('mhview','title','Semiverbatim');
-DefKeyVal('mhview','fromrepos','Semiverbatim');
-DefKeyVal('mhview','torepos','Semiverbatim');
-DefKeyVal('mhview','frompath','Semiverbatim');
-DefKeyVal('mhview','topath','Semiverbatim');
-DefKeyVal('mhview','ext','Semiverbatim');
-%</structview.ltxml>
 %    \end{macrocode}
 %
 % \begin{environment}{mhview}
@@ -684,31 +508,6 @@ DefKeyVal('mhview','ext','Semiverbatim');
 }%
 \ifmod@show\surroundwithmdframed{mhview}\fi
 %</structview>
-%<*structview.ltxml>
-DefMacroI(T_CS('\begin{mhview}'),'OptionalKeyVals:mhview {}{}', sub {
-  my ($gullet, $keyvals, $from_arg, $to_arg) = @_;
-  my $from = ToString(Digest($from_arg));
-  my $to = ToString(Digest($to_arg));
-  AssignValue(from_module => $from);
-  AssignValue(to_module => $to);
-  my $from_repos = ToString(GetKeyVal($keyvals,'fromrepos'));
-  my $to_repos = ToString(GetKeyVal($keyvals,'torepos'));
-  my $repos = LookupValue('current_repos');
-  my $from_path = ToString(GetKeyVal($keyvals,'frompath'));
-  my $to_path = ToString(GetKeyVal($keyvals,'topath'));
-  my $ext = ToString(GetKeyVal($keyvals,'ext')) if $keyvals;
-  $ext = 'sms' unless $ext;
-  my $current_repos = LookupValue('current_repos');
-  if (!$from_repos) { $from_repos = $current_repos; }
-  if (!$to_repos) { $to_repos = $current_repos; }
-  return (
-    Tokenize("\\importMHmoduleI[repos=$from_repos,path=$from_path,ext=$ext]{$from}")->unlist,
-    Tokenize("\\importMHmoduleI[repos=$to_repos,path=$to_path,ext=$ext]{$to}")->unlist,
-    Invocation(T_CS('\begin{viewenv}'),$keyvals,$from_arg,$to_arg)->unlist
-  );
-}); 
-DefMacroI('\end{mhview}',undef,'\end{viewenv}');
-%</structview.ltxml>
 %    \end{macrocode}
 % \end{environment}
 %
@@ -739,29 +538,6 @@ DefMacroI('\end{mhview}',undef,'\end{viewenv}');
 }%
 \ifmod@show\surroundwithmdframed{mhviewsketch}\fi
 %</structview>
-%<*structview.ltxml>
-DefMacroI(T_CS('\begin{mhviewsketch}'),'OptionalKeyVals:mhview {}{}', sub {
-  my ($gullet, $keyvals, $from_arg, $to_arg) = @_;
-  my $from = ToString(Digest($from_arg));
-  my $to = ToString(Digest($to_arg));
-  my $from_repos = ToString(GetKeyVal($keyvals,'fromrepos'));
-  my $to_repos = ToString(GetKeyVal($keyvals,'torepos'));
-  my $repos = LookupValue('current_repos');
-  my $from_path = ToString(GetKeyVal($keyvals,'frompath'));
-  my $to_path = ToString(GetKeyVal($keyvals,'topath'));
-  my $ext = ToString(GetKeyVal($keyvals,'ext')) if $keyvals;
-  $ext = 'sms' unless $ext;
-  my $current_repos = LookupValue('current_repos');
-  if (!$from_repos) { $from_repos = $current_repos; }
-  if (!$to_repos) { $to_repos = $current_repos; }
-  return (
-    Tokenize("\\importMHmoduleI[repos=$from_repos,path=$from_path,ext=$ext]{$from}")->unlist,
-    Tokenize("\\importMHmoduleI[repos=$to_repos,path=$to_path,ext=$ext]{$to}")->unlist,
-    Invocation(T_CS('\begin{viewsketchenv}'),$keyvals,$from_arg,$to_arg)->unlist
-  );
-}); 
-DefMacroI('\end{mhviewsketch}',undef,'\end{viewsketchenv}');
-%</structview.ltxml>
 %    \end{macrocode}
 % \end{environment}
 % 
@@ -774,9 +550,6 @@ DefMacroI('\end{mhviewsketch}',undef,'\end{viewsketchenv}');
 \ProvidesPackage{mikoslides-mh}[2015/11/22 v1.0 MathHub support for the sTeX mikoslides package]
 \RequirePackage{mathhub}
 %</mikoslides>
-%<*mikoslides.ltxml>
-RequirePackage('mathhub');
-%</mikoslides.ltxml>
 %    \end{macrocode}
 %
 % \begin{macro}{\mhframeimage}
@@ -787,9 +560,7 @@ RequirePackage('mathhub');
 \def\Gin@mhrepos{}
 \define@key{Gin}{mhrepos}{\csxdef\Gin@mhrepos{#1}}
 %</mikoslides>
-%<mikoslides.ltxml>DefKeyVal('Gin','mhrepos','Semiverbatim');
-%<mikoslides.ltxml>RawTeX('
-%<*mikoslides.ltxml|mikoslides>
+%<*mikoslides>
 \newcommand\mhframeimage[2][]{%
   \setkeys{Gin}{#1}%
   \edef\mh@@repos{\mh@currentrepos}%
@@ -799,8 +570,7 @@ RequirePackage('mathhub');
     \frameimage[#1]{\MathHub{\Gin@mhrepos/source/#2}}%
   \fi%
 }%
-%</mikoslides.ltxml|mikoslides>
-%<mikoslides.ltxml>');
+%</mikoslides>
 %    \end{macrocode}
 % \end{macro}
 %
@@ -813,9 +583,6 @@ RequirePackage('mathhub');
 \ProvidesPackage{problem-mh}[2015/11/22 v1.0 MathHub support for the sTeX problem package]
 \RequirePackage{mathhub}
 %</problem>
-%<*problem.ltxml>
-RequirePackage('mathhub');
-%</problem.ltxml>
 %    \end{macrocode}
 %
 % \begin{macro}{\includemhproblem}
@@ -831,22 +598,6 @@ RequirePackage('mathhub');
 \input{\MathHub{\mh@currentrepos/source/#2}}%
 \mhcurrentrepos\mh@@repos\clear@inclprob@keys}
 %</problem>
-%<*problem.ltxml>
-sub includemhproblem {
-  my ($gullet,$keyval,$arg2) = @_;
-  my $repo_path;
-  if ($keyval) {
-    $repo_path = ToString(GetKeyVal($keyval,'mhrepos')); }
-  if (! $repo_path) {
-    $repo_path = ToString(Digest(T_CS('\mh@currentrepos'))); }
-  else {
-    $keyval->setValue('mhrepos',undef); }
-  my $mathhub_base = ToString(Digest('\MathHub{}'));
-  my $finalpath = $mathhub_base.$repo_path.'/source/'.ToString($arg2);
-  return Invocation(T_CS('\includeproblem'), $keyval, T_OTHER($finalpath)); }#$
-DefKeyVal('inclprob','mhrepos','Semiverbatim');
-DefMacro('\includemhproblem OptionalKeyVals:inclprob {}', \&includemhproblem);
-%</problem.ltxml>
 %    \end{macrocode}
 % \end{macro}
 %
@@ -859,9 +610,6 @@ DefMacro('\includemhproblem OptionalKeyVals:inclprob {}', \&includemhproblem);
 \ProvidesPackage{hwexam-mh}[2015/11/22 v1.0 MathHub support for the sTeX hwexam package]
 \RequirePackage{mathhub}
 %</hwexam>
-%<*hwexam.ltxml>
-RequirePackage('mathhub');
-%</hwexam.ltxml>
 %    \end{macrocode}
 %
 % \begin{macro}{\includemhassignment}
@@ -877,22 +625,6 @@ RequirePackage('mathhub');
 \includeassignment[#1]{\MathHub{\mh@currentrepos/source/#2}}%
 \mhcurrentrepos\mh@@repos\clear@inclassig@keys}
 %</hwexam>
-%<*hwexam.ltxml>
-sub includemhassignment {
-  my ($gullet,$keyval,$arg2) = @_;
-  my $repo_path;
-  if ($keyval) {
-    $repo_path = ToString(GetKeyVal($keyval,'mhrepos')); }
-  if (! $repo_path) {
-    $repo_path = ToString(Digest(T_CS('\mh@currentrepos'))); }
-  else {
-    $keyval->setValue('mhrepos',undef); }
-  my $mathhub_base = ToString(Digest('\MathHub{}'));
-  my $finalpath = $mathhub_base.$repo_path.'/source/'.ToString($arg2);
-  return Invocation(T_CS('\includeassignment'), $keyval, T_OTHER($finalpath)); }#$
-DefKeyVal('inclprob','mhrepos','Semiverbatim');
-DefMacro('\includemhassignment OptionalKeyVals:inclprob {}', \&includemhassignment);
-%</hwexam.ltxml>
 %    \end{macrocode}
 % \end{macro}
 %
@@ -906,21 +638,6 @@ DefMacro('\includemhassignment OptionalKeyVals:inclprob {}', \&includemhassignme
 \inputassignment[#1]{\MathHub{\mh@currentrepos/source/#2}}%
 \mhcurrentrepos\mh@@repos\clear@inclassig@keys}
 %</hwexam>
-%<*hwexam.ltxml>
-sub inputmhassignment {
-  my ($gullet,$keyval,$arg2) = @_;
-  my $repo_path;
-  if ($keyval) {
-    $repo_path = ToString(GetKeyVal($keyval,'mhrepos')); }
-  if (! $repo_path) {
-    $repo_path = ToString(Digest(T_CS('\mh@currentrepos'))); }
-  else {
-    $keyval->setValue('mhrepos',undef); }
-  my $mathhub_base = ToString(Digest('\MathHub{}'));
-  my $finalpath = $mathhub_base.$repo_path.'/source/'.ToString($arg2);
-  return Invocation(T_CS('\inputassignment'), $keyval, T_OTHER($finalpath)); }#$
-DefMacro('\inputmhassignment OptionalKeyVals:inclprob {}', \&inputmhassignment);
-%</hwexam.ltxml>
 %    \end{macrocode}
 % \end{macro}
 %
@@ -933,14 +650,10 @@ DefMacro('\inputmhassignment OptionalKeyVals:inclprob {}', \&inputmhassignment);
 \ProvidesPackage{tikzinput-mh}[2015/11/22 v1.0 MathHub support for the sTeX tikzinput package]
 \RequirePackage{mathhub}
 %</tikzinput>
-%<*tikzinput.ltxml>
-RequirePackage('mathhub');
-%</tikzinput.ltxml>
 %    \end{macrocode}
 %
 %    \begin{macrocode}
-%<tikzinput.ltxml>RawTeX('  
-%<*tikzinput|tikzinput.ltxml>
+%<*tikzinput>
 \define@key{Gin}{mhrepos}{\csxdef\Gin@mhrepos{#1}}
 \newcommand\mhtikzinput[2][]{\def\Gin@mhrepos{}\setkeys{Gin}{#1}%
 \edef\mh@@repos{\mh@currentrepos}%
@@ -948,15 +661,7 @@ RequirePackage('mathhub');
 \else\tikzinput[#1]{\MathHub{\Gin@mhrepos/source/#2}}\fi
 \def\Gin@mhrepos{}\mhcurrentrepos\mh@@repos}
 \newcommand\cmhtikzinput[2][]{\begin{center}\mhtikzinput[#1]{#2}\end{center}}
-%</tikzinput|tikzinput.ltxml>
-%<tikzinput.ltxml>');
-%    \end{macrocode}
-%
-% \subsection{Finale}\label{sec:common}
-%
-% Finally, we need to terminate the file with a success mark for perl.
-%    \begin{macrocode}
-%<ltxml|modules.ltxml|structview.ltxml|omtext.ltxml|smultiling.ltxml|mikoslides.ltxml|problem.ltxml|hwexam.ltxml|tikzinput.ltxml>1;
+%</tikzinput>
 %    \end{macrocode}
 % \Finale
 \endinput

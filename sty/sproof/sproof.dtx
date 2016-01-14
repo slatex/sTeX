@@ -364,24 +364,6 @@
 %
 % \section{The Implementation} 
 % 
-% The |sproof| package generates to files: the {\LaTeX} package (all the code between
-% {\textsf{$\langle$*package$\rangle$}} and {\textsf{$\langle$/package$\rangle$}}) and the
-% {\latexml} bindings (between {\textsf{$\langle$*ltxml$\rangle$}} and
-% {\textsf{$\langle$/ltxml$\rangle$}}). We keep the corresponding code fragments together,
-% since the documentation applies to both of them and to prevent them from getting out of
-% sync.
-%
-% We first set up the Perl Packages for {\latexml}
-%
-%    \begin{macrocode}
-%<*ltxml>
-# -*- CPERL -*-
-package LaTeXML::Package::Pool;
-use strict;
-use LaTeXML::Package;
-%</ltxml>
-%    \end{macrocode}
-%
 % \subsection{Package Options}\label{sec:impl:options}
 %
 % We declare some switches which will modify the behavior according to the package
@@ -393,10 +375,6 @@ use LaTeXML::Package;
 \DeclareOption*{\PassOptionsToPackage{\CurrentOption}{sref}}
 \ProcessOptions
 %</package>
-%<*ltxml>
-DeclareOption(undef, sub {PassOptions('sref','sty',ToString(Digest(T_CS('\CurrentOption')))); });
-ProcessOptions();
-%</ltxml>
 %    \end{macrocode}
 %
 % Then we make sure that the |sref| package is loaded~\ctancite{Kohlhase:sref}.
@@ -406,9 +384,6 @@ ProcessOptions();
 \RequirePackage{etoolbox}
 \RequirePackage[base]{babel}
 %</package>
-%<*ltxml>
-RequirePackage('sref');
-%</ltxml>
 %    \end{macrocode}
 %
 % \subsection{Proofs}\label{sec:impl:proofs}
@@ -535,10 +510,6 @@ RequirePackage('sref');
 }%
 \def\sProofEndSymbol#1{\def\sproof@box{#1}}%
 %</package>
-%<*ltxml>
-DefConstructor('\sproofend',"");
-DefConstructor('\sProofEndSymbol{}','');
-%</ltxml>
 %    \end{macrocode}
 % \end{macro}
 %
@@ -572,13 +543,6 @@ DefConstructor('\sProofEndSymbol{}','');
   \sref@label@id{this \ifx\spf@type\@empty\spf@proofsketch@kw\else\spf@type\fi}\sproofend%
 }%
 %</package>
-%<*ltxml>
-DefConstructor('\spfsketch OptionalKeyVals:pf{}',
-	       "<omdoc:proof "
-               .  "?&defined(&GetKeyVal(#1,'id'))(xml:id='&GetKeyVal(#1,'id')')()>\n"
-	       . "?#2(<omdoc:omtext><omdoc:CMP>#2\n)()"
-               . "</omdoc:proof>\n");
-%</ltxml>
 %    \end{macrocode}
 % \end{macro}
 %
@@ -599,13 +563,6 @@ DefConstructor('\spfsketch OptionalKeyVals:pf{}',
   \end{array}\end{displaymath}%
 }%
 %</package>
-%<*ltxml>
-RawTeX('
-\newenvironment{spfeq}[2][]%
-{\begin{sproof}[#1]{#2}\begin{displaymath}\begin{array}{rcll}}
-{\end{array}\end{displaymath}\end{sproof}}
-');
-%</ltxml>
 %    \end{macrocode}
 % \end{macro}
 %
@@ -634,19 +591,6 @@ RawTeX('
 \newenvironment{sproof}[2][]{\begin{spf@proof}[#1]{#2}}{\sproofend\end{spf@proof}}%
 \newenvironment{sProof}[2][]{\begin{spf@proof}[#1]{#2}}{\end{spf@proof}}%
 %</package>
-%<*ltxml>
-DefEnvironment('{sproof} OptionalKeyVals:pf{}',
-	       "<omdoc:proof "
-               . "?&GetKeyVal(#1,'for')(for='&hash_wrapper(&GetKeyVal(#1,'for'))')()"
-               .  "?&defined(&GetKeyVal(#1,'id'))(xml:id='&GetKeyVal(#1,'id')')()>\n"
-	       . "?#2(<omdoc:omtext>"
-              .       "<omdoc:CMP>#2</omdoc:CMP>"
-               .     "</omdoc:omtext>\n)()"
-               . "#body"
-             . "</omdoc:proof>\n");
-DefMacro('\sProof','\sproof');
-DefMacro('\endsProof','\endsproof');
-%</ltxml>
 %    \end{macrocode}
 % \end{environment}
 % 
@@ -658,14 +602,6 @@ DefMacro('\endsProof','\endsproof');
   \stDMemph{\ifx\spf@type\@empty{Proof Idea}\else\spf@type\fi:} #2\sproofend%
 }%
 %</package>
-%<*ltxml>
-DefConstructor('\spfidea OptionalKeyVals:pf {}',
-	       "<omdoc:proof "
-             .      "?&defined(&GetKeyVal(#1,'id'))(xml:id='&GetKeyVal(#1,'id')')()"
-             . "?&GetKeyVal(#1,'for')(for='&hash_wrapper(&GetKeyVal(#1,'for'))')()>\n"
-	     .   "<omdoc:omtext><omdoc:CMP>#2</omdoc:omtext>\n"
-	     . "</omdoc:proof>\n");
-%</ltxml>
 %    \end{macrocode}
 % \end{environment}
 %
@@ -691,15 +627,6 @@ DefConstructor('\spfidea OptionalKeyVals:pf {}',
   \next@pst@label\@in@omtextfalse\ignorespaces%
 }%
 %</package>
-%<*ltxml>
-DefEnvironment('{spfstep} OptionalKeyVals:pf',
-             "<omdoc:derive "
-                 .   "?&defined(&GetKeyVal(#1,'id'))(xml:id='&GetKeyVal(#1,'id')')()>"
-        .  "<omdoc:CMP>#body</omdoc:derive>\n",
-         beforeConstruct=>sub {
-          $_[0]->maybeCloseElement('omdoc:CMP');
-         });#$
-%</ltxml>
 %    \end{macrocode}
 % \end{environment}
 %
@@ -713,13 +640,6 @@ DefEnvironment('{spfstep} OptionalKeyVals:pf',
   \next@pst@label%
 }%
 %</package>
-%<*ltxml>
-DefEnvironment('{sproofcomment} OptionalKeyVals:pf',
-	       "<omdoc:omtext "
-               .   "?&defined(&GetKeyVal(#1,'id'))(xml:id='&GetKeyVal(#1,'id')')()>"
-	       . "<omdoc:CMP>#body</omdoc:CMP>"
-	     . "</omdoc:omtext>");
-%</ltxml>
 %    \end{macrocode}
 % \end{environment}
 %
@@ -745,16 +665,6 @@ DefEnvironment('{sproofcomment} OptionalKeyVals:pf',
   \end{pst@with@label}\next@pst@label%
 }%
 %</package>
-%<*ltxml>
-DefEnvironment('{subproof} OptionalKeyVals:pf {}',
-	       "<omdoc:derive "
-              .     "?&defined(&GetKeyVal(#1,'id'))(xml:id='&GetKeyVal(#1,'id')')()>\n"
-	      .  "<omdoc:CMP>#2</omdoc:CMP>\n"
-	      .  "<omdoc:method ?&defined(&GetKeyVal(#1,'method'))(xref='&GetKeyVal(#1,'method')')>"
-              .    "<omdoc:proof>#body</omdoc:proof>"
-              .  "</omdoc:method>"
-	     . "</omdoc:derive>\n");
-%</ltxml>
 %    \end{macrocode}
 % \end{environment}
 %
@@ -774,16 +684,6 @@ DefEnvironment('{subproof} OptionalKeyVals:pf {}',
   \end{subproof}%
 }%
 %</package>
-%<*ltxml>
-DefEnvironment('{spfcases} OptionalKeyVals:pf {}',
-	       "<omdoc:derive "
-              .     "?&defined(&GetKeyVal(#1,'id'))(xml:id='&GetKeyVal(#1,'id')')()>\n"
-	      .  "<omdoc:CMP>#2</omdoc:CMP>\n"
-	      .  "<omdoc:method ?&defined(&GetKeyVal(#1,'method'))(xref='&GetKeyVal(#1,'method')')>"
-              .    "#body"
-              .  "</omdoc:method>"
-	     . "</omdoc:derive>\n");
-%</ltxml>
 %    \end{macrocode}
 % \end{environment}
 %
@@ -810,16 +710,6 @@ DefEnvironment('{spfcases} OptionalKeyVals:pf {}',
   \next@pst@label%
 }%
 %</package>
-%<*ltxml>
-DefEnvironment('{spfcase} OptionalKeyVals:pf{}',
-	       "<omdoc:proof "
-               .  "?&defined(&GetKeyVal(#1,'id'))(xml:id='&GetKeyVal(#1,'id')')()>\n"
-	       .  "?#2(<omdoc:omtext>"
-              .        "<omdoc:CMP>#2</omdoc:CMP>"
-               .      "</omdoc:omtext>\n)()"
-	       . "#body"
-	     . "</omdoc:proof>\n");
-%</ltxml>
 %    \end{macrocode}
 % \end{environment}
 %
@@ -841,16 +731,6 @@ DefEnvironment('{spfcase} OptionalKeyVals:pf{}',
   \next@pst@label%
 }%
 %</package>
-%<*ltxml>
-DefConstructor('\spfcasesketch OptionalKeyVals:pf{}{}',
-	       "<omdoc:proof "
-               .  "?&defined(&GetKeyVal(#1,'id'))(xml:id='&GetKeyVal(#1,'id')')()>\n"
-	       .  "?#2(<omdoc:omtext>"
-              .        "<omdoc:CMP>#2</omdoc:CMP>"
-               .      "</omdoc:omtext>\n)()"
-	       . "#3"
-	     . "</omdoc:proof>\n");
-%</ltxml>
 %    \end{macrocode}
 % \end{environment}
 %
@@ -866,12 +746,6 @@ DefConstructor('\spfcasesketch OptionalKeyVals:pf{}{}',
 \addmetakey{just}{premises}
 \addmetakey{just}{args}
 %</package>
-%<*ltxml>
-DefKeyVal('just','id','Semiverbatim');
-DefKeyVal('just','method','Semiverbatim');
-DefKeyVal('just','premises','Semiverbatim');
-DefKeyVal('just','args','Semiverbatim');
-%</ltxml>
 %    \end{macrocode}
 %
 % The next three environments and macros are purely semantic, so we ignore the keyval
@@ -883,34 +757,6 @@ DefKeyVal('just','args','Semiverbatim');
 %<*package>
 \newenvironment{justification}[1][]{}{}
 %</package>
-%<*ltxml>
-sub extractBodyText {
-  my ($box, $remove) = @_;
-  my $str = '';
-  my @boxes = $box->unlist;
-  foreach my $b(@boxes) {
-    my $s = '';
-    if ($b =~ /LaTeXML::Whatsit/) {
-      my $body = $b->getBody;
-      $s = $body ? extractBodyText($body, $remove) : '';
-    } elsif ($b =~ /LaTeXML::Box/) {
-      $s = $b->toString || '';
-      @{$b}[0] = '' if $remove; }
-    $str .= $s; }
-  $str =~ s/\s+/ /g;
-  $str; }
-
-DefEnvironment('{justification} OptionalKeyVals:just', sub {
-		 my ($doc, $keys, %props) = @_;
-		 my $text = extractBodyText($props{body}, 1);
-		 my $node = LookupValue('_LastSeenCMP');
-		 #$node->appendText($text) if $node;
-		 my $method = $keys ? $keys->getValue('method') : undef;
-		 $doc->openElement("omdoc:method", $method ? (xref => $method) : ());
-		 $doc->absorb($props{body}) if $props{body};
-		 $doc->closeElement("omdoc:method");
-		 return; });
-%</ltxml>
 %    \end{macrocode}
 % \end{environment}
 %
@@ -919,16 +765,6 @@ DefEnvironment('{justification} OptionalKeyVals:just', sub {
 %<*package>
 \newrobustcmd\premise[2][]{#2}
 %</package>
-%<*ltxml>
-DefMacro('\premise[]{}', sub {
-	   my ($xref, $text) = ($_[1], $_[2]);
-	   my @res = (T_CS('\premise@content'));
-	   push(@res, T_OTHER('['), $xref->unlist, T_OTHER(']')) if $xref;
-	   push(@res, T_SPACE, $text->unlist) if $text;
-	   @res; });
-DefConstructor('\premise@content[]', 
-               "<omdoc:premise xref='#1'/>");
-%</ltxml>
 %    \end{macrocode}
 % \end{macro}
 %
@@ -939,50 +775,9 @@ DefConstructor('\premise@content[]',
 %<*package>
 \newrobustcmd\justarg[2][]{#2}
 %</package>
-%<*ltxml>
-DefMacro('\justarg[]{}', sub { (($_[1] ? $_[1]->unlist : ()),
-				T_SPACE, $_[2]->unlist, T_SPACE); });
-Tag('omdoc:derive', afterClose=>sub {
-      my ($doc, $node) = @_;
-      my @children = grep($_->nodeType == XML_ELEMENT_NODE, $node->childNodes);
-      my $firstCMP = undef;
-      foreach my $child(@children) {
-        next unless ($child->localname || '') eq 'CMP';
-        if ($child->hasChildNodes()) {
-          next unless $#{$child->childNodes} == 0;
-          next unless $child->firstChild->nodeType == XML_TEXT_NODE; } 
-
-        if ($firstCMP) {
-          $firstCMP->appendText($child->textContent);
-          $node->removeChild($child);
-        } else { $firstCMP = $child; }
-      }
-    });#$
-%</ltxml>
 %    \end{macrocode}
 % \end{macro}
 %
-% \subsection{Providing IDs for {\omdoc} Elements}\label{sec:impl:ids}
-%
-% To provide default identifiers, we tag all {\omdoc}
-% elements that allow |xml:id| attributes by executing the |numberIt| procedure from |omdoc.sty.ltxml|.
-% 
-%    \begin{macrocode}
-%<*ltxml>
-Tag('omdoc:proof',afterOpen=>\&numberIt,afterClose=>\&locateIt);
-Tag('omdoc:derive',afterOpen=>\&numberIt,afterClose=>\&locateIt);
-Tag('omdoc:method',afterOpen=>\&numberIt,afterClose=>\&locateIt);
-Tag('omdoc:premise',afterOpen=>\&numberIt,afterClose=>\&locateIt);
-Tag('omdoc:derive',afterOpen=>\&numberIt,afterClose=>\&locateIt);
-%</ltxml>
-%    \end{macrocode}
-% 
-% \section{Finale}
-%
-% Finally, we need to terminate the file with a success mark for perl.
-%    \begin{macrocode}
-%<ltxml>1;
-%    \end{macrocode}
 % \Finale
 \endinput
 

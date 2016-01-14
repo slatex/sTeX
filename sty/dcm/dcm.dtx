@@ -225,23 +225,6 @@ Systems,acronym=SKS]
 % 
 % \section[id=impl]{The Implementation}
 %
-% The |dcm| package generates two files: the {\LaTeX} package (all the code between
-% {\textsf{$\langle$*package$\rangle$}} and {\textsf{$\langle$/package$\rangle$}}) and the
-% {\latexml} bindings (between {\textsf{$\langle$*ltxml$\rangle$ and
-% $\langle$/ltxml$\rangle$}}). We keep the corresponding code fragments together, since
-% the documentation applies to both of them and to prevent them from getting out of sync.
-%
-% The general setup for \latexml
-%    \begin{macrocode}
-%<*ltxml>
-# -*- CPERL -*-
-package LaTeXML::Package::Pool;
-use strict;
-use LaTeXML::Global;
-use LaTeXML::Package;
-%</ltxml>
-%    \end{macrocode}
-%
 % \subsection[id=impl.options]{Package Options}
 % The first step is to declare (a few) package options that handle whether certain
 % information is printed or not. They all come with their own conditionals that are set by
@@ -253,12 +236,6 @@ use LaTeXML::Package;
                            \PassOptionsToPackage{\CurrentOption}{workaddress}}
 \ProcessOptions
 %</package>
-%<*ltxml>
-DeclareOption(undef,sub 
-     {PassOptions('rdfmeta','sty',ToString(Digest(T_CS('\CurrentOption')))); 
-      PassOptions('workaddress','sty',ToString(Digest(T_CS('\CurrentOption')))); });
-ProcessOptions();
-%</ltxml>
 %    \end{macrocode}
 %
 % The first measure is to ensure that the |KeyVal| package is loaded (in the right
@@ -268,34 +245,8 @@ ProcessOptions();
 \RequirePackage{workaddress}
 \RequirePackage[sectioning]{rdfmeta}
 %</package>
-%<*ltxml>
-RequirePackage('rdfmeta');
-RequirePackage('workaddress');
-%</ltxml>
 %    \end{macrocode}
 %
-% Furthermore, we need a couple of helper functions for the 
-% 
-%    \begin{macrocode}
-%<*ltxml>
-sub FishOutMetadata {
-  my ($document,$keyvals)=@_;
-  foreach my $role(qw(creators contributors)) {
-    my $idlist_string=getKeyValue_noDelim($keyvals,$role);
-    my @ids = split(/,\s*/, $idlist_string);
-    foreach my $id(@ids) {
-      my $name = LookupValue('DCM_'.$id.'_name');
-      if ($name) {
-        my $prop_role = $role;
-	chop $prop_role if $prop_role;
-        $document->insertElement("dc:$prop_role",$name) if $role;
-      } else {print STDERR "Warning: no $role with 'id' $id !\n";}
-    }
-  }
-  return;}#$
-%</ltxml>
-%    \end{macrocode}
-% 
 % \subsection{The DC Metadata Block}
 % 
 % Then we make an environment for defining the metadata.  Note that since we have defined
@@ -311,9 +262,6 @@ sub FishOutMetadata {
 {\message{style {\@style} not defined}}%
 {\csname dcm@\@style @block\endcsname}}
 %</package>
-%<*ltxml>
-DefEnvironment('{DCmetadata}[]', "<omdoc:metadata>#body</omdoc:metadata>");
-%</ltxml>
 %    \end{macrocode}
 % \end{environment}
 % 
@@ -326,13 +274,6 @@ DefEnvironment('{DCmetadata}[]', "<omdoc:metadata>#body</omdoc:metadata>");
 \def\DCMcreators#1{\@for\@I:=#1\do{\wa@ref@test{person}\@I{id}}
 \gdef\dcm@creators{#1}}
 %</package>
-%<*ltxml>
-DefConstructor('\DCMcreators{}',sub{
-  my ($document,$args,%properties) = @_;
-  my $keyval = LaTeXML::Core::KeyVals->new('wa@person',T_BEGIN,T_END,('creators'=>$args));
-  FishOutMetadata($document,$keyval);
-  return;});
-%</ltxml>
 %    \end{macrocode}
 % \end{macro}
 %
@@ -343,13 +284,6 @@ DefConstructor('\DCMcreators{}',sub{
 \def\DCMcontributors#1{\@for\@I:=#1\do{\wa@ref@test{person}\@I{id}}%
 \def\dcm@contributors{#1}}
 %</package>
-%<*ltxml>
-DefConstructor('\DCMcontributors{}',sub{
-  my ($document,$args,%properties) = @_;
-  my $keyval = LaTeXML::Core::KeyVals->new('wa@person',T_BEGIN,T_END,('contributors'=>$args));
-  FishOutMetadata($document,$keyval);
-  return;});
-%</ltxml>
 %    \end{macrocode}
 % \end{macro}
 %
@@ -358,9 +292,6 @@ DefConstructor('\DCMcontributors{}',sub{
 %<*package>
 \def\DCMtitle#1{\def\dcm@title{#1}\providecommand{\dcm@shorttitle}{#1}}
 %</package>
-%<*ltxml>
-DefConstructor('\DCMtitle{}',"<dc:title>#1</dc:title>");
-%</ltxml>
 %    \end{macrocode}
 % \end{macro}
 %
@@ -387,9 +318,6 @@ DefConstructor('\DCMtitle{}',"<dc:title>#1</dc:title>");
 %<*package>
 \def\DCMsubject#1{\def\dcm@subject{#1}}
 %</package>
-%<*ltxml>
-DefConstructor('\DCMsubject{}',"<dc:subject>#1</dc:subject>");
-%</ltxml>
 %    \end{macrocode}
 % \end{macro}
 %
@@ -398,9 +326,6 @@ DefConstructor('\DCMsubject{}',"<dc:subject>#1</dc:subject>");
 %<*package>
 \long\def\DCMdescription#1{\long\def\dcm@description{#1}}
 %</package>
-%<*ltxml>
-DefConstructor('\DCMdescription{}',"<dc:description>#1</dc:description>");
-%</ltxml>
 %    \end{macrocode}
 % \end{macro}
 %
@@ -409,9 +334,6 @@ DefConstructor('\DCMdescription{}',"<dc:description>#1</dc:description>");
 %<*package>
 \def\DCMpublisher#1{\def\dcm@publisher{#1}}
 %</package>
-%<*ltxml>
-DefConstructor('\DCMpublisher{}',"<dc:publisher>#1</dc:publisher>");
-%</ltxml>
 %    \end{macrocode}
 % \end{macro}
 %
@@ -422,9 +344,6 @@ DefConstructor('\DCMpublisher{}',"<dc:publisher>#1</dc:publisher>");
 \def\dcm@date{\today}
 \def\DCMdate#1{\def\dcm@date{#1}}
 %</package>
-%<*ltxml>
-DefConstructor('\DCMdate{}',"<dc:date>#1</dc:date>");
-%</ltxml>
 %    \end{macrocode}
 % \end{macro}
 %
@@ -433,9 +352,6 @@ DefConstructor('\DCMdate{}',"<dc:date>#1</dc:date>");
 %<*package>
 \def\DCMtype#1{\def\dcm@type{#1}}
 %</package>
-%<*ltxml>
-DefConstructor('\DCMtype{}',"<dc:type>#1</dc:type>");
-%</ltxml>
 %    \end{macrocode}
 % \end{macro}
 %
@@ -444,9 +360,6 @@ DefConstructor('\DCMtype{}',"<dc:type>#1</dc:type>");
 %<*package>
 \def\DCMidentifier#1#2{\def\dcm@scheme{#1}\def\dcm@identifier{#2}}
 %</package>
-%<*ltxml>
-DefConstructor('\DCMidentifier{}{}',"<dc:identifier scheme='#1'>#2</dc:identifier>");
-%</ltxml>
 %    \end{macrocode}
 % \end{macro}
 %
@@ -455,9 +368,6 @@ DefConstructor('\DCMidentifier{}{}',"<dc:identifier scheme='#1'>#2</dc:identifie
 %<*package>
 \def\DCMsource#1{\def\dcm@source{#1}}
 %</package>
-%<*ltxml>
-DefConstructor('\DCMsource{}',"<dc:source>#1</dc:source>");
-%</ltxml>
 %    \end{macrocode}
 % \end{macro}
 %
@@ -466,9 +376,6 @@ DefConstructor('\DCMsource{}',"<dc:source>#1</dc:source>");
 %<*package>
 \def\DCMlanguage#1{\def\dcm@language{#1}}
 %</package>
-%<*ltxml>
-DefConstructor('\DCMlanguage{}',"<dc:language>#1</dc:language>");
-%</ltxml>
 %    \end{macrocode}
 % \end{macro}
 %
@@ -477,9 +384,6 @@ DefConstructor('\DCMlanguage{}',"<dc:language>#1</dc:language>");
 %<*package>
 \def\DCMrelation#1{\def\dcm@relation{#1}}
 %</package>
-%<*ltxml>
-DefConstructor('\DCMrelation{}',"<dc:relation>#1</dc:relation>");
-%</ltxml>
 %    \end{macrocode}
 % \end{macro}
 %
@@ -488,9 +392,6 @@ DefConstructor('\DCMrelation{}',"<dc:relation>#1</dc:relation>");
 %<*package>
 \def\DCMrights#1{\long\def\dcm@rights{#1}}
 %</package>
-%<*ltxml>
-DefConstructor('\DCMrights{}',"<dc:rights>#1</dc:rights>");
-%</ltxml>
 %    \end{macrocode}
 % \end{macro}
 %
@@ -509,9 +410,6 @@ DefConstructor('\DCMrights{}',"<dc:rights>#1</dc:rights>");
 \def\dcm@license{All rights reserved}
 \def\DCMlicensenotice#1{\long\def\dcm@license{\\[1ex]License: #1}}
 %</package>
-%<*ltxml>
-DefMacro('\DCMlicensenotice{}','\DCMrights{#1}');
-%</ltxml>
 %    \end{macrocode}
 % \end{macro}
 %
@@ -520,9 +418,6 @@ DefMacro('\DCMlicensenotice{}','\DCMrights{#1}');
 %<*package>
 \def\DCMcopyrightnotice#1#2{\DCMrights{Copyright {\copyright} #1: #2}}
 %</package>
-%<*ltxml>
-DefMacro('\DCMcopyrightnotice{}{}','\DCMrights{Copyright {\copyright} #1: #2}'); 
-%</ltxml>
 %    \end{macrocode}
 % \end{macro}
 %
@@ -534,13 +429,6 @@ DefMacro('\DCMcopyrightnotice{}{}','\DCMrights{Copyright {\copyright} #1: #2}');
   \def\sharealike{\defdcm@sharealike{yes}}
   \def\noderivativeworks{\def\dcm@derivatives{no}}}
 %</package>
-%<*ltxml>
-DefConstructor('\cclicense{}',"<cc:license>#1</cc:license>");
-DefConstructor('\attribution',"<cc:attribution/>");
-DefConstructor('\noncommercial',"<cc:noncommercial/>");
-DefConstructor('\sharealike',"<cc:sharealike/>");
-DefConstructor('\noderivativeworks',"<cc:noderivativeworks>");
-%</ltxml>
 %    \end{macrocode}
 % \end{macro}
 %
@@ -549,9 +437,6 @@ DefConstructor('\noderivativeworks',"<cc:noderivativeworks>");
 %<*package>
 \long\def\DCMabstract#1{\long\def\dcm@abstract{#1}}
 %</package>
-%<*ltxml>
-DefConstructor('\DCMabstract{}',"<dc:description>#1</dc:description>");
-%</ltxml>
 %    \end{macrocode}
 % \end{macro}
 % 
@@ -597,39 +482,18 @@ DefConstructor('\DCMabstract{}',"<dc:description>#1</dc:description>");
 %    \end{macrocode}
 % \end{macro}
 %
-% We have to make sure that the DCM metadata commands have IDs, so that we doc not get
-% duplicates.
-%
-%    \begin{macrocode}
-%<*ltxml>
-Tag('dc:description',afterOpen=>\&numberIt,afterClose=>\&locateIt,autoClose=>1);
-Tag('dc:date',afterOpen=>\&numberIt,afterClose=>\&locateIt,autoClose=>1);
-Tag('dc:creator',afterOpen=>\&numberIt,afterClose=>\&locateIt,autoClose=>1);
-Tag('dc:contributor',afterOpen=>\&numberIt,afterClose=>\&locateIt,autoClose=>1);
-Tag('dc:title',afterOpen=>\&numberIt,afterClose=>\&locateIt,autoClose=>1);
-Tag('dc:subject',afterOpen=>\&numberIt,afterClose=>\&locateIt,autoClose=>1);
-Tag('dc:publisher',afterOpen=>\&numberIt,afterClose=>\&locateIt,autoClose=>1);
-Tag('dc:type',afterOpen=>\&numberIt,afterClose=>\&locateIt,autoClose=>1);
-Tag('dc:identifier',afterOpen=>\&numberIt,afterClose=>\&locateIt,autoClose=>1);
-Tag('dc:language',afterOpen=>\&numberIt,afterClose=>\&locateIt,autoClose=>1);
-Tag('dc:rights',afterOpen=>\&numberIt,afterClose=>\&locateIt,autoClose=>1);
-%</ltxml>
-%    \end{macrocode}
-%
 % \subsection{Dealing with ISO Dates}
 %
-% The first step is to build a macro for making ISO dates.\ednote{make better ltxml}
+% The first step is to build a macro for making ISO dates.
 %
 %    \begin{macrocode}
-%<ltxml>RawTeX('
-%<*package|ltxml>
+%<*package>
 \def\ISOtimestamp{\count1=\time\divide\count1 by 60 % hours
 \count2=\count1\multiply\count2 by 60% minutes in \count1 hours
 \count3=\time\advance\count3 by -\count2 % minutes
 \the\year -\ifnum\month>9\else0\fi\the\month-\ifnum\day>9\else0\fi\the\day
 T\ifnum\count1>9\else0\fi\the\count1:\ifnum\count3>9\else0\fi\the\count3:00Z}
-%</package|ltxml>
-%<ltxml>');
+%</package>
 %    \end{macrocode}
 % 
 %\subsection{Configuration}
@@ -648,23 +512,6 @@ T\ifnum\count1>9\else0\fi\the\count1:\ifnum\count3>9\else0\fi\the\count3:00Z}
 %</package>
 %    \end{macrocode}
 %
-% \subsection[id=sec:impl:ids]{Providing IDs for {\omdoc} Elements}
-% 
-%   To provide default identifiers, we tag all {\omdoc} elements that allow |xml:id|
-%   attributes by executing the |numberIt| procedure below.
-% 
-%    \begin{macrocode}
-%<*ltxml>
-Tag('dc:title',afterOpen=>\&numberIt,afterClose=>\&locateIt);
-%</ltxml>
-%    \end{macrocode}
-%
-%\subsection{Finale}
-%
-% Finally, we need to terminate the file with a success mark for perl.
-%    \begin{macrocode}
-%<ltxml>1;
-%    \end{macrocode}
 % \Finale
 \endinput
 % \iffalse

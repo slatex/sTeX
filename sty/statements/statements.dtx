@@ -600,24 +600,6 @@
 % 
 % \section{The Implementation}\label{sec:impl} 
 % 
-% The |statements| package generates two files: the {\LaTeX} package (all the code between
-% {\textsf{$\langle$*package$\rangle$}} and {\textsf{$\langle$/package$\rangle$}}) and the
-% {\latexml} bindings (between {\textsf{$\langle$*ltxml$\rangle$ and
-%     $\langle$/ltxml$\rangle$}}). We keep the corresponding code fragments together,
-% since the documentation applies to both of them and to prevent them from getting out of
-% sync.
-%
-% The general preamble for \latexml:
-%
-%    \begin{macrocode}
-%<*ltxml>
-# -*- CPERL -*-
-package LaTeXML::Package::Pool;
-use strict;
-use LaTeXML::Package;
-%</ltxml>
-%    \end{macrocode}
-%
 % \subsection{Package Options}\label{sec:impl:options}
 %
 % We declare some switches which will modify the behavior according to the package
@@ -630,12 +612,6 @@ use LaTeXML::Package;
 \DeclareOption*{\PassOptionsToPackage{\CurrentOption}{omtext}}
 \ProcessOptions 
 %</package>
-%<*ltxml>
-DefConditional('\if@defindex');
-DeclareOption('defindex', sub{Digest(T_CS('\@defindextrue')); });
-DeclareOption(undef,sub{PassOptions('omtext','sty',ToString(Digest(T_CS('\CurrentOption')))); });
-ProcessOptions();
-%</ltxml>
 %    \end{macrocode}
 % 
 % The next measure is to ensure that some {\sTeX} packages are loaded: |omdoc| for the
@@ -650,69 +626,18 @@ ProcessOptions();
 \RequirePackage[hyperref]{ntheorem}
 \theoremstyle{plain}
 %</package>
-%<*ltxml>
-RequirePackage('omtext');
-%</ltxml>
 %    \end{macrocode}
 % Now, we define an auxiliary function that lowercases strings
 %    \begin{macrocode}
-%<*ltxml>
-sub lowcase {my ($string) = @_; $string ? return lc(ToString($string)) : return('')}#$
-sub dashed { join('-',map($_->toString,@_));}#$
-%</ltxml>
 %    \end{macrocode}
 % Sometimes it is necessary to fallback to symbol names in order to generate xml:id attributes. For this purpose,
 % we define an auxiliary function which ensures the name receives a unique NCName equivalent.\ednote{Hard to be unique here, 
 % e.g. the names "foo\_bar" and "foo bar" would receive the same xml:id attributes... of course we can devise a more complex scheme
 % for the symbol replacement.}
 %    \begin{macrocode}
-%<*ltxml>
-sub makeNCName {
-  my ($name) = @_;
-  my $ncname = ToString($name);
-  $ncname=~s/\s/_/g;  #Spaces to underscores
-  $ncname="_$ncname" if $ncname!~/^(\w|_)/;  #Ensure start with letter or underscore
-  ##More to come...
-  return $ncname;
-}
-%</ltxml>
 %    \end{macrocode}
 % The following functions are strictly utility functions that makes our life easier later on
 %    \begin{macrocode}
-%<*ltxml>
-
-sub unpack_refs {
-  my @unpacked = ();
-  foreach my $input(@_) {
-    if ((ref $input) && ($input =~ /ARRAY/) && ($input !~ /LaTeXML/)) {
-      push(@unpacked, unpack_refs(@$input)); }
-    else {
-      push(@unpacked, ToString($input)); }
-  }
-  return @unpacked;
-}
-sub simple_wrapper {
-  #Deref if array reference
-  my @input = unpack_refs(@_);
-  return '' if (!@input);
-  @input = map(split(/\s*,\s*/,$_),@input);
-  my $output=join(" ",@input);
-
-  $output=~s/(^ )|[{}]//g; #remove leading space and list separator brackets
-  $output||'';
-}
-sub hash_wrapper{
-  #Deref if array reference
-  my @input = unpack_refs(@_);
-  return '' if (!@input);
-  @input = sort map(split(/\s*,\s*/,$_),@input);
-  my $output=join(".sym #",@input);
-  print STDERR "\n\nWTF: $output\n\n";
-
-  $output=~s/(^\.sym )|[{}]//g; #remove leading space and list separator brackets
-  "#$output"||'';
-}
-%</ltxml>
 %    \end{macrocode}
 % 
 % For the other languages, we set up triggers
@@ -771,16 +696,6 @@ sub hash_wrapper{
 \fi}%display=flow
 {\ifx\omtext@display\st@flow\else\end{ST\omtext@type AssEnv}\@in@omtextfalse\fi}
 %</package>
-%<*ltxml>
-DefStatement('{assertion} OptionalKeyVals:omtext',
-  "<omdoc:assertion "
-  .   "?&GetKeyVal(#1,'id')(xml:id='&GetKeyVal(#1,'id')')() "
-  .   "?&GetKeyVal(#1,'theory')(theory='&GetKeyVal(#1,'theory')')() "
-  .   "type='&lowcase(&GetKeyVal(#1,'type'))'>"
-  .   "?&GetKeyVal(#1,'title')(<dc:title>&GetKeyVal(#1,'title')</dc:title>)()"
- .  "<omdoc:CMP>#body"
-  ."</omdoc:assertion>\n");
-%</ltxml>
 %    \end{macrocode}
 % \end{environment}
 %
@@ -837,15 +752,6 @@ DefStatement('{assertion} OptionalKeyVals:omtext',
 \theorembodyfont{\upshape}
 \newtheorem{STexampleEnv}[STtheoremAssEnv]{\st@example@kw}
 %</package>
-%<*ltxml>
-DefStatement('{example} OptionalKeyVals:omtext',
-       "<omdoc:example "
-       . "?&GetKeyVal(#1,'id')(xml:id='&GetKeyVal(#1,'id')')() "
-       . "?&GetKeyVal(#1,'for')(for='&hash_wrapper(&GetKeyVal(#1,'for'))')()>"
-       . "?&GetKeyVal(#1,'title')(<dc:title>&GetKeyVal(#1,'title')</dc:title>)()"
-      . "#body"
-     . "</omdoc:example>\n");
-%</ltxml>
 %    \end{macrocode}
 % \end{environment}
 %
@@ -858,14 +764,6 @@ DefStatement('{example} OptionalKeyVals:omtext',
 \theorembodyfont{\upshape}
 \newtheorem{STaxiomEnv}[STtheoremAssEnv]{\st@axiom@kw}
 %</package>
-%<*ltxml>
-DefStatement('{axiom} OptionalKeyVals:omtext',
-  "<omdoc:axiom "
-  .   "?&GetKeyVal(#1,'id')(xml:id='&GetKeyVal(#1,'id')')()>"
-  .   "?&GetKeyVal(#1,'title')(<dc:title>&GetKeyVal(#1,'title')</dc:title>)()"
- . "<omdoc:CMP>#body"
-  . "</omdoc:axiom>\n");
-%</ltxml>
 %    \end{macrocode}
 % \end{environment}
 %
@@ -884,16 +782,6 @@ DefStatement('{axiom} OptionalKeyVals:omtext',
 \ifx\symboldec@display\st@flow\else{\noindent\stDMemph{\symdef@type} \symboldec@name:}\fi%
 \ifx\symboldec@title\@empty~\else~(\stDMemph{\symboldec@title})\par\fi}{}
 %</package>
-%<*ltxml>
-DefStatement('{symboldec} OptionalKeyVals:symboldec',
-       "<omdoc:symbol "
-      .  "?&GetKeyVal(#1,'id')(xml:id='&GetKeyVal(#1,'id')')"
-      .                   "(xml:id='&makeNCName(&GetKeyVal(#1,'name')).def.sym')"
-      .               "name='&GetKeyVal(#1,'name')'>"
-      .  "?&GetKeyVal(#1,'title')(<dc:title>&GetKeyVal(#1,'title')</dc:title>)()"
-      .  "<dc:description>#body"
-      ."</omdoc:symbol>\n");
-%</ltxml>
 %    \end{macrocode}
 % \end{environment}
 % 
@@ -909,14 +797,6 @@ DefStatement('{symboldec} OptionalKeyVals:symboldec',
 \newcommand\symtype[3][]{\metasetkeys{symtype}{#1}\sref@target%
 \noindent\type@type \ifx\symtype@\@empty\else (\symtype@system)\fi #2: $#3$}
 %</package>
-%<*ltxml>
-DefConstructor('\symtype OptionalKeyVals:omtext {}{}',
-  "<omdoc:type for='#2'"
- .   "?&GetKeyVal(#1,'id')(xml:id='&GetKeyVal(#1,'id').not')()"
- .   "?&GetKeyVal(#1,'system')(xml:id='&GetKeyVal(#1,'system')')()>"
- .  "<ltx:Math><ltx:XMath>#3</ltx:XMath></ltx:Math>"
- ."</omdoc:type>");
-%</ltxml>
 %    \end{macrocode}
 % \end{macro}
 %
@@ -925,15 +805,6 @@ DefConstructor('\symtype OptionalKeyVals:omtext {}{}',
 %<*package>
 \newcommand\inlinetypedec[3][]{\metasetkeys{symtype}{#1}\sref@target{\def\thedectype{#2}#3}}
 %</package>
-%<*ltxml>
-DefConstructor('\inlinetypedec OptionalKeyVals:omtext {}{}',
-  "<omdoc:type for='&GetKeyVal(#1,'for')'" 
- .   "?&GetKeyVal(#1,'id')(xml:id='&GetKeyVal(#1,'id').not')()"
- .   "?&GetKeyVal(#1,'system')(xml:id='&GetKeyVal(#1,'system')')()>"
- .  "<ltx:Math><ltx:XMath>#2</ltx:XMath></ltx:Math>"
- .  "<omdoc:CMP>#body"
- ."</omdoc:type>");
-%</ltxml>
 %    \end{macrocode}
 % \end{macro}
 %
@@ -957,16 +828,6 @@ DefConstructor('\inlinetypedec OptionalKeyVals:omtext {}{}',
 \ignorespaces}
 {\ifx\omtext@display\st@flow\else\end{STtypedecEnv}\fi\omtext@post@skip}
 %</package>
-%<*ltxml>
-DefStatement('{typedec} OptionalKeyVals:omtext {}',
-  "<omdoc:type for='&GetKeyVal(#1,'for')'" 
- .   "?&GetKeyVal(#1,'id')(xml:id='&GetKeyVal(#1,'id').not')()"
- .   "?&GetKeyVal(#1,'system')(xml:id='&GetKeyVal(#1,'system')')()>"
- .   "?&GetKeyVal(#1,'title')(<dc:title>&GetKeyVal(#1,'title')</dc:title>)()"
- .  "<ltx:Math><ltx:XMath>#2</ltx:XMath></ltx:Math>"
- .  "<omdoc:CMP>#body"
- ."</omdoc:type>");
-%</ltxml>
 %    \end{macrocode}
 % \end{environment}
 %
@@ -987,71 +848,6 @@ DefStatement('{typedec} OptionalKeyVals:omtext {}',
 \theorembodyfont{\upshape}
 \newtheorem{STdefinitionEnv}[STtheoremAssEnv]{\st@definition@kw}
 %</package>
-%<*ltxml>
-sub definitionBody {
-    my ($doc, $keyvals, %props) = @_;
-    my $for = $keyvals->getValue('for') if $keyvals;
-    my $type = $keyvals->getValue('type') if $keyvals;
-    my %for_attr=();
-    if (ToString($for)) {
-      $for = ToString($for);
-      $for =~ s/^{(.+)}$/$1/eg;
-      foreach (split(/,\s*/,$for)) {
-        $for_attr{$_}=1;
-    }}
-    if ($props{theory}) {
-      my @symbols = @{$props{defs} || []};
-      my $signature = $props{signature};
-      foreach my $symb(@symbols) {
-        next if $for_attr{$symb};
-        my $qualified_symbol = $signature ? "$signature?$symb" : $symb;
-        $for_attr{$qualified_symbol}=1;
-        if (!$props{multiling}) {
-          $doc->insertElement('omdoc:symbol', undef, (name=>$symb, "xml:id"=>makeNCName("$symb.def.sym"))); }
-      }
-    }
-    my %attrs = ();
-    $for = join(" ",(sort keys %for_attr));
-    $attrs{'for'} = $for if $for;
-    my $id = $keyvals->getValue('id') if $keyvals;
-    $attrs{'xml:id'} = $id if $id;
-    $attrs{'type'} = $type if $type;
-    if ($props{theory}) {
-      $doc->openElement('omdoc:definition', %attrs);
-    } else {
-      $attrs{'type'}='definition';
-      $doc->openElement('omdoc:omtext', %attrs);
-    }
-    my $title = $keyvals->getValue('title') if $keyvals;
-    if ($title) {
-      $doc->openElement('omdoc:metadata');
-      $doc->openElement('dc:title');
-      $doc->absorb($title);
-      $doc->closeElement('dc:title');}
-    $doc->openElement('omdoc:CMP');
-   $doc->absorb($props{body}) if $props{body};
-   $doc->maybeCloseElement('omdoc:CMP');
-    if ($props{theory}) {
-      $doc->closeElement('omdoc:definition');
-    } else {
-      $doc->closeElement('omdoc:omtext');
-    }
-    return; }
-# We use the standard DefEnvironment here, since
-# afterDigestBegins would collide otherwise
-DefEnvironment('{definition} OptionalKeyVals:omtext', \&definitionBody,
-  afterDigestBegin=>sub {
-    my ($stomach, $whatsit) = @_;
-    my @symbols = ();
-    $whatsit->setProperty(multiling=>LookupValue('multiling'));
-    $whatsit->setProperty(theory=>(LookupValue('modnl_signature') || LookupValue('current_module')));
-    $whatsit->setProperty(defs=>\@symbols);
-    $whatsit->setProperty(signature=>LookupValue('modnl_signature'));
-    AssignValue('defs', \@symbols);
-    declareFunctions($stomach,$whatsit);
-    return; },
-  afterDigest => sub { AssignValue('defs', undef); return; });
-%</ltxml>%$
 %    \end{macrocode}
 % \end{environment}
 %
@@ -1068,17 +864,6 @@ DefEnvironment('{definition} OptionalKeyVals:omtext', \&definitionBody,
 \theorembodyfont{\upshape}
 \newtheorem{STnotationEnv}[STtheoremAssEnv]{\st@notation@kw}
 %</package>
-%<*ltxml>
-DefStatement('{notation} OptionalKeyVals:omtext',
-  "<omdoc:definition " 
- .   "?&GetKeyVal(#1,'id')(xml:id='&GetKeyVal(#1,'id').not')()"
- .   "?&GetKeyVal(#1,'for')(for='&simple_wrapper(&GetKeyVal(#1,'for'))')()>"
- . "?&GetKeyVal(#1,'title')(<dc:title>&GetKeyVal(#1,'title')</dc:title>)()"
- . "<omdoc:CMP>#body"
-  . "</omdoc:definition>\n");
-DefConstructor('\notatiendum OptionalKeyVals:notation {}',
-              "<ltx:text class='notatiendum'>#2</ltx:text>");
-%</ltxml>
 %    \end{macrocode}
 % \end{environment}
 %
@@ -1138,11 +923,6 @@ Consider wrapping the defining phrase in a \protect\inlinedef}%
 %\newcommand\definiendum[2][]{\st@def@target{#1}{#2}\@termdef[#1]{#2}\defemph{#2}}
 \newcommand\definiendum[2][]{\st@def@target{#1}{#2}\defemph{#2}}
 %</package>
-%<*ltxml>
-DefConstructor('\definiendum [] {}',
-       "<omdoc:term role='definiendum' name='#name' cd='#theory'>#2</omdoc:term>",
-       afterDigest => sub { defHelper(@_, 'definiendum'); });
-%</ltxml>
 %    \end{macrocode}
 % \end{macro}
 %
@@ -1169,20 +949,6 @@ DefConstructor('\definiendum [] {}',
 \newcommand\@defi[1][]{\ifdef@index\omdoc@index[#1]{\@phrase}\fi\xspace}
 \newcommand\defis[2][]{\st@def@target{#1}{#2}\defemph{#2s}\def\@phrase{#2}\@defi}
 %</package>
-%<*ltxml>
-DefConstructor('\defi[]{} OptionalKeyVals:DEF',
-		 "?#defindex(<omdoc:idx><omdoc:idt>)"
-		 .     "<omdoc:term role='definiendum' name='?#1(#1)(#2)' cd='#theory'>#2</omdoc:term>"
-		 ."?#defindex(</omdoc:idt><omdoc:ide index='default'><omdoc:idp>#2</omdoc:idp></omdoc:ide></omdoc:idx>)",
-		 afterDigest => sub { defHelper(@_, 'defi'); },
-		 alias=>'\defi');
-DefConstructor('\defis[]{} OptionalKeyVals:DEF',
-		 "?#defindex(<omdoc:idx><omdoc:idt>)"
-		 .     "<omdoc:term role='definiendum' name='?#1(#1)(#2)' cd='#theory'>#2s</omdoc:term>"
-		 ."?#defindex(</omdoc:idt><omdoc:ide index='default'><omdoc:idp>#2</omdoc:idp></omdoc:ide></omdoc:idx>)",
-		 afterDigest => sub { defHelper(@_, 'defi'); },
-		 alias=>'\defi');
-%</ltxml>
 %    \end{macrocode}
 % \end{macro}
 %
@@ -1199,14 +965,6 @@ DefConstructor('\defis[]{} OptionalKeyVals:DEF',
 \else\omdoc@index[at=\@name,#1]{\@verb}\fi%
 \fi\xspace}
 %</package>
-%<*ltxml>
- DefConstructor('\adefi[]{}{} OptionalKeyVals:DEF',	      
-		 "?#defindex(<omdoc:idx><omdoc:idt>)"
-	       .     "<omdoc:term role='definiendum' name='?#1(#1)(#3)' cd='#theory'>#2</omdoc:term>"
-	       ."?#defindex(</omdoc:idt><omdoc:ide index='default'><omdoc:idp>#3</omdoc:idp></omdoc:ide></omdoc:idx>)",
-       afterDigest => sub { defHelper(@_, 'adefi'); },
-	       alias=>'\adefi');
-%</ltxml>
 %    \end{macrocode}
 % \end{macro}
 %
@@ -1219,24 +977,6 @@ DefConstructor('\defis[]{} OptionalKeyVals:DEF',
 \newcommand\defiis[3][]{\def\@pone{#2}\def\@ptwo{#3}%
 \st@def@target{#1}{#2-#3}\defemph{#2 #3s}\@defii}
 %</package>
-%<*ltxml>
-DefConstructor('\defii[]{}{} OptionalKeyVals:DEF',
-		 "?#defindex(<omdoc:idx><omdoc:idt>)"
-		 .    "<omdoc:term role='definiendum' name='?#1(#1)(&dashed(#2,#3))' cd='#theory'>"
-		 .      "#2 #3"
-		 .    "</omdoc:term>"
-		 ."?#defindex(</omdoc:idt><omdoc:ide index='default'><omdoc:idp>#2</omdoc:idp><omdoc:idp>#3</omdoc:idp></omdoc:ide></omdoc:idx>)",
-       afterDigest => sub { defHelper(@_, 'defii'); },
-	       alias=>'\defii');
-DefConstructor('\defiis[]{}{} OptionalKeyVals:DEF',
-		 "?#defindex(<omdoc:idx><omdoc:idt>)"
-		 .    "<omdoc:term role='definiendum' name='?#1(#1)(&dashed(#2,#3))' cd='#theory'>"
-		 .      "#2 #3s"
-		 .    "</omdoc:term>"
-		 ."?#defindex(</omdoc:idt><omdoc:ide index='default'><omdoc:idp>#2</omdoc:idp><omdoc:idp>#3</omdoc:idp></omdoc:ide></omdoc:idx>)",
-       afterDigest => sub { defHelper(@_, 'defii'); },
-	       alias=>'\defii');
-%</ltxml>
 %    \end{macrocode}
 % \end{macro}
 %
@@ -1252,16 +992,6 @@ DefConstructor('\defiis[]{}{} OptionalKeyVals:DEF',
 \else\@twin[at=\@name,#1]{\@pone}{\@ptwo}\fi%
 \fi\xspace}
 %</package>
-%<*ltxml>
-DefConstructor('\adefii[]{}{}{} OptionalKeyVals:DEF',
-		 "?#defindex(<omdoc:idx><omdoc:idt>)"
-	         .    "<omdoc:term role='definiendum' name='?#1(#1)(&dashed(#3,#4))' cd='#theory'>"
-	         .       "#2"
-	         .    "</omdoc:term>"
-		 ."?#defindex(</omdoc:idt><omdoc:ide index='default'><omdoc:idp>#3</omdoc:idp><omdoc:idp>#4</omdoc:idp></omdoc:ide></omdoc:idx>)",
-       afterDigest => sub { defHelper(@_, 'adefii'); },
-	       alias=>'\adefii');
-%</ltxml>
 %    \end{macrocode}
 % \end{macro}
 %
@@ -1275,20 +1005,6 @@ DefConstructor('\adefii[]{}{}{} OptionalKeyVals:DEF',
 \newcommand\defiiis[4][]{\def\@pone{#2}\def\@ptwo{#3}\def\@pthree{#4}%
 \st@def@target{#1}{#2-#3-#4}\defemph{#2 #3 #4s}\@defiii}
 %</package>
-%<*ltxml>
-DefConstructor('\defiii[]{}{}{} OptionalKeyVals:DEF',
-		 "?#defindex(<omdoc:idx><omdoc:idt>)"
-	         . "<omdoc:term role='definiendum' cd='#theory' name='?#1(#1)(&dashed(#2,#3,#4))'>#2 #3 #4</omdoc:term>"
-		 ."?#defindex(</omdoc:idt><omdoc:ide index='default'><omdoc:idp>#2</omdoc:idp><omdoc:idp>#3</omdoc:idp><omdoc:idp>#4</omdoc:idp></omdoc:ide></omdoc:idx>)",
-       afterDigest => sub { defHelper(@_, 'defiii'); },
-	       alias=>'\defiii');
-DefConstructor('\defiiis[]{}{}{} OptionalKeyVals:DEF',
-		 "?#defindex(<omdoc:idx><omdoc:idt>)"
-	         . "<omdoc:term role='definiendum' cd='#theory' name='?#1(#1)(&dashed(#2,#3,#4))'>#2 #3 #4s</omdoc:term>"
-		 ."?#defindex(</omdoc:idt><omdoc:ide index='default'><omdoc:idp>#2</omdoc:idp><omdoc:idp>#3</omdoc:idp><omdoc:idp>#4</omdoc:idp></omdoc:ide></omdoc:idx>)",
-       afterDigest => sub { defHelper(@_, 'defiii'); },
-	       alias=>'\defiii');
-%</ltxml>
 %    \end{macrocode}
 % \end{macro}
 %
@@ -1303,14 +1019,6 @@ DefConstructor('\defiiis[]{}{}{} OptionalKeyVals:DEF',
 \else\@atwin[at=\@name,#1]{\@pone}{\@ptwo}{\@pthree}\fi%
 \fi\xspace}
 %</package>
-%<*ltxml>
-DefConstructor('\adefiii[]{}{}{}{} OptionalKeyVals:DEF',
-		 "?#defindex(<omdoc:idx><omdoc:idt>)"
-		 . "<omdoc:term role='definiendum' cd='#theory' name='?#1(#1)(&dashed(#3,#4,#5))'>#2</omdoc:term>"
-		 ."?#defindex(</omdoc:idt><omdoc:ide index='default'><omdoc:idp>#3</omdoc:idp><omdoc:idp>#4</omdoc:idp><omdoc:idp>#5</omdoc:idp></omdoc:ide></omdoc:idx>)",
-       afterDigest => sub { defHelper(@_, 'adefiii')},
-       alias=>'\adefiii');
-%</ltxml>
 %    \end{macrocode}
 % \end{macro}
 %
@@ -1320,10 +1028,6 @@ DefConstructor('\adefiii[]{}{}{}{} OptionalKeyVals:DEF',
 \newcommand\inlineex[2][]{\metasetkeys{omtext}{#1}%
 \sref@target\sref@label@id{here}#2}
 %</package>
-%<*ltxml>
-DefConstructor('\inlineex OptionalKeyVals:omtext {}',
-              "<ltx:text class='example'>#2</ltx:text>");
-%</ltxml>
 %    \end{macrocode}
 % \end{macro}
 %
@@ -1333,13 +1037,6 @@ DefConstructor('\inlineex OptionalKeyVals:omtext {}',
 \newcommand\inlineass[2][]{\metasetkeys{omtext}{#1}%
 \sref@target\sref@label@id{here}#2}
 %</package>
-%<*ltxml>
-DefConstructor('\inlineass OptionalKeyVals:omtext {}',
-              "<ltx:text "
-            .    "?&GetKeyVal(#1,'type')(class='&GetKeyVal(#1,'type') assertion')(class='assertion') >"
-            .    "#2"
-            . "</ltx:text>");
-%</ltxml>
 %    \end{macrocode}
 % \end{macro}
 %
@@ -1354,56 +1051,6 @@ DefConstructor('\inlineass OptionalKeyVals:omtext {}',
 whatever is suitable semantically}\fi%
 \sref@target\sref@label@id{here}\st@indeftrue #2}
 %</package>
-%<*ltxml>
-DefConstructor('\inlinedef OptionalKeyVals:omtext {}', sub {
- my ($document, $keyvals, $body, %props) = @_;
- my $for = $keyvals->getValue('for') if $keyvals;
- my %for_attr=();
- if (ToString($for)) {
-   $for = ToString($for);
-   $for =~ s/^{(.+)}$/$1/eg;
-   foreach (split(/,\s*/,$for)) {
-     $for_attr{$_}=1;
-   }}
- my @symbols = @{$props{defs} || []};
- #Prepare for symbol insertion -insert before the parent of the closest ancestor CMP element
- my $original_node = $document->getNode;
- my $statement_ancestor = $document->findnode('./ancestor::omdoc:CMP/..', $original_node);
- foreach my $symb(@symbols) {
-   next if $for_attr{$symb};
-   $for_attr{$symb}=1;
-   my $symbolnode = XML::LibXML::Element->new('symbol');
-   $symbolnode->setAttribute(name=>$symb);
-   $symbolnode->setAttribute("xml:id"=>makeNCName("$symb.def.sym"));
- if ($statement_ancestor) {
-   $statement_ancestor->parentNode->insertBefore($symbolnode,$statement_ancestor);
-  } else {
-    Error('malformed', $statement_ancestor, $original_node, "\\inlinedef outside a statement!
-Try wrapping the paragraph in a begin{omtext}, \\begin{assertion}, \\begin{axiom}...\nwhatever is suitable semantically.")}}
- #Restore the insertion point
- $document->setNode($original_node);
- my %attrs = ();
- $for = join(" ",(sort keys %for_attr));
- $attrs{'for'} = $for if $for;
- my $id = $keyvals->getValue('id') if $keyvals;
- $attrs{'xml:id'} = $id if $id;
- $attrs{'class'} = 'inlinedef';
- $document->openElement('ltx:text',%attrs);
- $document->absorb($body);
- $document->closeElement('ltx:text'); },
- #Prepare 'defs' hooks for \defi and \definiendum symbol names
-  beforeDigest=>sub {
-    my @symbols = ();
-    AssignValue('defs', \@symbols); return; },
- #Adopt collected names as 'defs' property, remove hooks
-  afterDigest=>sub {
-    my ($stomach, $whatsit) = @_;
-    my $defsref = LookupValue('defs');
-    my @defs = @$defsref;
-    $whatsit->setProperty('defs',\@defs);
-    AssignValue('defs',undef);
- return; });#$
-%</ltxml>
 %    \end{macrocode}
 % \end{macro}
 % 
@@ -1422,16 +1069,6 @@ Try wrapping the paragraph in a begin{omtext}, \\begin{assertion}, \\begin{axiom
 \ifx\termref@cd\@empty\def\termref@cd{\mod@id}\fi%
 \st@termref{#2}}
 %</package>
-%<*ltxml>
-DefConstructor('\termref OptionalKeyVals:termref {}',
-               "<omdoc:term "
-              .  "?&GetKeyVal(#1,'cdbase')(cdbase='&GetKeyVal(#1,'cdbase')')() "
-             .  "cd='?&GetKeyVal(#1,'cd')(&GetKeyVal(#1,'cd'))(#module)' "
-              .  "name='&GetKeyVal(#1,'name')'>"
-              .  "#2"
-              ."</omdoc:term>",
-              afterDigest=>sub{$_[1]->setProperty(module=>(LookupValue('modnl_signature') || LookupValue('current_module')))});
-%</ltxml>%$
 %    \end{macrocode}
 % \end{macro}
 % The next macro is where the actual work is done. 
@@ -1450,8 +1087,7 @@ DefConstructor('\termref OptionalKeyVals:termref {}',
 %
 % \begin{macro}{\tref*}
 %    \begin{macrocode}
-%<ltxml>RawTeX('
-%<*package|ltxml>
+%<*package>
 \newcommand\atrefi[3][]{\def\@test{#1}%
 \ifx\@test\@empty\termref[name=#3]{#2}\else\termref[cd=#1,name=#3]{#2}\fi}
 \newcommand\atrefii[4][]{\atrefi[#1]{#2}{#3-#4}}
@@ -1467,8 +1103,7 @@ DefConstructor('\termref OptionalKeyVals:termref {}',
 \newcommand\trefis[2][]{\atrefi[#1]{#2s}{#2}}
 \newcommand\trefiis[3][]{\atrefi[#1]{#2 #3s}{#2-#3}}
 \newcommand\trefiiis[4][]{\atrefi[#1]{#2 #3 #4s}{#2-#3-#4}}
-%</package|ltxml>
-%<ltxml>');
+%</package>
 %    \end{macrocode}
 % \end{macro}
 %
@@ -1499,9 +1134,6 @@ DefConstructor('\termref OptionalKeyVals:termref {}',
 {Dangling link (\protect\term) for "#2" still needs to be specified}%
 \textcolor{blue}{\underline{#2}}}
 %</package>
-%<*ltxml>
-DefConstructor('\term{}',"<omdoc:term class='dangling-term-link' ?#1(cd='#1')()>#1</omdoc:term>");
-%</ltxml>
 %    \end{macrocode}
 % \end{macro}
 % \begin{macro}{\symref}
@@ -1512,90 +1144,16 @@ DefConstructor('\term{}',"<omdoc:term class='dangling-term-link' ?#1(cd='#1')()>
 %<*package>
 \newcommand\symref[2]{\@nameuse{mod@symref@#1}{#2}}
 %</package>
-%<*ltxml>
-DefConstructor('\symref{}{}',
-               "<omdoc:term cd='&LookupValue('symdef.#1.cd')' name='&LookupValue('symdef.#1.name')'>"
-              .  "#2"
-              ."</omdoc:term>");
-%</ltxml>
 %    \end{macrocode}
 % \end{macro}
 %
-% \subsection{Providing IDs for {\omdoc} Elements}\label{sec:impl:ids}
-%
-% To provide default identifiers, we tag all {\omdoc}
-% elements that allow |xml:id| attributes by executing the |numberIt| procedure from |omdoc.sty.ltxml|.
-% 
-%    \begin{macrocode}
-%<*ltxml>
-Tag('omdoc:assertion',afterOpen=>\&numberIt,afterClose=>\&locateIt);
-Tag('omdoc:definition',afterOpen=>\&numberIt,afterClose=>\&locateIt);
-Tag('omdoc:example',afterOpen=>\&numberIt,afterClose=>\&locateIt);
-Tag('omdoc:requation',afterOpen=>\&numberIt,afterClose=>\&locateIt);
-Tag('omdoc:axiom',afterOpen=>\&numberIt,afterClose=>\&locateIt);
-Tag('omdoc:symbol',afterOpen=>\&numberIt,afterClose=>\&locateIt);
-Tag('omdoc:type',afterOpen=>\&numberIt,afterClose=>\&locateIt);
-Tag('omdoc:term',afterOpen=>\&numberIt,afterClose=>\&locateIt);
-%</ltxml>
-%    \end{macrocode}
-%
-% \subsection{Auxiliary Functionality}\label{sec:auxiliary}
-%    \begin{macrocode}
-%<*ltxml>
-# =======================================================
-#  Auxiliary Functions:                               #
-# =======================================================
-sub DefStatement {
-  my ($definition,$replacement,%properties)=@_;
-  DefEnvironment($definition,$replacement,%properties,
-      afterDigestBegin=>\&declareFunctions,
- );}
-
-sub declareFunctions{
-  my ($stomach,$whatsit) = @_;
-  my $keyval = $whatsit->getArg(1);
-  my $funval = GetKeyVal($keyval,'functions') if GetKeyVal($keyval,'functions');
-  return unless $funval;
-  my @funsymbs = $funval->unlist;
-  #Unread the function declarations at the Gullet
-  foreach (@funsymbs) {
-    my $symb = UnTeX($_);
-    $stomach->getGullet->unread(Tokenize('\lxDeclare[role=FUNCTION]{$'.$symb.'$}')->unlist);
-  }
-  return; }
-sub defHelper{
-  my ($stomach, $whatsit, $defOption) = @_;
-  my $addr = LookupValue('defs');
-  my $name = $whatsit->getArg(1);
-  if (!$name) {
-    my %choose_Option = (
-                        definiendum => sub {$whatsit->getArg(2);},
-                        defi => sub {$whatsit->getArg(2);},
-                        adefi => sub {$whatsit->getArg(3);},
-                        defii => sub {$whatsit->getArg(2)->toString.'-'.$whatsit->getArg(3)->toString;},
-                        adefii => sub {$whatsit->getArg(3)->toString.'-'.$whatsit->getArg(4)->toString;},
-                        defiii => sub {$whatsit->getArg(2)->toString.'-'.$whatsit->getArg(3)->toString.'-'.$whatsit->getArg(4)->toString;},
-                        adefiii => sub {$whatsit->getArg(3)->toString.'-'.$whatsit->getArg(4)->toString.'-'.$whatsit->getArg(5)->toString;}
-                        );
-    $name = $choose_Option{$defOption}->();
-  }
-  $name = ToString($name) || "";
-  $whatsit->setProperty(name=>$name) if $name;
-  push(@$addr, $name) if ($addr and $name);
-  $whatsit->setProperty('defindex', IfCondition(T_CS('\if@defindex')));
-  $whatsit->setProperty(theory=>(LookupValue('modnl_signature') || LookupValue('current_module')));
- return;}#$
-%</ltxml>
-%    \end{macrocode}
 % \subsection{Deprecated Functionality}\label{sec:deprecated}
 %
 % In this section we centralize old interfaces that are only partially supported any
 % more. 
 % \begin{macro}{\*def*}
 %    \begin{macrocode}
-%<ltxml>####### Deprecated functionality:
-%<ltxml>RawTeX('
-%<*package|ltxml>
+%<*package>
 \newcommand\defin[2][]{\defi[#1]{#2}%
 \PackageWarning{statements}{\protect\defin\space is deprecated, use \protect\defi\space instead}}
 \newcommand\twindef[3][]{\defii[#1]{#2}{#3}%
@@ -1617,18 +1175,9 @@ sub defHelper{
 \PackageWarning{statements}{\protect\twinref\space is deprecated, use \protect\trefii\space instead}}
 \newcommand\atwinref[4][]{\atrefiii[#1]{#2}{#3}{#4}%
 \PackageWarning{statements}{\protect\atwindef\space is deprecated, use \protect\trefiii\space instead}}
-%</package|ltxml>
-%<ltxml>');
+%</package>
 %    \end{macrocode}
 % \end{macro}
-% 
-% \subsection{Finale}
-%
-% Finally, we need to terminate the file with a success mark for perl.
-%    \begin{macrocode}
-%<ltxml>1;
-%    \end{macrocode}
-%
 % \Finale
 %
 \endinput

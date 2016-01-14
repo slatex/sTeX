@@ -176,27 +176,6 @@
 % the |document| environment and pre-loads some convenience packages, whereas the package
 % provides the concrete functionality.
 % 
-% |hwexam.dtx| generates four files: |hwexam.cls| (all the code between
-% {\textsf{$\langle$*cls$\rangle$}} and {\textsf{$\langle$/cls$\rangle$}}), |hwexam.sty|
-% (between {\textsf{$\langle$*package$\rangle$}} and
-% {\textsf{$\langle$/package$\rangle$}}) and their {\latexml} bindings (between
-% {\textsf{$\langle$*ltxml.cls$\rangle$}} and {\textsf{$\langle$/ltxml.cls$\rangle$}} and
-% {\textsf{$\langle$*ltxml.sty$\rangle$}} and {\textsf{$\langle$/ltxml.sty$\rangle$
-% respetively}}). We keep the corresponding code fragments together, since the
-% documentation applies to both of them and to prevent them from getting out of sync.
-%
-% first the general setup for \latexml (for the class and package)
-%    \begin{macrocode}
-%<*ltxml.cls|ltxml.sty>
-# -*- CPERL -*-
-package LaTeXML::Package::Pool;
-use strict;
-use LaTeXML::Package;
-use LaTeXML::Util::Pathname;
-use Cwd qw(cwd abs_path);
-%</ltxml.cls|ltxml.sty>
-%    \end{macrocode}
-%
 % \subsection{Class Options}\label{sec:impl:cls:options}
 %
 % To initialize the |hwexam| class, we declare and process the necessary options by
@@ -212,15 +191,6 @@ use Cwd qw(cwd abs_path);
 }
 \ProcessOptions
 %</cls>
-%<*ltxml.cls>
-DeclareOption(undef,sub{
-   PassOptions('omdoc','cls',ToString(Digest(T_CS('\CurrentOption'))));  
-   PassOptions('stex','sty',ToString(Digest(T_CS('\CurrentOption'))));
-   PassOptions('hwexam','sty',ToString(Digest(T_CS('\CurrentOption')))); 
-   PassOptions('tikzinput','cls',ToString(Digest(T_CS('\CurrentOption'))));
-});  
-ProcessOptions();
-%</ltxml.cls>
 %    \end{macrocode}
 %
 % We load |omdoc.cls|, and the desired packages. For the {\latexml} bindings, we make
@@ -238,16 +208,6 @@ ProcessOptions();
 \RequirePackage{amstext}
 \RequirePackage{amsmath}
 %</cls>
-%<*ltxml.cls>
-LoadClass('omdoc'); 
-RequirePackage('stex');
-RequirePackage('hwexam');
-RequirePackage('tikzinput', options => ['image']); 
-RequirePackage('graphicx');
-RequirePackage('amssymb');
-RequirePackage('amstext');
-RequirePackage('amsmath');
-%</ltxml.cls>
 %    \end{macrocode}
 % Finally, we register another keyword for the |document| environment. We give a default
 % assignment type to prevent errors
@@ -286,28 +246,6 @@ RequirePackage('amsmath');
 \if@hwexam@mh@\RequirePackage{hwexam-mh}\fi
 \RequirePackage{problem}
 %</package>
-%    \end{macrocode}
-%
-% Here comes the equivalent header information for {\latexml}, we also initialize the
-% package inclusions. Since {\latexml} does not handle options yet, we have nothing to
-% do. 
-%    \begin{macrocode}
-%<*ltxml.sty>
-DeclareOption('mh', sub { AssignValue('@hwexam' => 1,'global');
-PassOptions('problem','sty',ToString(Digest(T_CS('\CurrentOption'))));});
-DeclareOption('test', '');
-DeclareOption('multiple', '');
-DeclareOption(undef, sub {PassOptions('problem','sty',ToString(Digest(T_CS('\CurrentOption')))); });
-ProcessOptions();
-if (LookupValue('@hwexam')){RequirePackage('hwexam-mh');}
-RequirePackage('problem');
-%    \end{macrocode}
-%
-% Then we register the namespace of the requirements ontology
-%    \begin{macrocode}
-RegisterNamespace('assig'=>"http://omdoc.org/ontology/assignments#");
-RegisterDocumentNamespace('assig'=>"http://omdoc.org/ontology/assignments#");
-%</ltxml.sty>
 %    \end{macrocode}
 %
 % \begin{macro}{\hwexam@*@kw}
@@ -480,34 +418,6 @@ RegisterDocumentNamespace('assig'=>"http://omdoc.org/ontology/assignments#");
 \fi% multiple
 %</package>
 %    \end{macrocode}
-% 
-%    \begin{macrocode}
-%<*ltxml.sty>
-DefEnvironment('{assignment} OptionalKeyVals:assig',
-  "<omdoc:omgroup ?&GetKeyVal(#1,'id')(xml:id='&GetKeyVal(#1,'id')')() "
-  .  "assig:dummy='for the namespace'>"
-  .  "<omdoc:metadata>"
-  .    "<dc:title>"
-  .       "Assignment ?&GetKeyVal(#1,'num')(&GetKeyVal(#1,'num').)()"
-  .       "?&GetKeyVal(#1,'title')((&GetKeyVal(#1,'title')))"
-  .    "</dc:title>"
-  .    "?&GetKeyVal(#1,'given')(<omdoc:meta property='assig:given'>&GetKeyVal(#1,'given')</omdoc:meta>)()"
-  .    "?&GetKeyVal(#1,'due')(<omdoc:meta property='assig:due'>&GetKeyVal(#1,'due')</omdoc:meta>)()"
-  .    "?&GetKeyVal(#1,'pts')(<omdoc:meta property='assig:pts'>&GetKeyVal(#1,'pts')</omdoc:meta>)()"
-  .  "</omdoc:metadata>"
-  .  "#body"
-  ."</omdoc:omgroup>\n"#,
-#  afterDigest=> sub {
-#    my ($stomach, $kv) = @_;
-#    my $kvi = LookupValue('inclassig');
-#    my @keys = qw(id num title pts given due);
-#    my @vals = $kvi && map($kvi->getValue($_), @keys);
-#    foreach my $i(0..$#vals) {
-#       $kv->setValue($keys[$i],$vals[$i]) if $vals[$i];
-#     }}
-);#$
-%</ltxml.sty>
-%    \end{macrocode}
 % \end{environment}
 % 
 % \subsection{Including Assignments}
@@ -530,14 +440,6 @@ DefEnvironment('{assignment} OptionalKeyVals:assig',
 \newcommand\inputassignment[2][]{\metasetkeys{inclassig}{#1}%
 \input{#2}\clear@inclassig@keys}
 %</package>
-%<*ltxml.sty>
-DefMacro('\includeassignment [] {}', sub {
-  my ($stomach, $arg1, $arg2) = @_;
-  AssignValue('inclassig',$arg1) if $arg1;
-  (Invocation(T_CS('\input'),$arg2)->unlist);
-});
-DefMacro('\inputassignment [] {}','\includeassignment[#1]{#2}');
-%</ltxml.sty>
 %    \end{macrocode}
 % \end{macro}
 % 
@@ -584,9 +486,6 @@ bonus points. \vfill
 \end{center}}
 {\newpage}
 %</package>
-%<*ltxml.sty>
-DefEnvironment('{testheading}OptionalKeyVals:omdoc','');
-%</ltxml.sty>
 %    \end{macrocode}
 % \end{macro}
 % 
@@ -595,9 +494,6 @@ DefEnvironment('{testheading}OptionalKeyVals:omdoc','');
 %<*package>
 \newcommand\testspace[1]{\iftest\vspace*{#1}\fi}
 %</package>
-%<*ltxml.sty>
-DefConstructor('\testspace{}','');
-%</ltxml.sty>
 %    \end{macrocode}
 % \end{macro}
 % 
@@ -606,9 +502,6 @@ DefConstructor('\testspace{}','');
 %<*package>
 \newcommand\testnewpage{\iftest\newpage\fi}
 %</package>
-%<*ltxml.sty>
-DefConstructor('\testnewpage','');
-%</ltxml.sty>
 %    \end{macrocode}
 % \end{macro}
 % 
@@ -618,9 +511,6 @@ DefConstructor('\testnewpage','');
 \newcommand\testemptypage[1][]{\iftest\begin{center}This page was intentionally left
     blank for extra space\end{center}\vfill\eject\else\fi}
 %</package>
-%<*ltxml.sty>
-DefConstructor('\testemptypage','');
-%</ltxml.sty>
 %    \end{macrocode}
 % \end{macro}
 % 
@@ -680,11 +570,6 @@ DefConstructor('\testemptypage','');
 % \newcommand\thinkA{\denker}
 % \newcommand\discussA{\bierglas}
 % \end{verbatim}
-%
-% Finally, we need to terminate the file with a success mark for perl.
-%    \begin{macrocode}
-%<ltxml.sty|ltxml.cls>1;
-%    \end{macrocode}
 % \Finale
 \endinput
 % \iffalse

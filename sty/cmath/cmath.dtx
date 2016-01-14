@@ -209,23 +209,6 @@
 %
 % \section{The Implementation}\label{sec:implementation}
 % 
-% The |cmath| package generates to files: the {\LaTeX} package (all the code
-% between {\textsf{$\langle$*package$\rangle$}} and {\textsf{$\langle$/package$\rangle$}}) and the
-% {\latexml} bindings (between {\textsf{$\langle$*ltxml$\rangle$}} and
-%     {\textsf{$\langle$/ltxml$\rangle$}}). We keep the corresponding code fragments together,
-% since the documentation applies to both of them and to prevent them from getting out of
-% sync.
-%
-% For {\latexml}, we initialize the package inclusions.
-%    \begin{macrocode}
-%<*ltxml>
-# -*- CPERL -*-
-package LaTeXML::Package::Pool;
-use strict;
-use LaTeXML::Package;
-%</ltxml>
-%    \end{macrocode}
-%
 % \subsection{Package Options}\label{sec:impl:options}
 %
 % The |cmath| package does not take options (at the moment), but we pass any we get to the
@@ -236,10 +219,6 @@ use LaTeXML::Package;
 \DeclareOption*{\PassOptionsToPackage{\CurrentOption}{presentation}}
 \ProcessOptions
 %</package>
-%<*ltxml>
-DeclareOption(undef, sub{PassOptions('presentation','sty',ToString(Digest(T_CS('\CurrentOption'))));});
-ProcessOptions();
-%</ltxml>
 %    \end{macrocode}
 %
 % The next measure is to ensure that some {\sTeX} packages are loaded. For {\latexml}, we
@@ -249,9 +228,6 @@ ProcessOptions();
 %<*package>
 \RequirePackage{presentation}
 %</package>
-%<*ltxml>
-RequirePackage('presentation');
-%</ltxml>
 %    \end{macrocode}
 
 % \subsection{Variable Names}\label{sec:impl:vname}
@@ -268,19 +244,6 @@ RequirePackage('presentation');
 \def\@opt{#1}%
 \ifx\@opt\@empty\else\expandafter\gdef\csname MOD@name@#1\endcsname{#2}\fi}
 %</package>
-%<*ltxml>
-# return: unique ID for variable
-sub cvar_id {
-  my ($id) = @_;
-  $id = ToString($id);
-  if (!$id) {
-    $id=LookupValue('cvar_id') || 0;
-    AssignValue('cvar_id', $id + 1, 'global'); }
-  "cvar.$id"; }#$
-DefConstructor('\vname[]{}',
-  "<ltx:XMWrap role='ID' xml:id='&cvar_id(#1)'>#2</ltx:XMWrap>",
-  requireMath=>1);
-%</ltxml>
 %    \end{macrocode}
 % \end{macro}
 %
@@ -289,11 +252,6 @@ DefConstructor('\vname[]{}',
 %<*package>
 \def\vnref#1{\csname MOD@name@#1\endcsname}
 %</package>
-%<*ltxml>
-# \vnref{<reference>}
-DefMacro('\vnref{}','\@XMRef{cvar.#1}');
-
-%</ltxml>
 %    \end{macrocode}
 % \end{macro}
 % \ednote{the following macros are just ideas, they need to be implemented and documented}
@@ -307,14 +265,6 @@ DefMacro('\vnref{}','\@XMRef{cvar.#1}');
 \newcommand\livar[3][]{\vname[#1]{{#2}_{#3}}}
 \newcommand\ulivar[4][]{\vname[#1]{{#2}^{#3}_{#4}}}
 %</package>
-%<*ltxml>
-# variants for declaring variables
-DefMacro('\uivar[]{}{}',    '\vname[#1]{{#2}^{#3}}');
-DefMacro('\livar[]{}{}',    '\vname[#1]{{#2}_{#3}}');
-DefMacro('\ulivar[]{}{}{}', '\vname[#1]{{#2}^{#3}_{#4}}');
-DefMacro('\primvar[]{}',    '\vname[#1]{#2^\prime}');
-DefMacro('\pprimvar[]{}',   '\vname[#1]{#2^{\prime\prime}}');
-%</ltxml>
 %    \end{macrocode}
 % \end{macro}
 %
@@ -330,35 +280,6 @@ DefMacro('\pprimvar[]{}',   '\vname[#1]{#2^{\prime\prime}}');
 \newcommand\nappli[5][]{\nappe[#1]{#2}{#3_{#4}}{#3_{#5}}}
 \newcommand\nappui[5][]{\nappe[#1]{#2}{#3^{#4}}{#3^{#5}}}
 %</package>
-%<*ltxml>
-# \nappa{<function>}{<(var)(,\1)*>}
-# @#1(#2)
-DefConstructor('\nappa[]{}{}',
-  "<ltx:XMApp>"
-    ."<ltx:XMTok name='#2' />"
-    ."<ltx:XMArg>#3</ltx:XMArg>"
-  ."</ltx:XMApp>");
-
-# \@napp@seq{<function>}{start <const>}{end <const>}
-# @#1(@sequence(#2,sequencefromto,#3))
-DefConstructor('\@napp@seq[]{}{}{}',
-  "<ltx:XMApp>"
-  ."<ltx:XMTok name='#2' />"
-  ."<ltx:XMArg>"
-    ."<ltx:XMApp>"
-      ."<ltx:XMTok meaning='sequence' />"
-      ."<ltx:XMArg>#3</ltx:XMArg>"
-      ."<ltx:XMArg><ltx:XMTok meaning='sequencefromto' /></ltx:XMArg>"
-      ."<ltx:XMArg>#4</ltx:XMArg>"
-    ."</ltx:XMApp>"
-  ."</ltx:XMArg>"
-  ."</ltx:XMApp>");
-
-DefMacro('\nappe[]{}{}{}',    '\@napp@seq[#1]{#2}{#3}{#4}');
-DefMacro('\nappf[]{}{}{}{}',  '\@napp@seq[#1]{#2}{#3{#4}}{#3{#5}}');
-DefMacro('\nappli[]{}{}{}{}', '\@napp@seq[#1]{#2}{#3_{#4}}{#3_{#5}}');
-DefMacro('\nappui[]{}{}{}{}', '\@napp@seq[#1]{#2}{#3^{#4}}{#3^{#5}}');
-%</ltxml>
 %    \end{macrocode}
 % \end{macro}
 %
@@ -373,44 +294,11 @@ DefMacro('\nappui[]{}{}{}{}', '\@napp@seq[#1]{#2}{#3^{#4}}{#3^{#5}}');
 \newcommand\anappli[5][]{\anappe[#1]{#2}{#3_{#4}}{#3_{#5}}}
 \newcommand\anappui[5][]{\anappe[#1]{#2}{#3^{#4}}{#3^{#5}}}
 %</package>
-%<*ltxml>
-# \nappa{<function>}{<(const)(,\1)*>}
-# @#1(#2)
-DefConstructor('\anappa[]{}{}',
-  "<ltx:XMApp>"
-    ."<ltx:XMTok name='#2' />"
-    ."<ltx:XMArg>#3</ltx:XMArg>"
-  ."</ltx:XMApp>");
-# \@napp@seq{<function>}{start <const>}{end <const>}
-# @#1(@sequence(#2,sequencefromto,#3))
-DefConstructor('\@anapp@seq{}{}{}',
-  "<ltx:XMApp>"
-  ."<ltx:XMTok name='#1' />"
-  ."<ltx:XMArg>"
-    ."<ltx:XMApp>"
-      ."<ltx:XMTok meaning='sequence' />"
-      ."<ltx:XMArg>#2</ltx:XMArg>"
-      ."<ltx:XMArg><ltx:XMTok meaning='sequencefromto' /></ltx:XMArg>"
-      ."<ltx:XMArg>#3</ltx:XMArg>"
-    ."</ltx:XMApp>"
-  ."</ltx:XMArg>"
-  ."</ltx:XMApp>");
-DefMacro('\anappe[]{}{}{}',    '\@anapp@seq[#1]{#2}{#3}{#4}');
-DefMacro('\anappf[]{}{}{}{}',  '\@anapp@seq[#1]{#2}{#3{#4}}{#3{#5}}');
-DefMacro('\anappli[]{}{}{}{}', '\@anapp@seq[#1]{#2}{#3_{#4}}{#3_{#5}}');
-DefMacro('\anappui[]{}{}{}{}', '\@anapp@seq[#1]{#2}{#3^{#4}}{#3^{#5}}');
-%</ltxml>
 %    \end{macrocode}
 % \end{macro}
 %
 % \subsection{Binders}\label{sec:impl:bind}
 %
-% \subsection{Finale}
-%
-% Finally, we need to terminate the file with a success mark for perl.
-%    \begin{macrocode}
-%<ltxml>1;
-%    \end{macrocode}
 % \Finale
 \endinput
 %

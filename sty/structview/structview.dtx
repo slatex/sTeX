@@ -172,24 +172,6 @@
 % 
 % \section{The Implementation}\label{sec:impl} 
 %
-% The |modules| package generates two files: the {\LaTeX} package (all the code between
-% {\textlangle\textsf{*package}\textrangle} and {\textsf{\textlangle/package\textrangle}})
-% and the {\latexml} bindings (between {\textsf{\textlangle*ltxml\textrangle}} and
-% {\textsf{\textlangle/ltxml\textrangle}}). We keep the corresponding code fragments
-% together, since the documentation applies to both of them and to prevent them from
-% getting out of sync.
-%
-% First the general setup for \latexml
-%
-%    \begin{macrocode}
-%<*ltxml>
-# -*- CPERL -*-
-package LaTeXML::Package::Pool;
-use strict;
-use LaTeXML::Package;
-%</ltxml>
-%    \begin{macrocode}
-%
 % \subsection{Package Options}\label{sec:impl:options}
 % 
 % We declare some switches which will modify the behavior according to the package
@@ -204,12 +186,6 @@ use LaTeXML::Package;
 \DeclareOption*{\PassOptionsToPackage{\CurrentOption}{modules}}
 \ProcessOptions
 %</package>
-%<*ltxml>
-DeclareOption('mh', sub {AssignValue ('@structview' => 1,'global');
-PassOptions('modules','sty',ToString(Digest(T_CS('\CurrentOption'))));});
-DeclareOption(undef,sub {PassOptions('modules','sty',ToString(Digest(T_CS('\CurrentOption')))); });  
-ProcessOptions();
-%</ltxml>
 %    \end{macrocode}
 %
 % The next measure is to ensure that the |sref| and |xcomment| packages are loaded (in the
@@ -219,10 +195,6 @@ ProcessOptions();
 \if@structview@mh@\RequirePackage{structview-mh}\fi
 \RequirePackage{modules}
 %</package>
-%<*ltxml>
-if(LookupValue('@structview')) {RequirePackage('structview-mh');}		
-RequirePackage('modules');
-%</ltxml>
 %    \end{macrocode}
 %
 % \subsection{Structures}\label{sec:impl:structures}
@@ -268,16 +240,6 @@ RequirePackage('modules');
 \addmetakey{view}{type}
 \addmetakey[sms]{view}{ext}
 %</package>
-%<*ltxml>
-DefKeyVal('view','id','Semiverbatim');
-DefKeyVal('view','from','Semiverbatim');
-DefKeyVal('view','to','Semiverbatim');
-DefKeyVal('view','title','Semiverbatim');
-DefKeyVal('view','creators','Semiverbatim');
-DefKeyVal('view','contributors','Semiverbatim');
-DefKeyVal('view','display','Semiverbatim');
-DefKeyVal('view','ext','Semiverbatim');
-%</ltxml>
 %    \end{macrocode}
 %
 % \begin{macro}{\view@heading}
@@ -324,28 +286,6 @@ DefKeyVal('view','ext','Semiverbatim');
 }%
 \ifmod@show\surroundwithmdframed{view}\fi%
 %</package>
-%<*ltxml>
-DefMacroI(T_CS('\begin{view}'),'OptionalKeyVals:view {}{}', sub {
-  my ($gullet, $keyvals, $from_arg, $to_arg) = @_;
-  my $from = ToString(Digest($from_arg));
-  my $to = ToString(Digest($to_arg));
-  my $from_file = ToString(GetKeyVal($keyvals,'from'));
-  my $to_file = ToString(GetKeyVal($keyvals,'to'));
-  my $ext = ToString(GetKeyVal($keyvals,'ext')) if $keyvals;
-  $ext = 'sms' unless $ext;
-  return (
-    Tokenize("\\importmoduleI[load=$from_file]{$from}")->unlist,
-    Tokenize("\\importmoduleI[load=$to_file]{$to}")->unlist,
-    Invocation(T_CS('\begin{viewenv}'),$keyvals,$from_arg,$to_arg)->unlist
-  );
-}); 
-DefMacroI('\end{view}',undef,'\end{viewenv}');
-DefEnvironment('{viewenv} OptionalKeyVals:view {}{}',
-   "<omdoc:theory-inclusion from='#2' to='#3'"
-  .      " ?&defined(&GetKeyVal(#1,'id'))(xml:id='&GetKeyVal(#1,'id')')()>"
-  .  "<omdoc:morphism>#body</omdoc:morphism>"
-  ."</omdoc:theory-inclusion>");
-%</ltxml>
 %    \end{macrocode}
 % \end{environment}
 %
@@ -373,29 +313,6 @@ DefEnvironment('{viewenv} OptionalKeyVals:view {}{}',
 }%
 \ifmod@show\surroundwithmdframed{viewsketch}\fi%
 %</package>
-%<*ltxml>
-# do the same for viewsketch, pity we cannot share some code. 
-DefMacroI(T_CS('\begin{viewsketch}'),'OptionalKeyVals:view {}{}', sub {
-  my ($gullet, $keyvals, $from_arg, $to_arg) = @_;
-  my $from = ToString(Digest($from_arg));
-  my $to = ToString(Digest($to_arg));
-  my $from_file = ToString(GetKeyVal($keyvals,'from'));
-  my $to_file = ToString(GetKeyVal($keyvals,'to'));
-  my $ext = ToString(GetKeyVal($keyvals,'ext')) if $keyvals;
-  $ext = 'sms' unless $ext;
-  return (
-    Tokenize("\\importmoduleI[load=$from_file]{$from}")->unlist,
-    Tokenize("\\importmoduleI[load=$to_file]{$to}")->unlist,
-    Invocation(T_CS('\begin{viewsketchenv}'),$keyvals,$from_arg,$to_arg)->unlist
-  );
-}); 
-DefMacroI('\end{viewsketch}',undef,'\end{viewsketchenv}');
-DefEnvironment('{viewsketchenv} OptionalKeyVals:view {}{}',
-   "<omdoc:theory-inclusion from='#2' to='#3'"
-  .      " ?&defined(&GetKeyVal(#1,'id'))(xml:id='&GetKeyVal(#1,'id')')()>"
-  .  "#body"
-  ."</omdoc:theory-inclusion>");
-%</ltxml>
 %    \end{macrocode}
 % \end{environment}
 %
@@ -410,16 +327,8 @@ DefEnvironment('{viewsketchenv} OptionalKeyVals:view {}{}',
   \fi%
 }%
 %</package>
-%<*ltxml> 
-DefConstructor('\obligation [] {} {}',"<omdoc:obligation induced-by='#2' assertion='#3'/>");
-%</ltxml>
 %    \end{macrocode}
 % \end{macro}
-%
-% Finally, we need to terminate the file with a success mark for perl.
-%    \begin{macrocode}
-%<ltxml>1;
-%    \end{macrocode}
 % \Finale
 \endinput
 %%% Local Variables: 

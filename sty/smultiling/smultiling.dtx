@@ -234,17 +234,6 @@
 %
 % \begin{omgroup}[id=sec:impl:cls]{Implementation}
 %
-% The general preamble for \latexml
-%
-%    \begin{macrocode}
-%<*ltxml>
-# -*- CPERL -*-
-package LaTeXML::Package::Pool;
-use strict;
-use LaTeXML::Package;
-%</ltxml>
-%    \end{macrocode}
-%
 % \begin{omgroup}[id=sec:impl:cls:options]{Class Options}
 %    \begin{macrocode}
 %<*sty>
@@ -255,13 +244,6 @@ use LaTeXML::Package;
 \DeclareOption*{\PassOptionsToPackage{\CurrentOption}{modules}}
 \ProcessOptions
 %</sty>
-%<*ltxml>
-DeclareOption('mh', sub { AssignValue ('@smultiling' => 1,'global');
-PassOptions('modules','sty',ToString(Digest(T_CS('\CurrentOption')))); });			
-DeclareOption('langfiles',sub {AssignValue('smultiling_langfiles',1,'global');});
-DeclareOption(undef,sub {PassOptions('modules','sty',ToString(Digest(T_CS('\CurrentOption')))); });
-ProcessOptions();
-%</ltxml>
 %    \end{macrocode}
 %
 % We load the packages referenced here. 
@@ -272,10 +254,6 @@ ProcessOptions();
 \RequirePackage{etoolbox}
 \RequirePackage{structview}
 %</sty>
-%<*ltxml>
-if(LookupValue('@smultiling')) {RequirePackage('smultiling-mh');}		
-RequirePackage('structview'); 
-%</ltxml>
 %    \end{macrocode}
 % \end{omgroup}
 %
@@ -285,8 +263,7 @@ RequirePackage('structview');
 %   The |modsig| environment is just a layer over the |module| environment. We also
 %   redefine macros that may occur in module signatures so that they do not create markup.
 %    \begin{macrocode}
-%<ltxml>RawTeX('
-%<*sty|ltxml>
+%<*sty>
 \newenvironment{modsig}[2][]{%
 \def\@test{#1}\ifx\@test\@empty\begin{module}[id=#2]\else\begin{module}[id=#2,#1]\fi}
 {\end{module}}
@@ -300,8 +277,7 @@ RequirePackage('structview');
 \newenvironment{viewsig}[4][]{\def\@test{#1}\ifx\@test\@empty%
 \begin{view}[id=#2,ext=tex]{#3}{#4}\else\begin{view}[id=#2,#1,ext=tex]{#3}{#4}\fi}
 {\end{view}}
-%</sty|ltxml>
-%<ltxml>');
+%</sty>
 %    \end{macrocode}
 % \end{environment}
 %
@@ -319,14 +295,6 @@ RequirePackage('structview');
 \newcommand\@symiii[3]{\if@importing\else Symbol: \textsf{#1-#2-#3}\fi}
 \newcommand\@symiii@star[3]{\if@importing\else Primary Symbol: \textsf{#1-#2-#3}\fi}
 %</sty>
-%<*ltxml>
-DefConstructor('\symi OptionalMatch:* {}',
-     "<omdoc:symbol ?#1(role='primary')(role='secondary') name='#2'/>");
-DefConstructor('\symii OptionalMatch:* {} {}',
-     "<omdoc:symbol ?#1(role='primary')(role='secondary') name='#2-#3'/>");
-DefConstructor('\symiii OptionalMatch:* {} {} {}',
-     "<omdoc:symbol ?#1(role='primary')(role='secondary') name='#2-#3-#4'/>");
-%</ltxml>
 %    \end{macrocode}
 % \end{macro}
 % \end{omgroup}
@@ -343,13 +311,6 @@ DefConstructor('\symiii OptionalMatch:* {} {} {}',
 \addmetakey{modnl}{srccite}
 \addmetakey{modnl}{primary}[yes]
 %</sty>
-%<*ltxml>
-DefKeyVal('modnl','title','Semiverbatim');
-DefKeyVal('modnl','load','Semiverbatim');
-DefKeyVal('modnl','creators','Semiverbatim');
-DefKeyVal('modnl','contributors','Semiverbatim');
-DefKeyVal('modnl','primary','Semiverbatim');
-%</ltxml>
 %    \end{macrocode}
 % \end{macro}
 %
@@ -365,35 +326,6 @@ DefKeyVal('modnl','primary','Semiverbatim');
 \fi}
 {\end{module}}
 %</sty>
-%<*ltxml>
-DefEnvironment('{modnl} OptionalKeyVals:modnl Semiverbatim Semiverbatim',
-         "?#excluded()(<omdoc:theory xml:id='#2.#3'>"
-         .   "?&defined(&GetKeyVal(#1,'creators'))(<dc:creator>&GetKeyVal(#1,'creators')</dc:creator>)()"
-         .   "?&defined(&GetKeyVal(#1,'title'))(<dc:title>&GetKeyVal(#1,'title')</dc:title>)()"
-         .   "?&defined(&GetKeyVal(#1,'contributors'))(<dc:contributor>&GetKeyVal(#1,'contributors')</dc:contributor>)()"
-         .   "<omdoc:imports from='?&GetKeyVal(#1,'load')(&canonical_omdoc_path(&GetKeyVal(#1,'load')))()###2'/>"
-         .   "#body"
-         . "</omdoc:theory>)",
-  afterDigestBegin=>sub {
-    my ($stomach, $whatsit) = @_;
-    my $keyval = $whatsit->getArg(1);
-    my $signature = ToString($whatsit->getArg(2));
-    my $language = ToString($whatsit->getArg(3));
-    if ($keyval) {
-      # If we're not given load, AND the langfiles option is in effect,
-      # default to #2
-      if ((! $keyval->getValue('load')) && (LookupValue('smultiling_langfiles'))) {
-        $keyval->setValue('load',$signature); }
-      # Always load a TeX file
-      $keyval->setValue('ext','tex');
-      AssignValue('modnl_signature',$signature);
-      $keyval->setValue('id',"$signature.$language"); }
-    module_afterDigestBegin(@_);
-    importmoduleI(@_);
-    AssignValue(multiling => 1);
-    return; },
-  afterDigest =>\&module_afterDigest );
-%</ltxml>%$
 %    \end{macrocode}
 % \end{environment}
 %
@@ -403,15 +335,13 @@ DefEnvironment('{modnl} OptionalKeyVals:modnl Semiverbatim Semiverbatim',
 %   if@langfiles situation here. But this is non-trivial, since we do not know the current
 %   path, to which we could append .\meta{lang}!}
 %    \begin{macrocode}
-%<ltxml>RawTeX('
-%<*sty|ltxml>
+%<*sty>
 \newenvironment{viewnl}[5][]{\def\@test{#1}\ifx\@test\@empty%
 \begin{viewsketch}[id=#2.#3,ext=tex]{#4}{#5}\else%
 \begin{viewsketch}[id=#2.#3,#1,ext=tex]{#4}{#5}\fi}
 {\end{viewsketch}}
 %    \end{macrocode}
 % \end{environment}
-%
 % \end{omgroup}
 % 
 % \begin{omgroup}{Multilingual Statements and Terms}
@@ -430,8 +360,7 @@ DefEnvironment('{modnl} OptionalKeyVals:modnl Semiverbatim Semiverbatim',
 \newcommand\mtrefiis[3][]{\mtrefi[#1]{#2 #3s}}
 \newcommand\mtrefiii[4][]{\mtrefi[#1]{#2 #3 #4}}
 \newcommand\mtrefiiis[4][]{\mtrefi[#1]{#2 #3 #4s}}
-%</sty|ltxml>
-%<ltxml>');
+%</sty>
 %    \end{macrocode}
 % \end{macro}
 % \end{omgroup}
@@ -441,24 +370,13 @@ DefEnvironment('{modnl} OptionalKeyVals:modnl Semiverbatim Semiverbatim',
 %   \latexml treatment of this eventually that is integrated with MathHub.info. 
 % \begin{macro}{\ttl}
 %    \begin{macrocode}
-%<ltxml>RawTeX('
-%<*sty|ltxml>
+%<*sty>
 \newcommand\ttl[1]{\red{TTL: #1}}
-%</sty|ltxml>
-%<ltxml>');
+%</sty>
 %    \end{macrocode}
 % \end{macro}
 % \end{omgroup}
-% 
-% \begin{omgroup}{Finale}
-% Finally, we need to terminate the file with a success mark for perl.
-%    \begin{macrocode}
-%<ltxml>1;
-%    \end{macrocode}
-% \end{omgroup}
-%
 % \end{omgroup} 
-%
 % \Finale
 % 
 \endinput
