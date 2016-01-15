@@ -45,7 +45,6 @@
 \else
 \newenvironment{backmatter}{\@backmattertrue}{\@backmatterfalse}
 \fi
-
 \endinput
 %%
 %% End of file `omdoc.cls'.

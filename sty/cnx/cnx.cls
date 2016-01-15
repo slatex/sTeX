@@ -6,6 +6,9 @@
 %%
 %% cnx.dtx  (with options: `cls')
 %% 
+\DeclareOption{showmeta}{\PassOptionsToPackage{\CurrentOption}{metakeys}}
+\DeclareOption*{\PassOptionsToPackage{\CurrentOption}{omdoc}}
+\ProcessOptions
 \RequirePackage{sref}
 \RequirePackage{graphicx}
 \DeclareOption{letterpaper}
