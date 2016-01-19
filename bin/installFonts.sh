@@ -1,6 +1,6 @@
 #!/bin/bash
 # execute as root (via sudo)
-fontdir="$(dirname $0)/../fonts"
+fontdir="$(dirname $0)/../lib/fonts"
 mkdir -p /usr/share/fonts/opentype/Fandol
 mkdir -p /usr/share/fonts/truetype/cwTeX
 cp "${fontdir}/FandolFang-Regular.otf" /usr/share/fonts/opentype/Fandol/
