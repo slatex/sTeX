@@ -1,8 +1,11 @@
 # recurse into the directories. 
-DISTDIRS = core obsolete experiments
-MAKEDIRS = $(DISTDIRS) 
+DISTDIRS = core 
+MAKEDIRS = $(DISTDIRS) obsolete experiments
 
-all ltxml package doc ltds lctan filedate checksum enablechecksum disablechecksum clean distclean: 
+ltds lctan filedate checksum enablechecksum disablechecksum: 
+	@for d in $(DISTDIRS); do (cd $$d && $(MAKE) -$(MAKEFLAGS) $@) || exit $$?; done
+
+all  package doc clean distclean: 
 	@for d in $(MAKEDIRS); do (cd $$d && $(MAKE) -$(MAKEFLAGS) $@) || exit $$?; done
 
 TDSCOLL = stex
