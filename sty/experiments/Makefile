@@ -1,11 +1,13 @@
 # recurse into the directories. 
-DISTDIRS = owl2onto reqdoc# mmtlatex 
-MAKEDIRS = $(DISTDIRS)
+DISTDIRS = 
+MAKEDIRS = $(DISTDIRS) owl2onto reqdoc# mmtlatex 
 
-all ltxml package doc filedate checksum enablechecksum disablechecksum clean distclean: 
+all package doc clean distclean: 
 	@for d in $(MAKEDIRS); do (cd $$d && $(MAKE) -$(MAKEFLAGS) $@) || exit $$?; done
+ltds lctan filedate checksum enablechecksum disablechecksum: 
+	@for d in $(DISTDIRS); do (cd $$d && $(MAKE) -$(MAKEFLAGS) $@) || exit $$?; done
 
 TDSCOLL = stex
-TDS.tex = stex.tex stex.sty stex.sty.ltxml stex-logo.sty stex-logo.sty.ltxml ctansvn.sty
+TDS.tex = stex.tex stex.sty stex-logo.sty ctansvn.sty
 TDS.doc = README stex.pdf
 TDS.src = 

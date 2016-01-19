@@ -12,7 +12,6 @@ package doc filedate checksum enablechecksum disablechecksum:
 TDS.tex = 
 TDS.doc = README
 TDS.src = 
-#TDSURL		= https://svn.kwarc.info/repos/stex/trunk
 include sty/make/Makefile.ctan
 
 echo:

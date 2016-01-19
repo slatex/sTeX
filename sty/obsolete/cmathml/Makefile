@@ -4,7 +4,7 @@ DTX.cls.base =
 TDSCOLL = stex
 CTANPREFIX = /sty
 PACKAGE = cmathml
-TDS.tex =  cmathmlx.sty  cmathmlx.sty.ltxml
+TDS.tex =  cmathmlx.sty
 CTAN = $(TDS.tex)
 include $(PREFIX)/make/Makefile.vars
 include $(PREFIX)/make/Makefile.in
