@@ -5,7 +5,7 @@ TDSCOLL = stex
 CTANPREFIX = /sty
 PACKAGE = mikoslides
 TDS.tex = beamerthemeJacobs.sty cc-by-sa.png cc_somerights.png\
-	  jacobs-logo.png mikoaffiliation.sty mikoaffiliation.sty.ltxml\
+	  jacobs-logo.png mikoaffiliation.sty\
 	  shading-l2r.png dangerous-bend.png
 
 CTAN 	= $(TDS.tex)
