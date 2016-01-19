@@ -11,7 +11,7 @@ package doc filedate checksum enablechecksum disablechecksum:
 
 TDSCOLL = sTeX
 TDS.tex = 
-TDS.doc = README
+TDS.doc = 
 TDS.src = 
 include sty/make/Makefile.ctan
 
