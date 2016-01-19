@@ -2,7 +2,7 @@ PREFIX = ../..
 DTX.sty.base = problem
 DTX.cls.base = 
 TDSCOLL = stex
-CTANPREFIX = /sty
+CTANPREFIX = sty/
 PACKAGE = problem
 
 include $(PREFIX)/make/Makefile.vars

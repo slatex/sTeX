@@ -2,7 +2,7 @@ PREFIX = ../..
 DTX.sty.base =  hwexam
 DTX.cls.base = hwexam
 TDSCOLL = stex
-CTANPREFIX = /sty
+CTANPREFIX = sty/
 PACKAGE = hwexam
 
 include $(PREFIX)/make/Makefile.vars

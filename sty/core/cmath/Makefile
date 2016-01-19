@@ -3,7 +3,7 @@ DTX.sty.base =  cmath
 STY = 
 DTX.cls.base = 
 TDSCOLL = stex
-CTANPREFIX = /sty
+CTANPREFIX = sty/
 PACKAGE = cmath
 
 include $(PREFIX)/make/Makefile.vars

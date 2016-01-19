@@ -3,7 +3,7 @@ DTX.sty.base =  sproof
 STY = 
 DTX.cls.base = 
 TDSCOLL = stex
-CTANPREFIX = /sty
+CTANPREFIX = sty/
 PACKAGE = sproof
 
 include $(PREFIX)/make/Makefile.vars

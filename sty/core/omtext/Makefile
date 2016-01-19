@@ -1,7 +1,7 @@
 PREFIX = ../..
 DTX.sty.base = omtext
 TDSCOLL = stex
-CTANPREFIX = /sty
+CTANPREFIX = sty/
 PACKAGE = omtext
 
 include $(PREFIX)/make/Makefile.vars

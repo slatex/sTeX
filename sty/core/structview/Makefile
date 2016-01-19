@@ -3,7 +3,7 @@ DTX.sty.base = structview
 STY =
 DTX.cls.base = 
 TDSCOLL = stex
-CTANPREFIX = /sty
+CTANPREFIX = sty/
 PACKAGE = structview
 
 include $(PREFIX)/make/Makefile.vars

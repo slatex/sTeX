@@ -3,7 +3,7 @@ DTX.sty.base =  statements
 STY = 
 DTX.cls.base = 
 TDSCOLL = stex
-CTANPREFIX = /sty
+CTANPREFIX = sty/
 PACKAGE = statements
 
 include $(PREFIX)/make/Makefile.vars

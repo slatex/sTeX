@@ -2,7 +2,7 @@ PREFIX = ../..
 DTX.sty.base = omdoc
 DTX.cls.base = omdoc
 TDSCOLL = stex
-CTANPREFIX = /sty
+CTANPREFIX = sty/
 PACKAGE = omdoc
 
 include $(PREFIX)/make/Makefile.vars

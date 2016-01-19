@@ -3,7 +3,7 @@ DTX.sty.base =  presentation
 STY = 
 DTX.cls.base = 
 TDSCOLL = stex
-CTANPREFIX = /sty
+CTANPREFIX = sty/
 PACKAGE = presentation
 
 include $(PREFIX)/make/Makefile.vars

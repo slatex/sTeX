@@ -1,7 +1,7 @@
 PREFIX = ../..
 DTX.cls.base = smglom
 TDSCOLL = stex
-CTANPREFIX = /sty
+CTANPREFIX = sty/
 PACKAGE = smglom
 
 include $(PREFIX)/make/Makefile.vars

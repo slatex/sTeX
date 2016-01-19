@@ -4,7 +4,7 @@ EXAMPLE.base = idc scr book
 TDS.doc = idcmain.tex scrmain.tex
 CTAN = $(TDS.doc)
 TDSCOLL = stex
-CTANPREFIX = /sty
+CTANPREFIX = sty/
 PACKAGE = sref
 
 include $(PREFIX)/make/Makefile.vars

@@ -1,7 +1,7 @@
 PREFIX = ../..
 DTX.sty.base = smultiling
 TDSCOLL = stex
-CTANPREFIX = /sty
+CTANPREFIX = sty/
 PACKAGE = smultiling
 
 include $(PREFIX)/make/Makefile.vars
