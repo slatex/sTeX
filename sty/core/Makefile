@@ -4,7 +4,7 @@ DISTDIRS = stex cmath dcm hwexam metakeys mikoslides modules omdoc omtext\
            smultiling tikzinput smglom mathhub structview
 MAKEDIRS = $(DISTDIRS)
 
-all ltxml package doc filedate checksum enablechecksum disablechecksum clean distclean: 
+all ltxml package doc filedate checksum enablechecksum disablechecksum clean distclean ltds: 
 	@for d in $(MAKEDIRS); do (cd $$d && $(MAKE) -$(MAKEFLAGS) $@) || exit $$?; done
 
 TDSCOLL = stex
