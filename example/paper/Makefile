@@ -2,6 +2,6 @@ STEXDIR = ../..
 TARGET = paper.tex
 MODSLIBDIR = ../background
 
-include $(STEXDIR)/make/Makefile.vars
+include $(STEXDIR)/lib/make/Makefile.vars
 all: pdf mpdf
-include $(STEXDIR)/make/Makefile.in 
+include $(STEXDIR)/lib/make/Makefile.in 

@@ -1,4 +1,4 @@
 STEXDIR = ..
 MAKEDIRS = background paper
 CLEANDIRS = $(MAKEDIRS)
-include $(STEXDIR)/make/Makefile.subdirs
+include $(STEXDIR)/lib/make/Makefile.subdirs

@@ -1,4 +1,4 @@
-SRCDIRS		= bin make schema xsl
+SRCDIRS		= bin
 DOCDIRS		= example
 DTXDIRS 	= sty 
 MAKEDIRS 	= $(SRCDIRS) $(DOCDIRS) $(DTXDIRS)
