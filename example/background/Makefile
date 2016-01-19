@@ -4,5 +4,5 @@ BUTFILES = pre.tex post.tex
 MODSLIBDIR = .
 
 include $(STEXDIR)/make/Makefile.vars
-all: omdoc mods pdf mpdf
+all: pdf mpdf
 include $(STEXDIR)/make/Makefile.in 
