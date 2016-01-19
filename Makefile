@@ -9,10 +9,11 @@ all clean distclean:
 package doc filedate checksum enablechecksum disablechecksum: 
 	@for d in $(DTXDIRS); do (cd $$d && $(MAKE) -$(MAKEFLAGS) $@) done
 
+TDSCOLL = sTeX
 TDS.tex = 
 TDS.doc = README
 TDS.src = 
 include sty/make/Makefile.ctan
 
 echo:
-	echo $(PWD)
+	@echo $(TDSCOLL)
