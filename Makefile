@@ -1,3 +1,8 @@
+########################################################################
+# This Makefile automates maintenance and CTAN submission of complex
+# LaTeX packages. 
+########################################################################
+
 SRCDIRS		= bin
 DOCDIRS		= example
 DTXDIRS 	= sty 
