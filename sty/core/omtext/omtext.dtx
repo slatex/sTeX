@@ -344,7 +344,7 @@
 % or a statement. It will be used to give better error messages for inline statements.
 %
 %    \begin{macrocode}
-\newif\if@in@omtext\@in@omtextfalse 
+\newif\if@in@omtext\@in@omtextfalse
 %    \end{macrocode}
 %
 % \begin{environment}{omtext}
@@ -473,8 +473,9 @@
 % \end{omgroup}
 % 
 % \begin{omgroup}[id=sec:impl:index]{Index Markup}
-% \begin{macro}{\omdoc@index}
-%   this is the main internal indexing command. It makes sure that the modules necessary
+% \begin{macro}{\omdoc@index*}
+%   these are the main internal indexing commands -- dividing them into three is awful,
+%   but I did not get list processing running. It makes sure that the modules necessary
 %   for interpreting the math in the index entries are loaded. If the |loadmodules| key is
 %   given, we import the module we are in otherwise all the currently imported modules. We
 %   do not have to require the module files, since the index is a the end of the
@@ -482,18 +483,38 @@
 %    \begin{macrocode}
 \addmetakey{omdoc@index}{at}
 \addmetakey[false]{omdoc@index}{loadmodules}[true]
-\newcommand\omdoc@index[2][]{\ifindex%
+\newcommand\omdoc@indexi[2][]{\ifindex%
 \metasetkeys{omdoc@index}{#1}%
 \@bsphack\begingroup\@sanitize%
-\ifx\omdoc@index@loadmodules\@true%
 \protected@write\@indexfile{}{\string\indexentry%
 {\ifx\omdoc@index@at\@empty\else\omdoc@index@at @\fi%
-{\string\usemodules{\@ifundefined{mod@id}\used@modules\mod@id}%
-#2}}{\thepage}}%
-\else%
+\ifx\omdoc@index@loadmodules\@true%
+\string\withusedmodules{\@ifundefined{mod@id}\used@modules\mod@id}{#2}%
+\else #2\fi% loadmodules 
+}{\thepage}}%
+\endgroup\@esphack\fi}%ifindex
+\newcommand\omdoc@indexii[3][]{\ifindex%
+\metasetkeys{omdoc@index}{#1}%
+\@bsphack\begingroup\@sanitize%
 \protected@write\@indexfile{}{\string\indexentry%
-{\ifx\omdoc@index@at\@empty\else\omdoc@index@at @\fi#2}{\thepage}}%
-\fi% loadmodules
+{\ifx\omdoc@index@at\@empty\else\omdoc@index@at @\fi%
+\ifx\omdoc@index@loadmodules\@true%
+\string\withusedmodules{\@ifundefined{mod@id}\used@modules\mod@id}{#2}!%
+\string\withusedmodules{\@ifundefined{mod@id}\used@modules\mod@id}{#3}%
+\else #2!#3\fi% loadmodules 
+}{\thepage}}%
+\endgroup\@esphack\fi}%ifindex
+\newcommand\omdoc@indexiii[4][]{\ifindex%
+\metasetkeys{omdoc@index}{#1}%
+\@bsphack\begingroup\@sanitize%
+\protected@write\@indexfile{}{\string\indexentry%
+{\ifx\omdoc@index@at\@empty\else\omdoc@index@at @\fi%
+\ifx\omdoc@index@loadmodules\@true%
+\string\withusedmodules{\@ifundefined{mod@id}\used@modules\mod@id}{#2}!%
+\string\withusedmodules{\@ifundefined{mod@id}\used@modules\mod@id}{#3}!%
+\string\withusedmodules{\@ifundefined{mod@id}\used@modules\mod@id}{#4}%
+\else #2!#3\fi% loadmodules 
+}{\thepage}}%
 \endgroup\@esphack\fi}%ifindex
 %    \end{macrocode}
 % \end{macro}
@@ -502,20 +523,20 @@
 %
 % \begin{macro}{\indexalt}
 %    \begin{macrocode}
-\newcommand\indexalt[3][]{{#2}\omdoc@index[#1]{#3}}               % word in text and index
+\newcommand\indexalt[3][]{{#2}\omdoc@indexi[#1]{#3}}               % word in text and index
 %    \end{macrocode}
 % \end{macro}
 %
 % \begin{macro}{\indextoo}
 %    \begin{macrocode}
-\newcommand\indextoo[2][]{{#2}\omdoc@index[#1]{#2}}               % word in text and index
+\newcommand\indextoo[2][]{{#2}\omdoc@indexi[#1]{#2}}               % word in text and index
 %    \end{macrocode}
 % \end{macro}
 %
 % \begin{macro}{\@twin}
 % this puts two-compound words into the index in various permutations
 %    \begin{macrocode}
-\newcommand\@twin[3][]{\omdoc@index[#1]{#2!#3}\omdoc@index[#1]{#3!#2}}
+\newcommand\@twin[3][]{\omdoc@indexii[#1]{#2}{#3}\omdoc@indexii[#1]{#3}{#2}}
 %    \end{macrocode}
 % \end{macro}
 %
@@ -537,7 +558,7 @@
 %   this puts adjectivized two-compound words into the index in various
 %   permutations\ednote{what to do with the optional argument here and below?}
 %    \begin{macrocode}
-\newcommand\@atwin[4][]{\omdoc@index[#1]{#2!#3!#4}\omdoc@index[#1]{#3!#2 (#4)}}
+\newcommand\@atwin[4][]{\omdoc@indexiii[#1]{#2}{#3}{#4}\omdoc@indexii[#1]{#3}{#2 (#4)}}
 %    \end{macrocode}
 % \end{macro}
 % 
@@ -611,14 +632,14 @@
 % LocalWords:  compactenum ifundefined localname localname xspace ctancite mhcurrentrepos
 % LocalWords:  KohAmb smmssl requiremodules prhase bsphack begingroup thepage mh-variants
 % LocalWords:  indexentry endgroup esphack SOURCEFILE baselocal BASELOCAL importmhmodule
-%  LocalWords:  mh@currentrepos mhbgraphics co-rerefence usemodule coref textsubscript
-%  LocalWords:  ensuremath textsuperscript sboxquote leftmargin rightmargin mycbgraphics
-%  LocalWords:  mhcbgraphics textleadsto customization specializing customized behavior
+% LocalWords:  mh@currentrepos mhbgraphics co-rerefence usemodule coref textsubscript
+% LocalWords:  ensuremath textsuperscript sboxquote leftmargin rightmargin mycbgraphics
+% LocalWords:  mhcbgraphics textleadsto customization specializing customized behavior
+% LocalWords:  flexiformal latexsym itemize loadmodules recognize hateq hatequiv equiv
+% LocalWords:  leadsto renewcommand reflect@squig reflectbox m@th rightsquigarrow
+% LocalWords:  mathrel mathpalette
 % \endinput
 % Local Variables:
 % mode: doctex
 % TeX-master: t
 % End:
-%  LocalWords:  flexiformal latexsym itemize loadmodules recognize hateq hatequiv equiv
-%  LocalWords:  leadsto renewcommand reflect@squig reflectbox m@th rightsquigarrow
-%  LocalWords:  mathrel mathpalette
