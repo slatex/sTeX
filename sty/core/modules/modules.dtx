@@ -855,11 +855,23 @@
 % \end{macro}
 %
 % Now we come to the implementation of |\importmodule|, but before we do, we define 
-% conditional: 
+% conditional and an auxiliary macro: 
 % \begin{macro}{\if@importing} 
 %   |\if@importing| can be used to shut up macros in an import situation. 
 %    \begin{macrocode}
 \newif\if@importing\@importingfalse
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\update@used@modules}
+%   This updates the register |\imported@modules|
+%    \begin{macrocode}
+\newcommand\update@used@modules[1]{
+  \ifx\imported@modules\@empty%
+    \edef\imported@modules{#1}%
+  \else%
+    \edef\imported@modules{\imported@modules,#1}%
+  \fi}
 %    \end{macrocode}
 % \end{macro}
 %
@@ -878,11 +890,7 @@
 \addmetakey[false]{importmodule}{conservative}[true]
 \newcommand\importmodule[2][]{%
   \metasetkeys{importmodule}{#1}%
-  \ifx\imported@modules\@empty%
-    \edef\imported@modules{#2}%
-  \else%
-    \edef\imported@modules{\imported@modules,#2}%
-  \fi%
+  \update@used@modules{#2}
   \@importmodule[\importmodule@load]{#2}{\importmodule@ext}{export}%
   \ignorespaces%
 }%
@@ -890,13 +898,13 @@
 % \end{macro}
 %
 % \begin{macro}{\@importmodule} 
-%   |\@importmodule[|\meta{filepath}|]{|\meta{module}|}{|\meta{extension}|}{|\meta{export?}|}|
-%   loads \meta{filepath}|.|\meta{extension} (if it is given) and activates the module
-%   \meta{module}. If \meta{export?} is |export|, then it also re-exports the |\symdef|s
-%   from module \meta{module}. 
+%   |\@importmodule[|\meta{filepath}|]{|\meta{mod}|}{|\meta{ext}|}{|\meta{export?}|}|
+%   loads \meta{filepath}|.|\meta{ext} (if it is given) and activates the module
+%   \meta{mod}. If \meta{export?} is |export|, then it also re-exports the |\symdef|s from
+%   \meta{mod}.
 %
 %   First |\@load| will store the base file name with full path, then check if
-%   |\module@|\meta{module}|@path| is defined. If this macro is defined, a module of this
+%   |\module@|\meta{mod}|@path| is defined. If this macro is defined, a module of this
 %   name has already been loaded, so we check whether the paths coincide, if they do, all
 %   is fine and we do nothing otherwise we give a suitable error. If this macro is
 %   undefined we load the path by |\requiremodules|.
@@ -924,18 +932,22 @@
     }%
   \fi}%
   \activate@defs{#2}% activate the module
-  \edef\@export{#4}\def\@@export{}%prepare comparison
+  \edef\@export{#4}\def\@@export{export}%prepare comparison
   \ifx\@export\@@export\export@defs{#2}\fi% export the module
 }%
 %    \end{macrocode}
 % \end{macro}
 % 
 % \begin{macro}{\usemodule} 
-%   |\usemodule| acts like |\importmodule| for the {\LaTeX} side, except that the |sms|
-%   utility does not transfer it to the module signatures and it does not export the
-%   symdefs.
+%   |\usemodule| acts like |\importmodule|, except that the |sms| utility does not
+%   transfer it to the module signatures and it does not re-export the symdefs.
 %    \begin{macrocode}
-\newrobustcmd\usemodule[2][]{\@exportfalse\@importmodule[#1]{#2}{noexport}}%
+\newcommand\usemodule[2][]{%
+  \metasetkeys{importmodule}{#1}%
+  \update@used@modules{#2}
+  \@importmodule[\importmodule@load]{#2}{\importmodule@ext}{noexport}%
+  \ignorespaces%
+}%
 %    \end{macrocode}
 % \end{macro}
 %
