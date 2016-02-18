@@ -1,5 +1,5 @@
 PREFIX = ../..
-DTX.sty.base = modules 
+DTX.sty.base = modules pathsuris
 STY =
 DTX.cls.base = 
 TDSCOLL = stex
