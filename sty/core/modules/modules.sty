@@ -16,13 +16,16 @@
 \DeclareOption{noauxreq}{\aux@reqfalse}
 \newif\ifmod@qualified\mod@qualifiedfalse
 \DeclareOption{qualifiedimports}{\mod@qualifiedtrue}
+\newif\if@mmt\@mmtfalse
+\DeclareOption{mmt}{\@mmttrue}
 \DeclareOption*{\PassOptionsToPackage{\CurrentOption}{sref}}
 \ProcessOptions
 \RequirePackage{sref}
 \if@modules@mh@\RequirePackage{modules-mh}\fi
+\if@mmt\RequirePackage{mmt}\fi
 \RequirePackage{xspace}
 \RequirePackage{mdframed}
-\RequirePackage{xstring}
+\RequirePackage{pathsuris}
 \addmetakey{module}{cd}% no longer used
 \addmetakey{module}{load}% ignored
 \addmetakey*{module}{title}
@@ -57,8 +60,10 @@
     \ifcsundef{mod@path}{}{\csxdef{module@\mod@id @path}{\mod@path}}%
     \ifcsundef{mod@ext}{}{\csxdef{module@\mod@id @ext}{\mod@ext}}%
   }%
+  \if@mmt\if@importing\else\mmtheory{\mod@id}{????}\fi\fi%
   \module@heading% make the headings
 }{%
+  \if@mmt\if@importing\else\mmtheoryend\fi\fi%
   \end{@module}%
 }%
 \ifmod@show\surroundwithmdframed{module}\fi%
@@ -116,6 +121,7 @@
   \activate@defs{#2}% activate the module
   \edef\@export{#4}\def\@@export{export}%prepare comparison
   \ifx\@export\@@export\export@defs{#2}\fi% export the module
+  \if@importing\else\if@mmt\mmtinclude{#1?#2}\fi\fi%
 }%
 \newcommand\usemodule[2][]{%
   \metasetkeys{importmodule}{#1}%
@@ -159,6 +165,9 @@
 \def\@@symdef[#1]#2[#3]#4{%
   \@symdeflocalfalse%
   \metasetkeys{symdef}{#1}%
+ \if@mmt\if@importing\else%
+\ifx\symdef@name\@empty\mmtconstdec{#2}\else\mmtconstdec{\symdef@name}\fi%
+\fi\fi%
   \expandafter\mod@newcommand\csname modules@#2@pres@\endcsname[#3]{#4}%
   \expandafter\mod@newcommand\csname #2\endcsname[1][]%
   {\csname modules@#2@pres@##1\endcsname}%
@@ -285,7 +294,6 @@
     {\def\@uri{\csname module@#1@path\endcsname.pdf\#\@label}%
     \sref@href@ifh{\@uri}{\ifx\@test\@empty #2\else #3\fi}}%
 }%
-\RequirePackage{cpath}
 \def\CurrentDir{}%
 \newrobustcmd{\@rinput}[2]{%
   \@cpath{\CurrentDir#1}%
@@ -294,9 +302,6 @@
   \edef\CurrentDir{\@DirPath}%
   \input{\@CanPath.#2}%
   \def\CurrentDir{}%
-}%
-\newrobustcmd\defpath[3][]{%
-  \expandafter\newcommand\csname #2\endcsname[1]{#3/##1}%
 }%
 \newrobustcmd\requiremodules[2]{%
   \mod@showfalse%
