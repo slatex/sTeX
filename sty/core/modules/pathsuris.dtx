@@ -13,16 +13,24 @@
 \documentclass{ltxdoc}
 \usepackage{pathsuris,stex-logo}
 \usepackage{url,array,float,textcomp}
+\usepackage[show]{ed}
+\usepackage[hyperref=auto,style=alphabetic]{biblatex}
+\addbibresource{kwarcpubs.bib}
+\addbibresource{extpubs.bib}
+\addbibresource{kwarccrossrefs.bib}
+\addbibresource{extcrossrefs.bib}
+\def\scsys#1{{{\sc #1}}\index{#1@{\sc #1}}\xspace}
+\def\latexml{\scsys{LaTeXML}}
 \begin{document}\DocInput{pathsuris.dtx}\end{document} 
 %</driver>
 % \fi
 %
-% \iffalse\CheckSum{733}\fi
+% \iffalse\CheckSum{113}\fi
 %
 % \changes{v1.0}{2015/11/16}{First Version with Documentation}
 % \changes{v1.1}{2016/02/18}{adding \texttt{\textbackslash baseURI} from
 % \texttt{omdoc.sty} and \texttt{\textbackslash defpath} from \texttt{modules.sty}}
-%
+% 
 % \GetFileInfo{pathsuris.sty}
 % 
 % \MakeShortVerb{\|}
@@ -42,36 +50,94 @@
 % \tableofcontents
 % \newpage
 % 
-% \section{Usage}
+% \section{User Interface}\label{sec:user}
+%
+% \subsection{Base URIs}\label{sec:user:baseURI}
+%
+% \DescribeMacro{\baseURI}|\baseURI|\ednote{documment it}
+%
+% \subsection{Using Absolute Paths}\label{sec:user:abspath}
+%
+% Finally, the separation of documents into multiple modules often profits from a symbolic
+% management of file paths. To simplify this, the |modules| package supplies the
+% \DescribeMacro{\defpath}|\defpath| macro:
+% |\defpath[|\meta{baseURI}|]{|\meta{cname}|}{|\meta{path}|}| defines a command, so that
+% |\|\meta{csname}|{|\meta{name}|}| expands to \meta{path}|/|\meta{name}. So we could have
+% used
+% \begin{verbatim}
+% \defpath{OPaths}{../other}
+% \importmodule[load=\OPahts{bar}]{bar}
+% \end{verbatim}
+% instead of the second line in Example~\ref{exf:importmodule}. The variant |\OPaths| has
+% the big advantage that we can get around the fact that {\TeX/\LaTeX} does not set the
+% current directory in |\input|, so that we can use systematically deployed
+% |\defpath|-defined path macros to make modules relocatable by defining the path macros
+% locally. The optional parameter \meta{baseURI} is for the {\latexml} transformation,
+% which (if \meta{baseURI} is specified) resolves \meta{path} to an absolute URI according
+% to \cite[section 5.2]{BerFieMas:05}.
+% 
+% \subsection{Path Canonicalization}\label{sec:user:cpath}
 %
 % By calling |\@cpath{|\meta{path}|}|, the canonicalized path will be stored in |\@CanPath|.\\
-% To print a canonicalized path, simply use |\cpath{|\meta{path}|}|.
-%
-% \section{Examples}
-%
-% \begin{tabular}{|l|l|}
-%	\hline
-%   path & canonicalized path \\
-%   \hline
-%   aaa & \cpath{aaa} \\
-%   ../../aaa & \cpath{../../aaa} \\
-%   aaa/bbb & \cpath{aaa/bbb} \\
-%   aaa/.. & \cpath{aaa/..} \\
-%   ../../aaa/bbb & \cpath{../../aaa/bbb} \\
-%   ../aaa/../bbb & \cpath{../aaa/../bbb} \\
-%   ../aaa/bbb & \cpath{../aaa/bbb} \\
-%   aaa/bbb/../ddd & \cpath{aaa/bbb/../ddd} \\
-%   aaa/bbb/../.. & \cpath{aaa/bbb/../..} \\
-%   \hline
+% To print a canonicalized path, simply use |\cpath{|\meta{path}|}|. Here is a set of
+% examples with their canonizalized paths for testing. 
+% \begin{center}
+% \begin{tabular}{|l|l|l|}\hline
+%   path & canonicalized path & expected\\\hline
+%   aaa & \cpath{aaa} & aaa \\
+%   ../../aaa & \cpath{../../aaa} &  ../../aaa\\
+%   aaa/bbb & \cpath{aaa/bbb} & aaa/bbb \\
+%   aaa/.. & \cpath{aaa/..} &\\
+%   ../../aaa/bbb & \cpath{../../aaa/bbb} & ../../aaa/bbb\\
+%   ../aaa/../bbb & \cpath{../aaa/../bbb} & ../bbb \\
+%   ../aaa/bbb & \cpath{../aaa/bbb} &  ../aaa/bbb\\
+%   aaa/bbb/../ddd & \cpath{aaa/bbb/../ddd} & aaa/ddd\\
+%   aaa/bbb/../.. & \cpath{aaa/bbb/../..} & \\\hline
 % \end{tabular}
+% \end{center}
+% 
+% \StopEventually{\newpage\PrintIndex\newpage\PrintChanges\newpage\printbibliography}\newpage
 %
-% \section{The Implementation} 
-%
+% \section{The Implementation}\label{sec:impl}
+% 
 %    \begin{macrocode}
+%<*package>
 \RequirePackage{xstring}
 \RequirePackage{forloop}
 \RequirePackage{calc}
+\RequirePackage{etoolbox}
 %    \end{macrocode}
+%
+% \subsection{Base URIs}\label{sec:impl:baseURI}
+%
+% \begin{macro}{\baseURI}
+%   On the {\LaTeX} side we do nothing (for the moment).
+%    \begin{macrocode}
+\newcommand\baseURI[2][]{}
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsection{Using Absolute Paths}\label{sec:impl:abspath}
+%
+% \begin{macro}{\defpath}
+%  |\defpath[optional argument]{macro name}{base path}| defines a new macro which can take another path to formal one integrated path. For example, |\MathHub| in every |localpaths.tex| is defined as:
+% \begin{center}
+% |\defpath{MathHub}{/path/to/localmh/MathHub}|
+% \end{center}
+% then we can use |\MathHub| to form other paths, for example, 
+% \begin{center}
+% |\MathHub{source/smglom/sets}|
+% \end{center}
+%  will generate |/path/to/localmh/MathHub/source/smglom/sets|.
+%    \begin{macrocode}
+\newrobustcmd\defpath[3][]{%
+  \expandafter\newcommand\csname #2\endcsname[1]{#3/##1}%
+}%
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsection{Path Canonicalization}\label{sec:impl:cpath}
+%
 % We first create some counters. |AddrNum| will count the number of sections in the input
 % path, |iLoop| will be used as the loop iterator, |iName| will be used for generating
 % names such as |Addri|, |Addrii|, |RealAddrNum| will count the number of sections in the
@@ -147,6 +213,7 @@
 	\@cpath{#1}%
 	\@CanPath%
 }%
+%</package>
 %    \end{macrocode}
 % \Finale
 % \endinput
