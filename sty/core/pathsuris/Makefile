@@ -1,10 +1,10 @@
 PREFIX = ../..
-DTX.sty.base = modules
+DTX.sty.base = pathsuris
 STY =
 DTX.cls.base = 
 TDSCOLL = stex
 CTANPREFIX = sty/
-PACKAGE = modules
+PACKAGE = pathsuris
 
 include $(PREFIX)/make/Makefile.vars
 include $(PREFIX)/make/Makefile.in
