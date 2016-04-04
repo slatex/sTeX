@@ -4,6 +4,8 @@ DTX.cls.base =
 TDSCOLL = stex
 CTANPREFIX = sty/
 PACKAGE = owl2onto
+DTX = owl2onto.dtx
+
 EXAMPLE = test
 TARGET = test.tex
 include $(PREFIX)/make/Makefile.vars

@@ -6,6 +6,7 @@ CTAN = $(TDS.doc)
 TDSCOLL = stex
 CTANPREFIX = sty/
 PACKAGE = sref
+DTX = sref.dtx
 
 include $(PREFIX)/make/Makefile.vars
 include $(PREFIX)/make/Makefile.in

@@ -5,6 +5,7 @@ DTX.cls.base =
 TDSCOLL = stex
 CTANPREFIX = sty/
 PACKAGE = modules
+DTX = modules.dtx
 
 include $(PREFIX)/make/Makefile.vars
 include $(PREFIX)/make/Makefile.in

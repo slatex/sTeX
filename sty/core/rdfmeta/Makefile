@@ -4,7 +4,8 @@ DTX.sty.base = rdfmeta
 DTX.cls.base = 
 TDSCOLL = stex
 CTANPREFIX = sty/
-PACKAGE = rdfmeta
+PACKAGE = rfdmeta
+DTX = rdfmeta.dtx
 EXAMPLE.base = certification
 MODS.sms = certification.sms
 include $(PREFIX)/make/Makefile.vars

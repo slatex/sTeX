@@ -5,6 +5,7 @@ DTX.cls.base =
 TDSCOLL = stex
 CTANPREFIX = sty/
 PACKAGE = statements
+DTX = statements.dtx
 
 include $(PREFIX)/make/Makefile.vars
 include $(PREFIX)/make/Makefile.in

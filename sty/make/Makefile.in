@@ -1,10 +1,15 @@
 all: package doc
 
 package: $(DTX.sty) $(DTX.cls)
+	$(PDFLATEX) $(INS)
+#	@for i in $(DTX.sty) $(DTX.cls); \
+#	      do sed -i.bak -e 's/^[[:space:]]*//g' $$i; \
+#	done 
+#	rm *.bak
 
 doc: $(DTX.pdf) $(EXAMPLE.pdf)
 
-$(EXAMPLE.pdf): %.pdf: %.tex $(DTX.sty) $(DTX.cls) $(IMG) $(EXAMPLE.deps) 
+$(EXAMPLE.pdf): %.pdf: %.tex package $(IMG) $(EXAMPLE.deps) 
 	$(PDFLATEX) $(firstword $<)
 	@if (grep 'Please (re)run Biber' $(patsubst %.dtx, %.log, $(firstword $<)) > /dev/null);\
 	    then biber $(patsubst %.dtx, %, $(firstword $<));fi
@@ -17,12 +22,10 @@ $(EXAMPLE.pdf): %.pdf: %.tex $(DTX.sty) $(DTX.cls) $(IMG) $(EXAMPLE.deps)
 	@if (grep Rerun $(patsubst %.dtx, %.log, $(firstword $<)) > /dev/null);\
 	    then $(PDFLATEX) $(firstword $<); fi
 
-stycls: $(DTX.sty) $(DTX.cls)
 %.ind:	
 	touch $@
 
-$(DTX.pdf): %.pdf: %.dtx $(IMG) 
-	$(PDFLATEX) $(patsubst %.pdf,%.ins,$@)
+$(DTX.pdf): %.pdf: %.dtx $(IMG) package
 	$(PDFLATEX) $(firstword $<)
 	@if (grep 'Please (re)run Biber' $(patsubst %.dtx, %.log, $(firstword $<)) > /dev/null);\
 	    then biber $(patsubst %.dtx, %, $(firstword $<));fi
@@ -38,16 +41,6 @@ $(DTX.pdf): %.pdf: %.dtx $(IMG)
 	   then $(PDFLATEX) $(firstword $<); fi
 	@if (grep Rerun $(patsubst %.dtx, %.log, $(firstword $<)) > /dev/null);\
 	    then $(PDFLATEX) $(firstword $<); fi
-
-$(DTX.sty): %.sty: %.ins %.dtx 
-	$(PDFLATEX) $<
-#	sed -i.bak -e 's/^[[:space:]]*//g' $@
-#	rm $@.bak
-
-$(DTX.cls): %.cls: %.ins %.dtx 
-	$(PDFLATEX) $<
-#	sed -i.bak -e 's/^[[:space:]]*//g' $@
-#	rm $@.bak
 
 clean:     
 	rm -f *~ *.log *.ilg *.out *.glo *.idx *.ilg *.blg 
@@ -81,14 +74,14 @@ ltds:
 	rm -Rf $(TDSDIR.doc);mkdir -p $(TDSDIR.doc)
 	rm -Rf $(TDSDIR.tex);mkdir -p $(TDSDIR.tex)
 	rm -Rf $(TDSDIR.src);mkdir -p $(TDSDIR.src)
-	cp $(DTX) $(TDS.src) $(TDSDIR.src)
+	cp $(DTX.src) $(TDS.src) $(TDSDIR.src)
 	cp $(DTX.sty) $(DTX.cls) $(TDS.tex) $(TDSDIR.tex)
 	cp README $(DTX.pdf) $(EXAMPLE.tex) $(EXAMPLE.pdf) $(TDS.doc) $(TDSDIR.doc)
 	@for d in $(TDS.exdirs); do cp -R $(TDS.exdirs) $(TDSDIR.doc); done
 
 lctan:
 	mkdir -p $(CTANDIR)
-	cp $(DTX) $(TDS.src) $(TDS.tex) $(CTANDIR)
+	cp $(DTX.src) $(TDS.src) $(TDS.tex) $(CTANDIR)
 	cp README $(DTX.pdf) $(EXAMPLE.tex) $(EXAMPLE.pdf) $(TDS.doc) $(CTANDIR)
 	@for d in $(TDS.exdirs); do cp -R $(TDS.exdirs) $(CTANDIR); done
 
@@ -96,3 +89,6 @@ lctan:
 biber:
 	pdflatex $(DTX.base:%=%.dtx)
 	biber $(DTX.base)
+
+echo:
+	@echo $(INS)

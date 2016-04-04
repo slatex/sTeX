@@ -795,9 +795,10 @@
   }%
   \if@mmt\if@importing\else\mmtheory{\mod@id}{????}\fi\fi%
   \module@heading% make the headings
-}{%
+  \ignorespaces}{%
   \if@mmt\if@importing\else\mmtheoryend\fi\fi%
   \end{@module}%
+  \ignorespacesafterend%
 }%
 \ifmod@show\surroundwithmdframed{module}\fi%
 %    \end{macrocode}
@@ -879,7 +880,7 @@
   \metasetkeys{importmodule}{#1}%
   \update@used@modules{#2}%
   \@importmodule[\importmodule@load]{#2}{\importmodule@ext}{export}%
-  \ignorespaces%
+  \ignorespacesandpars%
 }%
 %    \end{macrocode}
 % \end{macro}
@@ -934,7 +935,7 @@
   \metasetkeys{importmodule}{#1}%
   \update@used@modules{#2}%
   \@importmodule[\importmodule@load]{#2}{\importmodule@ext}{noexport}%
-  \ignorespaces%
+  \ignorespacesandpars%
 }%
 %    \end{macrocode}
 % \end{macro}
@@ -1034,7 +1035,30 @@
 %    \begin{macrocode}
 \def\@mod@nc#1{\mod@newcommand{#1}[1]}%
 %    \end{macrocode}
-%
+% and we copy a very useful piece of code from
+% \url{http://tex.stackexchange.com/questions/23100/looking-for-an-ignorespacesandpars},
+% it ignores spaces and following implicit paragraphs (double newlines), explicit |\par|s
+% are respected however
+%    \begin{macrocode}
+\def\ignorespacesandpars{%
+  \begingroup
+  \catcode13=10
+  \@ifnextchar\relax
+    {\endgroup}%
+    {\endgroup}%
+}
+%    \end{macrocode}
+% and more adapted from \url{http://tex.stackexchange.com/questions/179016/ignore-spaces-and-pars-after-an-environment}
+%    \begin{macrocode}
+\def\ignorespacesandparsafterend#1\ignorespaces\fi{#1\fi\ignorespacesandpars}
+\def\ignorespacesandpars{
+  \ifhmode\unskip\fi%
+  \@ifnextchar\par%
+    {\expandafter\ignorespacesandpars\@gobble}%
+    {}%
+}
+%    \end{macrocode}
+% 
 % \begin{macro}{\@@symdef}
 %    now comes the real meat: the |\@@symdef| macro does two things, it adds the macro
 %    definition to the macro definition pool of the current module and also provides it.
@@ -1120,6 +1144,7 @@
     \ifx\symdef@display\st@flow\else{\noindent\stDMemph{\symdef@type} #2:}\fi%
     \ifx\symdef@title\@empty~\else~(\stDMemph{\symdef@title})\par\fi%
   \fi%
+  \ignorespacesandpars%
 }% mod@show
 \def\symdef@type{Symbol}%
 %    \end{macrocode}
@@ -1135,7 +1160,7 @@
 %    \begin{macrocode}
 \def\symvariant#1{%
   \@ifnextchar[{\@symvariant{#1}}{\@symvariant{#1}[0]}%
-}%
+  }%
 \def\@symvariant#1[#2]#3#4{%
   \expandafter\mod@newcommand\csname modules@#1@pres@#3\endcsname[#2]{#4}%
 %    \end{macrocode}
@@ -1146,7 +1171,7 @@
     \expandafter\g@addto@macro\this@module%
     {\expandafter\mod@newcommand\csname modules@#1@pres@#3\endcsname[#2]{#4}}%
   }%
-}%
+\ignorespacesandpars}%
 %    \end{macrocode}
 % \end{macro}
 %
@@ -1205,12 +1230,9 @@
 %   We do the argument parsing like in |\symdef| above, but add the |local| key. All the
 %   other changes are in the \latexml binding exclusively.
 %    \begin{macrocode}
-\def\vardef{%
-  \@ifnextchar[{\@vardef}{\@vardef[]}%
-}%
+\def\vardef{\@ifnextchar[{\@vardef}{\@vardef[]}}%
 \def\@vardef[#1]#2{%
-  \@ifnextchar[{\@@vardef[#1]{#2}}{\@@vardef[#1]{#2}[0]}%
-}%
+  \@ifnextchar[{\@@vardef[#1]{#2}}{\@@vardef[#1]{#2}[0]}}
 \def\@@vardef[#1]#2[#3]#4{%
   \def\@test{#1}%
   \ifx\@test\@empty%
@@ -1218,7 +1240,7 @@
   \else%
     \symdef[local,#1]{#2}[#3]{#4}%
   \fi%
-}%
+  \ignorespacesandpars}%
 %    \end{macrocode}
 % \end{macro}
 %
@@ -1240,6 +1262,7 @@
     \texttt{\textbackslash #2\ifx\symtest@variant\@empty\else[\symtest@variant]\fi}%
     : used e.g. in \ensuremath{#3}%
   \fi%
+  \ignorespacesandpars%
 }%
 %    \end{macrocode}
 % \end{macro}
@@ -1255,7 +1278,7 @@
     \ifx\abbrtest@name\@empty\texttt{#2}\else\texttt{\abbrtest@name}\fi%
     : used e.g. in \ensuremath{#3}%
   \fi%
-}%
+  \ignorespacesandpars}%
 %    \end{macrocode}
 % \end{macro}
 % 
