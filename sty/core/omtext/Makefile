@@ -1,6 +1,6 @@
 PREFIX = ../..
 DTX.sty.base = omtext
-TDSCOLL = stex
+TDSCOLL = sTeX
 CTANPREFIX = sty/
 PACKAGE = omtext
 DTX = omtext.dtx

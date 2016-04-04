@@ -1,7 +1,7 @@
 PREFIX = ../..
 DTX.sty.base = metakeys
 DTX.cls.base = 
-TDSCOLL = stex
+TDSCOLL = sTeX
 CTANPREFIX = sty/
 PACKAGE = metakeys
 DTX = metakeys.dtx
