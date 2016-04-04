@@ -3,7 +3,7 @@
 # LaTeX packages. 
 ########################################################################
 
-SRCDFILES	= bin/sms
+SRCFILES	= bin/sms
 DOCDIRS		= example
 DTXDIRS 	= sty 
 MAKEDIRS 	= $(SRCDIRS) $(DOCDIRS) $(DTXDIRS)
