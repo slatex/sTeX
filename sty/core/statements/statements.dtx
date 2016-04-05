@@ -35,7 +35,7 @@
 %</driver>
 % \fi
 % 
-% \CheckSum{816}
+% \iffalse\CheckSum{816}\fi
 %
 % \changes{v0.9}{2005/06/14}{First Version with Documentation}
 % \changes{v0.9a}{2005/07/01}{Completed Documentation}
@@ -611,7 +611,7 @@
 \newif\ifdef@index\def@indexfalse
 \DeclareOption{defindex}{\def@indextrue}
 \DeclareOption*{\PassOptionsToPackage{\CurrentOption}{omtext}}
-\ProcessOptions 
+\ProcessOptions
 %    \end{macrocode}
 % 
 % The next measure is to ensure that some {\sTeX} packages are loaded: |omdoc| for the
@@ -619,7 +619,7 @@
 % we need the |ntheorem| package for presenting statements. For {\latexml}, we also
 % initialize the package inclusions, there we do not need |ntheorem|, since the XML does
 % not do the presentation.
-%    \begin{macrocode}x
+%    \begin{macrocode}
 \RequirePackage{omtext}
 \RequirePackage[base]{babel}
 \RequirePackage[hyperref]{ntheorem}
@@ -628,10 +628,11 @@
 % Now, we define an auxiliary function that lowercases strings
 %    \begin{macrocode}
 %    \end{macrocode}
-% Sometimes it is necessary to fallback to symbol names in order to generate xml:id attributes. For this purpose,
-% we define an auxiliary function which ensures the name receives a unique NCName equivalent.\ednote{Hard to be unique here, 
-% e.g. the names "foo\_bar" and "foo bar" would receive the same xml:id attributes... of course we can devise a more complex scheme
-% for the symbol replacement.}
+% Sometimes it is necessary to fallback to symbol names in order to generate xml:id
+% attributes. For this purpose, we define an auxiliary function which ensures the name
+% receives a unique NCName equivalent.\ednote{Hard to be unique here, e.g. the names
+% "foo\_bar" and "foo bar" would receive the same xml:id attributes... of course we can
+% devise a more complex scheme for the symbol replacement.}
 %    \begin{macrocode}
 %    \end{macrocode}
 % The following functions are strictly utility functions that makes our life easier later on
@@ -852,18 +853,19 @@
 %   undefined). Also it generates the necessary warnings for a definiendum-like
 %   macro.
 %    \begin{macrocode}
-\def\st@def@target#1#2{\def\@symname{#1}\def\@verbname{#2}%
+\newcommand\st@def@target[3]{\def\@symname{#1}\def\@verbname{#2}%
 \ifst@indef% if we are in a definition or such
 \@ifundefined{mod@id}% if we are not in a module
 {\PackageWarning{statements}{definiendum in unidentified module\MessageBreak
 \protect\definiendum, \protect\defi,
 \protect\defii, \protect\defiii\MessageBreak
 can only be referenced when called in a module with id key}}%
-{% now we are in a module 
+{% now we are in a module
 \edef\@@cd{\ifx\omtext@theory\@empty\mod@id\else\omtext@theory\fi}%
 \edef\@@name{\ifx\@symname\@empty\@verbname\else\@symname\fi}%
-\@ifundefined{sref@\@@name @\@@cd @defined}
-{\expandafter\sref@target@ifh{sref@\@@name @\@@cd @target}{}}{}%
+\defemph{\@ifundefined{sref@\@@name @\@@cd @defined}%
+{\expandafter\sref@target@ifh{sref@\@@name @\@@cd @target}{#3}}%
+{#3}}%
 \expandafter\gdef\csname sref@\@@name @\@@cd @defined\endcsname{yes}%
 \ifmetakeys@showmeta\metakeys@show@keys{\@@cd}{name:\@@name}\fi}%
 \else% st@indef
@@ -873,7 +875,7 @@ can only be referenced when called in a module with id key}}%
 \protect\defii, \protect\defiii\MessageBreak
 do not make sense semantically outside a definition.\MessageBreak
 Consider wrapping the defining phrase in a \protect\inlinedef}%
-\fi}
+\fi}% st@indef
 %    \end{macrocode}
 % \end{macro}
 %
@@ -895,8 +897,8 @@ Consider wrapping the defining phrase in a \protect\inlinedef}%
 %
 % \begin{macro}{\definiendum}
 %    \begin{macrocode}
-%\newcommand\definiendum[2][]{\st@def@target{#1}{#2}\@termdef[#1]{#2}\defemph{#2}}
-\newcommand\definiendum[2][]{\st@def@target{#1}{#2}\defemph{#2}}
+%\newcommand\definiendum[2][]{\st@def@target{#1}{#2}\@termdef[#1]{#2}{#2}}
+\newcommand\definiendum[2][]{\st@def@target{#1}{#2}{#2}}
 %    \end{macrocode}
 % \end{macro}
 %
@@ -916,9 +918,9 @@ Consider wrapping the defining phrase in a \protect\inlinedef}%
 %   handles the last optional argument and does the indexing. The information flow between
 %   them goes via the local |\@phrase| macro.
 %    \begin{macrocode}
-\newcommand\defi[2][]{\st@def@target{#1}{#2}\defemph{#2}\def\@phrase{#2}\@defi}
+\newcommand\defi[2][]{\st@def@target{#1}{#2}{#2}\def\@phrase{#2}\@defi}
 \newcommand\@defi[1][]{\ifdef@index\omdoc@indexi[#1]{\@phrase}\fi\xspace}
-\newcommand\defis[2][]{\st@def@target{#1}{#2}\defemph{#2s}\def\@phrase{#2}\@defi}
+\newcommand\defis[2][]{\st@def@target{#1}{#2}{#2s}\def\@phrase{#2}\@defi}
 %    \end{macrocode}
 % \end{macro}
 %
@@ -927,7 +929,7 @@ Consider wrapping the defining phrase in a \protect\inlinedef}%
 %   |\@adefi| handles the last optional argument and does the indexing. 
 %    \begin{macrocode}
 \newcommand\adefi[3][]{\def\@name{#1}\def\@verb{#3}%
-\st@def@target{#1}{#3}\defemph{#2}\@adefi}
+\st@def@target{#1}{#3}{#2}\@adefi}
 \newcommand\@adefi[1][]{%
 \ifdef@index%
 \ifx\@name\@empty\omdoc@indexi[#1]{\@verb}%
@@ -940,9 +942,9 @@ Consider wrapping the defining phrase in a \protect\inlinedef}%
 %    \begin{macrocode}
 \newcommand\@defii[1][]{\ifdef@index\@twin[#1]{\@pone}{\@ptwo}\fi\xspace}
 \newcommand\defii[3][]{\def\@pone{#2}\def\@ptwo{#3}%
-\st@def@target{#1}{#2-#3}\defemph{#2 #3}\@defii}
+\st@def@target{#1}{#2-#3}{#2 #3}\@defii}
 \newcommand\defiis[3][]{\def\@pone{#2}\def\@ptwo{#3}%
-\st@def@target{#1}{#2-#3}\defemph{#2 #3s}\@defii}
+\st@def@target{#1}{#2-#3}{#2 #3s}\@defii}
 %    \end{macrocode}
 % \end{macro}
 %
@@ -950,7 +952,7 @@ Consider wrapping the defining phrase in a \protect\inlinedef}%
 %   analogous to |\adefi|
 %    \begin{macrocode}
 \newcommand\adefii[4][]{\def\@name{#1}\def\@pone{#3}\def\@ptwo{#4}%
-\st@def@target{#1}{#3-#4}\defemph{#2}\@adefii}
+\st@def@target{#1}{#3-#4}{#2}\@adefii}
 \newcommand\@adefii[1][]{%
 \ifdef@index%
 \ifx\@name\@empty\@twin[#1]{\@pone}{\@ptwo}%
@@ -963,17 +965,17 @@ Consider wrapping the defining phrase in a \protect\inlinedef}%
 %   similar to |\defii|
 %    \begin{macrocode}
 \newcommand\defiii[4][]{\def\@pone{#2}\def\@ptwo{#3}\def\@pthree{#4}%
-\st@def@target{#1}{#2-#3-#4}\defemph{#2 #3 #4}\@defiii}
+\st@def@target{#1}{#2-#3-#4}{#2 #3 #4}\@defiii}
 \newcommand\@defiii[1][]{\ifdef@index\@atwin[#1]{\@pone}{\@ptwo}{\@pthree}\fi\xspace}
 \newcommand\defiiis[4][]{\def\@pone{#2}\def\@ptwo{#3}\def\@pthree{#4}%
-\st@def@target{#1}{#2-#3-#4}\defemph{#2 #3 #4s}\@defiii}
+\st@def@target{#1}{#2-#3-#4}{#2 #3 #4s}\@defiii}
 %    \end{macrocode}
 % \end{macro}
 %
 % \begin{macro}{\adefiii}
 %    \begin{macrocode}
 \newcommand\adefiii[5][]{\def\@name{#1}\def\@pone{#3}\def\@ptwo{#4}\def\@pthree{#3}%
-\st@def@target{#1}{#3-#4-#5}\defemph{#2}\@adefiii}
+\st@def@target{#1}{#3-#4-#5}{#2}\@adefiii}
 \newcommand\@adefiii[1][]{%
 \ifdef@index%
 \ifx\@name\@empty\@atwin[#1]{\@pone}{\@ptwo}{\@pthree}%
@@ -1011,27 +1013,27 @@ whatever is suitable semantically}\fi%
 % \subsection{Cross-Referencing Symbols and Concepts}\label{sec:impl:crossref}
 %
 % \begin{macro}{\termref}
-%   We delegate to the worker macro |\st@termref| after setting the default for the |cd|
-%   key.
+%   |\termref{|\meta{opt}|}{|\meta{text}|}| makes a hyperlink with link text \meta{text}
+%   to the definitional occurrence of the symbol specified by the |name|, |cd|, and
+%   |cdbase| keys in \meta{opt}. We first set sensible defaults if the keys are not
+%   given. If the symbol is defined in the current document (i.e. if the macro
+%   |\sref@|\meta{name}|@|\meta{cd}|@defined| is defined), then we make a local hyperref,
+%   otherwise we punt to |\mod@termref|.
 %    \begin{macrocode}
 \addmetakey*{termref}{cd}
 \addmetakey*{termref}{cdbase}
 \addmetakey*{termref}{name}
 \addmetakey*{termref}{role}
 \newcommand\termref[2][]{\metasetkeys{termref}{#1}%
-\ifx\termref@cd\@empty\def\termref@cd{\mod@id}\fi%
-\st@termref{#2}}
-%    \end{macrocode}
-% \end{macro}
-% The next macro is where the actual work is done. 
-% \begin{macro}{\st@termref}
-%   If the |cdbase| is given, then we make a hyper-reference, otherwise we punt to
-%   |\mod@termref|, which can deal with the case where the cdbase is given by the imported
-%   cd.
-%    \begin{macrocode}
-\newcommand\st@termref[1]{\ifx\termref@name\@empty\def\termref@name{#1}\fi%
-\ifx\termref@cdbase\@empty\mod@termref\termref@cd\termref@name{#1}%
-\else\sref@href@ifh\termref@cdbase{#1}\fi}
+  \ifx\termref@cd\@empty\def\termref@cd{\mod@id}\fi%
+  \ifx\termref@name\@empty\def\termref@name{#2}\fi%
+  \@ifundefined{sref@\termref@name @\termref@cd @defined}
+  {\ifx\termref@cdbase\@empty% external reference
+    \mod@termref\termref@cd\termref@name{#2}%
+    \else\sref@href@ifh\termref@cdbase{#2}%
+    \fi}%
+  {\sref@hlink@ifh{sref@\termref@name @\termref@cd @target}{#2}}%
+}
 %    \end{macrocode}
 % \end{macro}
 %
