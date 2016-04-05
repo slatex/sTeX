@@ -7,7 +7,7 @@
 %% mikoslides.dtx  (with options: `cls')
 %% 
 \NeedsTeXFormat{LaTeX2e}[1999/12/01]
-\ProvidesClass{mikoslides}[2016/01/15 v1.1 Jacobs slides Class]
+\ProvidesClass{mikoslides}[2016/04/04 v1.1 Jacobs slides Class]
 \newif\ifnotes\notesfalse
 \DeclareOption{notes}{\notestrue\PassOptionsToPackage{\CurrentOption}{mikoslides}}
 \DeclareOption{slides}{\notesfalse\PassOptionsToPackage{\CurrentOption}{mikoslides}}
@@ -21,6 +21,8 @@
   \RequirePackage{marginnote}
   \RequirePackage{mdframed}
   \RequirePackage[notheorems,noamsthm,noxcolor]{beamerarticle}
+  \RequirePackage[bookmarks,bookmarksopen,bookmarksnumbered,breaklinks,
+      linkcolor=black,citecolor=black,urlcolor=cyan,filecolor=cyan,colorlinks]{hyperref}
 \else
   \LoadClass[notheorems,noamsthm,10pt]{beamer}
   \newcounter{Item}
