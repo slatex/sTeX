@@ -1,6 +1,6 @@
 PREFIX = ../..
 DTX.sty.base = tikzinput
-TDSCOLL = sTeX
+TDSCOLL = stex# lowercase by CTAN rules
 CTANPREFIX = sty/
 PACKAGE = tikzinput
 DTX = tikzinput.dtx

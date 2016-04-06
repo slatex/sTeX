@@ -1,7 +1,7 @@
 PREFIX = ../..
 DTX.sty.base = mikoslides
 DTX.cls.base = mikoslides
-TDSCOLL = sTeX
+TDSCOLL = stex# lowercase by CTAN rules
 CTANPREFIX = sty/
 PACKAGE = mikoslides
 DTX = mikoslides.dtx

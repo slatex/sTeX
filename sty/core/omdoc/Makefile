@@ -1,7 +1,7 @@
 PREFIX = ../..
 DTX.sty.base = omdoc
 DTX.cls.base = omdoc
-TDSCOLL = sTeX
+TDSCOLL = stex# lowercase by CTAN rules
 CTANPREFIX = sty/
 PACKAGE = omdoc
 DTX = omdoc.dtx

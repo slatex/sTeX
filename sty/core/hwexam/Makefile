@@ -1,7 +1,7 @@
 PREFIX = ../..
 DTX.sty.base =  hwexam
 DTX.cls.base = hwexam
-TDSCOLL = sTeX
+TDSCOLL = stex# lowercase by CTAN rules
 CTANPREFIX = sty/
 PACKAGE = hwexam
 DTX = hwexam.dtx

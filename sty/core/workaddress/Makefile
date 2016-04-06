@@ -1,7 +1,7 @@
 PREFIX = ../..
 DTX.sty.base = workaddress
 DTX.cls.base = 
-TDSCOLL = sTeX
+TDSCOLL = stex# lowercase by CTAN rules
 CTANPREFIX = sty/
 PACKAGE = workaddress
 DTX = workaddress.dtx

@@ -1,6 +1,6 @@
 PREFIX = ../..
 DTX.sty.base = smultiling
-TDSCOLL = sTeX
+TDSCOLL = stex# lowercase by CTAN rules
 CTANPREFIX = sty/
 PACKAGE = smultiling
 DTX = smultiling.dtx

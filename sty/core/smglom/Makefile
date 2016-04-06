@@ -1,6 +1,6 @@
 PREFIX = ../..
 DTX.cls.base = smglom
-TDSCOLL = sTeX
+TDSCOLL = stex# lowercase by CTAN rules
 CTANPREFIX = sty/
 PACKAGE = smglom
 DTX = smglom.dtx

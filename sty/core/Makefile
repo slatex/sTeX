@@ -9,7 +9,7 @@ all package doc clean distclean biber stycls:
 ltds lctan filedate checksum enablechecksum disablechecksum: 
 	@for d in $(DISTDIRS); do (cd $$d && $(MAKE) -$(MAKEFLAGS) $@) || exit $$?; done
 
-TDSCOLL = sTeX
+TDSCOLL = stex# lowercase by CTAN rules
 TDS.tex = stex.tex stex.sty stex-logo.sty ctansvn.sty
 TDS.doc = README stex.pdf
 TDS.src = 
