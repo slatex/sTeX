@@ -1,7 +1,7 @@
 PREFIX = ../..
 DTX.sty.base = owl2onto
 DTX.cls.base = 
-TDSCOLL = sTeX
+TDSCOLL = stex
 CTANPREFIX = sty/
 PACKAGE = owl2onto
 DTX = owl2onto.dtx

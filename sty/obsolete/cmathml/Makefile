@@ -1,7 +1,7 @@
 PREFIX = ../..
 DTX.sty.base = cmathml
 DTX.cls.base = 
-TDSCOLL = sTeX
+TDSCOLL = stex
 CTANPREFIX = sty/
 PACKAGE = cmathml
 DTX = cmathml.dtx

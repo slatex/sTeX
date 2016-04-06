@@ -1,7 +1,7 @@
 PREFIX = ../..
 DTX.sty.base = reqdoc
 DTX.cls.base = 
-TDSCOLL = sTeX
+TDSCOLL = stex
 CTANPREFIX = sty/
 PACKAGE = reqdoc
 DTX = reqdoc.dtx

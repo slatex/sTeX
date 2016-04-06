@@ -7,7 +7,6 @@ all package doc clean distclean:
 ltds lctan filedate checksum enablechecksum disablechecksum: 
 	@for d in $(DISTDIRS); do (cd $$d && $(MAKE) -$(MAKEFLAGS) $@) || exit $$?; done
 
-TDSCOLL = sTeX
-TDS.tex = stex.tex stex.sty stex-logo.sty ctansvn.sty
-TDS.doc = README stex.pdf
+TDSCOLL = stex
+TDS.doc = README
 TDS.src = 
