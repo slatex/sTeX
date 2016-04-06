@@ -14,7 +14,7 @@ all clean distclean:
 package doc filedate checksum enablechecksum disablechecksum: 
 	@for d in $(DTXDIRS); do (cd $$d && $(MAKE) -$(MAKEFLAGS) $@) done
 
-TDSCOLL = sTeX
+TDSCOLL = stex
 TDS.tex = 
 TDS.README = sty/README
 TDS.src = 
