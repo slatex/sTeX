@@ -6,7 +6,7 @@
 SRCDIRS		= bin
 DOCDIRS		= example
 DTXDIRS 	= sty 
-MAKEDIRS 	= $(SRCDIRS) $(DOCDIRS) $(DTXDIRS)
+MAKEDIRS 	= $(DOCDIRS) $(DTXDIRS)
 
 all clean distclean: 
 	@for d in $(MAKEDIRS); do (cd $$d && $(MAKE) -$(MAKEFLAGS) $@) done
