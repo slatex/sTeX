@@ -1,0 +1,43 @@
+omdoc:	sms $(filter-out all.omdoc,$(TARGET.omdoc))
+mods:	sms $(MODS.omdoc)
+
+############################ Running LaTeXML #############################
+$(TARGET.tex.xml): %.tex.xml: %.tex $(TARGET.parts)
+		latexmlc $< $(LTXPATHS) --mode=standard --local --destination=$@ --log=$@.log\
+
+$(TARGET.xml):	%.xml: %.tex.xml
+		$(LATEXMLPOST)  --destination=$@ $< >& $@.log\
+	              || echo "FATAL: latexmlpost crashed with fatal error on $<" > $@.log
+
+$(TARGET.sdomdoc): %.sdomdoc: %.xml $(STEXOXSL) 
+		$(STEXXSLT) -o $@ $(STEXOXSL) $< 
+
+$(TARGET.omdoc): %.omdoc: %.tex $(TARGET.parts) $(LTSTY) $(STEXOXSL) 
+		latexmlc $< $(LTXPATHS) --local --mode=standard\
+			 --postdest=$(basename $<).omdoc\
+			 --log=$(basename $<).ltxlog --includestyles\
+			 --stylesheet=$(STEXOXSL) --nodefaultcss\
+			 --stylesheetparam=math-format:$(MATHFORMAT)\
+			 --post --openmath --pmml --summary
+
+$(MODS.tex.xml): %.tex.xml: %.tex $(LTSTY)
+		latexmlc --preamble=$(MODS.pre) $< $(LTXPATHS) --local --mode=fragment --destination=$@ --log=$@.log --includestyles
+
+$(MODS.xml):	%.xml: %.tex.xml
+		$(LATEXMLPOST)  --destination=$@ $< >& $@.log
+
+$(MODS.sdomdoc):	%.sdomdoc: %.xml $(STEXOXSL)
+		xsltproc -o $@ $(STEXOXSL) $< >& $@.log
+
+$(MODS.omdoc): %.omdoc: %.tex $(LTSTY) $(STEXOXSL) 
+		latexmlc --preamble=$(MODS.pre) $< $(LTXPATHS)\
+		              --local --mode=fragment\
+			      --postdest=$(basename $<).omdoc\
+			      --log=$(basename $<).ltxlog --includestyles\
+			      --stylesheet=$(STEXOXSL) --nodefaultcss\
+			      --post --openmath --pmml --summary
+
+errlog:		latexml.errlog
+
+latexml.errlog:	$(MODS.log)
+		grep -i -e error -e Fatal $(MODS.log) > $@ || echo "No errors found" > $@
