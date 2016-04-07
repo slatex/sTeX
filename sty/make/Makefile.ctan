@@ -39,15 +39,22 @@ MAKE		= make
 # the filedates and the checksums. To get rid of all the junk we commit and 
 # export a clean copy EXPORTED, on which we run the target ctanexp below,  
 # which generates a directory CTANDIR, which we zip and move into place. 
-ctan: all  filedate checksum
+ctan: #all  filedate checksum
 	git commit -am'draining just to be sure for CTAN distribution' --allow-empty
 	rm -Rf $(EXPORTED)
 	@echo "exporting a clean copy to $(EXPORTED)"
-	cd $(TMP); git clone $(GITREPOS); mv $(REPOSNAME) $(EXPORTED)
-	cd $(EXPORTED);rm -Rf .git;find . -name ".gitignore" -delete
+	cd $(TMP)
+	rm -Rf $(REPOSNAME)
+	git clone $(GITREPOS)
+	mv $(REPOSNAME) $(EXPORTED)
+	cd $(EXPORTED)
+	rm -Rf .git
+	find . -name ".gitignore" -delete
 	$(MAKE) -$(MAKEFLAGS) ctanext
 	@echo "zipping the result to $(TDSCOLL).ctan.zip"
-	cd $(TMP); zip -r $(CTANZIP) $(TDS.zip) $(TDSCOLL); cp $(CTANZIP) $(HERE)
+	cd $(TMP)
+	zip -r $(CTANZIP) $(TDS.zip) $(TDSCOLL)
+	cp $(CTANZIP) $(HERE)
 	@echo "cleaning up"   
 	rm -Rf $(EXPORTED) $(CTANDIR) $(CTANZIP) $(TDSZIP)
 	@echo "disabling checksums again for further development"
@@ -56,7 +63,7 @@ ctan: all  filedate checksum
 # this target is run on EXPORTED. It first makes the target tdsext below, 
 # and then copies all necessary stuff into CTANDIR. 
 ctanext: tdsext
-	@echo "making a CTAN compliant archive"
+	@echo "making a CTAN compliant archive in " pwd
 	rm -Rf $(CTANDIR) $(CTANZIP)
 	@echo "  preparing a copy $(CTANDIR) from $(EXPORTED)"
 	mkdir -p $(CTANDIR) 
@@ -81,6 +88,8 @@ tdsext:
 	@for d in $(DOCDIRS); do (cp -R $$d $(TDSDIR)/doc/latex/$(TDSCOLL)) done; 
 	@for d in $(TDS.doc); do (cp -R $$d $(TDSDIR)/doc/latex/$(TDSCOLL)) done;
 	@echo "zipping the result to $(TDSCOLL).tds.zip"
-	cd $(TDSDIR); zip -r -q $(TDSZIP) .; cd -
+	cd $(TDSDIR)
+	zip -r -q $(TDSZIP) .
+	cd -
 	@echo "and removing the temporary directory $(TDSDIR)"
 	rm -Rf $(TDSDIR)
