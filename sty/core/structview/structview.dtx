@@ -106,11 +106,19 @@
 % 
 % \subsection{Structures}\label{sec:user:structures}
 % 
-% The |\importmodule| macro has a variant
-% \DescribeMacro{importmodulevia}|\importmodulevia| that allows the specification of a
-% theory morphism to be applied.  |\importmodulevia{|\meta{thyid}|}{|\meta{assignments}|}|
-% specifies the ``source theory'' via its identifier \meta{thyid} and the morphism by
-% \meta{assignments}. There are four kinds:\ednote{MK: this needs to be consolidated and
+% The |\importmodule| macro has a variant \DescribeEnv{structure}|structure|\footnote{The
+% old |importmodulevia| environment is now deprecated.} that allows the specification of a
+% theory morphism to be applied.
+% 
+% \begin{center}
+% |\begin{structure}[|\meta{keys}|]{|\meta{name}|}{|\meta{thyid}|}|\meta{assignments}|\end{structure}|
+% \end{center}
+% 
+% gives the structure the name \meta{name}, specifies the ``source theory'' via its
+% identifier \meta{thyid}, and the morphism by \meta{assignments}. The |structure|
+% environment takes the same keys as the |\importmodule| macro, which it generalizes.
+%
+% There are four kinds assignments:\ednote{MK: this needs to be consolidated and
 % researched better.}
 % \begin{compactdesc}
 % \item[symbol assignments] via
@@ -128,27 +136,28 @@
 %   name \meta{source-tname} in the theory \meta{source-cd} whose default value is the
 %   source theory.
 % \item[term text assignments] via
-%   \DescribeMacro{\ttassign}|\tassign{|\meta{tname}|}{|\meta{text}|}|, which defines a
+%   \DescribeMacro{\ttassign}|\ttassign{|\meta{tname}|}{|\meta{text}|}|, which defines a
 %   term with name \meta{tname} in the current theory via a definitional text.
 % \end{compactdesc}
-% 
+% Figure~\ref{fig:ring} shows a concrete example\ednote{adapt when we fully understand
+% this, and the implementation works.}
 %\begin{exfig}
 % \begin{verbatim}
 % \begin{module}[id=ring]
-% \begin{importmodulevia}{monoid}
+% \begin{structure}{monoid}
 %   \vassign{rbase}\magbase
 %   \fassign{a,b}{\rtimes{A}B}{\magmaop{a}b}
 %   \vassign{rone}\monunit
-% \end{importmodulevia}
+% \end{structure}
 % \symdef{rbase}{G}
 % \symdef[name=rtimes]{rtimesOp}{\cdot}
 % \symdef{rtimes}[2]{\infix\rtimesOp{#1}{#2}}
 % \symdef{rone}{1}
-% \begin{importmodulevia}{cgroup}
+% \begin{structure}{cgroup}
 %   \vassign{rplus}\magmaop
 %   \vassign{rzero}\monunit
 %   \vassign{rinvOp}\cginvOp
-% \end{importmodulevia}
+% \end{structure}
 % \symdef[name=rplus]{rplusOp}{+}
 % \symdef{rplus}[2]{\infix\rplusOp{#1}{#2}}
 % \symdef[name=rminus]{rminusOp}{-}
@@ -196,20 +205,31 @@
 %
 % \subsection{Structures}\label{sec:impl:structures}
 % 
-% \begin{macro}{\importmodulevia} 
-%   The |importmodulevia| environment just calls |\importmodule|, but to get around the
+% \begin{environment}{structure} 
+%   The |structure| environment just calls |\importmodule|, but to get around the
 %   group, we first define a local macro |\@@doit|, which does that and can be called with
-%   an |\aftergroup| to escape the environment grouping introduced by |importmodulevia|.
+%   an |\aftergroup| to escape the environment grouping introduced by |structure|.
 %    \begin{macrocode}
-\newenvironment{importmodulevia}[2][]{%
-  \gdef\@@doit{\importmodule[#1]{#2}}%
-  \ifmod@show\par\noindent importing module #2 via \@@doit\fi%
+\newenvironment{structure}[3][]{%
+  \gdef\@@doit{\importmodule[#1]{#3}}%
+  \ifmod@show\par\noindent importing module #3 via \@@doit\fi%
 }{%
   \aftergroup\@@doit\ifmod@show end import\fi%
 }%
 %    \end{macrocode}
-% \end{macro}
-%
+% \end{environment}
+% 
+% \begin{environment}{importmodulevia}
+%   this is now deprecated, we give an error
+%    \begin{macrocode}
+\newenvironment{importmodulevia}[2][]%
+{\PackageError{structview}%
+  {The {importmodulevia} environment is deprecated}{use the {structure} instead!}%
+  \begin{structure}[#1]{missing}{#2}}
+{\end{structure}}
+%    \end{macrocode}
+% \end{environment}
+% 
 % \begin{environment}{\*assign}
 %    \begin{macrocode}
 \newrobustcmd\vassign[3][]{\ifmod@show\ensuremath{#2\mapsto #3}, \fi}%
