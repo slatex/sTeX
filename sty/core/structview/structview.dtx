@@ -27,11 +27,15 @@
 \usepackage{ctangit}
 \usepackage{xspace}
 \usepackage{hyperref}
+\usepackage{tikz}
+\usetikzlibrary{mmt}
 \makeindex
 \floatstyle{boxed}
 \newfloat{exfig}{thp}{lop}
 \floatname{exfig}{Example}
-\def\tracissue#1{\cite{sTeX:online}, \hyperlink{http://trac.kwarc.info/sTeX/ticket/#1}{issue #1}}
+\def\tracissue#1{\cite{sTeX:online},\hyperlink{http://trac.kwarc.info/sTeX/ticket/#1}{issue #1}}
+\def\gray#1{\textcolor{gray}{#1}}
+\def\map#1#2{#1\mapsto #2}
 \begin{document}\DocInput{structview.dtx}\end{document} 
 %</driver>
 % \fi
@@ -41,7 +45,6 @@
 % \changes{v0.9}{2015/11/05}{Moved out of the \texttt{modules} package}
 % 
 % \GetFileInfo{modules.sty}
-% 
 % \MakeShortVerb{\|}
 %\def\scsys#1{{{\sc #1}}\index{#1@{\sc #1}}\xspace}
 % \def\xml{\scsys{Xml}}
@@ -57,6 +60,7 @@
 % \def\atwin#1#2#3{\index{#1!#2!#3}\index{#3!#2 (#1)}}
 % \def\atwintoo#1#2#3{{#1 #2 #3}\atwin{#1}{#2}{#3}}
 % \def\cT{\mathcal{T}}\def\cD{\mathcal{D}}
+% \def\cn#1{\mathsf{#1}}
 % \title{{\texttt{structview.sty}}: Structures and Views in {\stex}\thanks{Version {\fileversion} (last revised
 %        {\filedate})}}
 %    \author{Michael Kohlhase\\
@@ -89,7 +93,45 @@
 % 
 % For details about theory morphisms we refer to~\cite{RabKoh:WSMSML13}, but hope to make
 % the underlying concepts clear with examples.
-% 
+%
+%\begin{figure}[ht]\centering
+% \begin{tikzpicture}[scale=.9]\footnotesize
+% \node[thy] (Mon) at (0,1.2) {$\mmtthy{monoid}{\gray{\cn{op},\;\cn{unit}}}{}$};
+% \node[thy] (CGr) at (0,3) {$\mmtthy{cgp}{\gray{\cn{mon},\;\cn{inv}}}{}$};
+% \node[thy] (Ring) at (-3.5,3) {$\mmtthy{ring}{\gray{\cn{add}},\;\gray{\cn{mul}}}{}$};
+% \draw[include](Mon) -- node[left,near end]{$\cn{cgp}?\cn{mon}$} (CGr);
+% \draw[includeleft](CGr) -- node[below]{$\cn{ring}?\cn{add}$}(Ring);
+% \draw[includeleft](Mon) -- node[left]{$\cn{ring}?\cn{mul}$} (Ring);
+% \node[thy] (Int) at (3,3) {$\mmtthy{integers}{\gray{+,0,-,\cdot,1}}{}$};
+% \node[draw] (v2) at (1.5,4.8) {
+%  $\begin{array}{l}
+%    v_2\colon \\
+%    \gray{\left\{\begin{array}{c}
+%                   \map{\cn{mon}/\cn{op}}{+} \\
+%                   \map{\cn{mon}/\cn{unit}}{0}
+%                 \end{array}
+%     \right\}}
+%     \;\mathrm{or}\; \gray{\map{\cn{mon}}{v_1}} \\
+%    \gray{\map{\cn{inv}}{-}}
+%   \end{array}$};
+% \node[draw] at (2.5,1.4) {
+%   $\begin{array}{l}
+%     v_1\colon\\
+%     \gray{\map{\cn{op}}{+}} \\
+%     \gray{\map{\cn{unit}}{0}}
+%    \end{array}$};
+% \draw[view](Mon) -- (Int);
+% \draw[view](CGr) -- node[below]{$v_2$} (Int);
+% \draw[include] (-4,4.5) -- +(1,0);
+% \draw[view] (-4,5) -- +(1,0);
+% \node[right] at (-3,4.5) {import};
+% \node[right] at (-3,5) {view};
+% \draw[view] (Ring) to[out=17,in=163] node[above,very near start] {$v_3$} (Int);
+% \draw[view] (Mon) to[loop left] node[left,draw,solid,outer sep=3pt,thin]{$v_4\colon\map{x\,\cn{op}\,y}{y\,\cn{op}\,x}$}(Mon);
+% \end{tikzpicture}
+% \caption{A Theory Graph with Structures and Views}\caption{fig:structview}
+% \end{figure}
+%
 % \section{The User Interface}
 %
 % The main contributions of the |modules| package are the |module| environment, which
@@ -100,7 +142,7 @@
 %
 % The \DescribeMacro{mh}|mh| option turns on MathHub support.
 % 
-% \subsection{Theory Morphisms}
+% \subsection{Theory Morphisms}\label{sec:user:assignments}
 % 
 % A theory moprhism is a mapping between the languages of its source and target
 % theory. This can be described mathematically using all the structures in the \sTeX
@@ -125,41 +167,41 @@
 % Figure~\ref{fig:ring} shows a concrete example\ednote{adapt when we fully understand
 % this, and the implementation works.}
 % 
+% The assignments above can be seen as abbreviations for a simple, formal definitions,
+% which define a symbol of the source theory by an expression in the target theory.
+% 
 % \subsection{Structures}\label{sec:user:structures}
 % 
-% The |\importmodule| macro has a variant \DescribeEnv{structure}|structure|\footnote{The
-% old |importmodulevia| environment is now deprecated.} that allows the specification of a
-% theory morphism to be applied.
-%
+% Structures are specified by the \DescribeEnv{structure}|structure|\footnote{The old
+% |importmodulevia| environment is now deprecated.} environment:
 % \begin{center}
-% |\begin{structure}[|\meta{keys}|]{|\meta{name}|}{|\meta{thyid}|}|\meta{assignments}|\end{structure}|
+%   |\begin{structure}[|\meta{keys}|]{|\meta{name}|}{|\meta{sthy}|}|\meta{morph}|\end{structure}|
 % \end{center}
-% 
 % gives the structure the name \meta{name}, specifies the ``source theory'' via its
-% identifier \meta{thyid}, and the morphism by \meta{assignments}. The |structure|
-% environment takes the same keys as the |\importmodule| macro, which it generalizes.
+% identifier \meta{sthy}, and the morphism \meta{morph}. The |structure| environment takes
+% the same keys as the |\importmodule| macro, which it generalizes. The morphism
+% \meta{morph} in the body of the |structure| environment specifies the morphism
+% (see~\ref{sec:user:assignments} above). In a structure, we take the target theory to be
+% the current theory.
 %
 %\begin{exfig}
 % \begin{verbatim}
 % \begin{module}[id=ring]
-% \begin{structure}{monoid}
-%   \vassign{rbase}\magbase
-%   \fassign{a,b}{\rtimes{A}B}{\magmaop{a}b}
-%   \vassign{rone}\monunit
-% \end{structure}
-% \symdef{rbase}{G}
-% \symdef[name=rtimes]{rtimesOp}{\cdot}
-% \symdef{rtimes}[2]{\infix\rtimesOp{#1}{#2}}
+% \symdef{rbase}{R}
+% \symdef{rtimes}[2]{\infix\cdot{#1}{#2}}
 % \symdef{rone}{1}
-% \begin{structure}{cgroup}
-%   \vassign{rplus}\magmaop
-%   \vassign{rzero}\monunit
-%   \vassign{rinvOp}\cginvOp
+% \begin{structure}{mul}{monoid}
+%   \tassign{magbase}{rbase}
+%   \fassign{a,b}{\magmaop{a}b}{\rtimes{a}b}
+%   \tassign{monunit}{rone}
 % \end{structure}
-% \symdef[name=rplus]{rplusOp}{+}
-% \symdef{rplus}[2]{\infix\rplusOp{#1}{#2}}
-% \symdef[name=rminus]{rminusOp}{-}
-% \symdef{rminus}[1]{\infix\rminusOp{#1}{#2}}
+% \symdef{rplus}[2]{\infix+{#1}{#2}}
+% \symdef{rminus}[1]{\infix-{#1}{#2}}
+% \begin{structure}{add}{cgroup}
+%   \fassign{a,b}{\magmaop{a}b}{\rplus{a}b}
+%   \tassign{monunit}{rzero}
+%   \tassign{cginvOp}{\rminus}
+% \end{structure}
 % ...
 % \end{module}
 % \end{verbatim}
@@ -201,6 +243,17 @@
 \RequirePackage{modules}
 %    \end{macrocode}
 %
+% \subsection{Theory Morphisms by Assignments}\label{sec:impl:assignments}
+% 
+% \begin{environment}{\*assign}
+%   \ednote{probably get rid of the optional argument}
+%    \begin{macrocode}
+\newrobustcmd\vassign[3][]{\ifmod@show\ensuremath{#2\mapsto #3}, \fi}%
+\newrobustcmd\fassign[4][]{\ifmod@show \ensuremath{#3(#2)\mapsto #4}, \fi}%
+\newrobustcmd\tassign[3][]{\ifmod@show \ensuremath{#2\mapsto} #3, \fi}%
+%    \end{macrocode}
+% \end{environment}
+% 
 % \subsection{Structures}\label{sec:impl:structures}
 % 
 % \begin{environment}{structure} 
@@ -218,21 +271,13 @@
 % \end{environment}
 % 
 % \begin{environment}{importmodulevia}
-%   this is now deprecated, we give an error
+%   This is now deprecated, we give an error, but punt to |structure|.
 %    \begin{macrocode}
 \newenvironment{importmodulevia}[2][]%
 {\PackageError{structview}%
   {The {importmodulevia} environment is deprecated}{use the {structure} instead!}%
   \begin{structure}[#1]{missing}{#2}}
 {\end{structure}}
-%    \end{macrocode}
-% \end{environment}
-% 
-% \begin{environment}{\*assign}
-%    \begin{macrocode}
-\newrobustcmd\vassign[3][]{\ifmod@show\ensuremath{#2\mapsto #3}, \fi}%
-\newrobustcmd\tassign[3][]{\ifmod@show #2\ensuremath{\mapsto} #3, \fi}%
-\newrobustcmd\fassign[4][]{\ifmod@show \ensuremath{#3\mapsto #4}, \fi}%
 %    \end{macrocode}
 % \end{environment}
 % 
