@@ -179,7 +179,7 @@
 %   the other hand does not scale to multi-word compounds as |bar| in
 %   Figure~\ref{fig:stex-multiling}, which we would have to reference as
 %   |\atrefiii{gro"ses Feld Raster}{bar}|. To avoid this, the |smultiling| package
-%   provides the new macros \DescribeMacro{\mtref*}|\mtrefi|, |\mtrefii|, and |\mtrefiii|
+%   provides the new macros \DescribeMacro{\mtref}|\mtrefi|, |\mtrefii|, and |\mtrefiii|
 %   for multilingual references. Using this, we can reference |bar| as
 %   |\mtrefiii[?bar]{gro"ses}{Feld}{Raster}|, where we use the (up to three) mandatory
 %   arguments to segment the lexical constituents.
@@ -199,21 +199,28 @@
 % 
 % \begin{omgroup}{Multilingual Views}
 %   Views receive a similar treatment as modules in the |smultiling| package. A
-%   multilingual view consists of a view signature marked up with the
-%   \DescribeMacro{viewsig}|viewsig| environment. This takes three required arguments: a
-%   view name, the source module, and the target module. The optional first argument is
-%   for metadata (|display|, |title|, |creators|, and |contributors|) and load information
-%   (|frompath|, |fromrepos|, |topath|, and |torepos|).\ednote{MK: that does not work yet,
-%   what we describe here is \texttt{mhviewig}; we need to refactor further.}
+%   multilingual view consists of
+%   \begin{compactenum}
+%   \item a \textbf{view signature} marked up with the \DescribeEnv{viewsig}|viewsig|
+%     environment. This takes three required arguments: a view name, the source module,
+%     and the target module. The optional first argument is for metadata (|display|,
+%     |title|, |creators|, and |contributors|) and load information (|loadfrom| and
+%     |loadto|) and
+%   \item multiple \textbf{language bindings} marked up by the
+%     \DescribeEnv{viewnl}|viewnl| environment, which takes two required arguments: the
+%     view name and the language specifier. The optional first key/value argument takes
+%     the same keys as |viewsig| except the last two.
+%   \end{compactenum}
+% 
 % \begin{verbatim}
-% \begin{viewsig}[creators=miko,]{norm-metric}{metric-space}{norm}
+% \begin{viewsig}[creators=miko]{norm-metric}{metric-space}{norm}
 %   \vassign{base-set}{base-set}
-%   \vassign{metric}{\funcdot{x,y}{\norm{x-y}}}
+%   \fassign{x,y}{\metric{x,y}}{\norm{x-y}}
 % \end{viewsig}
 % \end{verbatim}
 %   Views have language bindings just as modules do, in our case, we have 
 % \begin{verbatim}
-% \begin{gviewnl}[creators=miko]{norm-metric}{en}{norm}{metric-space}
+% \begin{viewnl}[creators=miko]{norm-metric}{en}
 %   \obligation{metric-space}{obl.norm-metric.en}
 %   \begin{assertion}[type=obligation,id=obl.norm-metric.en]
 %     $\defeq{d(x,y)}{\norm{x-y}}$ is a \trefii[metric-space]{distance}{function}
@@ -222,7 +229,7 @@
 %     {we prove the three conditions for a distance function:}
 %     ...
 %   \end{sproof}
-% \end{gviewnl}
+% \end{viewnl}
 % \end{verbatim}
 % 
 % \end{omgroup}
@@ -384,31 +391,42 @@
 % \end{environment}
 %
 % \begin{environment}{viewnl}
-%   The |viewnl| environment is just a layer over the |viewsketch| environment with the
-%   keys and langauge suitably adapted.\ednote{MK: we have to do something about the
-%   if@langfiles situation here. But this is non-trivial, since we do not know the current
-%   path, to which we could append .\meta{lang}!}
+%   The |viewnl| environment is just a layer over the |view| environment with the keys and
+%   langauge suitably adapted.\ednote{MK: we have to do something about the if@langfiles
+%   situation here. But this is non-trivial, since we do not know the current path, to
+%   which we could append .\meta{lang}!}
 %    \begin{macrocode}
 \newenvironment{viewnl}[5][]{\def\@test{#1}\ifx\@test\@empty%
-  \begin{viewsketch}[id=#2.#3,ext=tex]{#4}{#5}\else%
-  \begin{viewsketch}[id=#2.#3,#1,ext=tex]{#4}{#5}\fi%
+  \begin{view}[id=#2.#3,ext=tex]{#4}{#5}\else%
+  \begin{view}[id=#2.#3,#1,ext=tex]{#4}{#5}\fi%
   \ignorespacesandpars}
-  {\end{viewsketch}\ignorespacesandparsafterend}
+  {\end{view}\ignorespacesandparsafterend}
 %    \end{macrocode}
 % \end{environment}
 % \end{omgroup}
 % 
 % \begin{omgroup}{Multilingual Statements and Terms}
 %
-% \begin{macro}{\mtref*}
+% \begin{macro}{\mtref}
 %   we first first define an auxiliary conditional |\@instring| that checks of |?| is in
 %   the first argument.  |\mtrefi| uses it, if there is one, it just calls |\termref|,
 %   otherwise it calls |\@mtrefi|, which assembles the |\termref| after splitting at the
 %   |?|.
 %    \begin{macrocode}
 \def\@instring#1#2{TT\fi\begingroup\edef\x{\endgroup\noexpand\in@{#1}{#2}}\x\ifin@}
+\def\@mtref#1?#2\relax{\@@mtref{#1}{#2}}
+\newcommand\@@mtref[3]{\def\@@cd{#1}\def\@@name{#2}%
+\ifx\@@cd\@empty%
+\ifx\@@name\@empty\termref[]{#3}\else\termref[name=\@@name]{#3}\fi%
+\ifx\@@name\@empty\termref[cd=\@@cd]{#3}\else\termref[cd=\@@cd,name=\@@name]{#3}\fi%
+\fi}
+\newcommand\mtref[2][]{\if\@instring{?}{#1}\@mtref #1\relax{#2}\else\termref[cd=#1]{#2}\fi}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\mtrefi*}
+%    \begin{macrocode}
 \newcommand\mtrefi[2][]{\if\@instring{?}{#1}\@mtref #1\relax{#2}\else\termref[cd=#1]{#2}\fi}
-\def\@mtref#1?#2\relax{\termref[cd=#1,name=#2]}
 \newcommand\mtrefis[2][]{\mtrefi[#1]{#2s}}
 \newcommand\mtrefii[3][]{\mtrefi[#1]{#2 #3}}
 \newcommand\mtrefiis[3][]{\mtrefi[#1]{#2 #3s}}
