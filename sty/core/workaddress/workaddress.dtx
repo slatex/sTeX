@@ -10,7 +10,7 @@
 % \iffalse
 %<*package>
 \NeedsTeXFormat{LaTeX2e}[1999/12/01]
-\ProvidesPackage{workaddress}[2016/04/07 v0.4 WorkAddress]
+\ProvidesPackage{workaddress}[2016/04/07 v0.5 WorkAddress]
 %</package>
 %<*driver>
 \documentclass{ltxdoc}
@@ -255,10 +255,24 @@
 %
 % \begin{macro}{\wa@ref}
 %    \begin{macrocode}
-\def\wa@ref#1#2#3{%
-  \wa@ref@test{#1}{#2}{#3}%
-  \csname wa@#1@#2@#3\endcsname%
-}%
+\newcommand\wa@ref[4]{%
+  \@ifundefined{wa@#2@#3@#4}{%
+    \ifcase#1 {}\or%
+    \PackageWarning{workaddress}{reference to undefined #4 of #2 #3\MessageBreak%
+      you must define a #2 with #3=#4\MessageBreak%
+      via the macro \protect\WA#2, before you can use it!}%
+    \or
+    \PackageWarning{workaddress}{reference to undefined #4 of #2 #3\MessageBreak%
+      you must define a #2 with #3=#4\MessageBreak%
+      via the macro \protect\WA#2, before you can use it!}%
+      ?#2?#3?#4?
+    \or
+    \PackageError{workaddress}{reference to undefined #4 of #2 #3}%
+    {you must define a #2 with #3=#4\MessageBreak%
+     via the macro \protect\WA#2, before you can use it!}
+    \else\PackageError{workaddress}{\protect\wa@ref#1 not defined}
+   \fi
+  }{\csname wa@#2@#3@#4\endcsname}}%
 %    \end{macrocode}
 % \end{macro}
 % 
@@ -382,16 +396,16 @@
    \def\@depts{}%
    \def\@urls{}%
    \@for\@I:=#2\do{%
-     \xdef\@authors{\@authors&\wa@ref{person}\@I{name}}
-     \xdef\@@dept{\wa@ref{person}\@I{department}}
+     \xdef\@authors{\@authors&\wa@ref2{person}\@I{name}}
+     \xdef\@@dept{\wa@ref1{person}\@I{department}}
      \xdef\@shortname{\csname wa@institution@\@@dept @shortname\endcsname}
-     \xdef\@dept{\ifx\@shortname\@empty\wa@ref{institution}\@@dept{name}\else\@shortname\fi}
+     \xdef\@dept{\ifx\@shortname\@empty\wa@ref0{institution}\@@dept{name}\else\@shortname\fi}
      \xdef\@depts{\@depts&\@dept}
-     \xdef\@@aff{\wa@ref{person}\@I{affiliation}}
+     \xdef\@@aff{\wa@ref0{person}\@I{affiliation}}
      \xdef\@shortname{\csname wa@institution@\@@aff @shortname\endcsname}
-     \xdef\@aff{\ifx\@shortname\@empty\wa@ref{institution}\@@aff{name}\else\@shortname\fi}
+     \xdef\@aff{\ifx\@shortname\@empty\wa@ref0{institution}\@@aff{name}\else\@shortname\fi}
      \xdef\@affs{\@affs&\@aff}
-     \xdef\@urls{\@urls&\wa@ref{person}\@I{url}}
+     \xdef\@urls{\@urls&\wa@ref0{person}\@I{url}}
    }%
    \message{\theauthors authors: \@authors}%
   }%
@@ -407,21 +421,21 @@
 %
 % \begin{macro}{\wapname}
 %    \begin{macrocode}
-\newcommand\wapname[1]{\wa@ref{person}{#1}{name}}
+\newcommand\wapname[1]{\wa@ref3{person}{#1}{name}}
 %    \end{macrocode}
 % \end{macro}
 %
 % \begin{macro}{\waptname}
 %    \begin{macrocode}
-\newcommand\waptname[1]{\wa@ref{person}{#1}{personaltitle} \wa@ref{person}{#1}{name}}
+\newcommand\waptname[1]{\wa@ref3{person}{#1}{personaltitle} \wa@ref3{person}{#1}{name}}
 %    \end{macrocode}
 % \end{macro}
 % 
 % \begin{macro}{\wa@institution@logo}
 %    \begin{macrocode}
 \newcommand\wa@institution@logo[2][]{%
-  \IfFileExists{\wa@ref{institution}{#2}{logo}}{%
-    \includegraphics{\wa@ref{institution}{#2}{logo}}%
+  \IfFileExists{\wa@ref2{institution}{#2}{logo}}{%
+    \includegraphics{\wa@ref2{institution}{#2}{logo}}%
   }{%
     \fbox{#2 logo}\message{still need logo for #2}%
   }%
