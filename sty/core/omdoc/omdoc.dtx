@@ -15,7 +15,7 @@
 %
 %<*driver>
 \documentclass{ltxdoc}
-\usepackage{url,array,omdoc,omtext,float}
+\usepackage{url,array,float}
 \usepackage[show]{ed}
 \usepackage[hyperref=auto,style=alphabetic]{biblatex}
 \addbibresource{kwarcpubs.bib}
@@ -23,6 +23,8 @@
 \addbibresource{kwarccrossrefs.bib}
 \addbibresource{extcrossrefs.bib}
 \usepackage{stex-logo}
+\usepackage{omdoc}
+\usepackage{omtext}
 \usepackage{ctangit}
 \usepackage{hyperref}
 \makeindex
@@ -95,7 +97,7 @@
 %  formatting/presentation.\ednote{integrate with latexml's XMRef in the Math mode.}
 % \end{omgroup}
 % 
-% \begin{omgroup}[id=sec:user]{The User Interface}\
+% \begin{omgroup}[id=sec:user]{The User Interface}
 % 
 %   The |omdoc| package generates two files: |omdoc.cls|, and |omdoc.sty|. The {\omdoc}
 %   class is a minimally changed variant of the standard |article| class that includes the
@@ -301,7 +303,6 @@
 %
 %    \begin{macrocode}
 \LoadClass{\omdoc@class}
-\RequirePackage{etoolbox}
 \RequirePackage{omdoc}
 \RequirePackage{stex}
 %    \end{macrocode}
@@ -342,8 +343,9 @@
 \newif\ifshow@ignores\show@ignoresfalse
 \DeclareOption{showignores}{\show@ignorestrue}
 \newcount\section@level\section@level=2
+\newif\ifclass@book\class@bookfalse
 \DeclareOption{report}{\section@level=0}
-\DeclareOption{book}{\section@level=0}
+\DeclareOption{book}{\section@level=0\class@booktrue}
 \DeclareOption*{\PassOptionsToPackage{\CurrentOption}{sref}}
 \ProcessOptions
 %    \end{macrocode}
@@ -351,6 +353,7 @@
 % Then we need to set up the packages by requiring the |sref| package to be loaded.
 %
 %    \begin{macrocode}
+\RequirePackage{etoolbox}
 \RequirePackage{sref}
 \RequirePackage{xspace}
 \RequirePackage{comment}
@@ -448,20 +451,25 @@
 \if@@num% numbering not overridden by frontmatter, etc.
 \ifx\omdoc@sect@num\@true\omgroup@num{#2}{#3}\else\omgroup@nonum{#2}{#3}\fi%
 \def\current@section@level{\omdoc@sect@name}%
-\else\omgroup@nonum{#2}{#3}\fi}
+\else\omgroup@nonum{#2}{#3}%
+\fi}% if@@num
 %    \end{macrocode}
 % and another one, if redefines the |\addtocontentsline| macro of {\LaTeX} to import the
 % respective macros. It takes as an argument a list of module names.\ednote{MK: the
 % extension sms is hard-coded here, but should not be. This will not work in multilingual
 % settings.}
 %    \begin{macrocode}
-\newcommand\omgroup@redefine@addtocontents[1]{\edef\@@import{#1}%
-\@for\@I:=\@@import\do{\edef\@path{\csname module@\@I  @path\endcsname}%
-\@ifundefined{tf@toc}\relax{\protected@write\tf@toc{}{\string\@requiremodules{\@path}{sms}}}}
+\newcommand\omgroup@redefine@addtocontents[1]{%
+\edef\@@import{#1}%
+\@for\@I:=\@@import\do{%
+\edef\@path{\csname module@\@I  @path\endcsname}%
+\@ifundefined{tf@toc}\relax%
+     {\protected@write\tf@toc{}{\string\@requiremodules{\@path}{sms}}}}
 \ifx\hyper@anchor\@undefined% hyperref.sty loaded?
 \def\addcontentsline##1##2##3{%
 \addtocontents{##1}{\protect\contentsline{##2}{\string\withusedmodules{#1}{##3}}{\thepage}}}
-\else\def\addcontentsline##1##2##3{%
+\else% hyperref.sty not loaded
+\def\addcontentsline##1##2##3{%
 \addtocontents{##1}{\protect\contentsline{##2}{\string\withusedmodules{#1}{##3}}{\thepage}{\@currentHref}}}%
 \fi}% hypreref.sty loaded?
 %    \end{macrocode}
@@ -485,7 +493,7 @@
 % now we only need to construct the right sectioning depending on the value of
 % |\section@level|.
 %    \begin{macrocode}
-\advance\section@level by 1
+\advance\section@level by 1\relax% 
 \ifcase\section@level%
 \or\omdoc@sectioning[name=Part,clear,num]{part}{#2}%
 \or\omdoc@sectioning[name=Chapter,clear,num]{chapter}{#2}%
@@ -570,7 +578,7 @@
 \def\LXMID#1#2{\expandafter\gdef\csname xmarg#1\endcsname{#2}\csname xmarg#1\endcsname}
 \def\LXMRef#1{\csname xmarg#1\endcsname}
 %    \end{macrocode}
-
+%
 % \begin{macro}{\STRlabel}
 %    The main macro, it it used to attach a label to some text expansion. Later on, using the
 %    |\STRcopy| macro, the author can use this label to get the expansion originally assigned.

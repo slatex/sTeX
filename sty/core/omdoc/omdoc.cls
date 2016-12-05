@@ -21,7 +21,6 @@
                            \PassOptionsToPackage{\CurrentOption}{stex}}
 \ProcessOptions
 \LoadClass{\omdoc@class}
-\RequirePackage{etoolbox}
 \RequirePackage{omdoc}
 \RequirePackage{stex}
 \srefaddidkey{document}
