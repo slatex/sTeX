@@ -9,16 +9,13 @@
 \NeedsTeXFormat{LaTeX2e}[1999/12/01]
 \ProvidesClass{omdoc}[2016/04/07 v1.2 OMDoc Documents]
 \def\omdoc@class{article}
-\DeclareOption{report}{\def\omdoc@class{report}%
-  \PassOptionsToPackage{\CurrentOption}{omdoc}
-  \PassOptionsToPackage{\CurrentOption}{stex}}
+\DeclareOption{report}{\def\omdoc@class{report}}
 \newif\ifclass@book\class@bookfalse
-\DeclareOption{book}{\def\omdoc@class{book}\class@booktrue%
-  \PassOptionsToPackage{\CurrentOption}{omdoc}
-  \PassOptionsToPackage{\CurrentOption}{stex}}
-\DeclareOption*{\PassOptionsToClass{\CurrentOption}{\omdoc@class}
-                           \PassOptionsToPackage{\CurrentOption}{omdoc}
-                           \PassOptionsToPackage{\CurrentOption}{stex}}
+\DeclareOption{book}{\def\omdoc@class{book}\class@booktrue}
+\DeclareOption{bookpart}{\def\omdoc@class{book}\class@booktrue}
+\DeclareOption*{\PassOptionsToClass{\CurrentOption}{\omdoc@class}}
+\PassOptionsToPackage{\CurrentOption}{omdoc}
+\PassOptionsToPackage{\CurrentOption}{stex}
 \ProcessOptions
 \LoadClass{\omdoc@class}
 \RequirePackage{omdoc}
