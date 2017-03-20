@@ -1,5 +1,6 @@
 sTeX: An Infrastructure for Semantic Preloading of LaTeX Documents
 ====
+[![Build Status](https://travis-ci.org/KWARC/sTeX.svg?branch=master)](https://travis-ci.org/KWARC/sTeX)
 
 This repository contains the sTeX package collection, a version of TeX/LaTeX that allows
 to markup TeX/LaTeX documents semantically without leaving the document format,
