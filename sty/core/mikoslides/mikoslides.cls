@@ -11,6 +11,7 @@
 \newif\ifnotes\notesfalse
 \DeclareOption{notes}{\notestrue\PassOptionsToPackage{\CurrentOption}{mikoslides}}
 \DeclareOption{slides}{\notesfalse\PassOptionsToPackage{\CurrentOption}{mikoslides}}
+\PassOptionsToClass{envcountsect}{beamer}
 \DeclareOption*{\PassOptionsToClass{\CurrentOption}{omdoc}
                            \PassOptionsToClass{\CurrentOption}{beamer}
                            \PassOptionsToPackage{\CurrentOption}{mikoslides}}
