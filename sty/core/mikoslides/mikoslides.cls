@@ -11,7 +11,6 @@
 \newif\ifnotes\notesfalse
 \DeclareOption{notes}{\notestrue\PassOptionsToPackage{\CurrentOption}{mikoslides}}
 \DeclareOption{slides}{\notesfalse\PassOptionsToPackage{\CurrentOption}{mikoslides}}
-\PassOptionsToClass{envcountsect}{beamer}
 \DeclareOption*{\PassOptionsToClass{\CurrentOption}{omdoc}
                            \PassOptionsToClass{\CurrentOption}{beamer}
                            \PassOptionsToPackage{\CurrentOption}{mikoslides}}
@@ -21,11 +20,11 @@
   \RequirePackage{a4wide}
   \RequirePackage{marginnote}
   \RequirePackage{mdframed}
-  \RequirePackage[notheorems,noamsthm,noxcolor]{beamerarticle}
+  \RequirePackage[noxcolor,noamsthm]{beamerarticle}
   \RequirePackage[bookmarks,bookmarksopen,bookmarksnumbered,breaklinks,
        linkcolor=black,citecolor=black,urlcolor=cyan,filecolor=cyan,colorlinks]{hyperref}
 \else
-  \LoadClass[notheorems,noamsthm,10pt]{beamer}
+  \LoadClass[10pt,notheorems]{beamer}
   \newcounter{Item}
   \newcounter{paragraph}
   \newcounter{subparagraph}

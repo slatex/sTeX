@@ -209,7 +209,6 @@
 \newif\ifnotes\notesfalse
 \DeclareOption{notes}{\notestrue\PassOptionsToPackage{\CurrentOption}{mikoslides}}
 \DeclareOption{slides}{\notesfalse\PassOptionsToPackage{\CurrentOption}{mikoslides}}
-\PassOptionsToClass{envcountsect}{beamer}
 \DeclareOption*{\PassOptionsToClass{\CurrentOption}{omdoc}
                            \PassOptionsToClass{\CurrentOption}{beamer}
                            \PassOptionsToPackage{\CurrentOption}{mikoslides}}
@@ -226,15 +225,15 @@
   \PassOptionsToPackage{\CurrentOption}{stex}
   \PassOptionsToPackage{\CurrentOption}{smglom}
   \PassOptionsToPackage{\CurrentOption}{tikzinput}}
-\newif\ifnotes\notesfalse 
+\newif\ifnotes\notesfalse
 \DeclareOption{notes}{\notestrue}
 \DeclareOption{slides}{\notesfalse}
-\ifnotes\else\PassOptionsToPackage{nontheorem}{statements}\fi 
-\newif\ifsectocframes\sectocframesfalse 
-\DeclareOption{sectocframes}{\sectocframestrue}
-\newif\ifframeimages\frameimagesfalse 
+\ifnotes\else\PassOptionsToPackage{nontheorem}{statements}\fi
+\newif\ifsectocframes\sectocframesfalse
+\DeclareOption{sectocframes}{\sectocframestrue\PassOptionsToPackage{msection}{statements}}
+\newif\ifframeimages\frameimagesfalse
 \DeclareOption{frameimages}{\frameimagestrue}
-\newif\if@part\@partfalse 
+\newif\if@part\@partfalse
 \DeclareOption{report}{\@parttrue\PassOptionsToPackage{\CurrentOption}{omdoc}}
 \DeclareOption{book}{\@parttrue\PassOptionsToPackage{\CurrentOption}{omdoc}}
 \DeclareOption{bookpart}{\@parttrue\PassOptionsToPackage{\CurrentOption}{omdoc}}
@@ -259,11 +258,11 @@
   \RequirePackage{a4wide}
   \RequirePackage{marginnote}
   \RequirePackage{mdframed}
-  \RequirePackage[notheorems,noamsthm,noxcolor]{beamerarticle}
+  \RequirePackage[noxcolor,noamsthm]{beamerarticle}
   \RequirePackage[bookmarks,bookmarksopen,bookmarksnumbered,breaklinks,
        linkcolor=black,citecolor=black,urlcolor=cyan,filecolor=cyan,colorlinks]{hyperref}
 \else
-  \LoadClass[notheorems,noamsthm,10pt]{beamer}
+  \LoadClass[10pt,notheorems]{beamer}
   \newcounter{Item}
   \newcounter{paragraph}
   \newcounter{subparagraph}
@@ -285,19 +284,22 @@
 %</cls>
 %    \end{macrocode}
 % 
-% The remaining packages we want are loaded on |mikoslides.sty|. 
+% The first batch of packages we want are loaded on |mikoslides.sty|. These are the
+% general ones, we will load the \sTeX-specific ones after we have done some work
+% (e.g. defined the counters |m*|). Only the |stex-logo| package is already needed now for
+% the default theme.
 %
 %    \begin{macrocode}
 %<*package>
 \if@mikoslides@mh@\RequirePackage{mikoslides-mh}\fi
-\RequirePackage{stex}
-\RequirePackage{smglom}
-\RequirePackage{tikzinput}
 \RequirePackage{amssymb}
 \RequirePackage{amsmath}
 \RequirePackage{comment}
 \RequirePackage{textcomp}
 \RequirePackage{url}
+\RequirePackage{graphicx}
+\RequirePackage{stex-logo}
+\RequirePackage{pgfbaseimage}
 %    \end{macrocode}
 % 
 % \subsection{Notes and Slides}\label{sec:impl:noteslides}
@@ -432,7 +434,6 @@
 %    \end{macrocode}
 % \end{macro}
 % 
-
 % \subsection{Header and Footer Lines}\label{sec:impl:headfootlines}
 %
 % Now, we set up the infrastructure for the footer line of the slides, we use boxes for
@@ -490,11 +491,11 @@
     \def\licensing{{\usebox{\cclogo}}}%
   \else%
     \def\licensing{%
-	  \ifcchref%
-	    \href{#1}{\usebox{\cclogo}}%
-	  \else%
-	    {\usebox{\cclogo}}%
-	  \fi%
+      \ifcchref%
+      \href{#1}{\usebox{\cclogo}}%
+      \else%
+      {\usebox{\cclogo}}%
+      \fi%
     }%
   \fi%
 }%
@@ -593,14 +594,28 @@
   \newcounter{msubsection}[msection]%
   \newcounter{msubsubsection}[msubsection]%
   \newcounter{msubsubsubsection}[msubsubsection]%
-\fi% ifsectocframes 
+\fi% ifsectocframes
 %    \end{macrocode}
-% and then 
+%
+% Now that we have defined the counters, we can load the \sTeX-specific packages (in
+% particular |statements| that needs these counters). 
+%
+%    \begin{macrocode}
+\RequirePackage{stex}
+\RequirePackage{smglom}
+\RequirePackage{tikzinput}
+%    \end{macrocode}
+% 
+% Now \sTeX is loaded, we redefine the |omgroup| environment to produce section toc frames
+% (if the option |sectocframes| is specified.)\ednote{MK: we should probably have a hook
+% in the original code of omgroup so that we can add the sectocframes behavior here
+% without having to copy the internals of omgroup, so that they do not get out of sync.}
+% 
 %    \begin{macrocode}
 \ifnotes\else% only in slides
   \renewenvironment{omgroup}[2][]{%
     \metasetkeys{omgroup}{#1}\sref@target%
-    \advance\section@level by 1% 
+    \advance\section@level by 1%
     \ifsectocframes%
     \begin{frame}[noframenumbering]%
     \vfill\Large\centering%
@@ -630,33 +645,39 @@
       \def\@@label{\if@part\arabic{mchapter}.\fi\arabic{msection}.\arabic{msubsection}.\arabic{msubsubsection}.\arabic{msubsubsubsection}}
       \def\currentsectionlevel{subsubsubsection}
       \fi% end ifcase
-      \@@label\sref@label@id\@@label 
+      \@@label\sref@label@id\@@label
       \quad #2%
     }%
     \vfill%
     \end{frame}%
     \fi %ifsectocframes
   }
-  {\advance\section@level by -1}% 
+  {\advance\section@level by -1}%
 \fi% ifnotes
 %    \end{macrocode}
 %
-% and we finally, set the numbering of the statements with the |msection| counter.
-% 
-%    \begin{macrocode}
-\ifnotes\else% only in the slides
-\ifsectocframes\numberstatementsin{msection}\fi
-\fi
-%    \end{macrocode}
 % \subsection{Miscellaneous}
 %
+% We set up a |beamer| template for theorems like ams style, but without a block
+% environment.  
+%    \begin{macrocode}
+\def\inserttheorembodyfont{\normalfont}
+\defbeamertemplate{theorem begin}{miko}
+{\inserttheoremheadfont\inserttheoremname\inserttheoremnumber
+  \ifx\inserttheoremaddition\@empty\else\ (\inserttheoremaddition)\fi%
+  \inserttheorempunctuation\inserttheorembodyfont\xspace}
+\defbeamertemplate{theorem end}{miko}{}
+%    \end{macrocode}
+% and we set it as the default one. 
+%    \begin{macrocode}
+\setbeamertemplate{theorems}[miko]
+%    \end{macrocode}
 % The following fixes an error I do not understand, this has something to do with
 % beamer compatibility, which has similar definitions but only up to 1. 
 %    \begin{macrocode}
 \expandafter\def\csname Parent2\endcsname{}
-%    \begin{macrocode}
-%
-% We need to disregard the columns macros introduced by the |beamer| class
+%    \end{macrocode}
+% We need to disregard the columns macros introduced by the |beamer| class in the notes.  
 %    \begin{macrocode}
 \ifnotes%
   \renewenvironment{columns}{%
@@ -674,10 +695,6 @@
   }%
 \fi%
 %    \end{macrocode}
-% Now, some things that are imported from the |pgf| and |beamer| packages: 
-%    \begin{macrocode}
-%    \end{macrocode}
-% 
 %
 %    \begin{macrocode}
 \ifproblems%

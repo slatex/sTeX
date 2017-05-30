@@ -624,13 +624,17 @@
 %
 % We declare some switches which will modify the behavior according to the package
 % options. Generally, an option |xxx| will just set the appropriate switches to true
-% (otherwise they stay false). First we have the general options
+% (otherwise they stay false). First we have the general options: |msection| specifies
+% that theorems should be numbered in the |msection| counter provided by the |mikoslides|
+% package/class.
 %    \begin{macrocode}
 %<*package>
 \newif\ifdef@index\def@indexfalse 
 \DeclareOption{defindex}{\def@indextrue}
 \newif\if@nthm\@nthmtrue
 \DeclareOption{nontheorem}{\@nthmfalse}
+\newif\if@msection\@msectionfalse
+\DeclareOption{msection}{\@msectiontrue}
 \DeclareOption*{\PassOptionsToPackage{\CurrentOption}{omtext}}
 \ProcessOptions
 %    \end{macrocode}
@@ -691,7 +695,7 @@
 \ifx\sref@id\@empty\else\label{#1.\sref@id}\fi
 \csname st@#1@initialize\endcsname\fi% display
 \ifx\sref@id\@empty\sref@label@id{here}\else%
-\sref@label@id{\STpresent{\csname ST#1EnvKeyword\endcsname}~\@currentlabel}\fi%
+\sref@label@id{\STpresent{\csname st@#1@kw\endcsname}~\@currentlabel}\fi%
 \ignorespaces}
 {\csname st@#1@terminate\endcsname\ifx\omtext@display\st@flow\else\end{ST#1Env}\fi%
 \omtext@post@skip\@in@omtextfalse}}
@@ -702,14 +706,18 @@
 %    \begin{macrocode}
 \newenvironment{assertion}[1][]{\metasetkeys{omtext}{#1}\sref@target%
 \@in@omtexttrue%
-\ifx\omtext@display\st@flow\itshape\noindent\ignorespaces%
+\ifx\omtext@display\st@flow
+  \itshape\noindent\ignorespaces%
 \else% display!=flow
-\ifx\omtext@title\@empty\begin{ST\omtext@type AssEnv}%
-\else\begin{ST\omtext@type AssEnv}[\omtext@title]\fi\fi%
-\ifx\omtext@type\@empty\sref@label@id{here}\else%
-\sref@label@id{\STpresent{\csname ST\omtext@type AssEnvKeyword\endcsname}~\@currentlabel}
-\fi}%display=flow
-{\ifx\omtext@display\st@flow\else\end{ST\omtext@type AssEnv}\@in@omtextfalse\fi}
+  \xdef\@@@type{\omtext@type}% to keep it safe from \inlinedef 
+  \ifx\omtext@title\@empty\begin{ST\@@@type AssEnv}%
+  \else\begin{ST\@@@type AssEnv}[\omtext@title]%
+  \fi%
+\fi %display=flow
+\ifx\omtext@type\@empty\else%
+\sref@label@id{\STpresent{\csname st@\@@@type @kw\endcsname}~\@currentlabel}
+\fi}
+{\ifx\omtext@display\st@flow\else\end{ST\@@@type AssEnv}\@in@omtextfalse\fi}
 %    \end{macrocode}
 % \end{environment}
 %
@@ -736,13 +744,20 @@
 \if@nthm
 \theorembodyfont{\itshape}
 \theoremheaderfont{\normalfont\bfseries}
+\else
+\theoremstyle{plain}
 \fi
 %    \end{macrocode}
-% and then we finally define the theorem environments in terms of the statement keywords
-% defined above. 
+%
 % \begin{environment}{ST*AssEnv}
+%   We define a number of internal assertion environments according to the values of its
+%   |type| key. 
 %    \begin{macrocode}
+\if@msection
+\newtheorem{STtheoremAssEnv}{\st@theorem@kw}[msection]
+\else
 \newtheorem{STtheoremAssEnv}{\st@theorem@kw}[section]
+\fi
 \newtheorem{STlemmaAssEnv}[STtheoremAssEnv]{\st@lemma@kw}
 \newtheorem{STpropositionAssEnv}[STtheoremAssEnv]{\st@proposition@kw}
 \newtheorem{STcorollaryAssEnv}[STtheoremAssEnv]{\st@corollary@kw}
@@ -752,29 +767,17 @@
 \newtheorem{STobligationAssEnv}[STtheoremAssEnv]{\st@obligation@kw}
 \newtheorem{STassumptionAssEnv}[STtheoremAssEnv]{\st@assumption@kw}
 \newtheorem{STobservationAssEnv}[STtheoremAssEnv]{\st@observation@kw}
-\if@nthm\theorembodyfont{\rm}\fi
+\if@nthm\theorembodyfont{\rm}\else\theoremstyle{definition}\fi
 \newtheorem{STremarkAssEnv}[STtheoremAssEnv]{\st@remark@kw}
 \newtheorem{STruleAssEnv}[STtheoremAssEnv]{\st@rule@kw}
 %    \end{macrocode}
 % \end{environment}
-% They are all numbered together with the section counter. This can be customized
-% \begin{macro}{\numberstatementsin}
-%   To set a new counter, we just redefine the first of the above.
-%    \begin{macrocode}
-\newcommand\numberstatementsin[1]{%
-\renewtheorem{STtheoremAssEnv}{\st@theorem@kw}[#1]}
-%    \end{macrocode}
-% \end{macro}
-% 
 %
 % \begin{environment}{example}
-%   \ednote{need to do something clever for the OMDoc representation of examples, in
-%   particular, the usevocab should only be defined in example}
 %    \begin{macrocode}
 \def\st@example@initialize{}\def\st@example@terminate{}
 \define@statement@env{example}
 \def\st@example@kw{Example}
-\if@nthm\theorembodyfont{\upshape}\fi
 \newtheorem{STexampleEnv}[STtheoremAssEnv]{\st@example@kw}
 %    \end{macrocode}
 % \end{environment}
@@ -784,7 +787,6 @@
 \def\st@axiom@initialize{}\def\st@axiom@terminate{}
 \define@statement@env{axiom}
 \def\st@axiom@kw{Axiom}
-\if@nthm\theorembodyfont{\upshape}\fi
 \newtheorem{STaxiomEnv}[STtheoremAssEnv]{\st@axiom@kw}
 %    \end{macrocode}
 % \end{environment}
@@ -828,7 +830,6 @@
 %   We first define a theorem environment 
 %    \begin{macrocode}
 \def\st@typedec@kw{Type Declaration}
-\if@nthm\theorembodyfont{\upshape}\fi
 \newtheorem{STtypedecEnv}[STtheoremAssEnv]{\st@typedec@kw}
 %    \end{macrocode}
 % and then the environment itself.
@@ -839,7 +840,7 @@
 \ifx\omtext@title\@empty\begin{STtypedecEnv}\else\begin{STtypedecEnv}[\omtext@title]\fi%
 \ifx\sref@id\@empty\else\label{typedec.\sref@id}\fi
 \ifx\sref@id\@empty\sref@label@id{here}\else%
-\sref@label@id{\STpresent{\csname STtypedecEnvKeyword\endcsname}~\@currentlabel}\fi%
+\sref@label@id{\STpresent{\csname st@typedec@kw\endcsname}~\@currentlabel}\fi%
 \ignorespaces}
 {\ifx\omtext@display\st@flow\else\end{STtypedecEnv}\fi\omtext@post@skip}
 %    \end{macrocode}
@@ -854,11 +855,10 @@
 \ifx\omtext@display\st@flow\else%
 \ifx\omtext@title\@empty\begin{STdefinitionEnv}\else\begin{STdefinitionEnv}[\omtext@title]\fi\fi%
 \ifx\sref@id\@empty\sref@label@id{here}\else%
-\sref@label@id{\STpresent{\csname STdefinitionEnvKeyword\endcsname}~\@currentlabel}\fi%
+\sref@label@id{\STpresent{\csname st@definition@kw\endcsname}~\@currentlabel}\fi%
 \ignorespaces}
 {\ifx\omtext@display\st@flow\else\end{STdefinitionEnv}\fi}
 \def\st@definition@kw{Definition}
-\if@nthm\theorembodyfont{\upshape}\fi
 \newtheorem{STdefinitionEnv}[STtheoremAssEnv]{\st@definition@kw}
 %    \end{macrocode}
 % \end{environment}
@@ -872,7 +872,6 @@
 \def\st@notation@initialize{}
 \define@statement@env{notation}
 \def\st@notation@kw{Notation}
-\if@nthm\theorembodyfont{\upshape}\fi
 \newtheorem{STnotationEnv}[STtheoremAssEnv]{\st@notation@kw}
 %    \end{macrocode}
 % \end{environment}
@@ -1161,6 +1160,11 @@ whatever is suitable semantically}\fi%
 %
 \endinput
 % \iffalse
+%%% Local Variables: 
+%%% mode: doctex
+%%% TeX-master: t
+%%% End: 
+% \fi
 % LocalWords:  GPL structuresharing STR dtx keyval env envfalse idfalse idtrue typedec st
 % LocalWords:  displayfalse envtrue displaytrue forfalse typefalse titlefalse filedate eg
 % LocalWords:   continuesfalse fortrue fromtrue typetrue titletrue CPERL omdoc thedectype
@@ -1195,12 +1199,6 @@ whatever is suitable semantically}\fi%
 % LocalWords:  newcommand indef newif ifst indeffalse indeftrue attr whatsit automatized
 % LocalWords:  STdefinitionEnvKeyword notemph modulename ifundefined atwin defi behavior
 % LocalWords:  expandafter providecommand nameuse doctex ctancite funval defii initialize
-
-%%% Local Variables: 
-%%% mode: doctex
-%%% TeX-master: t
-%%% End: 
-% \fi
 % LocalWords:  funsymbs findnodes symbolnode defsref showmeta showmeta sysname ngerman
 % LocalWords:  defii defiii defiii adefi adefi adefii adefii adefiii adefiii STruleAssEnv
 % LocalWords:  trefi trefii trefiii atref atrefi atrefii atrefiii conf metakeys setkeys
