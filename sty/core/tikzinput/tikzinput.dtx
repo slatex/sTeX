@@ -125,8 +125,8 @@
 % 
 % Concretely, if the |image| option is not set for the |tikzinput| package, then
 % |\tikzinput[|\meta{opt}|]{|\meta{file}|}| disregards the optional argument \meta{opt}
-% and inputs \meta{file}|.tex| via |\input|. If it is,
-% |\tikzinput[|\meta{opt}|]{|\meta{file}|}| expands to
+% and inputs \meta{file}|.tex| via |\input| and resizes it to as specified in the |width|
+% and |height| keys. If it is, |\tikzinput[|\meta{opt}|]{|\meta{file}|}| expands to
 % |\includegraphics[|\meta{opt}|]{|\meta{file}|}|.
 % 
 % \begin{omgroup}{Limitations}\label{sec:limitations}
@@ -135,7 +135,8 @@
 % please feel free to contact the package author. Some of them are currently discussed in
 % the \sTeX GitHub repository~\cite{sTeX:github:on}. 
 % \begin{enumerate}
-% \item none reported yet
+% \item We only listen to the |width| and |height| keys in the tikz case, the others are
+%   disregarded. 
 % \end{enumerate}
 % \end{omgroup}
 % 
@@ -176,12 +177,20 @@
 % \begin{omgroup}{Inputting Standalone TIKZ Pictures}
 %
 % \begin{macro}{\tikzinput}
-%   Depending on the |image| option, we do the necessary things.  
+%   Depending on the |image| option, we do the necessary things: either we default to the
+%   image, or we input the tikz file and resize it according to the |width| and |height|
+%   keys present. 
 %    \begin{macrocode}  
 \iftikzinput@image
 \newcommand\tikzinput[2][]{\includegraphics[#1]{#2}}
 \else
-\newcommand\tikzinput[2][]{\input{#2}}
+\newcommand\tikzinput[2][]{\setkeys{Gin}{#1}%
+\ifx\Gin@ewidth\Gin@exclamation
+\ifx\Gin@eheight\Gin@exclamation\input{#2}\else\resizebox{!}{\Gin@eheight}{\input{#2}}\fi 
+\else
+\ifx\Gin@eheight\Gin@exclamation\resizebox{\Gin@ewidth}{!}{\input{#2}}
+\else\resizebox{\Gin@ewidth}{\Gin@eheight}{\input{#2}}\fi
+\fi}
 \fi
 %    \end{macrocode}
 % \end{macro}
@@ -189,7 +198,7 @@
 % \begin{macro}{\*tikzinput}
 %   The variants we define in terms of |\tikzinput|.
 %    \begin{macrocode}
-\newcommand\ctikzinput[2][]{\begin{center}\tikzinput{#2}\end{center}}
+\newcommand\ctikzinput[2][]{\begin{center}\tikzinput[#1]{#2}\end{center}}
 %</package>
 %    \end{macrocode}
 % \end{macro}
