@@ -19,6 +19,7 @@
   \LoadClass{omdoc}
   \RequirePackage{a4wide}
   \RequirePackage{marginnote}
+  \RequirePackage{color}
   \RequirePackage{mdframed}
   \RequirePackage[noxcolor,noamsthm]{beamerarticle}
   \RequirePackage[bookmarks,bookmarksopen,bookmarksnumbered,breaklinks,
