@@ -17,22 +17,12 @@
 \ProcessOptions
 \ifnotes
   \LoadClass{omdoc}
-  \RequirePackage{a4wide}
-  \RequirePackage{marginnote}
-  \RequirePackage{xcolor}
-  \RequirePackage{mdframed}
-  \RequirePackage[noxcolor,noamsthm]{beamerarticle}
-  \RequirePackage[bookmarks,bookmarksopen,bookmarksnumbered,breaklinks,
-       linkcolor=black,citecolor=black,urlcolor=cyan,filecolor=cyan,colorlinks]{hyperref}
 \else
   \LoadClass[10pt,notheorems]{beamer}
   \newcounter{Item}
   \newcounter{paragraph}
   \newcounter{subparagraph}
   \newcounter{Hfootnote}
-\fi
-\ifnotes
-\renewcommand\usetheme[2][]{\usepackage[#1]{beamernotestheme#2}}
 \fi
 \RequirePackage{mikoslides}
 \endinput
