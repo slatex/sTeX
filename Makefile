@@ -8,7 +8,7 @@ DOCDIRS		= example
 DTXDIRS 	= sty 
 MAKEDIRS 	= $(DOCDIRS) $(DTXDIRS)
 
-all clean distclean: 
+all clean distclean biber: 
 	@for d in $(MAKEDIRS); do (cd $$d && $(MAKE) -$(MAKEFLAGS) $@) done
 
 package doc filedate checksum enablechecksum disablechecksum: 
