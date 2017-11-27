@@ -15,6 +15,7 @@
 %
 %<*driver>
 \documentclass{ltxdoc}
+\usepackage[utf8]{inputenc}
 \usepackage{url,array,float,xspace}
 \usepackage[show]{ed}
 \usepackage{graphicx,paralist}
@@ -30,7 +31,10 @@
 \def\githubissue#1{\cite{sTeX:github:on},
 \hyperlink{https://github.com/KWARC/sTeX/issues/#1}{issue #1}}
 \usepackage{hyperref}
-\begin{document}\DocInput{mikoslides.dtx}\end{document}
+\begin{document}
+\RecordChanges
+\DocInput{mikoslides.dtx}
+\end{document}
 %</driver>
 % \fi
 % 
@@ -68,7 +72,6 @@
 % \def\snippet#1{{\ttfamily{#1}}}
 % \def\cnxlatex{CNX\LaTeX\xspace}
 % \def\mathml{{\scshape{MathML}}\xspace}
-% \def\latexml{\hbox{{\LaTeX}ML}\xspace}
 % \def\omdoc{OMDoc\xspace}
 % \def\activemath{{\scshape{ActiveMath}}\xspace}
 % \def\textwarning{\includegraphics[width=1.2em]{dangerous-bend}\xspace}
@@ -171,6 +174,14 @@
 % package~\cite{CarRah:tpp99} and \meta{path} is the file path (extension can be left off
 % like in |\includegraphics|).
 % 
+% If we want to transclude a the contents of a file as a note, we can use the
+% \DescribeMacro{\ninputref}|\ninputref| macro. |\ninputref{foo}| is equivalent to 
+%\begin{verbatim}
+% \begin{note}
+% \inputref{foo}
+% \end{note}
+% \end{verbatim}
+%
 % \subsection{Header and Footer Lines}\label{sec:user:headfootlines}
 %
 % \subsection{Colors and Highlighting}\label{sec:user:highlighting}
@@ -247,10 +258,7 @@
 %    \end{macrocode}
 %
 % Depending on the options, we either load the |article|-based |omdoc| or the |beamer|
-% class. In the first case, we also have to make the |beamer|-specific things available to
-% |article| via the |beamerarticle| package. We use options to avoid loading theorem-like
-% environments, since we want to use our own from the $\sTeX$ packages. On the \latexml
-% side we just load the |omdoc| class.
+% class (and set some counters).
 %    \begin{macrocode}
 %<*cls>
 \ifnotes
@@ -269,10 +277,12 @@
 %</cls>
 %    \end{macrocode}
 % 
-% The first batch of packages we want are loaded on |mikoslides.sty|. These are the
-% general ones, we will load the \sTeX-specific ones after we have done some work
-% (e.g. defined the counters |m*|). Only the |stex-logo| package is already needed now for
-% the default theme.
+% In |notes| mode, we also have to make the |beamer|-specific things available to
+% |article| via the |beamerarticle| package. We use options to avoid loading theorem-like
+% environments, since we want to use our own from the $\sTeX$ packages.  The first batch
+% of packages we want are loaded on |mikoslides.sty|. These are the general ones, we will
+% load the \sTeX-specific ones after we have done some work (e.g. defined the counters
+% |m*|). Only the |stex-logo| package is already needed now for the default theme.
 %
 %    \begin{macrocode}
 %<*package>
@@ -340,9 +350,14 @@ linkcolor=black,citecolor=black,urlcolor=cyan,filecolor=cyan,colorlinks]{hyperre
 %    \end{macrocode}
 % \end{environment}
 % 
+% \begin{macro}{\ninputref}
+%    \begin{macrocode}
+\newcommand\ninputref[2][]{\ifnotes\inputref[#1]{#2}\fi}
+%    \end{macrocode}
+% \end{macro}
+% 
 %
-% We start by giving the {\latexml} binding for the |frame| environment from the |beamer|
-% class. We first set up the slide boxes in |article| mode. We set up sizes and provide a
+% We first set up the slide boxes in |article| mode. We set up sizes and provide a
 % box register for the frames and a counter for the slides.
 % 
 %    \begin{macrocode}
@@ -451,6 +466,7 @@ linkcolor=black,citecolor=black,urlcolor=cyan,filecolor=cyan,colorlinks]{hyperre
 %
 % Now, we set up the infrastructure for the footer line of the slides, we use boxes for
 % the logos, so that they are only loaded once, that considerably speeds up processing.
+% 
 % \begin{macro}{\setslidelogo}
 % The default logo is the logo of Jacobs University. Customization can be done by |\setslidelogo{|\meta{logo name}|}|.
 %    \begin{macrocode}
@@ -529,6 +545,12 @@ linkcolor=black,citecolor=black,urlcolor=cyan,filecolor=cyan,colorlinks]{hyperre
 % 
 % \subsection{Colors and Highlighting}\label{sec:impl:highlighting}
 %
+% We first specify sans serif fonts as the default. 
+%
+%    \begin{macrocode}
+\sffamily
+%    \end{macrocode}
+%
 % Now, we set up an infrastructure for highlighting phrases in slides. Note that we use
 % content-oriented macros for highlighting rather than directly using color markup. 
 % The first thing to to is to adapt the green so that it is dark enough for most beamers
@@ -574,14 +596,7 @@ linkcolor=black,citecolor=black,urlcolor=cyan,filecolor=cyan,colorlinks]{hyperre
 %    \end{macrocode}
 % \end{macro}
 % 
-% \subsection{Front Matter, Titles, etc}
-%
-% We need to redefine the frontmatter macros inherited from the |beamer| class for
-% LaTeXML, since there they take an optional argument.
 %    \begin{macrocode}
-%    \end{macrocode}
-%    \begin{macrocode}
-%      Must be first command on slide to make positioning work.
 \newrobustcmd\putgraphicsat[3]{%
   \begin{picture}(0,0)\put(#1){\includegraphics[#2]{#3}}\end{picture}%
 }%
@@ -620,9 +635,12 @@ linkcolor=black,citecolor=black,urlcolor=cyan,filecolor=cyan,colorlinks]{hyperre
 %    \end{macrocode}
 % 
 % Now \sTeX is loaded, we redefine the |omgroup| environment to produce section toc frames
-% (if the option |sectocframes| is specified.)\ednote{MK: we should probably have a hook
-% in the original code of omgroup so that we can add the sectocframes behavior here
-% without having to copy the internals of omgroup, so that they do not get out of sync.}
+% (if the option |sectocframes| is specified.)\ednote{MK: we should probably just redefine
+% omgroup@num and omgroup@nonum, since they do the actual work so that we can add the
+% sectocframes behavior here without having to copy the internals. Then there is less
+% material that can get out of sync. Additionally, we should have a hook in the original
+% code of those so that we can increment the slides counter in notes node (to keep slides
+% in sync)}
 % 
 %    \begin{macrocode}
 \ifnotes\else% only in slides
@@ -630,6 +648,7 @@ linkcolor=black,citecolor=black,urlcolor=cyan,filecolor=cyan,colorlinks]{hyperre
     \metasetkeys{omgroup}{#1}\sref@target%
     \advance\section@level by 1%
     \ifsectocframes%
+    \stepcounter{slide}
     \begin{frame}[noframenumbering]%
     \vfill\Large\centering%
     \red{%
@@ -726,7 +745,7 @@ linkcolor=black,citecolor=black,urlcolor=cyan,filecolor=cyan,colorlinks]{hyperre
 %%% End: 
 % \fi
 % LocalWords:  mikoslides dtx beamer omdoc notheorems noamsthm beamerarticle sc Licences
-% LocalWords:  graphicx slidelabel stex latexml amssymb tikz url CPERL  amsmath filedate
+% LocalWords:  graphicx slidelabel stex amssymb tikz url CPERL  amsmath filedate
 % LocalWords:  LoadClass RequirePackage DefRegister DefEnvironment omgroup rgb frameimage
 % LocalWords:  afterDigestBegin setProperty LookupValue DefConstructor hyperref Tantau's
 % LocalWords:  cmyk lec DefMacro titleslide ttitle RawTeX metadata etoolbox cls emph ugbc

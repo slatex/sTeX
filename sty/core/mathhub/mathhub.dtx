@@ -12,7 +12,8 @@
 %<package>\NeedsTeXFormat{LaTeX2e}[1999/12/01]
 %<*driver>
 \documentclass{ltxdoc}
-\usepackage{url,array,float}
+\usepackage[utf8]{inputenc}
+\usepackage{url,array,float,amssymb}
 \usepackage[show]{ed}
 \usepackage[hyperref=auto,style=alphabetic]{biblatex}
 \addbibresource{kwarcpubs.bib}
@@ -27,7 +28,10 @@
 \newfloat{exfig}{thp}{lop}
 \floatname{exfig}{Example}
 \newcommand\githubissue[1]{\cite{sTeX:github:on}, \hyperlink{https://github.com/KWARC/sTeX/issues/#1}{issue #1}}
-\begin{document}\DocInput{mathhub.dtx}\end{document}
+\begin{document}
+\RecordChanges
+\DocInput{mathhub.dtx}
+\end{document}
 %</driver>
 % \fi
 % 
@@ -36,6 +40,9 @@
 % \GetFileInfo{mathhub.sty}
 % \changes{v1.0}{2015/11/09}{moved all MH functionality into one DTX file}
 % \changes{v1.0}{2016/06/11}{Deprecated \texttt{mhviewsketch}}
+% \changes{v1.1}{2017/11/09}{Changed the semantics of \texttt{libinput} to input first the
+% \texttt{meta-inf}-level and then repos-level file; this allows more sharing and does not
+% break MathHub content (only one of them currently exists)}
 % 
 % \MakeShortVerb{\|}
 %
@@ -54,47 +61,103 @@
 %   format, essentially turning {\TeX/\LaTeX} into a document format for mathematical
 %   knowledge management (MKM).
 %
-%   The |mathhub| packages extend \sTeX with support for the MathHub.info portal 
+%   The |mathhub| packages extend \sTeX with support for \textsf{MathHub} file system
+%   layout, which has co-eveolved with the \textsf{MathHub.info} portal for active
+%   documents, but is useful for organizing collections of \sTeX documents in its own
+%   right.
 % \end{abstract}
 %
 %\tableofcontents\newpage
 % 
 % \section{Introduction}\label{sec:intro}
 % 
-% Much of the \sTeX content is hosted on \textsf{MathHub} (\url{http://MathHub.info}), a
-% portal and archive for flexiformal mathematics. \textsf{MathHub} offers GIT repositories
-% (public and private escrow) for mathematical documentation projects, online and offline
-% authoring and document development infrastructure, and a rich, interactive reading
-% interface. The |modules| package supports repository-sensitive operations on
-% \textsf{MathHub}.
+% As \sTeX files tend to be highly interlinked semantically one of the most important
+% practical problems to solve for managing larger collections is the management of
+% (relative or absolute) paths. The |mathhub| package provides an infrastructure for
+% supporting a regular $\leadsto$ manageable file system layout schema that has
+% co-eveolved with the \textsf{MathHub.info} portal for active documents, but is useful
+% for organizing collections of \sTeX documents in its own right. In particular, since the
+% layout scheme is supported by the |lmh| tool (\underline{l}ocal
+% \underline{m}ath\underline{h}ub)~\cite{lmh:on}, which automates many management tasks.
 % 
-% Note that \textsf{MathHub} has two-level repository names of the form
-% \meta{group}|/|\meta{repo}, where \meta{group} is a \textsf{MathHub}-unique repository
-% group and \meta{repo} a repository name that is \meta{group}-unique. The file and
-% directory structure of a repository is arbitrary -- except that it starts with the
+% \textsf{MathHub} (\url{http://MathHub.info}), is a portal and archive for flexiformal
+% mathematics. It hosts much of the \sTeX content \textsf{MathHub} on GIT repositories
+% (public and private escrow) for mathematical documentation projects. \textsf{MathHub}
+% supports online and offline (via |lmh|) authoring and document development
+% infrastructure, and a rich, interactive reading interface. 
+% 
+% The \textbf{\textsf{MathHub} file system layout} has a \textbf{\textsf{MathHub} root
+% folder} (e.g. |~/localmh/MathHub|) which contains all \sTeX sources. These are organized
+% in a two-level folder system that is compatible by GIT repository managers like
+% GitHub~\cite{GitHub:on} and GitLab~\cite{GitLab:on}. Even though it is not necessary for
+% the |mathhub| package we will assume that these are GIT repositories, which have names
+% of the form \meta{group}|/|\meta{repo}, where \meta{group} is a \textsf{MathHub}-unique
+% repository group and \meta{repo} a repository name that is \meta{group}-unique. The file
+% and directory structure of a repository is arbitrary -- except that it starts with the
 % directory |source| because they are Math Archives in the sense
 % of~\cite{HorIacJuc:cscpnrr11}. But this structure can be hidden from the \sTeX author
-% with \textsf{MathHub}-enabled versions of the \sTeX macros, which are defined in this
-% package.
-%
-% \paragraph{Caveat} if you want to use the \textsf{MathHub} support macros (let's call
-% them \textbf{mh-variants}), then every time a module is imported or a document fragment
-% is included from another repos, the mh-variant |\importmhmodule| must be used, so that
-% the ``current repository'' is set accordingly. To be exact, we only need to use
-% mh-variants, if the imported module or included document fragment use mh-variants.
+% with \textsf{MathHub}-enabled versions of the \sTeX macros (let's call them
+% \textbf{mh-variants}), which are defined in the |mh|-packages of the |mathhub| bundle,
+% which we document in this manual.
 % 
+% \ednote{document lmh here, how to install, what it does (build system)}
+%
 % \section{The User Interface}\label{sec:user}
 % 
 % \subsection{Package Options}\label{sec:user:options}
 % 
 % none so far
 %
-% \subsection{\texttt{modules-mh}: MH Variants for Modules}\label{sec:user:modules}
+% \subsection{\texttt{mathhub.sty}: General Infrastructure}\label{sec:impl:infra}
+% 
+% Generally, the \TeX formatter |pdflatex| needs to know the file system paths of the
+% referenced \sTeX files: usually long relative paths. The |pathsuris|
+% package~\cite{ZhaKoh:pus:ctan} from the \sTeX bundle makes this somewhat more palatable
+% by supplying the |\defpath| macro, which we can use to set the \textsf{MathHub} root
+% path, e.g. by |\defpath{MathHub}{/user/foo/localmh/MathHub}| (we will assume this
+% setting for all examples below). 
+% 
+% The next information needed for referencing in the \textsf{MathHub} file system layout
+% is the repository of the referencing file and that of the referenced one. The latter
+% will be part of the mh-variants of the referencing commands introduced below, the
+% former, can be declared by the \DescribeMacro{\mhcurrentrepos}|\mhcurrentrepos| macro
+% relative to the \textsf{MathHub} root path. Thus a typical top-level \sTeX file will
+% have lines like the following in the preamble: 
+% 
+% \begin{verbatim}
+% \defpath{MathHub}{/user/foo/localmh/MathHub}
+% \mhcurrentrepos{group/repos}
+% \end{verbatim}
+% They declare that it resides at the path \url{/user/foo/localmh/MathHub/group/repos} and
+% declares the \textsf{MathHub} root path. But this fixed declaration makes the \sTeX
+% files less mobile, therefore it is a better idea to externalize these declarations into
+% an external file (usually called |localpaths.tex| that is not under GIT control since it
+% contains system-specific path information) and |\input| that in the \sTeX file
+% instead. Indeed |lmh| can generate these files automatically, which simplifies the
+% management significantly.
+% 
+% Given a systematic grouping in the \textsf{MathHub} file layout scheme, \sTeX files in
+% the same repository (and often even in the same group) share much of the preamble
+% material. Thus it makes sense to centralize that in external (shared) files and situate
+% it at the group and repository levels: at the group level. Fort the group level, the
+% \textsf{MathHub} file system layout uses a specical repository
+% \meta{group}|/meta-inf/lib| and at the repository level we use
+% \meta{group}|/|\meta{repos}|/lib| for such files. The
+% \DescribeMacro{\libinput}|\libinput| macro supports this practice:
+% |\libinput{|\meta{filename}|}| macro inputs the files
+% \meta{group}|/meta-inf/lib/|\meta{filename} and then
+% \meta{group}|/|\meta{repos}|/lib/|\meta{filename} if they exist. Thus a typical
+% top-level \sTeX file has the following lines in the preamble:
+% \begin{verbatim}
+% \input{localpaths}
+% \libinput{preamble}
+% \end{verbatim}
+% \ednote{explain the pre.tex and post.tex setup for sTeX modules (see the omdoc package)}
+% \subsection{\texttt{modules-mh.sty}: MH Variants for Modules}\label{sec:user:modules}
 %
-% The \DescribeMacro{\importmhmodule}|importmhmodule| macro is a variant of
+% The \DescribeMacro{\importmhmodule}|\importmhmodule| macro is a variant of
 % |\importmodule| with repository support. Instead of writing 
 % \begin{verbatim}
-% \defpath{MathHub}{/user/foo/lmh/MathHub}
 % \importmodule[load=\MathHub{fooMH/bar/source/baz/foobar}]{foobar}
 % \end{verbatim}
 % we can simply write (assuming that |\MathHub| is defined as above)
@@ -123,14 +186,19 @@
 % 
 % For this, the |modules| package supplies the mh-variants
 % \DescribeMacro{\mhinputref}|\mhinputref| and \DescribeMacro{\mhinput}|\mhinput| of the
-% |\inputref| macro introduced above and normal {\LaTeX} |\input| macro.
+% |\inputref| macro introduced above and normal {\LaTeX} |\input| macro. 
 %
-% \subsection{\texttt{omtext-mh}: MH Variants for OMText}\label{sec:user:modules}
+% \paragraph{Caveat} if you want to use the \textsf{MathHub} support macros, then every
+% time a module is imported or a document fragment is included from another repos, the
+% mh-variant |\importmhmodule| must be used, so that the ``current repository'' is set
+% accordingly. To be exact, we only need to use mh-variants, if the imported module or
+% included document fragment use mh-variants.
+% 
+% \subsection{\texttt{omtext-mh.sty}: MH Variants for OMText}\label{sec:user:modules}
 %
 % The \DescribeMacro{\mhcgraphics}|\mhcgraphics| macro is a variant of |\mycgraphics| with
 % repository support. Instead of writing
 % \begin{verbatim}
-% \defpath{MathHub}{/user/foo/lmh/MathHub}
 % \mycgraphics{\MathHub{fooMH/bar/source/baz/foobar}}
 % \end{verbatim}
 % we can simply write (assuming that |\MathHub| is defined as above)
@@ -140,20 +208,19 @@
 % Note that the |\mhcgraphics| form is more semantic, which allows more advanced document
 % management features in \textsf{MathHub}.
 % 
-% \subsection{\texttt{smultiling-mh}: MH Variants for Multilinguality}\label{sec:user:smultiling}
+% \subsection{\texttt{smultiling-mh.sty}: MH Variants for Multilinguality}\label{sec:user:smultiling}
 % \ednote{needs to be documented}
 % \ednote{mhmodsig seems to be missing what happened?}
 %
-% \subsection{\texttt{structview-mh}: MH Variants for Structures and
+% \subsection{\texttt{structview-mh.sty}: MH Variants for Structures and
 % Views}\label{sec:user:structview}
 % \ednote{needs to be documented}
 %
-% \subsection{\textsf{mikoslides-mh}: Support  for MiKo Slides}\label{sec:user:mikoslides}
+% \subsection{\textsf{mikoslides-mh.sty}: Support  for MiKo Slides}\label{sec:user:mikoslides}
 % 
 % The \DescribeMacro{\mhframeimage}|\mhframeimage| macro is a variant of |\frameimage|
 % with repository support. Instead of writing
 % \begin{verbatim}
-% \defpath{MathHub}{/user/foo/lmh/MathHub}
 % \frameimage{\MathHub{fooMH/bar/source/baz/foobar}}
 % \end{verbatim}
 % we can simply write (assuming that |\MathHub| is defined as above)
@@ -170,12 +237,21 @@
 % \mhframeimage{baz/foobar}
 % \end{verbatim}
 %
-% \subsection{\textsf{problem-mh}: Support  for Problems}\label{sec:user:problem}
+% If we want to transclude a the contents of a file as a note, we can use the
+% \DescribeMacro{\nmhinputref}|\nmhinputref| macro. |\nmhinputref[foo]{bar}| is equivalent
+% to
+%
+%\begin{verbatim}
+% \begin{note}
+% \inputref[foo]{bar}
+% \end{note}
+% \end{verbatim}
+%
+% \subsection{\textsf{problem-mh.sty}: Support  for Problems}\label{sec:user:problem}
 % 
 % The \DescribeMacro{\includemhproblem}|\includemhproblem| macro is a variant of
 % |\includeproblem| with repository support. Instead of writing
 % \begin{verbatim}
-% \defpath{MathHub}{/user/foo/lmh/MathHub}
 % \includeproblem[pts=7]{\MathHub{fooMH/bar/source/baz/foobar}}
 % \end{verbatim}
 % we can simply write (assuming that |\MathHub| is defined as above)
@@ -185,12 +261,11 @@
 % Note that the |\importmhproblem| form is more semantic, which allows more advanced
 % document management features in \textsf{MathHub}. 
 % 
-% \subsection{\textsf{hwexam-mh}: Support  for Assignments}\label{sec:user:hwexam}
+% \subsection{\textsf{hwexam-mh.sty}: Support  for Assignments}\label{sec:user:hwexam}
 % 
 % The \DescribeMacro{\includemhassignment}|\includemhassignment| macro is a variant of
 % |\includeassignment| with repository support. Instead of writing
 % \begin{verbatim}
-% \defpath{MathHub}{/user/foo/lmh/MathHub}
 % \includeassignment[number=3]{\MathHub{fooMH/bar/source/baz/foobar}}
 % \end{verbatim}
 % we can simply write (assuming that |\MathHub| is defined as above)
@@ -198,18 +273,18 @@
 % \includemhassignment[mhrepos=fooMH/bar,number=3]{baz/foobar}
 % \end{verbatim}
 %
-% \subsection{\textsf{lstmh}: Support  for Listings}\label{sec:user:lst}
+% \subsection{\textsf{lstmh.sty}: Support  for Listings}\label{sec:user:lst}
 % 
 % The \DescribeMacro{\lstinputmhlisting}|\lstinputmhlisting| macro is a variant of
 % |\lstinputlisting| with repository support. Instead of writing
 % \begin{verbatim}
-% \defpath{MathHub}{/user/foo/lmh/MathHub}
 % \lstinputlisting[language=XML]{\MathHub{fooMH/bar/source/baz/foobar.xml}}
 % \end{verbatim}
 % we can simply write (assuming that |\MathHub| is defined as above)
 % \begin{verbatim}
 % \lstinputmhlisting[mhrepos=fooMH/bar,language=XML]{baz/foobar.xml}
 % \end{verbatim}
+%
 % \section{Limitations}\label{sec:limitations}
 % 
 % In this section we document known limitations. If you want to help alleviate them,
@@ -232,7 +307,7 @@
 \RequirePackage{keyval}
 %    \end{macrocode}
 % 
-% \subsection{General Infrastructure}
+% \subsection{\texttt{mathhub.sty}: General Infrastructure}\label{sec:impl:infra}
 %
 % \begin{macro}{\mhcurrentrepos}
 %   |\mhcurrentrepos| is used to initialize the current repository. If the repos has
@@ -253,28 +328,31 @@
 %    \end{macrocode}
 % \end{macro}
 % \begin{macro}{\libinput}
-%   the |\libinput| macro inputs from the |lib| directory of the MathHub repository or the
-%   |meta-inf/lib| repos of the group.
+%   the |\libinput| macro inputs from the |lib| directory of the MathHub repository and
+%   then the |meta-inf/lib| repos of the group, if they exist.
 %    \begin{macrocode}
 \def\modules@@first#1/#2;{#1}
-\newcommand\libinput[1]{\def\@libfile{\MathHub{\mh@currentrepos/lib/#1}}%
-\IfFileExists{\@libfile}{\input\@libfile}%
-{\edef\@@group{\expandafter\modules@@first\mh@currentrepos;}
+\newcommand\libinput[1]{%
+\def\@libfile{\MathHub{\mh@currentrepos/lib/#1}}%
+\edef\@@group{\expandafter\modules@@first\mh@currentrepos;}
 \edef\@inffile{\MathHub{\@@group/meta-inf/lib/#1}}
-\IfFileExists{\@inffile}{\input{\@inffile}}%
-{\PackageError{modules}
-  {Library file missing, cannot input #1\MessageBreak%
-    Both \@libfile.tex\MessageBreak and \@inffile.tex\MessageBreak do not exist}%
-  {Check whether the file name is correct}}}}
+\IfFileExists\@inffile{\input\@inffile}{}%
+\IfFileExists\@libfile{\input\@libfile}{}%
+\IfFileExists\@inffile{}{\IfFileExists\@libfile{}{%
+  {\PackageError{mathhub}
+    {Library file missing; cannot input #1.tex\MessageBreak%
+    Both \@libfile.tex\MessageBreak and \@inffile.tex\MessageBreak%
+    do not exist}%
+  {Check whether the file name is correct}}}}}
 %</package>
 %    \end{macrocode}
 % \end{macro}
 %
-% \subsection{\texttt{modules-mh}: MH Variants for Modules}\label{sec:impl:modules}
+% \subsection{\texttt{modules-mh.sty}: MH Variants for Modules}\label{sec:impl:modules}
 % 
 %    \begin{macrocode}
 %<*modules>
-\ProvidesPackage{modules-mh}[2016/04/07 v1.0 MathHub support for the sTeX modules package]
+\ProvidesPackage{modules-mh}[2016/04/07 v1.1 MathHub support for the sTeX modules package]
 \RequirePackage{mathhub}
 %    \end{macrocode}
 %
@@ -298,7 +376,7 @@
   \else%
     \edef\mh@@repos{\mh@currentrepos}% remember so that we can reset it. 
     \ifx\importmhmodule@repos\@empty% if in the same repos
-      \relax% no need to change mh@currentrepos, i.e, current dirctory.
+      \relax% no need to change mh@currentrepos, i.e, current directory.
     \else%
       \mhcurrentrepos{\importmhmodule@repos}% change it. 
     \fi%
@@ -354,11 +432,11 @@
 %    \end{macrocode}
 % \end{macro}
 %
-% \subsection{\texttt{omtext-mh}: MH Variants for OMText}\label{sec:impl:mtext}
+% \subsection{\texttt{omtext-mh.sty}: MH Variants for OMText}\label{sec:impl:mtext}
 %
 %    \begin{macrocode}
 %<*omtext>
-\ProvidesPackage{omtext-mh}[2016/04/07 v1.0 MathHub support for the sTeX omtext package]
+\ProvidesPackage{omtext-mh}[2016/04/07 v1.1 MathHub support for the sTeX omtext package]
 \RequirePackage{mathhub}
 %    \end{macrocode}
 %
@@ -381,11 +459,11 @@
 %    \end{macrocode}
 % \end{macro}
 % 
-% \subsection{\texttt{smultiling-mh}: MH Variants for Multilinguality}\label{sec:impl:smultiling}
+% \subsection{\texttt{smultiling-mh.sty}: MH Variants for Multilinguality}\label{sec:impl:smultiling}
 %
 %    \begin{macrocode}
 %<*smultiling>
-\ProvidesPackage{smultiling-mh}[2016/04/07 v1.0 MathHub support for the sTeX smultiling package]
+\ProvidesPackage{smultiling-mh}[2016/04/07 v1.1 MathHub support for the sTeX smultiling package]
 \RequirePackage{mathhub}
 %    \end{macrocode}
 %
@@ -407,6 +485,7 @@
 %    \begin{macrocode}
 \newenvironment{mhmodnl}[3][]{\metasetkeys{mhmodnl}{#1}\def\@test{#1}%
 \ifx\@test\@empty\begin{module}[id=#2.#3]\else\begin{module}[id=#2.#3,#1]\fi%
+\def\smultiling@language{#3}%
 \edef\@repos{\ifx\mhmodnl@repos\@empty\mh@currentrepos\else\mhmodnl@repos\fi}
 \if@langfiles\importmhmodule[repos=\@repos,path=#2,ext=tex]{#2}\else
 \ifx\mhmodnl@path\@empty\importmodule{#2}\else\importmodule[ext=tex,path=\mhmodnl@load]{#2}\fi%
@@ -430,7 +509,7 @@
 %
 % \begin{environment}{mhviewnl}
 %   The |mhviewnl| environment is just a layer over the |mhview| environment with the
-%   keys and langauge suitably adapted.\ednote{MK: we have to do something about the
+%   keys and language suitably adapted.\ednote{MK: we have to do something about the
 %   if@langfiles situation here. But this is non-trivial, since we do not know the current
 %   path, to which we could append .\meta{lang}!}
 %    \begin{macrocode}
@@ -443,12 +522,12 @@
 %    \end{macrocode}
 % \end{environment}
 %
-% \subsection{\texttt{structview-mh}: MH Variants for Structures and
+% \subsection{\texttt{structview-mh.sty}: MH Variants for Structures and
 % Views}\label{sec:impl:structview}
 %
 %    \begin{macrocode}
 %<*structview>
-\ProvidesPackage{structview-mh}[2016/04/07 v1.0 MathHub support for the sTeX structview package]
+\ProvidesPackage{structview-mh}[2016/04/07 v1.1 MathHub support for the sTeX structview package]
 \RequirePackage{mathhub}
 %    \end{macrocode}
 %
@@ -530,11 +609,11 @@
 %    \end{macrocode}
 % \end{environment}
 % 
-% \subsection{ \textsf{mikoslides-mh}: Support  for MiKo Slides}\label{sec:impl:mikoslides}
+% \subsection{ \textsf{mikoslides-mh.sty}: Support  for MiKo Slides}\label{sec:impl:mikoslides}
 % 
 %    \begin{macrocode}
 %<*mikoslides>
-\ProvidesPackage{mikoslides-mh}[2016/04/07 v1.0 MathHub support for the sTeX mikoslides package]
+\ProvidesPackage{mikoslides-mh}[2016/04/07 v1.1 MathHub support for the sTeX mikoslides package]
 \RequirePackage{mathhub}
 %    \end{macrocode}
 %
@@ -553,15 +632,21 @@
     \frameimage[#1]{\MathHub{\Gin@mhrepos/source/#2}}%
   \fi%
 }%
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\nmhinputref}
+%    \begin{macrocode}
+\newcommand\nmhinputref[2][]{\ifnotes\mhinputref[#1]{#2}\fi}
 %</mikoslides>
 %    \end{macrocode}
 % \end{macro}
 %
-% \subsection{\textsf{problem-mh}: Support  for Problems}\label{sec:impl:problem}
+% \subsection{\textsf{problem-mh.sty}: Support  for Problems}\label{sec:impl:problem}
 % 
 %    \begin{macrocode}
 %<*problem>
-\ProvidesPackage{problem-mh}[2016/04/07 v1.0 MathHub support for the sTeX problem package]
+\ProvidesPackage{problem-mh}[2016/04/07 v1.1 MathHub support for the sTeX problem package]
 \RequirePackage{mathhub}
 %    \end{macrocode}
 %
@@ -580,11 +665,11 @@
 %    \end{macrocode}
 % \end{macro}
 %
-% \subsection{\textsf{hwexam-mh}: Support  for Assignments}\label{sec:impl::hwexam}
+% \subsection{\textsf{hwexam-mh.sty}: Support  for Assignments}\label{sec:impl::hwexam}
 % 
 %    \begin{macrocode}
 %<*hwexam>
-\ProvidesPackage{hwexam-mh}[2016/04/07 v1.0 MathHub support for the sTeX hwexam package]
+\ProvidesPackage{hwexam-mh}[2016/04/07 v1.1 MathHub support for the sTeX hwexam package]
 \RequirePackage{mathhub}
 %    \end{macrocode}
 %
@@ -614,11 +699,11 @@
 %    \end{macrocode}
 % \end{macro}
 %
-% \subsection{\textsf{tikzinput-mh}: Support  for Assignments}\label{sec:impl:tikzinput}
+% \subsection{\textsf{tikzinput-mh.sty}: Support  for Assignments}\label{sec:impl:tikzinput}
 % 
 %    \begin{macrocode}
 %<*tikzinput>
-\ProvidesPackage{tikzinput-mh}[2016/04/07 v1.0 MathHub support for the sTeX tikzinput package]
+\ProvidesPackage{tikzinput-mh}[2016/04/07 v1.1 MathHub support for the sTeX tikzinput package]
 \RequirePackage{mathhub}
 \RequirePackage{pathsuris}
 %    \end{macrocode}
@@ -634,11 +719,11 @@
 %</tikzinput>
 %    \end{macrocode}
 %
-% \subsection{\textsf{lstmh}: Support  for Listings}\label{sec:impl:lst}
+% \subsection{\textsf{lstmh.sty}: Support  for Listings}\label{sec:impl:lst}
 % 
 %    \begin{macrocode}
 %<*lst>
-\ProvidesPackage{lstmh}[2016/04/07 v1.0 MathHub support for the listings package]
+\ProvidesPackage{lstmh}[2016/04/07 v1.1 MathHub support for the listings package]
 \RequirePackage{mathhub}
 \RequirePackage{pathsuris}
 %    \end{macrocode}
@@ -661,3 +746,26 @@
 %%% End: 
 % \fi
 
+
+%  LocalWords:  iffalse NeedsTeXFormat mathhub.dtx mathhub.sty mhviewsketch omdoc latexml
+%  LocalWords:  maketitle sref mathhub co-eveolved organizing tableofcontents newpage lmh
+%  LocalWords:  leadsto HorIacJuc:cscpnrr11 textbf mh-variants mhcurrentrepos libinput
+%  LocalWords:  mhcurrentrepos modules-mh.sty importmhmodule importmhmodule foobar ldots
+%  LocalWords:  initialize usemhmodule usemhmodule usemodule mhinputref mhinputref keyval
+%  LocalWords:  mhinput mhinput inputref mh-variant omtext-mh.sty mhcgraphics mhcgraphics
+%  LocalWords:  mycgraphics smultiling-mh.sty mhmodsig structview-mh.sty mhframeimage ifx
+%  LocalWords:  mikoslides-mh.sty mhframeimage frameimage problem-mh.sty includemhproblem
+%  LocalWords:  includemhproblem includeproblem importmhproblem hwexam-mh.sty lstmh.sty
+%  LocalWords:  includemhassignment includemhassignment includeassignment lstinputlisting
+%  LocalWords:  lstinputmhlisting lstinputmhlisting printbibliography sec:impl metakeys
+%  LocalWords:  ctancite newcommand mh@currentrepos expandafter modules-mh srefaddidkey
+%  LocalWords:  addmetakey smglom numberfield metasetkeys importmhmodule@ext,id omtext
+%  LocalWords:  ignorespaces mhrepos mhgraphics setkeys mygraphics mhbgraphics fbox 2,ext
+%  LocalWords:  mhcbgraphics smultiling-mh mhmodnl srccite newenvironment tex,path mhview
+%  LocalWords:  smultiling@language ignorespacesandpars ignorespacesandparsafterend 1,ext
+%  LocalWords:  mhviewsig mhviewnl 3,ext structview-mh mhstructure gdef ifmod@show topath
+%  LocalWords:  noindent aftergroup importmhmodulevia torepos surroundwithmdframed hwexam
+%  LocalWords:  mhview@fromrepos,path mhview@frompath,ext mhview@torepos,path mikoslides
+%  LocalWords:  mhview@topath,ext problem-mh inclprob inclassig inputmhassignment lst
+%  LocalWords:  inputassignment tikzinput-mh.sty tikzinput pathsuris mhtikzinput lstmh
+%  LocalWords:  cmhtikzinput doctex organized pdflatex defpath externalize

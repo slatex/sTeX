@@ -14,6 +14,7 @@
 %
 %<*driver>
 \documentclass{ltxdoc}
+\usepackage[utf8]{inputenc}
 \usepackage{stex-logo,modules}
 \usepackage{url,array,float,textcomp}
 \usepackage[show]{ed}
@@ -32,7 +33,10 @@
 \newfloat{exfig}{thp}{lop}
 \floatname{exfig}{Example}
 \def\githubissue#1{\cite{sTeX:github:on}, \hyperlink{https://github.com/KWARC/sTeX/issues/#1}{issue #1}}
-\begin{document}\DocInput{modules.dtx}\end{document} 
+\begin{document}
+\RecordChanges
+\DocInput{modules.dtx}
+\end{document} 
 %</driver>
 % \fi
 % 
@@ -322,7 +326,7 @@
 % \subsection{Axiomatic Assumptions}\label{sec:user:assumptions}
 % 
 % In many ways, axioms and assumptions in definitions behave a lot like symbols
-% (see~\cite{RabKoh:WSMSML10} for discussion). Therefore we provide the macro
+% (see~\cite{RabKoh:WSMSML13} for discussion). Therefore we provide the macro
 % \DescribeMacro{\assdef}|\assdef| that can be used to mark up assumptions. Given a phrase
 % \meta{phrase} in a definition\ednote{only definitions?}, we can use
 % |\assdef{|\meta{name}|}{|\meta{phrase}|}| to give this the symbol name
@@ -472,7 +476,7 @@
 % The \DescribeMacro{\metalanguage}|\metalanguage| macro is a variant of
 % \lstinline|importmodule| that imports the meta language, i.e. the language in which the
 % meaning of the new symbols is expressed. For mathematics this is often first-order logic
-% with some set theory; see~\cite{RabKoh:WSMSML10} for discussion. 
+% with some set theory; see~\cite{RabKoh:WSMSML13} for discussion. 
 % 
 % \subsection{Dealing with multiple Files}\label{sec:user:multiple}
 %
@@ -715,7 +719,7 @@
 % right version). For {\latexml}, we also initialize the package inclusions.
 %    \begin{macrocode}
 \RequirePackage{sref}
-\if@modules@mh@\RequirePackage{modules-mh}\fi 
+\if@modules@mh@\RequirePackage{modules-mh}\fi
 \if@mmt\RequirePackage{mmt}\fi
 \RequirePackage{xspace}
 \RequirePackage{mdframed}
@@ -913,11 +917,11 @@
         \relax% do nothing, it has already been loaded, else signal an error
 	  }{%
         \PackageError{modules}
-        {{Module Name Clash\MessageBreak
+        {Module Name Clash\MessageBreak
         A module with name #2 was already loaded under the path "\@path"\MessageBreak
         The imported path "\@load" is probably a different module with the\MessageBreak
         same name; this is dangerous -- not importing}%
-        {Check whether the Module name is correct}}%
+        {Check whether the Module name is correct}%
       }%
     }%
   \fi}%
@@ -1312,6 +1316,15 @@
 %    \end{macrocode}
 % \end{macro}
 %
+% \begin{macro}{\module@component}
+%   This macro computes the module component identifier for external links on term
+%   references. It is initially empty, but can be redefined later (e.g.in the |smultiling|
+%   package).
+%    \begin{macrocode}
+\newcommand\mod@component[1]{}
+%    \end{macrocode}
+% \end{macro}
+% 
 % \begin{macro}{\mod@termref} 
 %   |\mod@termref{|\meta{module}|}{|\meta{name}|}{|\meta{nl}|}| determines whether the
 %   macro |\module@|\meta{module}|@path| is defined. If it is, we make it the prefix of a
@@ -1319,19 +1332,21 @@
 %   otherwise we give a warning.\ednote{MK: this should be rethought, in particular the
 %   local reference does not work!}
 %    \begin{macrocode}
-\def\mod@termref#1#2#3{%
-  \def\@test{#3}%
+\newcommand\mod@termref[3]{\def\@test{#3}%
   \@ifundefined{module@defs@#1}{%
     \protect\G@refundefinedtrue%
-    \@latex@warning{\protect\termref with unidentified cd "#1": the cd key must reference an active module}%
-    \def\@label{sref@#2@target}%
-  }%
-  {\def\@label{sref@#2@#1@target}}%
-  \@ifundefined{module@#1@path}% local reference
-    {\sref@hlink@ifh{\@label}{\ifx\@test\@empty #2\else #3\fi}}%
-    {\def\@uri{\csname module@#1@path\endcsname.pdf\#\@label}%
-    \sref@href@ifh{\@uri}{\ifx\@test\@empty #2\else #3\fi}}%
+    \PackageWarning{modules}{`\protect\termref' with unidentified cd "#1":\MessageBreak
+      the cd key must reference an active module}}%
+  {\def\@label{sref@#2@#1\mod@component{#1}@target}%
+    \@ifundefined{module@#1@path}% local reference
+    {\sref@hlink@ifh{\@label}{\ifx\@test\@empty #2\else #3\fi}
+%      \footnote{sTeX mod@termref: local reference to\\ \@label}
 }%
+    {\def\@uri{\csname module@#1@path\endcsname\mod@component{#1}.pdf\#\@label}%
+      \sref@href@ifh{\@uri}{\ifx\@test\@empty #2\else #3\fi}%
+%      \footnote{sTeX mod@termref: external reference to \\\@uri}
+}%
+  }}%
 %    \end{macrocode}
 % \end{macro}
 %
@@ -1394,8 +1409,9 @@
 % \begin{macro}{\inputref}
 %   |\inputref{|\meta{path to the current file without extension}|}| supports both
 %   absolute path and relative path, meanwhile, records the path and the extension (not
-%   for relative path).  \ednote{MK: maybe do something with a non-standard
-%   (i.e. non-\texttt{tex}) extension with an optional argument?}
+%   for relative path).  \ednote{MK: the first (optional) argument is not used. Maybe do
+%   something with a non-standard (i.e. non-\texttt{tex}) extension with an optional
+%   argument?}
 %    \begin{macrocode}
 \newrobustcmd\inputref[2][]{%
   \def\@Slash{/}
@@ -1426,7 +1442,7 @@
 %    \begin{macrocode}
 \newrobustcmd\sinput[1]{%
   \PackageError{modules}%
-  {The \protect\sinput macro is deprecated}{use the \protect\input instead!}%
+  {The `\protect\sinput' macro is deprecated}{use the \protect\input instead!}%
 }%
 \newrobustcmd\sinputref[1]{%
   \PackageError{modules}%

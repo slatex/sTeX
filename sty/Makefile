@@ -3,7 +3,7 @@ DISTDIRS = core
 MAKEDIRS = $(DISTDIRS)
 # obsolete and experiments are not remade by default
 
-all package doc clean distclean stycls: 
+all package doc clean distclean stycls biber: 
 	@for d in $(MAKEDIRS); do (cd $$d && $(MAKE) -$(MAKEFLAGS) $@) || exit $$?; done
 
 ltds lctan filedate checksum enablechecksum disablechecksum: 
