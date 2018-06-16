@@ -71,6 +71,7 @@
 % but can no longer do relative paths.}
 % \changes{v1.4}{2015/04/02}{deprecated \texttt {\textbackslash sinput} and \texttt {\textbackslash sinputref}}
 % \changes{v1.5}{2015/11/02}{Moved MH Versions to a separate \texttt{mathhub} package}
+% \changes{v1.5}{2018/06/15}{``unidentified cd'' in termref is now an error.}
 % 
 % \GetFileInfo{modules.sty}
 % 
@@ -178,10 +179,13 @@
 % \DescribeMacro{noauxreq}|noauxreq| prohibits the registration of |\@requiremodules|
 % commands in the |aux| file. They are necessary for preloading the module signatures so
 % that entries in the table of contents can have semantic macros; but as they sometimes
-% cause trouble the option allows to turn off preloading.
+% cause trouble the option allows to turn off preloading. 
 % 
-% If the \DescribeMacro{showmeta}|showmeta| is set, then the metadata keys are shown
+% If the \DescribeMacro{showmeta}|showmeta| optin is set, then the metadata keys are shown
 % (see~\cite{Kohlhase:metakeys:ctan} for details and customization options).
+% 
+% Finally, if the \DescribeMacro{trwarn}|trwrn| is given, then the |modules| package only
+% gives warnings instead of hard errors when term references are unknown. 
 % 
 % \subsection{Semantic Macros}\label{sec:symdef}
 %
@@ -706,7 +710,9 @@
 \DeclareOption{noauxreq}{\aux@reqfalse}
 \newif\ifmod@qualified\mod@qualifiedfalse
 \DeclareOption{qualifiedimports}{\mod@qualifiedtrue}
-\newif\if@mmt\@mmtfalse
+\newif\if@trwarn\@trwarnfalse
+\DeclareOption{trwarn}{\@trwarntrue}
+\newif\if@mmt\@mmtfalse 
 \DeclareOption{mmt}{\@mmttrue}
 \DeclareOption*{\PassOptionsToPackage{\CurrentOption}{sref}}
 \ProcessOptions
@@ -1335,8 +1341,13 @@
 \newcommand\mod@termref[3]{\def\@test{#3}%
   \@ifundefined{module@defs@#1}{%
     \protect\G@refundefinedtrue%
-    \PackageWarning{modules}{`\protect\termref' with unidentified cd "#1":\MessageBreak
-      the cd key must reference an active module}}%
+    \if@trwarn
+      \PackageWarning{modules}{`\protect\termref' with unidentified cd "#1":\MessageBreak
+        the cd key must reference an active module}%
+    \else
+      \PackageError{modules}{`\protect\termref' with unidentified cd "#1"}
+      {the cd key must reference an active module}%
+    \fi}%
   {\def\@label{sref@#2@#1\mod@component{#1}@target}%
     \@ifundefined{module@#1@path}% local reference
     {\sref@hlink@ifh{\@label}{\ifx\@test\@empty #2\else #3\fi}%
