@@ -9,7 +9,7 @@
 % 
 % \iffalse
 %<package>\NeedsTeXFormat{LaTeX2e}[1999/12/01]
-%<package>\ProvidesPackage{problem}[2016/04/07 v1.2 Semantic Markup for Problems]
+%<package>\ProvidesPackage{problem}[2019/11/23 v1.3 Semantic Markup for Problems]
 %
 %<*driver>
 \documentclass{ltxdoc}
@@ -46,6 +46,7 @@
 % \changes{v1.0}{2013/10/09}{adding \texttt{\textbackslash start/stopsolution}}
 % \changes{v1.1}{2013/12/12}{adding MathHub support}
 % \changes{v1.2}{2015/11/04}{moving MathHub support out to separate package}
+% \changes{v1.3}{2018/11/23}{Addint Multiple Choice Blocks}
 % 
 % \GetFileInfo{problem.sty}
 % 
@@ -160,14 +161,61 @@
 % in a |problem| environment to give hints and to make notes that elaborate certain aspects
 % of the problem.
 %
-% \subsection{Starting and Stopping Solutions}
-% 
 % Sometimes we would like to locally override the |solutions| option we have given to the
 % package. To turn on solutions we use the
 % \DescribeMacro{\startsolutions}|\startsolutions|, to turn them off,
 % \DescribeMacro{\stopsolutions}|\stopsolutions|. These two can be used at any point in
 % the documents. 
 %
+% \subsection{Multiple Choice Blocks}\label{sec:user:mcq}
+% 
+% Multiple choice blocks can be formatted using the \DescribeMacro{mcb}|mcb| environment,
+% in which single choices are marked up with
+% \DescribeMacro{\mcc}|\mcc[|\meta{keyvals}|]{|\meta{text}|}| macro, which takes an
+% optional key/value argument \meta{keyvals} for choice metadata and a required argument
+% \meta{text} for the proposed answer text. The following keys are supported
+% \begin{itemize}
+% \item \DescribeMacro{T}|T| for true answers, \DescribeMacro{F}|F| for false ones,
+% \item \DescribeMacro{Ttext}|Ttext| the verdict for true answers,
+%   \DescribeMacro{Ftext}|Ftext| for false ones, and
+% \item \DescribeMacro{feedback}|feedback| for a short feedback text given to the student.
+% \end{itemize}
+% See Figure~\ref{fig: mcq} for an example
+%\begin{exfig}
+% \begin{verbatim}
+% \begin{problem}[title=Functions]
+%   What is the keyword to introduce a function definition in python?
+%   \begin{mcb}
+%     \mcc[T]{def}
+%     \mcc[F,feedback=that is for C and C++]{function}
+%     \mcc[F,feedback=that is for Standard ML]{fun}
+%     \mcc[F,Ftext=Nooooooooo,feedback=that is for Java]{public static void}
+%   \end{mcb}
+% \end{problem}
+% \end{verbatim}
+%  \solutionsfalse\hrule
+% \begin{problem}[title=Functions]
+%   What is the keyword to introduce a function definition in python?
+%   \begin{mcb}
+%     \mcc[T]{def}
+%     \mcc[F,feedback=that is for C and C++]{function}
+%     \mcc[F,feedback=that is for Standard ML]{fun}
+%     \mcc[F,Ftext=Nooooooooo,feedback=that is for Java]{public static void}
+%   \end{mcb}
+% \end{problem}
+% \solutionstrue\hrule
+% \begin{problem}[title=Functions]
+%   What is the keyword to introduce a function definition in python?
+%   \begin{mcb}
+%     \mcc[T]{def}
+%     \mcc[F,feedback=that is for C and C++]{function}
+%     \mcc[F,feedback=that is for Standard ML]{fun}
+%     \mcc[F,Ftext=Nooooooooo,feedback=that is for Java]{public static void}
+%   \end{mcb}
+% \end{problem}
+% \caption{A Problem with a multiple choice block}\label{fig:mcq}
+% \end{exfig}
+% 
 % \subsection{Including Problems}\label{sec:user:includeproblem}
 % 
 % The \DescribeMacro{\includeproblem}|\includeproblem| macro can be used to include a
@@ -412,6 +460,39 @@
 \excludecomment{exhint}
 \fi%ifhints
 %    \end{macrocode}
+% 
+% \subsection{Multiple Choice Blocks}\label{sec:impl:mcq}
+%
+% \begin{environment}{mcb}
+%   \ednote{MK: maybe import something better here from a dedicated MC package}
+%    \begin{macrocode}
+\newenvironment{mcb}
+{\begin{enumerate}}
+{\end{enumerate}}
+%    \end{macrocode}
+% \end{environment}
+% we define the keys for the |mcc| macro
+%    \begin{macrocode} 
+\srefaddidkey{mcc}
+\addmetakey{mcc}{feedback}
+\addmetakey[T]{mcc}{T}
+\addmetakey[F]{mcc}{F}
+\addmetakey[Yes]{mcc}{Ttext}
+\addmetakey[No]{mcc}{Ftext}
+%    \end{macrocode}
+%
+% \begin{macro}{\mcc}
+%    \begin{macrocode}
+\newcommand\mcc[2][]{%
+\metasetkeys{mcc}{#1}%
+\item #2%
+\ifsolutions\\%
+\ifcsstring{mcc@T}{T}{}{\mcc@Ttext}%
+\ifcsstring{mcc@F}{F}{}{\mcc@Ftext}%
+\ifx\mcc@feedback\@empty!\else, \mcc@feedback\fi%
+\fi} %solutions
+%    \end{macrocode}
+% \end{macro}
 % 
 % \subsection{Including Problems}\label{sec:impl:includeproblem}
 %
