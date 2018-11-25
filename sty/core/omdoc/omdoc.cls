@@ -7,7 +7,7 @@
 %% omdoc.dtx  (with options: `cls')
 %% 
 \NeedsTeXFormat{LaTeX2e}[1999/12/01]
-\ProvidesClass{omdoc}[2018/09/10 v1.3 OMDoc Documents]
+\ProvidesClass{omdoc}[2018/09/22 v1.3 OMDoc Documents]
 \def\omdoc@class{article}
 \DeclareOption{report}{\def\omdoc@class{report}}
 \newif\ifclass@book\class@bookfalse
