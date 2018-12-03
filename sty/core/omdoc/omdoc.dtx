@@ -10,8 +10,8 @@
 %   
 % \iffalse
 %<package|cls>\NeedsTeXFormat{LaTeX2e}[1999/12/01]
-%<package>\ProvidesPackage{omdoc}[2018/09/22 v1.3 OMDoc document Structure]
-%<cls>\ProvidesClass{omdoc}[2018/09/22 v1.3 OMDoc Documents]
+%<package>\ProvidesPackage{omdoc}[2018/12/03 v1.3 OMDoc document Structure]
+%<cls>\ProvidesClass{omdoc}[2018/12/03 v1.3 OMDoc Documents]
 %
 %<*driver>
 \documentclass{ltxdoc}
@@ -54,6 +54,7 @@
 % \changes{v1.3}{2015/11/18}{removing keyval arg from document in favor of
 % \texttt{\textbackslash documentkeys} macro}
 % \changes{v1.3}{2018/09/10}{global variables and switches}
+% \changes{v1.3}{2018/12/03}{changed to keyval class/package options, allowed arbitrary classes}
 %
 % 
 % \MakeShortVerb{\|}
@@ -112,19 +113,23 @@
 %
 % \begin{omgroup}[id=sec:user:options]{Package and Class Options}
 % 
-%   The |omdoc| package and class accept the following options: 
+%   The |omdoc| class accept the following options: 
 %   \begin{center}
 %     \begin{tabular}{|l|p{10cm}|}\hline
-%         \texttt{report} & load |report.cls| instead of |article.cls|\\\hline 
-%         \texttt{book}  & load |book.cls| instead of |article.cls| and use |part|s\\\hline 
-%         \texttt{bookpart}  & load |book.cls| instead of |article.cls|, don't use |part|s\\\hline 
+%         \texttt{class=\meta{name}} & load \meta{name}|.cls| instead of |article.cls|\\\hline 
+%         \texttt{matter}  & \meta{name}|.cls| alredy defines \texttt{front}/\texttt{backmatter} environments\\\hline 
+%         \texttt{topsect=\meta{number}} & The top-level sectioning level; the default is \texttt{section}\\\hline 
+%         \texttt{nosect} & \meta{name}|.cls| does not provide sectioning\\\hline 
 %         \texttt{showignores} & show the the contents of the |ignore| environment after all \\\hline
 %         \texttt{showmeta} & show the metadata; see |metakeys.sty|\\\hline
 %         \texttt{showmods} & show modules; see |modules.sty|\\\hline
 %         \texttt{extrefs} & allow external references; see |sref.sty|\\\hline
 %         \texttt{defindex} & index definienda; see |statements.sty|\\\hline
+%         \texttt{mh} & MathHub support; see~\cite{Kohlhase:mss:ctan}\\\hline
 %     \end{tabular}
 %   \end{center}
+%   The |omdoc| package accepts the same except the first two.\ednote{MK: the
+%   \texttt{nosect} option has no consequences yet; test with |letter.cls|}
 % \end{omgroup}
 % 
 % \begin{omgroup}[id=sec:user:struct]{Document Structure}
@@ -296,34 +301,51 @@
 %   package provides the concrete functionality.
 % 
 % \begin{omgroup}[id=sec:impl:cls:options]{Class Options}
-%   To initialize the |omdoc| class, we declare and process the necessary options. For
+%   To initialize the |omdoc| class, we declare and process the necessary options using
+%   the |kvoptions| package for  key/value options handling. For
 %   |omdoc.cls| this is quite simple. We have options |report| and |book|, which set the
-%   \DescribeMacro{\omdoc@class}|\omdoc@class| macro and pass on the macro to |omdoc.sty|
-%   for further processing. The |book| option also sets the \DescribeMacro{\ifclass@book}
-%   conditional to true for the frontmatter handling later.
+%   \DescribeMacro{\omdoc@cls@class}|\omdoc@cls@class| macro and pass on the macro to |omdoc.sty|
+%   for further processing. 
 % 
 %    \begin{macrocode}
 %<*cls>
-\def\omdoc@class{article}
-\DeclareOption{report}{\def\omdoc@class{report}}
-\newif\ifclass@book\class@bookfalse 
-\DeclareOption{book}{\def\omdoc@class{book}\class@booktrue}
-\DeclareOption{bookpart}{\def\omdoc@class{book}\class@booktrue}
+\RequirePackage{kvoptions}
+\SetupKeyvalOptions{family=omdoc@cls,prefix=omdoc@cls@}
+\DeclareStringOption[article]{class}
+\DeclareBoolOption{matter}
+\RequirePackage{etoolbox}
+%    \end{macrocode}
+%
+% the following options are deprecated.
+%
+%    \begin{macrocode}
+\DeclareVoidOption{report}{\def\omdoc@cls@class{report}%
+\ClassWarning{omdoc}{the option 'report' is deprecated, use 'class=report', instead}}
+\DeclareVoidOption{book}{\def\omdoc@cls@class{book}\omdoc@cls@mattertrue%
+\ClassWarning{omdoc}{the option 'bookpart' is deprecated, use 'class=book,matter', instead}}
+\DeclareVoidOption{bookpart}{\def\omdoc@cls@class{book}\omdoc@cls@mattertrue%
+\PassOptionToPackage{topsect=chapter}{omdoc}%
+\ClassWarning{omdoc}{the option 'bookpart' is deprecated, use 'class=book,matter,topsect=chapter', instead}}
 %    \end{macrocode}
 % the rest of the options are only passed on to |omdoc.sty| and the class selected by the
 % first options.  
 %    \begin{macrocode}
-\DeclareOption*{\PassOptionsToClass{\CurrentOption}{\omdoc@class}}
+\def\@omdoc@cls@docopt{}
+\DeclareDefaultOption{%
+\ifx\@omdoc@cls@docopt\@empty%
+\xdef\@omdoc@cls@docopt{\CurrentOption}%
+\else\xappto\@omdoc@cls@docopt{,\CurrentOption}%
+\fi%
 \PassOptionsToPackage{\CurrentOption}{omdoc}
-\PassOptionsToPackage{\CurrentOption}{stex}
-\ProcessOptions
+\PassOptionsToPackage{\CurrentOption}{stex}}
+\ProcessKeyvalOptions{omdoc@cls}
 %    \end{macrocode}
 %
 % We load |article.cls|, and the desired packages. For the {\latexml} bindings, we make
 % sure the right packages are loaded.
 %
 %    \begin{macrocode}
-\LoadClass{\omdoc@class}
+\LoadClass[\@omdoc@cls@docopt]{\omdoc@cls@class}
 \RequirePackage{omdoc}
 \RequirePackage{stex}
 %    \end{macrocode}
@@ -356,34 +378,43 @@
 %   We declare some switches which will modify the behavior according to the package
 %   options. Generally, an option |xxx| will just set the appropriate switches to true
 %   (otherwise they stay false). The |report| and |book| options affect the sectioning
-%   behavior of the |omgroup| environment via the
-%   \DescribeMacro{\section@level}|\section@level| macro later.
+%   behavior of the |omgroup| environment via the |\section@level| macro later.
 %
 %    \begin{macrocode}
 %<*package>
-\newif\if@omdoc@mh@\@omdoc@mh@false
-\DeclareOption{mh}{\@omdoc@mh@true}
-\newif\ifshow@ignores\show@ignoresfalse
-\DeclareOption{showignores}{\show@ignorestrue}
-\newcount\section@level\section@level=2
-\newif\ifclass@book\class@bookfalse
-\DeclareOption{report}{\section@level=0}
-\DeclareOption{book}{\section@level=0\class@booktrue}
-\DeclareOption{bookpart}{\section@level=1\class@booktrue}
-\DeclareOption*{\PassOptionsToPackage{\CurrentOption}{sref}}
-\ProcessOptions
+\RequirePackage{kvoptions}
+\SetupKeyvalOptions{family=omdoc@sty,prefix=omdoc@sty@}
+\DeclareBoolOption{mh}
+\DeclareBoolOption[true]{showignores}
+\DeclareBoolOption[true]{nosect}
+\DeclareStringOption[section]{topsect}
+\newcount\section@level 
+\DeclareDefaultOption{\PassOptionsToPackage{\CurrentOption}{sref}}
+\ProcessKeyvalOptions{omdoc@sty}
 %    \end{macrocode}
 %
 % Then we need to set up the packages by requiring the |sref| package to be loaded.
 %
 %    \begin{macrocode}
-\if@omdoc@mh@\RequirePackage{omdoc-mh}\fi
+\ifomdoc@sty@mh\RequirePackage{omdoc-mh}\fi
 \RequirePackage{etoolbox}
 \RequirePackage{sref}
 \RequirePackage{xspace}
 \RequirePackage{comment}
 \RequirePackage{pathsuris}
 %    \end{macrocode}
+%
+% Finally, we set the \DescribeMacro{\section@level}|\section@level| macro that governs
+% sectioning. 
+%
+%    \begin{macrocode}
+\section@level=2
+\ifdefstring{\omdoc@sty@topsect}{part}{\section@level=0}{}
+\ifdefstring{\omdoc@sty@topsect}{chapter}{\section@level=1}{}
+\ifdefstring{\omdoc@cls@class}{book}{\section@level=0}{}
+\ifdefstring{\omdoc@cls@class}{report}{\section@level=0}{}
+%    \end{macrocode}
+%
 % \end{omgroup}
 % 
 % \begin{omgroup}[id=sec:impl:struct]{Document Structure}
@@ -557,7 +588,7 @@
 %   matter environment in this case.
 %    \begin{macrocode}
 %<*cls>
-\ifclass@book
+\ifomdoc@cls@matter
 \renewenvironment{frontmatter}
 {\@frontmattertrue\cleardoublepage\@mainmatterfalse\pagenumbering{roman}}
 {\@frontmatterfalse\setcounter{page}{1}\pagenumbering{arabic}}
@@ -566,14 +597,14 @@
 {\@frontmattertrue\pagenumbering{roman}}
 {\@frontmatterfalse\setcounter{page}{1}\pagenumbering{arabic}}
 \fi
-%    \End{macrocode}
+%    \end{macrocode}
 % \end{environment}
 %
 % \begin{environment}{backmatter}
 %   |book.cls| already has a |\backmatter| macro, so we have to redefine the back
 %   matter environment in this case.
 %    \begin{macrocode}
-\ifclass@book
+\ifomdoc@cls@matter
 \renewenvironment{backmatter}
 {\cleardoublepage\@mainmatterfalse\@backmattertrue}
 {\@backmatterfalse}
@@ -589,7 +620,7 @@
 % \begin{environment}{ignore}
 %    \begin{macrocode}
 %<*package>
-\ifshow@ignores
+\ifomdoc@sty@showignores
 \addmetakey{ignore}{type}
 \addmetakey{ignore}{comment}
 \newenvironment{ignore}[1][]
