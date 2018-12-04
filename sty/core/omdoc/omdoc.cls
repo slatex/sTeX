@@ -11,15 +11,14 @@
 \RequirePackage{kvoptions}
 \SetupKeyvalOptions{family=omdoc@cls,prefix=omdoc@cls@}
 \DeclareStringOption[article]{class}
-\DeclareBoolOption{matter}
 \RequirePackage{etoolbox}
 \DeclareVoidOption{report}{\def\omdoc@cls@class{report}%
 \ClassWarning{omdoc}{the option 'report' is deprecated, use 'class=report', instead}}
-\DeclareVoidOption{book}{\def\omdoc@cls@class{book}\omdoc@cls@mattertrue%
-\ClassWarning{omdoc}{the option 'bookpart' is deprecated, use 'class=book,matter', instead}}
-\DeclareVoidOption{bookpart}{\def\omdoc@cls@class{book}\omdoc@cls@mattertrue%
+\DeclareVoidOption{book}{\def\omdoc@cls@class{book}%
+\ClassWarning{omdoc}{the option 'bookpart' is deprecated, use 'class=book', instead}}
+\DeclareVoidOption{bookpart}{\def\omdoc@cls@class{book}%
 \PassOptionToPackage{topsect=chapter}{omdoc}%
-\ClassWarning{omdoc}{the option 'bookpart' is deprecated, use 'class=book,matter,topsect=chapter', instead}}
+\ClassWarning{omdoc}{the option 'bookpart' is deprecated, use 'class=book,topsect=chapter', instead}}
 \def\@omdoc@cls@docopt{}
 \DeclareDefaultOption{%
 \ifx\@omdoc@cls@docopt\@empty%
@@ -37,22 +36,18 @@
 \let\orig@document=\document
 \srefaddidkey{document}
 \renewcommand{\document}[1][]{\metasetkeys{document}{#1}\orig@document}
-\ifomdoc@cls@matter
-\renewenvironment{frontmatter}
-{\@frontmattertrue\cleardoublepage\@mainmatterfalse\pagenumbering{roman}}
-{\@frontmatterfalse\setcounter{page}{1}\pagenumbering{arabic}}
-\else
+\ifcsdef{frontmatter}% to redefine if necessary
+{\cslet{orig@frontmatter}{\frontmatter}\cslet{frontmatter}{\relax}}
+{\cslet{orig@frontmatter}{\clearpage\@mainmatterfalse\pagenumbering{roman}}}
 \newenvironment{frontmatter}
-{\@frontmattertrue\pagenumbering{roman}}
-{\@frontmatterfalse\setcounter{page}{1}\pagenumbering{arabic}}
-\fi
-\ifomdoc@cls@matter
-\renewenvironment{backmatter}
-{\cleardoublepage\@mainmatterfalse\@backmattertrue}
-{\@backmatterfalse}
-\else
-\newenvironment{backmatter}{\@backmattertrue}{\@backmatterfalse}
-\fi
+{\@frontmattertrue\orig@mainmatter}
+{\@frontmatterfalse%
+\ifcsdef{mainmatter}{\mainmatter}%
+{\clearpage\@mainmattertrue\pagenumbering{arabic}}}
+\ifcsdef{backmatter}% to redefine if necessary
+{\cslet{orig@backmatter}{\backmatter}\cslet{backmatter}{\relax}}
+{\cslet{orig@backmatter}{\clearpage\@mainmatterfalse\pagenumbering{roman}}}
+\newenvironment{backmatter}{\orig@backmatter\@backmattertrue}{\@backmatterfalse}
 \endinput
 %%
 %% End of file `omdoc.cls'.
