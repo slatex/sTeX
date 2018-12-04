@@ -38,15 +38,15 @@
 \renewcommand{\document}[1][]{\metasetkeys{document}{#1}\orig@document}
 \ifcsdef{frontmatter}% to redefine if necessary
 {\cslet{orig@frontmatter}{\frontmatter}\cslet{frontmatter}{\relax}}
-{\cslet{orig@frontmatter}{\clearpage\@mainmatterfalse\pagenumbering{roman}}}
+{\cslet{orig@frontmatter}{\clearpage\pagenumbering{roman}}}
 \newenvironment{frontmatter}
 {\@frontmattertrue\orig@mainmatter}
 {\@frontmatterfalse%
 \ifcsdef{mainmatter}{\mainmatter}%
-{\clearpage\@mainmattertrue\pagenumbering{arabic}}}
+{\clearpage\pagenumbering{arabic}}}
 \ifcsdef{backmatter}% to redefine if necessary
 {\cslet{orig@backmatter}{\backmatter}\cslet{backmatter}{\relax}}
-{\cslet{orig@backmatter}{\clearpage\@mainmatterfalse\pagenumbering{roman}}}
+{\cslet{orig@backmatter}{\clearpage\pagenumbering{roman}}}
 \newenvironment{backmatter}{\orig@backmatter\@backmattertrue}{\@backmatterfalse}
 \endinput
 %%
