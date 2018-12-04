@@ -25,9 +25,9 @@
 \ifx\@omdoc@cls@docopt\@empty%
 \xdef\@omdoc@cls@docopt{\CurrentOption}%
 \else\xappto\@omdoc@cls@docopt{,\CurrentOption}%
-\fi%
+\fi}%
 \PassOptionsToPackage{\CurrentOption}{omdoc}
-\PassOptionsToPackage{\CurrentOption}{stex}}
+\PassOptionsToPackage{\CurrentOption}{stex}
 \ProcessKeyvalOptions{omdoc@cls}
 \LoadClass[\@omdoc@cls@docopt]{\omdoc@cls@class}
 \RequirePackage{omdoc}
