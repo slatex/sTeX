@@ -10,8 +10,8 @@
 % 
 % \iffalse
 %<cls|package>\NeedsTeXFormat{LaTeX2e}[1999/12/01]
-%<cls>\ProvidesClass{mikoslides}[2018/11/19 v1.1 MiKo slides Class]
-%<package>\ProvidesPackage{mikoslides}[2018/11/19 v1.1 MiKo slides Package]
+%<cls>\ProvidesClass{mikoslides}[2018/12/05 v1.2 MiKo slides Class]
+%<package>\ProvidesPackage{mikoslides}[2018/12/05 v1.2 MiKo slides Package]
 %
 %<*driver>
 \documentclass{ltxdoc}
@@ -54,6 +54,7 @@
 % \changes{v1.1}{2015/10/25}{Removing the old title macros (use the regular ones instead)}
 % \changes{v1.1}{2015/10/25}{reinterpreting omgroup}
 % \changes{v1.1}{2015/11/04}{moving MathHub support out to separate package}
+% \changes{v1.2}{2018/12/03}{changed to keyval class/package options, allowed arbitrary classes}
 % 
 % \GetFileInfo{mikoslides.cls}
 % \MakeShortVerb{\|}
@@ -125,7 +126,9 @@
 % \item \DescribeMacro{showmeta}|showmeta|. If this is set, then the metadata keys are
 %   shown (see~\cite{Kohlhase:metakeys:ctan} for details and customization options).
 % \item If the option \DescribeMacro{frameimages}|frameimages| is set, then slide mode
-%   also shows the |\frameimage|-generated frames. 
+%   also shows the |\frameimage|-generated frames.
+% \item \DescribeMacro{topsect}|topsect=|\meta{sect} can be used to specify the
+%   top-level sectioning level; the default for \meta{setc} is |section|.
 % \end{itemize}
 % 
 % \subsection{Notes and Slides}\label{sec:user:notesslides}
@@ -223,43 +226,40 @@
 %
 %    \begin{macrocode}
 %<*cls>
-\newif\ifnotes\notesfalse
-\DeclareOption{notes}{\notestrue\PassOptionsToPackage{\CurrentOption}{mikoslides}}
-\DeclareOption{slides}{\notesfalse\PassOptionsToPackage{\CurrentOption}{mikoslides}}
-\DeclareOption*{\PassOptionsToClass{\CurrentOption}{omdoc}
-                           \PassOptionsToClass{\CurrentOption}{beamer}
-                           \PassOptionsToPackage{\CurrentOption}{mikoslides}}
-\ProcessOptions
+\RequirePackage{kvoptions}
+\SetupKeyvalOptions{family=mks@cls,prefix=mks@cls@}
+\DeclareBoolOption{notes}
+\DeclareComplementaryOption{slides}{notes}
+\DeclareDefaultOption{\PassOptionsToClass{\CurrentOption}{omdoc}
+  \PassOptionsToClass{\CurrentOption}{beamer}
+  \PassOptionsToPackage{\CurrentOption}{mikoslides}}
+\ProcessKeyvalOptions{mks@cls}
 %</cls>
 %    \end{macrocode}
-% now we do the same for the |mikoslides| package. Note that we also have to define the
-% same switches\ednote{MK: we may think about making all of them internal}, since we might
-% use |mikoslides.sty| in a different class.
+% now we do the same for the |mikoslides| package. 
 %    \begin{macrocode}
 %<*package>
-\newif\if@mikoslides@mh@\@mikoslides@mh@false
-\DeclareOption{mh}{\@mikoslides@mh@true
-  \PassOptionsToPackage{\CurrentOption}{stex}
-  \PassOptionsToPackage{\CurrentOption}{smglom}
-  \PassOptionsToPackage{\CurrentOption}{tikzinput}}
-\newif\ifnotes\notesfalse
-\DeclareOption{notes}{\notestrue}
-\DeclareOption{slides}{\notesfalse}
-\ifnotes\else\PassOptionsToPackage{nontheorem}{statements}\fi
-\newif\ifsectocframes\sectocframesfalse
-\DeclareOption{sectocframes}{\sectocframestrue\PassOptionsToPackage{msection}{statements}}
-\newif\ifframeimages\frameimagesfalse
-\DeclareOption{frameimages}{\frameimagestrue}
-\newif\if@part\@partfalse
-\DeclareOption{report}{\@parttrue\PassOptionsToPackage{\CurrentOption}{omdoc}}
-\DeclareOption{book}{\@parttrue\PassOptionsToPackage{\CurrentOption}{omdoc}}
-\DeclareOption{bookpart}{\@parttrue\PassOptionsToPackage{\CurrentOption}{omdoc}}
-\newif\ifproblems\problemstrue
-\DeclareOption{noproblems}{\problemsfalse}
-\DeclareOption*{\PassOptionsToPackage{\CurrentOption}{stex}
+\RequirePackage{kvoptions}
+\SetupKeyvalOptions{family=mks@sty,prefix=mks@sty@}
+\DeclareStringOption[section]{topsect}
+\DeclareBoolOption{mh}
+\AddToKeyvalOption*{mh}{
+  \PassOptionsToPackage{mh}{stex}
+  \PassOptionsToPackage{mh}{smglom}
+  \PassOptionsToPackage{mh}{tikzinput}}
+\newif\ifnotes\notestrue
+\DeclareBoolOption{notes}
+\AddToKeyvalOption*{notes}{\notestrue\PassOptionsToPackage{notes}{statements}}
+\DeclareComplementaryOption{slides}{notes}
+\AddToKeyvalOption*{slides}{\notesfalse\PassOptionsToPackage{nontheorem}{statements}}
+\DeclareBoolOption{sectocframes}
+\AddToKeyvalOption*{sectocframes}{\PassOptionsToPackage{msection}{statements}}
+\DeclareBoolOption{frameimages}
+\DeclareBoolOption{noproblems}
+\DeclareDefaultOption{\PassOptionsToPackage{\CurrentOption}{stex}
                            \PassOptionsToPackage{\CurrentOption}{smglom}
                            \PassOptionsToPackage{\CurrentOption}{tikzinput}}
-\ProcessOptions
+\ProcessKeyvalOptions{mks@sty}
 %</package>
 %    \end{macrocode}
 %
@@ -267,7 +267,7 @@
 % class (and set some counters).
 %    \begin{macrocode}
 %<*cls>
-\ifnotes
+\ifmks@cls@notes
   \LoadClass{omdoc}
 \else
   \LoadClass[10pt,notheorems]{beamer}
@@ -292,14 +292,14 @@
 %
 %    \begin{macrocode}
 %<*package>
-\ifnotes
+\ifmks@sty@notes
 \RequirePackage{a4wide}
 \RequirePackage{marginnote}
 \RequirePackage{xcolor}
 \RequirePackage{mdframed}
 \RequirePackage[noxcolor,noamsthm]{beamerarticle}
 \fi
-\if@mikoslides@mh@\RequirePackage{mikoslides-mh}\fi
+\ifmks@sty@mh\RequirePackage{mikoslides-mh}\fi
 \RequirePackage{etoolbox}
 \RequirePackage{amssymb}
 \RequirePackage{amsmath}
@@ -309,7 +309,7 @@
 \RequirePackage{graphicx}
 \RequirePackage{stex-logo}
 \RequirePackage{pgf}
-\ifnotes
+\ifmks@sty@notes
 \RequirePackage[bookmarks,bookmarksopen,bookmarksnumbered,breaklinks,
 linkcolor=black,citecolor=black,urlcolor=cyan,filecolor=cyan,colorlinks]{hyperref}
 \fi
@@ -329,7 +329,7 @@ linkcolor=black,citecolor=black,urlcolor=cyan,filecolor=cyan,colorlinks]{hyperre
 % notes version loads |beamernotestheme|\meta{theme}|.sty|.\ednote{MK: This is not ideal, but
 % I am not sure that I want to be able to provide the full theme functionality there.}
 %    \begin{macrocode}
-\ifnotes
+\ifmks@sty@notes
 \renewcommand\usetheme[2][]{\usepackage[#1]{beamernotestheme#2}}
 \fi
 %    \end{macrocode}
@@ -348,7 +348,7 @@ linkcolor=black,citecolor=black,urlcolor=cyan,filecolor=cyan,colorlinks]{hyperre
 % no-operation otherwise we declare the |note| environment as a comment via the |comment|
 % package.
 %    \begin{macrocode}
-\ifnotes%
+\ifmks@sty@notes%
   \renewenvironment{note}{\ignorespaces}{}%
 \else%
   \excludecomment{note}%
@@ -358,7 +358,7 @@ linkcolor=black,citecolor=black,urlcolor=cyan,filecolor=cyan,colorlinks]{hyperre
 % 
 % \begin{macro}{\ninputref}
 %    \begin{macrocode}
-\newcommand\ninputref[2][]{\ifnotes\inputref[#1]{#2}\fi}
+\newcommand\ninputref[2][]{\ifmks@sty@notes\inputref[#1]{#2}\fi}
 %    \end{macrocode}
 % \end{macro}
 % 
@@ -367,7 +367,7 @@ linkcolor=black,citecolor=black,urlcolor=cyan,filecolor=cyan,colorlinks]{hyperre
 % box register for the frames and a counter for the slides.
 % 
 %    \begin{macrocode}
-\ifnotes
+\ifmks@sty@notes
   \newlength{\slideframewidth}
   \setlength{\slideframewidth}{1.5pt}
 %    \end{macrocode}
@@ -443,20 +443,14 @@ linkcolor=black,citecolor=black,urlcolor=cyan,filecolor=cyan,colorlinks]{hyperre
 %    \begin{macrocode}
 \newrobustcmd\frameimage[2][]{%
   \stepcounter{slide}%
-  \ifframeimages%
+  \ifmks@sty@frameimages%
     \def\Gin@ewidth{}\setkeys{Gin}{#1}%
-    \ifnotes%
-    \else%
-      \vfill%
-    \fi%
+    \ifmks@sty@notes\else\vfill\fi%
     \ifx\Gin@ewidth\@empty%
       \mycgraphics[width=\slidewidth,#1]{#2}\else\mycgraphics[#1]{#2}%
     \fi%
     \par\strut\hfill{\footnotesize Slide \arabic{slide}}%
-    \ifnotes%
-    \else%
-      \vfill%
-    \fi%
+    \ifmks@sty@notes\else\vfill\fi%
   \fi%
 }% ifframeimages
 %    \end{macrocode}
@@ -465,20 +459,20 @@ linkcolor=black,citecolor=black,urlcolor=cyan,filecolor=cyan,colorlinks]{hyperre
 % \begin{macro}{\pause}
 %   \ednote{MK: fake it in notes mode for now}
 %    \begin{macrocode}
-\ifnotes\newcommand\pause{}\fi
+\ifmks@sty@notes\newcommand\pause{}\fi
 %    \end{macrocode}
 % \end{macro}
 % 
 % \begin{environment}{nomtext}
 %    \begin{macrocode}
-\ifnotes\newenvironment{nomtext}[1][]{\begin{omtext}[#1]}{\end{omtext}}%
+\ifmks@sty@notes\newenvironment{nomtext}[1][]{\begin{omtext}[#1]}{\end{omtext}}%
 \else\excludecomment{nomtext}\fi%
 %    \end{macrocode}
 % \end{environment}
 %
 % \begin{environment}{nomgroup}
 %    \begin{macrocode}
-\ifnotes\newenvironment{nomgroup}[2][]{\begin{omgroup}[#1]{#2}}{\end{omgroup}}%
+\ifmks@sty@notes\newenvironment{nomgroup}[2][]{\begin{omgroup}[#1]{#2}}{\end{omgroup}}%
 \else\excludecomment{nomgroup}\fi%
 %    \end{macrocode}
 % \end{environment}
@@ -491,7 +485,7 @@ linkcolor=black,citecolor=black,urlcolor=cyan,filecolor=cyan,colorlinks]{hyperre
 % The default logo is the logo of Jacobs University. Customization can be done by |\setslidelogo{|\meta{logo name}|}|.
 %    \begin{macrocode}
 \newlength{\slidelogoheight}
-\ifnotes%
+\ifmks@sty@notes%
   \setlength{\slidelogoheight}{.4cm}%
 \else%
   \setlength{\slidelogoheight}{1cm}%
@@ -631,17 +625,15 @@ linkcolor=black,citecolor=black,urlcolor=cyan,filecolor=cyan,colorlinks]{hyperre
 % of counters\ednote{I forget: why not use the counters from beamer/article? --> document
 % this.}
 %    \begin{macrocode}
-\ifsectocframes%
-\if@part%
-    \newcounter{mpart}%
-    \newcounter{mchapter}%
-    \newcounter{msection}[mchapter]%
-  \else%
-    \newcounter{msection}%
-  \fi%
-  \newcounter{msubsection}[msection]%
-  \newcounter{msubsubsection}[msubsection]%
-  \newcounter{msubsubsubsection}[msubsubsection]%
+\ifmks@sty@sectocframes%
+\ifdefstring\mks@sty@topsect{part}{%
+  \newcounter{mpart}\newcounter{mchapter}\newcounter{msection}[mchapter]}
+{\ifdefstring\mks@sty@topsect{chapter}{%
+    \newcounter{mchapter}\newcounter{msection}[mchapter]}
+  {\newcounter{msection}}}
+\newcounter{msubsection}[msection]%
+\newcounter{msubsubsection}[msubsection]%
+\newcounter{msubsubsubsection}[msubsubsection]%
 \fi% ifsectocframes
 %    \end{macrocode}
 %
@@ -663,49 +655,50 @@ linkcolor=black,citecolor=black,urlcolor=cyan,filecolor=cyan,colorlinks]{hyperre
 % in sync)}
 % 
 %    \begin{macrocode}
-\ifnotes\else% only in slides
-  \renewenvironment{omgroup}[2][]{%
-    \metasetkeys{omgroup}{#1}\sref@target%
-    \advance\section@level by 1%
-    \ifsectocframes%
-    \stepcounter{slide}
-    \begin{frame}[noframenumbering]%
-    \vfill\Large\centering%
-    \red{%
-      \ifcase\section@level\or
-      \stepcounter{mpart}
-      \def\@@label{Part \Roman{mpart}}
-      \def\currentsectionlevel{part}
-      \or%
-      \stepcounter{mchapter}
-      \def\@@label{Chapter \arabic{mchapter}}
-      \def\currentsectionlevel{chapter}
-      \or
-      \stepcounter{msection}
-      \def\@@label{\if@part\arabic{mchapter}.\fi\arabic{msection}}
-      \def\currentsectionlevel{section}
-      \or
-      \stepcounter{msubsection}
-      \def\@@label{\if@part\arabic{mchapter}.\fi\arabic{msection}.\arabic{msubsection}}
-      \def\currentsectionlevel{subsection}
-      \or
-      \stepcounter{msubsubsection}
-      \def\@@label{\if@part\arabic{mchapter}.\fi\arabic{msection}.\arabic{msubsection}.\arabic{msubsubsection}}
-      \def\currentsectionlevel{subsubsection}
-      \or
-      \stepcounter{msubsubsubsection}
-      \def\@@label{\if@part\arabic{mchapter}.\fi\arabic{msection}.\arabic{msubsection}.\arabic{msubsubsection}.\arabic{msubsubsubsection}}
-      \def\currentsectionlevel{subsubsubsection}
-      \fi% end ifcase
-      \@@label\sref@label@id\@@label
-      \quad #2%
-    }%
-    \vfill%
-    \end{frame}%
-    \fi %ifsectocframes
-  }
-  {\advance\section@level by -1}%
-\fi% ifnotes
+\ifmks@sty@notes\else% only in slides
+\def\part@prefix{\ifdefstring\mks@sty@topsect{part}{\arabic{mchapter}.}{}}
+\renewenvironment{omgroup}[2][]{%
+  \metasetkeys{omgroup}{#1}\sref@target%
+  \advance\section@level by 1%
+  \ifmks@sty@sectocframes%
+  \stepcounter{slide}
+  \begin{frame}[noframenumbering]%
+  \vfill\Large\centering%
+  \red{%
+    \ifcase\section@level\or
+    \stepcounter{mpart}
+    \def\@@label{Part \Roman{mpart}}
+    \def\currentsectionlevel{part}
+    \or%
+    \stepcounter{mchapter}
+    \def\@@label{Chapter \arabic{mchapter}}
+    \def\currentsectionlevel{chapter}
+    \or
+    \stepcounter{msection}
+    \def\@@label{\part@prefix\arabic{msection}}
+    \def\currentsectionlevel{section}
+    \or
+    \stepcounter{msubsection}
+    \def\@@label{\part@prefix\arabic{msection}.\arabic{msubsection}}
+    \def\currentsectionlevel{subsection}
+    \or
+    \stepcounter{msubsubsection}
+    \def\@@label{\part@prefix\arabic{msection}.\arabic{msubsection}.\arabic{msubsubsection}}
+    \def\currentsectionlevel{subsubsection}
+    \or
+    \stepcounter{msubsubsubsection}
+    \def\@@label{\part@prefix\arabic{msection}.\arabic{msubsection}.\arabic{msubsubsection}.\arabic{msubsubsubsection}}
+    \def\currentsectionlevel{subsubsubsection}
+    \fi% end ifcase
+    \@@label\sref@label@id\@@label
+    \quad #2%
+  }%
+  \vfill%
+  \end{frame}%
+  \fi %ifmks@sty@sectocframes
+}
+{\advance\section@level by -1}%
+\fi% ifmks@sty@notes
 %    \end{macrocode}
 %
 % \subsection{Miscellaneous}
@@ -731,7 +724,7 @@ linkcolor=black,citecolor=black,urlcolor=cyan,filecolor=cyan,colorlinks]{hyperre
 %    \end{macrocode}
 % We need to disregard the columns macros introduced by the |beamer| class in the notes.  
 %    \begin{macrocode}
-\ifnotes%
+\ifmks@sty@notes%
   \renewenvironment{columns}[1][]{%
     \par\noindent%
     \begin{minipage}%
@@ -749,7 +742,7 @@ linkcolor=black,citecolor=black,urlcolor=cyan,filecolor=cyan,colorlinks]{hyperre
 %    \end{macrocode}
 %
 %    \begin{macrocode}
-\ifproblems%
+\ifmks@sty@noproblems%
   \newenvironment{problems}{}{}%
 \else%
   \excludecomment{problems}%

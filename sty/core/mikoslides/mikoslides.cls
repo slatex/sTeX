@@ -7,15 +7,16 @@
 %% mikoslides.dtx  (with options: `cls')
 %% 
 \NeedsTeXFormat{LaTeX2e}[1999/12/01]
-\ProvidesClass{mikoslides}[2016/04/07 v1.1 MiKo slides Class]
-\newif\ifnotes\notesfalse
-\DeclareOption{notes}{\notestrue\PassOptionsToPackage{\CurrentOption}{mikoslides}}
-\DeclareOption{slides}{\notesfalse\PassOptionsToPackage{\CurrentOption}{mikoslides}}
-\DeclareOption*{\PassOptionsToClass{\CurrentOption}{omdoc}
-                           \PassOptionsToClass{\CurrentOption}{beamer}
-                           \PassOptionsToPackage{\CurrentOption}{mikoslides}}
-\ProcessOptions
-\ifnotes
+\ProvidesClass{mikoslides}[2018/12/05 v1.2 MiKo slides Class]
+\RequirePackage{kvoptions}
+\SetupKeyvalOptions{family=mks@cls,prefix=mks@cls@}
+\DeclareBoolOption{notes}
+\DeclareComplementaryOption{slides}{notes}
+\DeclareDefaultOption{\PassOptionsToClass{\CurrentOption}{omdoc}
+  \PassOptionsToClass{\CurrentOption}{beamer}
+  \PassOptionsToPackage{\CurrentOption}{mikoslides}}
+\ProcessKeyvalOptions{mks@cls}
+\ifmks@cls@notes
   \LoadClass{omdoc}
 \else
   \LoadClass[10pt,notheorems]{beamer}
