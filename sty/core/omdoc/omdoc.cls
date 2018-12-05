@@ -39,14 +39,10 @@
 \ifcsdef{frontmatter}% to redefine if necessary
 {\cslet{orig@frontmatter}{\frontmatter}\cslet{frontmatter}{\relax}}
 {\cslet{orig@frontmatter}{\clearpage\pagenumbering{roman}}}
-\ifcsdef{mainmatter}% to redefine if necessary
-{\cslet{orig@mainmatter}{\mainmatter}\cslet{mainmatter}{\relax}}
-{\cslet{orig@mainmatter}{\clearpage\pagenumbering{arabic}}}
 \newenvironment{frontmatter}
-{\@frontmattertrue\orig@mainmatter}
+{\@frontmattertrue\orig@frontmatter}
 {\@frontmatterfalse%
-\ifcsdef{mainmatter}{\mainmatter}%
-{\clearpage\pagenumbering{arabic}}}
+\ifcsdef{mainmatter}{\mainmatter}{\clearpage\pagenumbering{arabic}}}
 \ifcsdef{backmatter}% to redefine if necessary
 {\cslet{orig@backmatter}{\backmatter}\cslet{backmatter}{\relax}}
 {\cslet{orig@backmatter}{\clearpage\pagenumbering{roman}}}
