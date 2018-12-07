@@ -9,7 +9,12 @@
 \NeedsTeXFormat{LaTeX2e}[1999/12/01]
 \ProvidesClass{mikoslides}[2018/12/05 v1.2 MiKo slides Class]
 \RequirePackage{kvoptions}
+\RequirePackage{etoolbox}
 \SetupKeyvalOptions{family=mks@cls,prefix=mks@cls@}
+\DeclareStringOption[article]{class}
+\AddToKeyvalOption*{class}{\PassOptionsToClass{class=\mks@cls@class}{omdoc}
+  \ifdefstring{\mks@cls@class}{book}{\PassOptionsToPackage{topsect=part}{mikoslides}}
+  \ifdefstring{\mks@cls@class}{report}{\PassOptionsToPackage{topsect=part}{mikoslides}}}
 \DeclareBoolOption{notes}
 \DeclareComplementaryOption{slides}{notes}
 \DeclareDefaultOption{\PassOptionsToClass{\CurrentOption}{omdoc}
