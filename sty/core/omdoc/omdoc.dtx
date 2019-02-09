@@ -307,6 +307,7 @@
 % 
 %    \begin{macrocode}
 %<*cls>
+\RequirePackage{etoolbox}
 \RequirePackage{kvoptions}
 \SetupKeyvalOptions{family=omdoc@cls,prefix=omdoc@cls@}
 \DeclareStringOption[article]{class}
@@ -327,7 +328,6 @@
 % the rest of the options are only passed on to |omdoc.sty| and the class selected by the
 % first options.  We need to load the |etoolbox| package early for |\@xappto|. 
 %    \begin{macrocode}
-\RequirePackage{etoolbox}
 \def\@omdoc@cls@docopt{}
 \DeclareDefaultOption{%
 \ifx\@omdoc@cls@docopt\@empty%
@@ -344,7 +344,6 @@
 %
 %    \begin{macrocode}
 \LoadClass[\@omdoc@cls@docopt]{\omdoc@cls@class}
-\RequirePackage{etoolbox}
 \RequirePackage{omdoc}
 \RequirePackage{stex}
 %    \end{macrocode}
@@ -362,7 +361,6 @@
 \srefaddidkey{document}
 \newcommand\documentkeys[1]{\metasetkeys{document}{#1}}
 \let\orig@document=\document
-\srefaddidkey{document}
 \renewcommand{\document}[1][]{\metasetkeys{document}{#1}\orig@document}
 %</cls>
 %    \end{macrocode}
@@ -493,8 +491,7 @@
 % run at the beginning of the |omgroup|, i.e. after the section heading.
 %    \begin{macrocode}
 \newif\if@@num\@@numtrue
-\newif\if@frontmatter\@frontmatterfalse
-\newif\if@backmatter\@backmatterfalse
+\newif\if@mainmatter\@mainmattertrue
 \newcommand\at@begin@omgroup[3][]{}
 %    \end{macrocode}
 %
@@ -540,7 +537,7 @@
 \newenvironment{omgroup}[2][]% keys, title
 {\metasetkeys{omgroup}{#1}\sref@target%
 \ifx\omgroup@display\st@flow\@@numfalse\fi
-\if@frontmatter\@@numfalse\fi
+\if@mainmatter\else\@@numfalse\fi
 %    \end{macrocode}
 % If the |loadmodules| key is set on |\begin{omgroup}|, we redefine the |\addcontetsline|
 %   macro that determines how the sectioning commands below construct the entries for the
@@ -583,17 +580,27 @@
 % \end{macro}
 % 
 % \begin{environment}{frontmatter}
-%   some classes (e.g. |book.cls|) already have |\frontmatter| and |\mainmatter| macros. We
-%   use those (possibly defining them).
+%   some classes (e.g. |book.cls|) already have |\frontmatter|, |\mainmatter|, and
+%   |\backmatter| macros. As we want to define |frontmatter| and |backmatter|
+%   environments, we save their behavior (possibly defining it) in |orig@*matter| macros
+%   and make them undefined (so that we can define the environments).
 %    \begin{macrocode}
 %<*cls>
 \ifcsdef{frontmatter}% to redefine if necessary
-{\cslet{orig@frontmatter}{\frontmatter}\cslet{frontmatter}{\relax}}
-{\cslet{orig@frontmatter}{\clearpage\pagenumbering{roman}}}
+  {\cslet{orig@frontmatter}{\frontmatter}\cslet{frontmatter}{\relax}}
+  {\cslet{orig@frontmatter}{\clearpage\@mainmatterfalse\pagenumbering{roman}}}
+\ifcsdef{backmatter}% to redefine if necessary
+  {\cslet{orig@backmatter}{\backmatter}\cslet{backmatter}{\relax}}
+  {\cslet{orig@backmatter}{\clearpage\@mainmatterfalse\pagenumbering{roman}}}
+%    \end{macrocode}
+% \end{environment}
+% 
+% \begin{environment}{frontmatter}
+%   now we can define the environments
+%    \begin{macrocode}
 \newenvironment{frontmatter}
-{\@frontmattertrue\orig@frontmatter}
-{\@frontmatterfalse%
-\ifcsdef{mainmatter}{\mainmatter}{\clearpage\pagenumbering{arabic}}}
+{\orig@frontmatter}
+{\ifcsdef{mainmatter}{}{\clearpage\@mainmattertrue\pagenumbering{arabic}}}
 %    \end{macrocode}
 % \end{environment}
 %
@@ -601,11 +608,10 @@
 %   some classes (e.g. |book.cls|) already have a |\backmatter| macro. We use that
 %   (possibly defining it). 
 %    \begin{macrocode}
-\ifcsdef{backmatter}% to redefine if necessary
-{\cslet{orig@backmatter}{\backmatter}\cslet{backmatter}{\relax}}
-{\cslet{orig@backmatter}{\clearpage\pagenumbering{roman}}}
-\newenvironment{backmatter}{\orig@backmatter\@backmattertrue}{\@backmatterfalse}
-%</cls>
+\newenvironment{backmatter}
+{\orig@backmatter}
+{\ifcsdef{mainmatter}{}{\clearpage\@mainmattertrue\pagenumbering{arabic}}}
+%</cls> 
 %    \end{macrocode}
 % \end{environment}
 % \end{omgroup}
