@@ -48,6 +48,7 @@
 \newenvironment{backmatter}
 {\orig@backmatter}
 {\ifcsdef{mainmatter}{}{\clearpage\@mainmattertrue\pagenumbering{arabic}}}
+\pagenumbering{arabic}
 \endinput
 %%
 %% End of file `omdoc.cls'.
