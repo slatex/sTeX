@@ -7,7 +7,7 @@
 %% smglom.dtx  (with options: `cls')
 %% 
 \NeedsTeXFormat{LaTeX2e}[1999/12/01]
-\ProvidesClass{smglom}[2016/04/07 v0.1 Semantic Multilingual Glossary for Math]
+\ProvidesClass{smglom}[2018/06/28 v0.1 Semantic Multilingual Glossary for Math]
 \DeclareOption*{\PassOptionsToClass{\CurrentOption}{omdoc}
                            \PassOptionsToPackage{\CurrentOption}{stex}
                            \PassOptionsToPackage{\CurrentOption}{smglom}}
