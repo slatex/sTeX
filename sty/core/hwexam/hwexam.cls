@@ -7,7 +7,7 @@
 %% hwexam.dtx  (with options: `cls')
 %% 
 \NeedsTeXFormat{LaTeX2e}[1999/12/01]
-\ProvidesClass{hwexam}[2018/07/06 v1.1 assignment and exam documents]
+\ProvidesClass{hwexam}[2019/02/09 v1.1 assignment and exam documents]
 \DeclareOption*{
   \PassOptionsToClass{\CurrentOption}{omdoc}
   \PassOptionsToPackage{\CurrentOption}{stex}
