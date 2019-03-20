@@ -6,8 +6,7 @@ CTANPREFIX = sty/
 PACKAGE = mikoslides
 DTX = mikoslides.dtx
 TDS.tex = beamerthemeJacobs.sty cc-by-sa.png cc_somerights.png\
-	  jacobs-logo.png mikoaffiliation.sty\
-	  shading-l2r.png dangerous-bend.png
+	  jacobs-logo.png shading-l2r.png dangerous-bend.png
 
 CTAN 	= $(TDS.tex)
 
