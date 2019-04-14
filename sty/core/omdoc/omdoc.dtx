@@ -384,7 +384,7 @@
 \DeclareStringOption[article]{class}
 \DeclareBoolOption{showignores}
 \DeclareStringOption[section]{topsect}
-\newcount\section@level 
+\newcount\section@level
 \DeclareDefaultOption{\PassOptionsToPackage{\CurrentOption}{sref}}
 \ProcessKeyvalOptions{omdoc@sty}
 %    \end{macrocode}
@@ -490,7 +490,6 @@
 % \DescribeMacro{\at@begin@omgroup}|\at@begin@omgroup| macro allows customization. It is
 % run at the beginning of the |omgroup|, i.e. after the section heading.
 %    \begin{macrocode}
-\newif\if@@num\@@numtrue
 \newif\if@mainmatter\@mainmattertrue
 \newcommand\at@begin@omgroup[3][]{}
 %    \end{macrocode}
@@ -505,11 +504,12 @@
 \addmetakey[false]{omdoc@sect}{num}[true]
 \newcommand\omdoc@sectioning[3][]{\metasetkeys{omdoc@sect}{#1}%
 \ifx\omdoc@sect@clear\@true\cleardoublepage\fi%
-\if@@num% numbering not overridden by frontmatter, etc.
+\if@mainmatter% numbering not overridden by frontmatter, etc.
 \ifx\omdoc@sect@num\@true\omgroup@num{#2}{#3}\else\omgroup@nonum{#2}{#3}\fi%
 \def\current@section@level{\omdoc@sect@name}%
+\sref@label@id{\omdoc@sect@name}%
 \else\omgroup@nonum{#2}{#3}%
-\fi}% if@@num
+\fi}% if@mainmatter
 %    \end{macrocode}
 % and another one, if redefines the |\addtocontentsline| macro of {\LaTeX} to import the
 % respective macros. It takes as an argument a list of module names.\ednote{MK: the
@@ -536,8 +536,6 @@
 %    \begin{macrocode}
 \newenvironment{omgroup}[2][]% keys, title
 {\metasetkeys{omgroup}{#1}\sref@target%
-\ifx\omgroup@display\st@flow\@@numfalse\fi
-\if@mainmatter\else\@@numfalse\fi
 %    \end{macrocode}
 % If the |loadmodules| key is set on |\begin{omgroup}|, we redefine the |\addcontetsline|
 %   macro that determines how the sectioning commands below construct the entries for the
@@ -575,17 +573,14 @@
 % \begin{macro}{\printindex}
 %    \begin{macrocode}
 \providecommand\printindex{\IfFileExists{\jobname.ind}{\input{\jobname.ind}}{}}
-%</package>
 %    \end{macrocode}
 % \end{macro}
 % 
-% \begin{environment}{frontmatter}
-%   some classes (e.g. |book.cls|) already have |\frontmatter|, |\mainmatter|, and
-%   |\backmatter| macros. As we want to define |frontmatter| and |backmatter|
-%   environments, we save their behavior (possibly defining it) in |orig@*matter| macros
-%   and make them undefined (so that we can define the environments).
+% some classes (e.g. |book.cls|) already have |\frontmatter|, |\mainmatter|, and
+% |\backmatter| macros. As we want to define |frontmatter| and |backmatter| environments,
+% we save their behavior (possibly defining it) in |orig@*matter| macros and make them
+% undefined (so that we can define the environments).
 %    \begin{macrocode}
-%<*cls>
 \ifcsdef{frontmatter}% to redefine if necessary
   {\cslet{orig@frontmatter}{\frontmatter}\cslet{frontmatter}{\relax}}
   {\cslet{orig@frontmatter}{\clearpage\@mainmatterfalse\pagenumbering{roman}}}
@@ -593,31 +588,31 @@
   {\cslet{orig@backmatter}{\backmatter}\cslet{backmatter}{\relax}}
   {\cslet{orig@backmatter}{\clearpage\@mainmatterfalse\pagenumbering{roman}}}
 %    \end{macrocode}
-% \end{environment}
+%
+% Using these, we can now define the |frontmatter| and |backmatter| environments
 % 
 % \begin{environment}{frontmatter}
-%   now we can define the environments
+%  we use the |\orig@frontmatter| macro defined above and |\mainmatter| if it exists,
+%  otherwise we define it.  
 %    \begin{macrocode}
 \newenvironment{frontmatter}
 {\orig@frontmatter}
-{\ifcsdef{mainmatter}{}{\clearpage\@mainmattertrue\pagenumbering{arabic}}}
+{\ifcsdef{mainmatter}{\mainmatter}{\clearpage\@mainmattertrue\pagenumbering{arabic}}}
 %    \end{macrocode}
 % \end{environment}
 %
 % \begin{environment}{backmatter}
-%   some classes (e.g. |book.cls|) already have a |\backmatter| macro. We use that
-%   (possibly defining it). 
+%   As backmatter is at the end of the document, we do nothing for |\endbackmatter|. 
 %    \begin{macrocode}
 \newenvironment{backmatter}
 {\orig@backmatter}
-{\ifcsdef{mainmatter}{}{\clearpage\@mainmattertrue\pagenumbering{arabic}}}
+{\ifcsdef{mainmatter}{\mainmatter}{\clearpage\@mainmattertrue\pagenumbering{arabic}}}
 %    \end{macrocode}
 %
-% finally, we make sure that page numbering is arabic.
+% finally, we make sure that page numbering is arabic and we have main matter as the derault
 %
 %    \begin{macrocode}
-\pagenumbering{arabic}
-%</cls> 
+\@mainmattertrue\pagenumbering{arabic}
 %    \end{macrocode}
 % \end{environment}
 % \end{omgroup}
@@ -625,7 +620,6 @@
 % \begin{omgroup}[id=sec:impl:ignore]{Ignoring Inputs}
 % \begin{environment}{ignore}
 %    \begin{macrocode}
-%<*package>
 \ifomdoc@sty@showignores
 \addmetakey{ignore}{type}
 \addmetakey{ignore}{comment}

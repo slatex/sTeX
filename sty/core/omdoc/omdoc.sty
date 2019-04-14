@@ -58,7 +58,6 @@
 \addmetakey*{omgroup}{short}
 \addmetakey*{omgroup}{display}
 \addmetakey[false]{omgroup}{loadmodules}[true]
-\newif\if@@num\@@numtrue
 \newif\if@mainmatter\@mainmattertrue
 \newcommand\at@begin@omgroup[3][]{}
 \addmetakey{omdoc@sect}{name}
@@ -67,11 +66,12 @@
 \addmetakey[false]{omdoc@sect}{num}[true]
 \newcommand\omdoc@sectioning[3][]{\metasetkeys{omdoc@sect}{#1}%
 \ifx\omdoc@sect@clear\@true\cleardoublepage\fi%
-\if@@num% numbering not overridden by frontmatter, etc.
+\if@mainmatter% numbering not overridden by frontmatter, etc.
 \ifx\omdoc@sect@num\@true\omgroup@num{#2}{#3}\else\omgroup@nonum{#2}{#3}\fi%
 \def\current@section@level{\omdoc@sect@name}%
+\sref@label@id{\omdoc@sect@name}%
 \else\omgroup@nonum{#2}{#3}%
-\fi}% if@@num
+\fi}% if@mainmatter
 \newcommand\omgroup@redefine@addtocontents[1]{%
 \edef\@@import{#1}%
 \@for\@I:=\@@import\do{%
@@ -87,8 +87,6 @@
 \fi}% hypreref.sty loaded?
 \newenvironment{omgroup}[2][]% keys, title
 {\metasetkeys{omgroup}{#1}\sref@target%
-\ifx\omgroup@display\st@flow\@@numfalse\fi
-\if@mainmatter\else\@@numfalse\fi
 \ifx\omgroup@loadmodules\@true%
 \omgroup@redefine@addtocontents{\@ifundefined{mod@id}\used@modules%
 {\@ifundefined{module@\mod@id @path}{\used@modules}\mod@id}}\fi%
@@ -105,6 +103,19 @@
 \at@begin@omgroup[#1]\section@level{#2}}% for customization
 {\advance\section@level by -1}
 \providecommand\printindex{\IfFileExists{\jobname.ind}{\input{\jobname.ind}}{}}
+\ifcsdef{frontmatter}% to redefine if necessary
+  {\cslet{orig@frontmatter}{\frontmatter}\cslet{frontmatter}{\relax}}
+  {\cslet{orig@frontmatter}{\clearpage\@mainmatterfalse\pagenumbering{roman}}}
+\ifcsdef{backmatter}% to redefine if necessary
+  {\cslet{orig@backmatter}{\backmatter}\cslet{backmatter}{\relax}}
+  {\cslet{orig@backmatter}{\clearpage\@mainmatterfalse\pagenumbering{roman}}}
+\newenvironment{frontmatter}
+{\orig@frontmatter}
+{\ifcsdef{mainmatter}{\mainmatter}{\clearpage\@mainmattertrue\pagenumbering{arabic}}}
+\newenvironment{backmatter}
+{\orig@backmatter}
+{\ifcsdef{mainmatter}{\mainmatter}{\clearpage\@mainmattertrue\pagenumbering{arabic}}}
+\@mainmattertrue\pagenumbering{arabic}
 \ifomdoc@sty@showignores
 \addmetakey{ignore}{type}
 \addmetakey{ignore}{comment}

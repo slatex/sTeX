@@ -36,19 +36,6 @@
 \newcommand\documentkeys[1]{\metasetkeys{document}{#1}}
 \let\orig@document=\document
 \renewcommand{\document}[1][]{\metasetkeys{document}{#1}\orig@document}
-\ifcsdef{frontmatter}% to redefine if necessary
-  {\cslet{orig@frontmatter}{\frontmatter}\cslet{frontmatter}{\relax}}
-  {\cslet{orig@frontmatter}{\clearpage\@mainmatterfalse\pagenumbering{roman}}}
-\ifcsdef{backmatter}% to redefine if necessary
-  {\cslet{orig@backmatter}{\backmatter}\cslet{backmatter}{\relax}}
-  {\cslet{orig@backmatter}{\clearpage\@mainmatterfalse\pagenumbering{roman}}}
-\newenvironment{frontmatter}
-{\orig@frontmatter}
-{\ifcsdef{mainmatter}{}{\clearpage\@mainmattertrue\pagenumbering{arabic}}}
-\newenvironment{backmatter}
-{\orig@backmatter}
-{\ifcsdef{mainmatter}{}{\clearpage\@mainmattertrue\pagenumbering{arabic}}}
-\pagenumbering{arabic}
 \endinput
 %%
 %% End of file `omdoc.cls'.
