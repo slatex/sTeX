@@ -12,9 +12,7 @@
 \RequirePackage{etoolbox}
 \SetupKeyvalOptions{family=mks@cls,prefix=mks@cls@}
 \DeclareStringOption[article]{class}
-\AddToKeyvalOption*{class}{\PassOptionsToClass{class=\mks@cls@class}{omdoc}
-  \ifdefstring{\mks@cls@class}{book}{\PassOptionsToPackage{topsect=part}{mikoslides}}{}
-  \ifdefstring{\mks@cls@class}{report}{\PassOptionsToPackage{topsect=part}{mikoslides}}}{}
+\AddToKeyvalOption*{class}{\PassOptionsToClass{class=\mks@cls@class}{omdoc}}{}
 \DeclareBoolOption{notes}
 \DeclareComplementaryOption{slides}{notes}
 \DeclareDefaultOption{\PassOptionsToClass{\CurrentOption}{omdoc}
