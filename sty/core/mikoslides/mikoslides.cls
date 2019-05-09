@@ -12,10 +12,13 @@
 \RequirePackage{etoolbox}
 \SetupKeyvalOptions{family=mks@cls,prefix=mks@cls@}
 \DeclareStringOption[article]{class}
-\AddToKeyvalOption*{class}{\PassOptionsToClass{class=\mks@cls@class}{omdoc}}{}
+\AddToKeyvalOption*{class}{\PassOptionsToClass{class=\mks@cls@class}{omdoc}
+  \ifdefstring{\mks@cls@class}{book}{\PassOptionsToPackage{defaulttopsect=part}{mikoslides}}{}
+  \ifdefstring{\mks@cls@class}{report}{\PassOptionsToPackage{defaulttopsect=part}{mikoslides}}}{}
 \DeclareBoolOption{notes}
 \DeclareComplementaryOption{slides}{notes}
-\DeclareDefaultOption{\PassOptionsToClass{\CurrentOption}{omdoc}
+\DeclareDefaultOption{%
+  \PassOptionsToClass{\CurrentOption}{omdoc}
   \PassOptionsToClass{\CurrentOption}{beamer}
   \PassOptionsToPackage{\CurrentOption}{mikoslides}}
 \ProcessKeyvalOptions{mks@cls}

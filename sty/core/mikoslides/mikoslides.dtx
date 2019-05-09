@@ -231,11 +231,12 @@
 \SetupKeyvalOptions{family=mks@cls,prefix=mks@cls@}
 \DeclareStringOption[article]{class}
 \AddToKeyvalOption*{class}{\PassOptionsToClass{class=\mks@cls@class}{omdoc}
-  \ifdefstring{\mks@cls@class}{book}{\PassOptionsToPackage{topsect=part}{mikoslides}}{}
-  \ifdefstring{\mks@cls@class}{report}{\PassOptionsToPackage{topsect=part}{mikoslides}}}{}
+  \ifdefstring{\mks@cls@class}{book}{\PassOptionsToPackage{defaulttopsect=part}{mikoslides}}{}
+  \ifdefstring{\mks@cls@class}{report}{\PassOptionsToPackage{defaulttopsect=part}{mikoslides}}}{}
 \DeclareBoolOption{notes}
 \DeclareComplementaryOption{slides}{notes}
-\DeclareDefaultOption{\PassOptionsToClass{\CurrentOption}{omdoc}
+\DeclareDefaultOption{%
+  \PassOptionsToClass{\CurrentOption}{omdoc}
   \PassOptionsToClass{\CurrentOption}{beamer}
   \PassOptionsToPackage{\CurrentOption}{mikoslides}}
 \ProcessKeyvalOptions{mks@cls}
@@ -246,7 +247,8 @@
 %<*package>
 \RequirePackage{kvoptions}
 \SetupKeyvalOptions{family=mks@sty,prefix=mks@sty@}
-\DeclareStringOption[section]{topsect}
+\DeclareStringOption{topsect}
+\DeclareStringOption{defaulttopsect}
 \DeclareBoolOption{mh}
 \AddToKeyvalOption*{mh}{
   \PassOptionsToPackage{mh}{stex}
@@ -261,10 +263,17 @@
 \AddToKeyvalOption*{sectocframes}{\PassOptionsToPackage{msection}{statements}}
 \DeclareBoolOption{frameimages}
 \DeclareBoolOption{noproblems}
-\DeclareDefaultOption{\PassOptionsToPackage{\CurrentOption}{stex}
-                           \PassOptionsToPackage{\CurrentOption}{smglom}
-                           \PassOptionsToPackage{\CurrentOption}{tikzinput}}
+\DeclareDefaultOption{%
+  \PassOptionsToPackage{\CurrentOption}{stex}
+  \PassOptionsToPackage{\CurrentOption}{smglom}
+  \PassOptionsToPackage{\CurrentOption}{tikzinput}}
 \ProcessKeyvalOptions{mks@sty}
+%    \end{macrocode}
+% we give ourselves a macro |\@@topsect| that needs only be evaluated once, so that the
+% |\ifdefstring| conditionals work below.
+%    \begin{macrocode}
+\ifx\mks@sty@topsect\@empty\edef\@@topsect{\mks@sty@defaulttopsect}
+\else\edef\@@topsect{\mks@sty@topsect}\fi
 %</package>
 %    \end{macrocode}
 %
@@ -623,9 +632,9 @@ linkcolor=black,citecolor=black,urlcolor=cyan,filecolor=cyan,colorlinks]{hyperre
 % this.}
 %    \begin{macrocode}
 \ifmks@sty@sectocframes%
-\ifdefstring\mks@sty@topsect{part}{%
+\ifdefstring\@@topsect{part}{%
   \newcounter{mpart}\newcounter{mchapter}\newcounter{msection}[mchapter]}
-{\ifdefstring\mks@sty@topsect{chapter}{%
+{\ifdefstring\@@topsect{chapter}{%
     \newcounter{mchapter}\newcounter{msection}[mchapter]}
   {\newcounter{msection}}}
 \newcounter{msubsection}[msection]%
@@ -641,7 +650,7 @@ linkcolor=black,citecolor=black,urlcolor=cyan,filecolor=cyan,colorlinks]{hyperre
 \RequirePackage{stex}
 \RequirePackage{smglom}
 \RequirePackage{tikzinput}
-\ifmks@sty@mh\RequirePackage{mikoslides-mh}\fi 
+\ifmks@sty@mh\RequirePackage{mikoslides-mh}\fi
 %    \end{macrocode}
 % 
 % Finally, we set the \DescribeMacro{\section@level}|\section@level| macro that governs
@@ -649,21 +658,10 @@ linkcolor=black,citecolor=black,urlcolor=cyan,filecolor=cyan,colorlinks]{hyperre
 %
 %    \begin{macrocode}
 \section@level=2
-\ifdefstring{\mks@sty@topsect}{part}{\section@level=0}{}
-\ifdefstring{\mks@sty@topsect}{chapter}{\section@level=1}{}
-%    \end{macrocode}
-% 
-% Now \sTeX is loaded, we redefine the |omgroup| environment to produce section toc frames
-% (if the option |sectocframes| is specified.)\ednote{MK: we should probably just redefine
-% omgroup@num and omgroup@nonum, since they do the actual work so that we can add the
-% sectocframes behavior here without having to copy the internals. Then there is less
-% material that can get out of sync. Additionally, we should have a hook in the original
-% code of those so that we can increment the slides counter in notes node (to keep slides
-% in sync)}
-% 
-%    \begin{macrocode}
+\ifdefstring{\@@topsect}{part}{\section@level=0}{}
+\ifdefstring{\@@topsect}{chapter}{\section@level=1}{}
 \ifmks@sty@notes\else% only in slides
-\def\part@prefix{\ifdefstring\mks@sty@topsect{part}{\arabic{mchapter}.}{}}
+\def\part@prefix{\ifdefstring\@@topsect{part}{\arabic{mchapter}.}{}}
 \renewenvironment{omgroup}[2][]{%
   \metasetkeys{omgroup}{#1}\sref@target%
   \advance\section@level by 1%
