@@ -25,7 +25,7 @@
 \ifmks@cls@notes
   \LoadClass{omdoc}
 \else
-  \LoadClass[10pt,notheorems]{beamer}
+  \LoadClass[10pt,notheorems,xcolor={dvipsnames,svgnames}]{beamer}
   \newcounter{Item}
   \newcounter{paragraph}
   \newcounter{subparagraph}
