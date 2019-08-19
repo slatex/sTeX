@@ -2,8 +2,7 @@
 # A module for loading .tex files and feeding the data to the various applications.   #
 # Copyright (c) 2005, Ioan Sucan, released under the Gnu General Public License (GPL) #
 #                                 see http://www.gnu.org/copyleft/gpl.html            #
-# $URL: svn://kwarc.eecs.iu-bremen.de/repos/kwarc/projects/content/bin/Modparse.pm$   # 
-# $Date: 2005-09-26 12:44:28 -0500 (Mon, 26 Sep 2005) $ $Rev: 4243 $                  #
+# URL: https://github.com/sLaTeX/sTeX/bin/Modparse                                    # 
 #######################################################################################
 
 package Modparse;

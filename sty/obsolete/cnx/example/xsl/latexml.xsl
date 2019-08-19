@@ -3,7 +3,7 @@
      $URL: svn://kwarc.faculty.iu-bremen.de/kohlhase/kwarc/projects/content/cnx/xsl/latexml.xsl$ 
      $Revision: 262 $; last modified by $Author: brentmh $ 
      $Date: 2005-01-14 20:05:06 +0100 (Fri, 14 Jan 2005) $
-     Copyright (c) 2005 Michael Kohlhase, released under the Gnu Public License 
+     Copyright (c) 2019 Michael Kohlhase, released under the Gnu Public License 
   -->
 
 <xsl:stylesheet version="1.0"
