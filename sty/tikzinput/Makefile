@@ -1,4 +1,4 @@
-PREFIX = ../..
+PREFIX = ..
 DTX.sty.base = tikzinput
 TDSCOLL = stex# lowercase by CTAN rules
 CTANPREFIX = sty/

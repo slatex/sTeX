@@ -1,4 +1,4 @@
-PREFIX = ../..
+PREFIX = ..
 DTX.sty.base = sref
 EXAMPLE.base = idc scr book 
 TDS.doc = idcmain.tex scrmain.tex

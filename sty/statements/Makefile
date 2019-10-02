@@ -1,4 +1,4 @@
-PREFIX = ../..
+PREFIX = ..
 DTX.sty.base =  statements
 STY = 
 DTX.cls.base = 

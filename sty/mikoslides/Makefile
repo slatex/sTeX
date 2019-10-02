@@ -1,4 +1,4 @@
-PREFIX = ../..
+PREFIX = ..
 DTX.sty.base = mikoslides
 DTX.cls.base = mikoslides
 TDSCOLL = stex# lowercase by CTAN rules

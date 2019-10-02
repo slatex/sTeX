@@ -1,4 +1,4 @@
-PREFIX = ../..
+PREFIX = ..
 DTX.sty.base = metakeys
 DTX.cls.base = 
 TDSCOLL = stex# lowercase by CTAN rules

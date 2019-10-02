@@ -1,4 +1,4 @@
-PREFIX = ../..
+PREFIX = ..
 DTX.sty.base =  presentation 
 STY = 
 DTX.cls.base = 

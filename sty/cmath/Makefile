@@ -1,4 +1,4 @@
-PREFIX = ../..
+PREFIX = ..
 DTX.sty.base =  cmath
 STY = 
 DTX.cls.base = 

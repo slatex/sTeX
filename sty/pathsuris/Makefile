@@ -1,4 +1,4 @@
-PREFIX = ../..
+PREFIX = ..
 DTX.sty.base = pathsuris
 STY =
 DTX.cls.base = 

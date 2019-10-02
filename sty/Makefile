@@ -1,6 +1,6 @@
 # recurse into the directories. 
 DISTDIRS = stex cmath dcm hwexam metakeys mikoslides modules omdoc omtext\
-	   presentation problem rdfmeta sproof sref statements workaddress\
+	   presentation problem sproof sref statements workaddress\
            smultiling tikzinput smglom mathhub structview
 MAKEDIRS = $(DISTDIRS)
 
@@ -14,7 +14,7 @@ TDS.tex = stex.tex stex.sty stex-logo.sty ctansvn.sty
 TDS.doc = README stex.pdf
 TDS.src = 
 
-include ../make/Makefile.ctan
+include make/Makefile.ctan
 
 # auxiliary for debugging
 echo:

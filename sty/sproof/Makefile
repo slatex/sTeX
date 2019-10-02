@@ -1,4 +1,4 @@
-PREFIX = ../..
+PREFIX = ..
 DTX.sty.base =  sproof 
 STY = 
 DTX.cls.base = 

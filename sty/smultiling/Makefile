@@ -1,4 +1,4 @@
-PREFIX = ../..
+PREFIX = ..
 DTX.sty.base = smultiling
 TDSCOLL = stex# lowercase by CTAN rules
 CTANPREFIX = sty/

@@ -1,4 +1,4 @@
-PREFIX = ../..
+PREFIX = ..
 DTX.sty.base = omdoc
 DTX.cls.base = omdoc
 TDSCOLL = stex# lowercase by CTAN rules

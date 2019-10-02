@@ -1,4 +1,4 @@
-PREFIX = ../..
+PREFIX = ..
 DTX.sty.base =  hwexam
 DTX.cls.base = hwexam
 TDSCOLL = stex# lowercase by CTAN rules
