@@ -30,8 +30,7 @@
 \PassOptionsToPackage{\CurrentOption}{stex}
 \ProcessKeyvalOptions{omdoc@cls}
 \LoadClass[\@omdoc@cls@docopt]{\omdoc@cls@class}
-\RequirePackage{omdoc}
-\RequirePackage{stex}
+\ifomdoc@sty@mh\else\RequirePackage{stex}\fi
 \srefaddidkey{document}
 \newcommand\documentkeys[1]{\metasetkeys{document}{#1}}
 \let\orig@document=\document
