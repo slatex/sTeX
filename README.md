@@ -7,7 +7,7 @@ to markup TeX/LaTeX documents semantically without leaving the document format,
 essentially turning it into a document format for mathematical knowledge management (MKM).
 
 See the
-[documentation of the sTeX package](https://github.com/sLaTeX/sTeX/blob/master/sty/core/stex/stex.pdf)
+[documentation of the sTeX package](https://github.com/slatex/sTeX/blob/master/sty/stex/stex.pdf)
 for details.
 
 Copyright (c) 2019 Michael Kohlhase
