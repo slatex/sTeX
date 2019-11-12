@@ -6,9 +6,12 @@ This repository contains the sTeX package collection, a version of TeX/LaTeX tha
 to markup TeX/LaTeX documents semantically without leaving the document format,
 essentially turning it into a document format for mathematical knowledge management (MKM).
 
+## Documentation
 See the
 [documentation of the sTeX package](https://github.com/slatex/sTeX/blob/master/sty/stex/stex.pdf)
 for details.
+
+
 
 Copyright (c) 2019 Michael Kohlhase
 The package is distributed under the terms of the LaTeX Project Public License (LPPL)
