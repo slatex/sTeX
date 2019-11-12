@@ -17,12 +17,6 @@
 \RequirePackage{stex}
 \RequirePackage{amstext}
 \RequirePackage{amsfonts}
-\newenvironment{entry}[2]%
-{\item[\textbf{#1}]\mhcurrentrepos{#2}\begin{module}[id=foo]\begin{definition}[display=flow]}
-{\end{definition}\end{module}}
-\newenvironment{smglossary}{\begin{itemize}}{\end{itemize}}
-\newcommand\synonymref[3]{\item[\textbf{#1}] See \textcolor{blue}{\hyperlink{#2}{#3}}}
-\newcommand\seeref[3]{\item[\textbf{#1}] Defined along with \textcolor{blue}{\hyperlink{#2}{#3}}}
 \endinput
 %%
 %% End of file `smglom.cls'.
