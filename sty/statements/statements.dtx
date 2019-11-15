@@ -68,6 +68,8 @@
 % \changes{v1.3}{2017/07/31}{adding \texttt{\textbackslash Defi}, \texttt{\textbackslash Trefi} and friends}
 % \changes{v1.4}{2017/10/15}{changing the optional argument of \texttt{\textbackslash
 % defi} and friends to a keyval argument}
+% \changes{v1.4}{2019/11/13}{adding \texttt{inlineAssertion}, \texttt{inlineDefinition},
+% and \texttt{inlineExample} environment for block content}
 % 
 % \GetFileInfo{statements.sty}
 % 
@@ -253,6 +255,19 @@
 % definitions. This environment relegates the formatting to the |STaxiomEnv| environment,
 % which can be redefined for configuration.
 % 
+% \DescribeMacro{\inlineass} Sometimes we state mathematical properties in passing,
+% e.g. in a phrase like ``\ldots $s(o)$ which is positive.''. For this we cannot use the
+% |assertion| environment, which presupposes that its content gives all that is needed to
+% understand the statement. In this situation, we just wrap the phrase in an |\inlineass|
+% to mark it as an assertion. The |\inlinedef| macro accepts the same |id| and |for|
+% keys in its optional argument, and additionally the |verbalizes| key which can be used
+% to point to a full assertion of the concept somewhere else.
+%
+% The |\inlineass| macro has an environment
+% version\DescribeMacro{inlineAssertion}|inlineAssertion|, which does the same, but can
+% digest ``block content''. The most common case is when the inline definition contains a
+% displayed equation (|\[...\]|). 
+%
 % \subsubsection{Symbols}\label{sec:user:symbol}
 %
 % \DescribeEnv{symboldec} The |symboldec| environment can be used for declaring concepts
@@ -483,6 +498,11 @@
 % same |id| and |for| keys in its optional argument, and additionally the |verbalizes| key
 % which can be used to point to a full definition of the concept somewhere else.
 %
+% The |\inlinedef| macro has an environment
+% version\DescribeMacro{inlineDefinition}|inlineDefinition|, which does the same, but can
+% digest ``block content''. The most common case is when the inline definition contains a
+% displayed equation (|\[...\]|). 
+%
 % Note that definienda can only be referenced via a |\term| element, if they are only
 % allowed inside a named module, i.e. a |module| environment with a name given by the
 % |id=| key or the |theory=| key on is specified on the definitional environment.
@@ -496,8 +516,8 @@
 % 
 % \DescribeMacro{\inlineex} The |\inlineex| is analogous to |\inlinedef|, only that it is
 % used for inline examples, e.g. ``\ldots mammals, e.g. goats''. Note that we have used an
-% inline example for an inline example.
-%
+% inline example for an inline example.  Like |\inlinedef|, the |\inlineex| macro has an
+% environment version \DescribeMacro{inlineExample}|inlineExample| for ``block content''.
 %
 % \subsection{Cross-Referencing Symbols and Concepts}\label{sec:user:crossref}
 %
@@ -733,11 +753,9 @@
 % devise a more complex scheme for the symbol replacement.}
 %    \begin{macrocode}
 %    \end{macrocode}
-% The following functions are strictly utility functions that makes our life easier later on
-%    \begin{macrocode}
-%    \end{macrocode}
-% 
+%
 % For the other languages, we set up triggers
+%
 %    \begin{macrocode}
 \AfterBabelLanguage{ngerman}{\input{statements-ngerman.ldf}}
 \AfterBabelLanguage{finnish}{\input{statements-finnish.ldf}}
@@ -1149,6 +1167,15 @@ do not make sense semantically outside a definition.}
 %    \end{macrocode}
 % \end{macro}
 %
+% \begin{environment}{inlineExample}
+%    \begin{macrocode}
+\newenvironment{inlineExample}[1][]%
+{\metasetkeys{omtext}{#1}\sref@target\sref@label@id{here}\ignorespaces}%
+{\ignorespaces}%
+%    \end{macrocode}
+% \end{environment}
+%
+%
 % \begin{macro}{\inlineass}
 %    \begin{macrocode}
 \newcommand\inlineass[2][]{\metasetkeys{omtext}{#1}%
@@ -1156,18 +1183,34 @@ do not make sense semantically outside a definition.}
 %    \end{macrocode}
 % \end{macro}
 %
+% \begin{environment}{inlineAssertion}
+%    \begin{macrocode}
+\newenvironment{inlineAssertion}[1][]%
+{\metasetkeys{omtext}{#1}\sref@target\sref@label@id{here}\ignorespaces}%
+{\ignorespaces}%
+%    \end{macrocode}
+% \end{environment}
+%
 % \begin{macro}{\inlinedef}
 %    \begin{macrocode}
-\newcommand\inlinedef[2][]{\metasetkeys{omtext}{#1}%
-\if@in@omtext\else% we are not in an omtext or statement
+\newcommand\inline@def@error{\if@in@omtext\else% we are not in an omtext or statement
 \PackageError{modules}{\protect\inlinedef\space outside a statement!}%
 {Try wrapping the paragraph in a\MessageBreak
 \protect\begin{omtext}, \protect\begin{assertion}, \protect\begin{axiom}, ... \MessageBreak
-whatever is suitable semantically}\fi%
-\sref@target\sref@label@id{here}\st@indeftrue #2}
+whatever is suitable semantically}\fi}
+\newcommand\inlinedef[2][]{\metasetkeys{omtext}{#1}%
+\inline@def@error\sref@target\sref@label@id{here}\st@indeftrue #2}
 %    \end{macrocode}
 % \end{macro}
 % 
+% \begin{environment}{inlineDefinition}
+%    \begin{macrocode}
+\newenvironment{inlineDefinition}[1][]%
+{\metasetkeys{omtext}{#1}\inline@def@error\sref@target\sref@label@id{here}\st@indeftrue\ignorespaces}%
+{\ignorespaces}%
+%    \end{macrocode}
+% \end{environment}
+%
 % \subsection{Cross-Referencing Symbols and Concepts}\label{sec:impl:crossref}
 %
 % \begin{macro}{\termref}
