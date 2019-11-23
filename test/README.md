@@ -1,13 +1,21 @@
-# sTeX-tests: Systematic Tests for sTeX
+# sTeX-tests: Systematic Tests for the sTeX Distribution
 
-This repository will be integrated into the [sTeX](https://github.com/sLaTeX/sTeX) and [LaTeXML-Plugin-sTeX](https://github.com/sLaTeX/LaTeXML-Plugin-sTeX] repositories. 
+This repository  contains tests for the
+[sTeX distribution](https://github.com/sLaTeX/sTeX)
 
-It contains tests organized by
-[sTeX package/class](https://github.com/sLaTeX/sTeX/tree/master/sty/). There are two test
-targets:
+They will be integrated into the [sTeX](https://github.com/sLaTeX/sTeX) and
+[LaTeXML-Plugin-sTeX](https://github.com/sLaTeX/LaTeXML-Plugin-sTeX] repositories via `git
+subrepo`. 
 
-* `omdoc` for OMDoc generated and
-* `html` for sTeX in HTML (later).
+There are two test targets: 
+* `omdoc` for  OMDoc generated and
+* `html` for sTeX annotations in HTML (later).
 
+## ManIfest
+* `omdoc`: Files for the `omdoc` target. This is organized by
+[sTeX package/class](https://github.com/sLaTeX/sTeX/tree/master/sty/): one directory for
+each that contains various `*.tex` files that can be run via the `Makefile` in the
+directory.
+* `make`: Makefile fragments for automation
 
 
