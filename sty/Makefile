@@ -1,7 +1,7 @@
 # recurse into the directories. 
 DISTDIRS = stex cmath dcm hwexam metakeys mikoslides modules omdoc omtext\
 	   presentation problem sproof sref statements workaddress\
-           smultiling tikzinput smglom mathhub structview
+           smultiling tikzinput smglom mathhub structview pathsuris
 MAKEDIRS = $(DISTDIRS)
 
 all package doc clean distclean biber stycls: 
