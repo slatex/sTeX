@@ -29,4 +29,4 @@ The sTeX distribution contains the following directories
 * `doc`: a space for documentation, currently only blue notes (ideas for the future)
 * `example`: a worked example of an sTeX paper.   
 * `test`: the [sTeX test suite](https://github.com/sLaTeX/stex-tests) imported via `git
-  subrepo`; run `make test` at test level to test.
+  subrepo`; run `make test` at top level to test; run `git subrepo pull test` to update.
