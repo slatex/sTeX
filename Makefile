@@ -14,6 +14,10 @@ all clean distclean biber:
 package doc filedate checksum enablechecksum disablechecksum: 
 	@for d in $(DTXDIRS); do (cd $$d && $(MAKE) -$(MAKEFLAGS) $@) done
 
+test:
+	cd example; $(MAKE) -$(MAKEFLAGS)
+	cd test; $(MAKE) -$(MAKEFLAGS)
+
 TDSCOLL = stex
 TDS.tex = 
 TDS.README = sty/README

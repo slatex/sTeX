@@ -27,4 +27,6 @@ The sTeX distribution contains the following directories
 * `lib`: bibTeX bibliography and Makefile inputs for the package/class generation and documentation
 * `bin`: a couple of utilities that make your life easier
 * `doc`: a space for documentation, currently only blue notes (ideas for the future)
-* `example`: a workeed example of an sTeX paper.   
+* `example`: a worked example of an sTeX paper.   
+* `test`: the [sTeX test suite](https://github.com/sLaTeX/stex-tests) imported via `git
+  subrepo`; run `make test` at test level to test.
