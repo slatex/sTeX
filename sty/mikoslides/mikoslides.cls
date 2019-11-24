@@ -8,7 +8,7 @@
 %% 
 \NeedsTeXFormat{LaTeX2e}[1999/12/01]
 \ProvidesClass{mikoslides}[2019/03/20 v1.2 MiKo slides Class]
-\RquirePackage{stex-base}
+\RequirePackage{stex-base}
 \RequirePackage{kvoptions}
 \RequirePackage{etoolbox}
 \SetupKeyvalOptions{family=mks@cls,prefix=mks@cls@}
