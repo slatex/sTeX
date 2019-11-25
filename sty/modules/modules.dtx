@@ -72,6 +72,7 @@
 % \changes{v1.4}{2015/04/02}{deprecated \texttt {\textbackslash sinput} and \texttt {\textbackslash sinputref}}
 % \changes{v1.5}{2015/11/02}{Moved MH Versions to a separate \texttt{mathhub} package}
 % \changes{v1.5}{2018/06/15}{``unidentified cd'' in termref is now an error.}
+% \changes{v1.5}{2019/11/25}{adding dir attribute to import/usemodule}
 % 
 % \GetFileInfo{modules.sty}
 % 
@@ -466,20 +467,7 @@
 % \meta{mod}. In many situations, this is not obtainable; e.g. for ``semantic forward
 % references'', where symbols or concepts are previewed or motivated to knowledgeable
 % readers before they are formally introduced or for modularizations of documents into
-% multiple files. To enable situations like these, the |module| package uses auxiliary
-% files called {\textbf{\sTeX module signatures}}. For any file, \meta{file}|.tex|, we
-% generate a corresponding \sTeX module signature \meta{file}|.sms| with the |sms| utility
-% (see also Limitation~\ref{sec:limitations:sms}), which contains (copies of) all
-% |\begin|/|\end{module}|, |\importmodule|, |\symdef|, and |\termdef| invocations in
-% \meta{file}|.tex|. The value of an \sTeX module signature is that it can be loaded
-% instead its corresponding \sTeX document, if we are only interested in the semantic
-% macros. So |\importmodule[|load=\meta{filepath}|]{|\meta{mod}|}| will load the \sTeX
-% module signature \meta{filepath}|.sms| (if it exists and has not been loaded before) and
-% activate the semantic macros from module \meta{mod} (which was supposedly defined in
-% \meta{filepath}|.tex|). Note that since \meta{filepath}|.sms| contains all
-% |\importmodule| statements that \meta{filepath}|.tex| does, an |\importmodule|
-% recursively loads all necessary files to supply the semantic macros inherited by the
-% current module.\ednote{MK: document the other keys of |module|}
+% multiple files. We come to this next: \ednote{MK: document the other keys of |module|}
 % 
 % The \DescribeMacro{\metalanguage}|\metalanguage| macro is a variant of
 % \lstinline|importmodule| that imports the meta language, i.e. the language in which the
@@ -502,24 +490,46 @@
 % documents. In this case we want to make use of the semantic macros from these
 % prerequisite documents without including their text into the current document. One way
 % to do this would be to have {\LaTeX} read the prerequisite documents without producing
-% output. For efficiency reasons, {\stex} chooses a different route. It comes with a
-% utility |sms| (see Section~\ref{sec:limitations:sms}) that exports the modules and macros
-% defined inside them from a particular document and stores them inside |.sms| files. This
-% way we can avoid overloading LaTeX with useless information, while retaining the
-% important information which can then be imported in a more efficient way.
+% output. For efficiency reasons, {\stex} chooses a different route, the |module| package
+% uses auxiliary files called {\textbf{\sTeX module signatures}}. For any file,
+% \meta{file}|.tex|, we generate a corresponding \sTeX module signature \meta{file}|.sms|
+% with the |sms| utility (see also Limitation~\ref{sec:limitations:sms}), which contains
+% (copies of) all |\begin|/|\end{module}|, |\importmodule|, |\symdef|, and |\termdef|
+% invocations in \meta{file}|.tex|. The value of an \sTeX module signature is that it can
+% be loaded instead its corresponding \sTeX document, if we are only interested in the
+% semantic macros.
 %
-% \DescribeMacro{\importmodule} For such situations, the |\importmodule| macro can be
-% given an optional first argument that is a path to a file that contains a path to the
-% module file, whose module definition (the |.sms| file) is read. Note that the
-% |\importmodule| macro can be used to make module files truly self-contained. To arrive
-% at a file-based content management system, it is good practice to reuse the module
+% The \DescribeMacro{\importmodule}|\importmodule| macro can be given an optional first
+% keyword argument that can be used to specify which \sTeX module signatures to load.
+% \DescribeMacro{load}|\importmodule[|load=\meta{filepath}|]{|\meta{mod}|}| will load the
+% \sTeX module signature \meta{filepath}|.sms| (if it exists and has not been loaded
+% before) and activate the semantic macros from module \meta{mod} (which was supposedly
+% defined in \meta{filepath}|.tex|). Note that since \meta{filepath}|.sms| contains all
+% |\importmodule| statements that \meta{filepath}|.tex| does, an |\importmodule|
+% recursively loads all necessary files to supply the semantic macros inherited by the
+% current module.
+%
+% Thus |\importmodule| can be used to make module files truly self-contained. To arrive at
+% a file-based content management system, it is good practice to reuse the module
 % identifiers as module names and to prefix module files with corresponding
-% |\importmodule| statements that pre-load the corresponding module files.
+% |\importmodule| statements that pre-load the corresponding module files. But this leads
+% to tedious duplication: We see imports of the form
+% \begin{verbatim}
+% \importmhmodule[path=foo/en/very-long-name]{very-long-name}
+% \end{verbatim}
+% To avoid this, |\importmhmodule| allows a second key: \DescribeMacro{dir}|dir|, which
+% specifies the directory of the \sTeX module signature. So we can write
+% \begin{verbatim}
+% \importmhmodule[dir=foo/en]{very-long-name}
+% \end{verbatim}
+% instead when the module name and file name coincide. This also avoids the maintenance
+% problems (typos) induced by duplication. If both |path| and |dir| are given, the latter
+% takes precedence.
 %
 %\begin{exfig}
 % \begin{verbatim}
 % \begin{module}[id=foo]
-% \importmodule[load=../other/bar]{bar}
+% \importmodule[dir=../other]{bar}
 % \importmodule[load=../mycolleaguesmodules]{baz}
 % \importmodule[load=../other/bar]{foobar}
 %   ...
@@ -932,12 +942,17 @@
 \gdef\used@modules{}
 \srefaddidkey{importmodule}
 \addmetakey{importmodule}{load}
+\addmetakey{importmodule}{dir}
 \addmetakey[sms]{importmodule}{ext}
 \addmetakey[false]{importmodule}{conservative}[true]
 \newcommand\importmodule[2][]{%
   \metasetkeys{importmodule}{#1}%
   \update@used@modules{#2}%
+  \ifx\importmodule@dir\@empty
   \@importmodule[\importmodule@load]{#2}{\importmodule@ext}{export}%
+  \else
+  \@importmodule[\importmodule@dir/#2]{#2}{\importmodule@ext}{export}%
+  \fi
   \ignorespacesandpars%
 }%
 %    \end{macrocode}
@@ -992,7 +1007,11 @@
 \newcommand\usemodule[2][]{%
   \metasetkeys{importmodule}{#1}%
   \update@used@modules{#2}%
+  \ifx\importmodule@dir\@empty
   \@importmodule[\importmodule@load]{#2}{\importmodule@ext}{noexport}%
+  \else
+  \@importmodule[\importmodule@dir/#2]{#2}{\importmodule@ext}{noexport}%
+  \fi
   \ignorespacesandpars%
 }%
 %    \end{macrocode}
