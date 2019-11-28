@@ -385,15 +385,14 @@
 % by the |\definiendum| macro, which is used as
 % |\definiendum[|\meta{keys}|]{|\meta{text}|}|. Here, \meta{text} is the text that is to
 % be emphasized in the presentation. |\definiendum| takes the key
-% \DescribeMacro{name}|name| for the optional system name of the symbol defined (for
-% reference via |\termref|, see Section~\ref{sec:user:crossref}). If the |name| key is not
-% given, then \meta{text} is used as a system name instead, which is usually sufficient
-% for most situations. The set of keys is extensible to add additional metadata for the
-% definiendum. Currently only the \DescribeMacro{lemma}|lemma| key is supported, which
-% allows to specify the base form of the name of the concept involved -- e.g. for
-% referencing in a glossary or index. More keys -- e.g. for specifying grammatical features
-% of the term -- may come in the future.  
-% 
+% \DescribeMacro{lemma}|lemma| allows to specify the base form of the name of \meta{text}
+% -- e.g. for referencing in a glossary or index.  The \DescribeMacro{name}|name| can be
+% used for giving a system name of the symbol defined (for reference via |\termref|, see
+% Section~\ref{sec:user:crossref}).  If the |name| key is not given, then the value of the
+% |lemma| key is used as a system name insetead if it is given, else \meta{text} is used
+% as fallback. This is usually sufficient for most situations. More keys -- e.g. for
+% specifying grammatical features of the term -- may come in the future.
+%
 %\begin{exfig}
 %  \def\succ#1{s(#1)}
 % \begin{verbatim}
@@ -1034,7 +1033,11 @@ do not make sense semantically outside a definition.}
 \addmetakey{definiendum}{lemma}
 \addmetakey{definiendum}{recaps}
 \newcommand\definiendum[2][]{\setkeys{definiendum}{#1}%
-\st@def@target{\definiendum@name}{#2}{#2}}
+  \ifx\definiendum@lemma\@empty
+    \st@def@target{\definiendum@name}{\definiendum@lemma}{#2}
+  \else
+    \st@def@target{\definiendum@name}{#2}{#2}
+  \fi}
 %    \end{macrocode}
 % \end{macro}
 %
@@ -1048,23 +1051,6 @@ do not make sense semantically outside a definition.}
 %
 % We expand the {\latexml} bindings for |\defi|, |\defii|, |\defiii| and |\defiv| into two
 % instances one will be used for the definition and the other for indexing.
-%
-% \begin{macro}{\defi}
-%   We split the |\defi| macro in two: |\defi| does the definiendum bit and |\@defi|
-%   handles the last optional argument and does the indexing. The information flow between
-%   them goes via the local |\@phrase| macro.
-%    \begin{macrocode}
-\newcommand\@defi[1][]{\ifdef@index\omdoc@indexi[#1]{\@phrase}\fi\xspace}
-\newcommand\defi[2][]{\metasetkeys{definiendum}{#1}%
-\st@def@target{\definiendum@name}{#2}{#2}\def\@phrase{#2}\@defi}
-\newcommand\defis[2][]{\metasetkeys{definiendum}{#1}%
-\st@def@target{\definiendum@name}{#2}{#2s}\def\@phrase{#2}\@defi}
-\newcommand\Defi[2][]{\metasetkeys{definiendum}{#1}%
-\st@def@target{\definiendum@name}{#2}{\capitalize{#2}}\def\@phrase{#2}\@defi}
-\newcommand\Defis[2][]{\metasetkeys{definiendum}{#1}%
-\st@def@target{\definiendum@name}{#2}{\capitalize{#2s}}\def\@phrase{#2}\@defi}
-%    \end{macrocode}
-% \end{macro}
 %
 % \begin{macro}{\adefi}
 %   Again we split the |\adefi| macro into two parts: |\adef| does the definiendum bit and
@@ -1080,21 +1066,15 @@ do not make sense semantically outside a definition.}
 %    \end{macrocode}
 % \end{macro}
 %
-% \begin{macro}{\defii}
+% \begin{macro}{\defi}
+%   We split the |\defi| macro in two: |\defi| does the definiendum bit and |\@defi|
+%   handles the last optional argument and does the indexing. The information flow between
+%   them goes via the local |\@phrase| macro.
 %    \begin{macrocode}
-\newcommand\@defii[1][]{\ifdef@index\omdoc@indexii[#1]{\@pone}{\@ptwo}\fi\xspace}
-\newcommand\defii[3][]{\metasetkeys{definiendum}{#1}%
-\def\@pone{#2}\def\@ptwo{#3}%
-\st@def@target{\definiendum@name}{#2-#3}{#2 #3}\@defii}
-\newcommand\defiis[3][]{\metasetkeys{definiendum}{#1}%
-\def\@pone{#2}\def\@ptwo{#3}%
-\st@def@target{\definiendum@name}{#2-#3}{#2 #3s}\@defii}
-\newcommand\Defii[3][]{\metasetkeys{definiendum}{#1}%
-\def\@pone{#2}\def\@ptwo{#3}%
-\st@def@target{\definiendum@name}{#2-#3}{\capitalize{#2 #3}}\@defii}
-\newcommand\Defiis[3][]{\metasetkeys{definiendum}{#1}%
-\def\@pone{#2}\def\@ptwo{#3}%
-\st@def@target{\definiendum@name}{#2-#3}{\capitalize{#2 #3s}}\@defii}
+\newcommand\defi[2][]{\adefi[#1]{#2}{#2}}
+\newcommand\defis[2][]{\adefi[#1]{#2s}{#2}}
+\newcommand\Defi[2][]{\adefi[#1]{\capitalize{#2}}{#2}}
+\newcommand\Defis[2][]{\adefi[#1]{\capitalize{#2s}}{#2}}
 %    \end{macrocode}
 % \end{macro}
 %
@@ -1111,22 +1091,12 @@ do not make sense semantically outside a definition.}
 %    \end{macrocode}
 % \end{macro}
 %
-% \begin{macro}{\defiii}
-%   similar to |\defii|
+% \begin{macro}{\defii}
 %    \begin{macrocode}
-\newcommand\@defiii[1][]{\ifdef@index\omdoc@indexiii[#1]{\@pone}{\@ptwo}{\@pthree}\fi\xspace}
-\newcommand\defiii[4][]{\metasetkeys{definiendum}{#1}%
-\def\@pone{#2}\def\@ptwo{#3}\def\@pthree{#4}%
-\st@def@target{\definiendum@name}{#2-#3-#4}{#2 #3 #4}\@defiii}
-\newcommand\defiiis[4][]{\metasetkeys{definiendum}{#1}%
-\def\@pone{#2}\def\@ptwo{#3}\def\@pthree{#4}%
-\st@def@target{\definiendum@name}{#2-#3-#4}{#2 #3 #4s}\@defiii}
-\newcommand\Defiii[4][]{\metasetkeys{definiendum}{#1}%
-\def\@pone{#2}\def\@ptwo{#3}\def\@pthree{#4}%
-\st@def@target{\definiendum@name}{#2-#3-#4}{\capitalize{#2 #3 #4}}\@defiii}
-\newcommand\Defiiis[4][]{\metasetkeys{definiendum}{#1}%
-\def\@pone{#2}\def\@ptwo{#3}\def\@pthree{#4}%
-\st@def@target{\definiendum@name}{#2-#3-#4}{\capitalize{#2 #3 #4s}}\@defiii}
+\newcommand\defii[3][]{\adefii[#1]{#2 #3}{#2}{#3}}
+\newcommand\defiis[3][]{\adefii[#1]{#2 #3s}{#2}{#3}}
+\newcommand\Defii[3][]{\adefii[#1]{\capitalize{#2 #3}}{#2}{#3}}
+\newcommand\Defiis[3][]{\adefii[#1]{\capitalize{#2 #3s}}{#2}{#3}}
 %    \end{macrocode}
 % \end{macro}
 %
@@ -1142,22 +1112,13 @@ do not make sense semantically outside a definition.}
 %    \end{macrocode}
 % \end{macro}
 %
-% \begin{macro}{\defiv}
-%   similar to |\defiii|
+% \begin{macro}{\defiii}
+%   similar to |\defii|
 %    \begin{macrocode}
-\newcommand\@defiv[1][]{\ifdef@index\omdoc@indexiv[#1]{\@pone}{\@ptwo}{\@pthree}{\@ptfour}\fi\xspace}
-\newcommand\defiv[5][]{\metasetkeys{definiendum}{#1}%
-\def\@pone{#2}\def\@ptwo{#3}\def\@pthree{#4}\def\@ptfour{#5}%
-\st@def@target{\definiendum@name}{#2-#3-#4-#5}{#2 #3 #4 #5}\@defiv}
-\newcommand\defivs[5][]{\metasetkeys{definiendum}{#1}%
-\def\@pone{#2}\def\@ptwo{#3}\def\@pthree{#4}\def\@ptfour{#5}%
-\st@def@target{\definiendum@name}{#2-#3-#4-#5}{#2 #3 #4 #5s}\@defiv}
-\newcommand\Defiv[5][]{\metasetkeys{definiendum}{#1}%
-\def\@pone{#2}\def\@ptwo{#3}\def\@pthree{#4}\def\@ptfour{#5}%
-\st@def@target{\definiendum@name}{#2-#3-#4-#5}{\capitalize{#2 #3 #4 #5}}\@defiv}
-\newcommand\Defivs[5][]{\metasetkeys{definiendum}{#1}%
-\def\@pone{#2}\def\@ptwo{#3}\def\@pthree{#4}\def\@ptfour{#5}%
-\st@def@target{\definiendum@name}{#2-#3-#4-#5}{\capitalize{#2 #3 #4 #5s}}\@defiv}
+\newcommand\defiii[4][]{\adefiii[#1]{#2 #3 #4}{#2}{#3}{#4}}
+\newcommand\defiiis[4][]{\adefiii[#1]{#2 #3 #4s}{#2}{#3}{#4}}
+\newcommand\Defiii[4][]{\adefiii[#1]{\capitalize{#2 #3 #4}}{#2}{#3}{#4}}
+\newcommand\Defiiis[4][]{\adefiii[#1]{\capitalize{#2 #3 #4s}}{#2}{#3}{#4}}
 %    \end{macrocode}
 % \end{macro}
 %
@@ -1171,6 +1132,16 @@ do not make sense semantically outside a definition.}
 \ifx\definiendum@name\@empty\@indiv[#1]{\@pone}{\@ptwo}{\@pthree}{\@ptfour}%
 \else\@indiv[at=\definiendum@name,#1]{\@pone}{\@ptwo}{\@pthree}{\@ptfour}\fi%
 \fi\xspace}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\defiv}
+%   similar to |\defiii|
+%    \begin{macrocode}
+\newcommand\defiv[5][]{\adefiv[#1]{#2 #3 #4 #5}{#2}{#3}{#4}{#5}}
+\newcommand\defivs[5][]{\adefiv[#1]{#2 #3 #4 #5s}{#2}{#3}{#4}{#5}}
+\newcommand\Defiv[5][]{\adefiv[#1]{\capitalize{#2 #3 #4 #5}}{#2}{#3}{#4}{#5}}
+\newcommand\Defivs[5][]{\adefiv[#1]{\capitalize{#2 #3 #4 #5s}}{#2}{#3}{#4}{#5}}
 %    \end{macrocode}
 % \end{macro}
 %
