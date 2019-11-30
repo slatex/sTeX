@@ -4,4 +4,4 @@ MAKEDIRS = metakeys pathsuris tikzinput presentation sref cmath workaddress omdo
 all clean distclean: 
 	@for d in $(MAKEDIRS); do (cd $$d && $(MAKE) -$(MAKEFLAGS) $@) done
 
-
+test: all
