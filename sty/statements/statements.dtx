@@ -795,7 +795,7 @@
 \ifcsdef{#1}{\cslet{#1}{\relax}\cslet{end#1}{\relax}}{}% to redefine if necessary
 \newenvironment{#1}[1][]{\metasetkeys{omtext}{##1}\sref@target\@in@omtexttrue%
 \ifx\omtext@display\st@flow\def\@@env{omtext}\else\def\@@env{ST#1Env}%
-\csname st@#1@initialize\endcsname\fi% display=flow 
+\csname st@#1@initialize\endcsname\fi% display=flow
 \ifx\omtext@title\@empty\begin{\@@env}\else\begin{\@@env}[\omtext@title]\fi%
 \ifx\sref@id\@empty\sref@label@id{here}\else%
 \sref@label@id{\STpresent{\csname st@#1@kw\endcsname}~\@currentlabel}\fi%
@@ -1028,16 +1028,18 @@ do not make sense semantically outside a definition.}
 % \end{macro}
 %
 % \begin{macro}{\definiendum}
+%    We define the auxiliary |\@definiendum| macro which has two additionally arguments for
+%    the default name and lemma, which can be overwritten by the keys in the first argument.
+%    The actual |\definiendum| macro is just a special case without defaults. 
 %    \begin{macrocode}
 \addmetakey{definiendum}{name}
 \addmetakey{definiendum}{lemma}
 \addmetakey{definiendum}{recaps}
-\newcommand\definiendum[2][]{\setkeys{definiendum}{#1}%
-\ifx\definiendum@lemma\@empty%
-\st@def@target{\definiendum@name}{\definiendum@lemma}{#2}%
-\else%
-\st@def@target{\definiendum@name}{#2}{#2}%
-\fi}
+\newcommand\@definiendum[4][]{\metasetkeys{definiendum}{#1}% keys, text, default-name, default-lemma
+\edef\@name{\ifx\definiendum@name\@empty #3\else\definiendum@name\fi}%
+\edef\@lemma{\ifx\definiendum@lemma\@empty #4\else\definiendum@lemma\fi}%
+\st@def@target{\@name}{\@lemma}{#2}}
+\newcommand\definiendum[2][]{\@definiendum[#1]{#2}{}{}}
 %    \end{macrocode}
 % \end{macro}
 %
@@ -1055,12 +1057,10 @@ do not make sense semantically outside a definition.}
 % \begin{macro}{\adefi}
 %   Again we split the |\adefi| macro into two parts: |\adef| does the definiendum bit and
 % |\@adefi| handles the last optional argument and does the indexing. We use the |\@verb|
-% macro to transport the verbalization 
+% macro to transport the verbalization. We also factor out the |\adefi@at| macro that sets
+% the |\@@at| register for the  index. This is re-used by |\adefi*| below. 
 %    \begin{macrocode}
-\newcommand\adefi[3][]{\def\@keys{#1}\def\@verb{#2}%
-\ifx\@keys\@empty\definiendum[name=#3]{#2}%
-\else\definiendum[name=#3,#1]{#2}%
-\fi\@adefi}
+\newcommand\adefi[3][]{\def\@verb{#2}\@definiendum[#1]{#2}{#3}{#3}\@adefi}
 \newcommand\adef@at{%
 \edef\@@at{\ifx\definiendum@name\@empty\definiendum@name\else%
 \ifx\definienum@lemma\@empty\definiendum@lemma\else\@verb\fi\fi}}
@@ -1083,10 +1083,9 @@ do not make sense semantically outside a definition.}
 % \begin{macro}{\adefii}
 %   analogous to |\adefi|
 %    \begin{macrocode}
-\newcommand\adefii[4][]{\def\@keys{#1}\def\@pone{#3}\def\@ptwo{#4}\def\@verb{#3 #4}%
-\ifx\@keys\@empty\definiendum[name=#3-#4]{#2}%
-\else\definiendum[name=#3-#4,#1]{#2}%
-\fi\@adefii}
+\newcommand\adefii[4][]{\def\@pone{#3}\def\@ptwo{#4}%
+\def\@name{#3-#4}\def\@verb{#3 #4}%
+\@definiendum[#1]{#2}{\@name}{\@verb}\@adefii}
 \newcommand\@adefii[1][]{\ifdef@index\adef@at\omdoc@indexii[at=\@@at,#1]{\@pone}{\@ptwo}\fi\xspace}
 %    \end{macrocode}
 % \end{macro}
@@ -1102,11 +1101,9 @@ do not make sense semantically outside a definition.}
 %
 % \begin{macro}{\adefiii}
 %    \begin{macrocode}
-\newcommand\adefiii[5][]{\def\@keys{#1}\def\@verb{#3 #4 #5}%
-\def\@pone{#3}\def\@ptwo{#4}\def\@pthree{#5}%
-\ifx\@keys\@empty\definiendum[name=#3-#4-#5]{#2}%
-\else\definiendum[name=#3-#4-#5,#1]{#2}%
-\fi\@adefiii}
+\newcommand\adefiii[5][]{\def\@pone{#3}\def\@ptwo{#4}\def\@pthree{#5}%
+\def\@verb{#3 #4 #5}\def\@name{#3-#4-#5}%
+\@definiendum[#1]{#2}{\@name}{\@verb}\@adefiii}
 \newcommand\@adefiii[1][]{\ifdef@index\adef@at\omdoc@indexiii[at=\@@at,#1]{\@pone}{\@ptwo}{\@pthree}\fi\xspace}
 %    \end{macrocode}
 % \end{macro}
@@ -1123,11 +1120,9 @@ do not make sense semantically outside a definition.}
 %
 % \begin{macro}{\adefiv}
 %    \begin{macrocode}
-\newcommand\adefiv[6][]{\def\@keys{#1}\def\@verb{#3 #4 #5 #6}%
-\def\@pone{#3}\def\@ptwo{#4}\def\@pthree{#5}\def\@pfour{#6}%
-\ifx\@keys\@empty\definiendum[name=#3-#4-#5-#6]{#2}%
-\else\definiendum[name=#3-#4-#5-#6,#1]{#2}%
-\fi\@adefiv}
+\newcommand\adefiv[6][]{\def\@pone{#3}\def\@ptwo{#4}\def\@pthree{#5}\def\@pfour{#6}%
+\def\@name{#3-#4-#5-#6}\def\@verb{#3 #4 #5 #6}%
+\@definiendum[#1]{#2}{\@name}{\@verb}\@adefiv}
 \newcommand\@adefiv[1][]{\ifdef@index\adef@at\omdoc@indexiv[at=\@@at,#1]{\@pone}{\@ptwo}{\@pthree}{\@pfour}\fi\xspace}
 %    \end{macrocode}
 % \end{macro}
