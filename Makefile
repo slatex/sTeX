@@ -5,6 +5,7 @@
 
 SRCDIRS		= bin lib
 DOCDIRS		= example
+TESTDIRS	= example test
 DTXDIRS 	= sty 
 MAKEDIRS 	= $(DOCDIRS) $(DTXDIRS)
 
@@ -15,8 +16,7 @@ package doc filedate checksum enablechecksum disablechecksum:
 	@for d in $(DTXDIRS); do (cd $$d && $(MAKE) -$(MAKEFLAGS) $@) done
 
 test:
-	cd example; $(MAKE) -$(MAKEFLAGS)
-	cd test; $(MAKE) -$(MAKEFLAGS)
+	@for d in $(TESTDIRS); do (cd $$d && $(MAKE) -$(MAKEFLAGS) $@) done
 
 TDSCOLL = stex
 TDS.tex = 
