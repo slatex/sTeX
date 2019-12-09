@@ -609,18 +609,20 @@
 % references to the definitions in the literature; we call them \textbf{definition
 % recaps}, see \cite {IanKoh:fmkdam15} for a discussion.  To accomodate this, we supply
 % the \DescribeMacro{recaps}|recaps| key for the |\definiendum| and thus |\defi*|
-% macros. The full functionality: |\adefi[name=foo,recaps=bar?foobar]{FOOta}{FOO}|, which
-% defines a symbol with name |foo| and verbalization |FOO| in the current module, which
-% recaps the symbol |foobar| from module |bar| and shows the definiendum |FOOta| --
-% ostensibly an inflected form of |FOO| -- is almost never needed.
+% macros. The full functionality:
+% |\definiendum[name=foo,recaps=bar?foobar,lemma=FOO]{FOOta}|, which defines a symbol with
+% name |foo| and lemma |FOO| in the current module, and which also recaps the symbol
+% |foobar| from module |bar| and shows the definiendum |FOOta| -- ostensibly an inflected
+% form of |FOO| -- is almost never needed.
 %
 % Therefore the |statements| package offers the \DescribeMacro{\drefi*}|\drefi*| macros
 % and variants \DescribeMacro{\drefi*s}|\drefi*s| for plurals and
 % \DescribeMacro{\Drefi*}|\Drefi*| for capitalization as above. These provide syntactic
-% sugar for the most important forms: |\drefi[|\meta{uri}|]{|\meta{name}|}| abbreviates
-% |\defi[recaps=|\meta{uri}|]{|\meta{name}|}| and |\drefi[|\meta{thy}|]{|\meta{name}|}|
-% abbreviates |\defi[recaps=|\meta{thy}|?|\meta{name}|]{|\meta{name}|}| if \meta{thy} does
-% not contain a |?|.
+% sugar for the most important forms: If \meta{uri} contains a |?|, then
+% |\drefi[|\meta{uri}|]{|\meta{name}|}| abbreviates
+% |\definiendum[recaps=|\meta{uri}|]{|\meta{name}|}| otherwise \meta{uri} represents a
+% theory \meta{thy} and |\drefi[|\meta{thy}|]{|\meta{name}|}| abbreviates
+% |\defiendum[recaps=|\meta{thy}|?|\meta{name}|]{|\meta{name}|}|.
 %
 % Figure~\ref{fig:drefi} shows a typical situation: We have an external theory |graphs| --
 % here in the same file for example convenience, and a recap slide in a presentation,
@@ -1250,7 +1252,7 @@ whatever is suitable semantically}\fi}
 %
 % \begin{macro}{\@instring}
 %   We first define an auxiliary conditional |\@instring| that checks of |?| is in
-%   % the first argument.  |\mdref| and |\Mdref| use it.
+%   % the first argument.  |\mtref|, |\Mtref|, |\mdref|, and |\Mdref| use it.
 %    \begin{macrocode}
 \def\@instring#1#2{TT\fi\begingroup\edef\x{\endgroup\noexpand\in@{#1}{#2}}\x\ifin@}
 %    \end{macrocode}
@@ -1261,7 +1263,6 @@ whatever is suitable semantically}\fi}
 %   |\termref[cd=|\meta{cd'}|,name=|\meta{name'}|]| by after  splitting \meta{uri} at the
 %   |?| and overwriting \meta{cd} and \meta{name} with the components as necessary.
 %    \begin{macrocode}
-\def\@instring#1#2{TT\fi\begingroup\edef\x{\endgroup\noexpand\in@{#1}{#2}}\x\ifin@}
 \newcommand\@@mtref[3]{\def\@@cd{#1}\def\@@name{#2}%
 \ifx\@@cd\@empty%
 \ifx\@@name\@empty\termref[]{#3}\else\termref[name=\@@name]{#3}\fi%
@@ -1328,12 +1329,20 @@ whatever is suitable semantically}\fi}
 % 
 % \begin{macro}{\dref*}
 %   We first define an auxiliary macro\ednote{it should probably contain an
-%   @}|\mdref|\ednote{MK: this seems to do the same as |\mtref|, },
-%   which checks for |?| in the first argument, if not it just calls
-%   |\termref|, otherwise it calls |\@mtref|, which assembles the |\termref| after
+%   @}|\mdref|,  which checks for |?| in the first argument, if not it just calls
+%   |\@definiendum|, otherwise it calls |\@mdref|, which assembles the |\@definiendum| after
 %   splitting at the |?|.
 %    \begin{macrocode}
-\newcommand\mdref[3][]{\if\@instring{?}{#1}\@mtref #1\relax{#3}\else\termref[cd=#1,name=#3]{#2}\fi}
+\newcommand\mdref[3][]{\def\@test{#1}%
+\if\@instring{?}{#1}%
+\ifx\@test\@empty\definiendum[name=#3]{#2}\else\definiendum[recaps=#1,name=#3]{#2}\fi%
+\else%
+\ifx\@test\@empty\definiendum[name=#3]{#2}\else\definiendum[recaps=#1?#3,name=#3]{#2}\fi%
+\fi}
+%    \end{macrocode}
+% Actually, we do somethin else than specified above, but the {\latexml} will do
+% so.\ednote{or we will use that  } 
+%    \begin{macrocode}
 \newcommand\drefi[2][]{\defemph{\mdref[#1]{#2}{#2}}}
 \newcommand\drefii[3][]{\defemph{\mdref[#1]{#2 #3}{#2-#3}}}
 \newcommand\drefiii[4][]{\defemph{\mdref[#1]{#2 #3 #4}{#2-#3-#4}}}
@@ -1347,7 +1356,7 @@ whatever is suitable semantically}\fi}
 %
 % \begin{macro}{\Dref*}
 %    \begin{macrocode}
-\newcommand\Mdref[3][]{\if\@instring{?}{#1}\@mtref #1\relax\capitalize{#3}\else\termref[cd=#1,name=#3]{\capitalize{#2}}\fi}
+\newcommand\Mdref[3][]{\if\@instring{?}{#1}\@mdref #1\relax\capitalize{#3}\else\termref[cd=#1,name=#3]{\capitalize{#2}}\fi}
 \newcommand\Drefi[2][]{\defemph{\Mdref[#1]{#2}{#2}}}
 \newcommand\Drefii[3][]{\defemph{\Mdref[#1]{#2 #3}{#2-#3}}}
 \newcommand\Drefiii[4][]{\defemph{\Mdref[#1]{#2 #3 #4}{#2-#3-#4}}}
