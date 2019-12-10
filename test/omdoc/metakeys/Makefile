@@ -1,4 +1,4 @@
+include ../../make/Makefile.in
 pre:
 
-include ../../make/Makefile.in
 
