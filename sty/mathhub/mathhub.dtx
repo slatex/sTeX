@@ -330,6 +330,10 @@
 %<*package>
 \RequirePackage{keyval}
 \RequirePackage{pathsuris}
+\if@latexml\else
+\RequirePackage{xparse}
+\RequirePackage{expl3}
+\fi
 %    \end{macrocode}
 % 
 % \subsection{\texttt{mathhub.sty}: General Infrastructure}\label{sec:impl:infra}
@@ -392,11 +396,147 @@
     Both \mh@libfile.sty\MessageBreak and \mh@inffile.sty\MessageBreak%
     do not exist}%
   {Check whether the file name is correct}}}}
-\IfFileExists{\mh@libfile.sty}{\usepackage[#1]{\mh@libfile}}{}
-\let\mh@inffile\orig@inffile\let\mh@libfile\orig@libfile}
-%</package>
+\IfFileExists{\@libfile.sty}{\usepackage[#1]{\@libfile}}{}}
 %    \end{macrocode}
 % \end{macro}
+%
+% The next piece of code is adapted from
+% \url{https://tex.stackexchange.com/questions/62010/can-i-access-system-environment-variables-from-latex-for-instance-home}, check there if it breaks.
+% We use it to parse the |MATHHUB| environment variable via |kpsewhich| ({\LaTeX} can run
+% this even in paranoid mode) and then set the |MathMub| path using |\defpath|. 
+%
+%    \begin{macrocode}
+\ExplSyntaxOn
+\sys_get_shell:nnN{kpsewhich ~ --var-value ~ MATHHUB} { } \MATHHUB
+\tl_trim_spaces:N \MATHHUB
+\ifx\MATHHUB\empty\else
+\def\temp_def_path#1{\defpath{MathHub}{#1}}
+\expandafter\temp_def_path\expandafter{\MATHHUB}
+\fi
+\ExplSyntaxOff
+%    \end{macrocode}
+%
+% Next we find the manifest of the MathHub archive: a file |MANIFEST.MF| up and over in
+% the file system tree.
+%
+%    \begin{macrocode}
+\def\findmanifest#1{
+  \@cpath{#1}
+  \ifx\@CanPath\@Slash
+    \def\manifest@mf{}
+  \else\ifx\@CanPath\@empty
+      \def\manifest@mf{}
+  \else
+    \IfFileExists{\@CanPath/MANIFEST.MF}{
+      \edef\manifest@mf{\@CanPath/MANIFEST.MF}
+    }{
+    \IfFileExists{\@CanPath/META-INF/MANIFEST.MF}{
+      \edef\manifest@mf{\@CanPath/META-INF/MANIFEST.MF}
+    }{
+    \IfFileExists{\@CanPath/meta-inf/MANIFEST.MF}{
+      \edef\manifest@mf{\@CanPath/meta-inf/MANIFEST.MF}
+    }{
+      \findmanifest{\@CanPath/..}
+    }}}
+  \fi\fi
+}
+%    \end{macrocode}
+%
+% the next macro is a helper function for parsing |MANIFEST.MF|
+%
+%    \begin{macrocode}
+\def\split@manifest@key{
+  \IfSubStr{\manifest@line}{\@Colon}{
+      \StrBefore{\manifest@line}{\@Colon}[\manifest@key]
+      \StrBehind{\manifest@line}{\@Colon}[\manifest@line]
+      \trimstring\manifest@line
+      \trimstring\manifest@key
+  }{
+      \def\manifest@key{}
+  }
+}
+%    \end{macrocode}
+%
+% the next helper function iterates over lines in |MANIFEST.MF|
+%
+%    \begin{macrocode}
+\def\parse@manifest@loop{
+  \ifeof\@manifest
+  \else
+    \read\@manifest to \manifest@line\relax
+    \split@manifest@key
+    % id
+    \IfStrEq\manifest@key{id}{
+        \xdef\manifest@mf@id{\manifest@line}
+    }{
+    % narration-base
+    \IfStrEq\manifest@key{narration-base}{
+        \xdef\manifest@mf@narr{\manifest@line}
+    }{
+    % namespace
+    \IfStrEq\manifest@key{source-base}{
+        \xdef\manifest@mf@ns{\manifest@line}
+    }{
+    \IfStrEq\manifest@key{ns}{
+        \xdef\manifest@mf@ns{\manifest@line}
+    }{
+    % dependencies
+    \IfStrEq\manifest@key{dependencies}{
+        \xdef\manifest@mf@deps{\manifest@line}
+    }{
+            
+    }}}}}
+    \parse@manifest@loop
+  \fi
+}
+%    \end{macrocode}
+%
+% and finally, we find path of main file
+%
+%    \begin{macrocode}
+\begingroup
+  \edef\oldpercentcatcode{\the\catcode`\%}
+  \catcode`\%=12
+  \def\percent{%}
+  \catcode`\%=\oldpercentcatcode
+  \ExplSyntaxOn
+    \edef\windowsstring{\detokenize{windows}}
+    \edef\os_string{\expandafter\detokenize\expandafter{\c_sys_platform_str}}
+    \ifx\os_string\windowsstring
+      \edef\cmd_string{kpsewhich ~ -expand-var ~ \percent CD\percent}
+    \else
+      \edef\cmd_string{kpsewhich ~ -var-value ~ PWD}
+    \fi
+	\expandafter\sys_get_shell:nnN\expandafter{\cmd_string} { } \mainfile_dir
+    	\tl_trim_spaces:N \mainfile_dir
+	\xdef\mainfile_dir{\expandafter\detokenize\expandafter{\mainfile_dir}}
+  \ExplSyntaxOff
+\endgroup
+\expandafter\let\expandafter\mathhub@maindir\csname mainfile_dir\endcsname
+%    \end{macrocode}
+%
+% We read in and parse |MANIFEST.MF|
+%
+%    \begin{macrocode}
+\findmanifest{\mathhub@maindir}
+\begingroup
+  \gdef\manifest@mf@id{}
+  \gdef\manifest@mf@narr{}
+  \gdef\manifest@mf@ns{}
+  \gdef\manifest@mf@deps{}
+  \newread\@manifest
+  \openin\@manifest\manifest@mf
+  \parse@manifest@loop
+  \closein\@manifest
+\endgroup
+%    \end{macrocode}
+%
+% Finally -- and that is the ultimate goal of all of the above, we set the current repos.  
+%
+%    \begin{macrocode}
+\mhcurrentrepos{\manifest@mf@id}
+%</package>
+%    \end{macrocode}
 %
 % \subsection{\texttt{omdoc--mh.sty}: MH Document Infrastructure}\label{sec:impl:modules}
 %
