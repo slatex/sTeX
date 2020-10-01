@@ -9,10 +9,11 @@
 \NeedsTeXFormat{LaTeX2e}[1999/12/01]
 \RequirePackage{stex-base}
 \RequirePackage{keyval}
-\RequirePackage[abspath]{currfile}
+\if@latexml\RequirePackage[abspath]{currfile}\fi
 \if@latexml\else\RequirePackage{xparse}\fi
 \if@latexml\else\RequirePackage{xstring}\fi
 \RequirePackage{pathsuris}
+\RequirePackage{expl3}
 
 \newcommand\mhcurrentrepos[1]{%
   \edef\@test{#1}%
@@ -58,7 +59,7 @@
 
 \ExplSyntaxOn
 \sys_get_shell:nnN{kpsewhich ~ --var-value ~ MATHHUB} { } \MATHHUB
-\tl_trim_spaces:N \l_tmpa_tl
+\tl_trim_spaces:N \MATHHUB
 \ifx\MATHHUB\empty\else
 \def\temp_def_path#1{\defpath{MathHub}{#1}}
 \expandafter\temp_def_path\expandafter{\MATHHUB}
@@ -134,9 +135,31 @@
   \fi
 }
 
+% find path of main file
+
+\begingroup
+  \edef\oldpercentcatcode{\the\catcode`\%}
+  \catcode`\%=12
+  \def\percent{%}
+  \catcode`\%=\oldpercentcatcode
+  \ExplSyntaxOn
+    \edef\windowsstring{\detokenize{windows}}
+    \edef\os_string{\expandafter\detokenize\expandafter{\c_sys_platform_str}}
+    \ifx\os_string\windowsstring
+      \edef\cmd_string{kpsewhich ~ -expand-var ~ \percent CD\percent}
+    \else
+      \edef\cmd_string{kpsewhich ~ -var-value ~ PWD}
+    \fi
+	\expandafter\sys_get_shell:nnN\expandafter{\cmd_string} { } \mainfile_dir
+    	\tl_trim_spaces:N \mainfile_dir
+	\xdef\mainfile_dir{\expandafter\detokenize\expandafter{\mainfile_dir}}
+  \ExplSyntaxOff
+\endgroup
+\expandafter\let\expandafter\mathhub@maindir\csname mainfile_dir\endcsname
+
 % read in and parse manifest.mf
 
-\findmanifest{\currfileabsdir}
+\findmanifest{\mathhub@maindir}
 \begingroup
   \gdef\manifest@mf@id{}
   \gdef\manifest@mf@narr{}
