@@ -9,10 +9,11 @@
 \NeedsTeXFormat{LaTeX2e}[1999/12/01]
 \RequirePackage{stex-base}
 \RequirePackage{keyval}
+\RequirePackage[abspath]{currfile}
 \if@latexml\else\RequirePackage{xparse}\fi
 \if@latexml\else\RequirePackage{xstring}\fi
-\if@latexml\else\RequirePackage[abspath]{currfile}\fi
 \RequirePackage{pathsuris}
+
 \newcommand\mhcurrentrepos[1]{%
   \edef\@test{#1}%
   \ifx\@test\mh@currentrepos% if new dir = old dir
@@ -64,6 +65,90 @@
 \fi
 \ExplSyntaxOff
 %\mhcurrentrepos{\StrBetween\PWD\MATHHUB{/current/}}
+
+% find manifest.mf
+
+\def\findmanifest#1{
+  \@cpath{#1}
+  \ifx\@CanPath\@Slash
+    \def\manifest@mf{}
+  \else\ifx\@CanPath\@empty
+      \def\manifest@mf{}
+  \else
+    \IfFileExists{\@CanPath/MANIFEST.MF}{
+      \edef\manifest@mf{\@CanPath/MANIFEST.MF}
+    }{
+    \IfFileExists{\@CanPath/META-INF/MANIFEST.MF}{
+      \edef\manifest@mf{\@CanPath/META-INF/MANIFEST.MF}
+    }{
+    \IfFileExists{\@CanPath/meta-inf/MANIFEST.MF}{
+      \edef\manifest@mf{\@CanPath/meta-inf/MANIFEST.MF}
+    }{
+      \findmanifest{\@CanPath/..}
+    }}}
+  \fi\fi
+}
+
+% helper function for parsing manifest.mf
+
+\def\split@manifest@key{
+  \IfSubStr{\manifest@line}{\@Colon}{
+      \StrBefore{\manifest@line}{\@Colon}[\manifest@key]
+      \StrBehind{\manifest@line}{\@Colon}[\manifest@line]
+      \trimstring\manifest@line
+      \trimstring\manifest@key
+  }{
+      \def\manifest@key{}
+  }
+}
+
+% iterates over lines in manifest.mf
+
+\def\parse@manifest@loop{
+  \ifeof\@manifest
+  \else
+    \read\@manifest to \manifest@line\relax
+    \split@manifest@key
+    % id
+    \IfStrEq\manifest@key{id}{
+        \xdef\manifest@mf@id{\manifest@line}
+    }{
+    % narration-base
+    \IfStrEq\manifest@key{narration-base}{
+        \xdef\manifest@mf@narr{\manifest@line}
+    }{
+    % namespace
+    \IfStrEq\manifest@key{source-base}{
+        \xdef\manifest@mf@ns{\manifest@line}
+    }{
+    \IfStrEq\manifest@key{ns}{
+        \xdef\manifest@mf@ns{\manifest@line}
+    }{
+    % dependencies
+    \IfStrEq\manifest@key{dependencies}{
+        \xdef\manifest@mf@deps{\manifest@line}
+    }{
+            
+    }}}}}
+    \extractid@loop
+  \fi
+}
+
+% read in and parse manifest.mf
+
+\findmanifest{\currfileabsdir}
+\begingroup
+  \gdef\manifest@mf@id{}
+  \gdef\manifest@mf@narr{}
+  \gdef\manifest@mf@ns{}
+  \gdef\manifest@mf@deps{}
+  \newread\@manifest
+  \openin\@manifest\manifest@mf
+  \extractid@loop
+  \closein\@manifest
+\endgroup
+
+
 \endinput
 %%
 %% End of file `mathhub.sty'.
