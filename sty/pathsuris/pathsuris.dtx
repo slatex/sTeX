@@ -7,7 +7,7 @@
 %  
 % \iffalse
 %<package>\NeedsTeXFormat{LaTeX2e}[1999/12/01]
-%<package>\ProvidesPackage{pathsuris}[2016/02/18 v1.1 Paths and URIs for sTeX]
+%<package>\ProvidesPackage{pathsuris}[2020/09/30 v2.1 Paths and URIs for sTeX]
 %
 %<*driver>
 \documentclass{ltxdoc}
@@ -42,7 +42,7 @@
 %
 % \title{\texttt{pathsuris.sty}: Paths and URIs for \sTeX \thanks{Version {\fileversion} (last revised
 %        {\filedate})}}
-% \author{Jinbo Zhang, Michael Kohlhase\\
+% \author{Jinbo Zhang, Michael Kohlhase, Dennis M\"uller\\
 %         FAU Erlangen-N\"urnberg}
 % \maketitle
 % 
@@ -101,6 +101,29 @@
 %   aaa/bbb/../.. & \cpath{aaa/bbb/../..} & \\\hline
 % \end{tabular}
 % \end{center}
+%
+%\subsection{URI splitting}\label{sec:user:uri}
+%
+% By calling |\seturi[\meta{macroname}]{|\meta{path}|}|, the 
+% URI will be plit into |\macronamescheme|, |\macronameauthority|,
+% |\macronamepath|, |\macronamequery| and |\macronamefragment|, as in the
+% following example. If the optional
+% |macroname| is not provided, the default name is |pathsuris@curruri@|.
+%
+% \begin{center}
+% |\seturi[myuri]{http://this.isatest/foo/bar/?query#fragment}|
+% \seturi[myuri]{http://this.isatest/foo/bar/?query#fragment}
+%
+% yields:
+% \begin{tabular}{|l|l|}\hline
+%   macro & value \\\hline
+%   |\myurischeme| & \myurischeme \\
+%   |\myuriauthority| & \myuriauthority \\
+%   |\myuripath| & \myuripath \\
+%   |\myuriquery| & \myuriquery \\
+%   |\myurifragment| & \myurifragment \\\hline
+% \end{tabular}
+% \end{center}
 % 
 % \StopEventually{\newpage\PrintIndex\newpage\PrintChanges\newpage\printbibliography}\newpage
 %
@@ -110,8 +133,6 @@
 %<*package>
 \RequirePackage{stex-base}
 \RequirePackage{xstring}
-\RequirePackage{forloop}
-\RequirePackage{calc}
 \RequirePackage{etoolbox}
 %    \end{macrocode}
 %
@@ -144,77 +165,99 @@
 % \end{macro}
 %
 % \subsection{Path Canonicalization}\label{sec:impl:cpath}
-%
-% We first create some counters. |AddrNum| will count the number of sections in the input
-% path, |iLoop| will be used as the loop iterator, |iName| will be used for generating
-% names such as |Addri|, |Addrii|, |RealAddrNum| will count the number of sections in the
-% canonicalized path, |Cutable| will count the number of sections besides |..|.
+% 
+% We define two macros for changing the category codes of common
+% characters in URIs, in particular \#.
 %    \begin{macrocode}
-\newcounter{AddrNum}
-\newcounter{iLoop}
-\newcounter{iName}
-\newcounter{RealAddrNum}
-\newcounter{Cutable}
+\def\pathsuris@setcatcodes{%
+    \edef\pathsuris@oldcatcode@hash{\the\catcode`\#}%
+    \catcode`\#=12\relax%
+    \edef\pathsuris@oldcatcode@slash{\the\catcode`\/}%
+    \catcode`\/=12\relax%
+    \edef\pathsuris@oldcatcode@colon{\the\catcode`\:}%
+    \catcode`\:=12\relax%
+    \edef\pathsuris@oldcatcode@qm{\the\catcode`\?}%
+    \catcode`\?=12\relax%
+}
+\def\pathsuris@resetcatcodes{%
+    \catcode`\#\pathsuris@oldcatcode@hash\relax%
+    \catcode`\/\pathsuris@oldcatcode@slash\relax%
+    \catcode`\:\pathsuris@oldcatcode@colon\relax%
+    \catcode`\?\pathsuris@oldcatcode@qm\relax%
+}
 %    \end{macrocode}
-% We define two macros for later comparison.
+%
+% We define some macros for later comparison.
 %    \begin{macrocode}
 \def\@ToTop{..}
 \def\@Slash{/}
-%    \end{macrocode}
-% Then we split the input path.
-%    \begin{macrocode}
-\def\@MultiAddrs#1/#2\@nil{%
-  \def\CurArg{#1}%
-  \def\NextArg{#2}%
-  \ifx\@empty\CurArg% for the first one
-  \else%
-    \stepcounter{AddrNum}%   
-    \expandafter\edef\csname Addr\roman{AddrNum}\endcsname{#1}% storing 
-  \fi%
-  \ifx\@empty\NextArg% for the last one
-    \let\next\@gobble%
-  \fi%
-  \next#2\@nil% recursion
-}% 
+\def\@Colon{:}
+\def\@QuestionMark{?}
+\def\@ToHere{.}
+
+\pathsuris@setcatcodes
+\def\@Fragment{#}
+\pathsuris@resetcatcodes
 %    \end{macrocode}
 % Implement |\@cpath|.
 %
 % \begin{macro}{\@cpath}
 %    \begin{macrocode}
 \def\@cpath#1{%
-  \let\next\@MultiAddrs%
-  \setcounter{AddrNum}{0}%
-  \setcounter{iLoop}{0}%
-  \setcounter{iName}{0}%
-  \setcounter{RealAddrNum}{0}%
-  \setcounter{Cutable}{0}%
-  \def\@CurrPath{}%
-  \def\@CanPath{}%
-  \def\@TempPath{}%
-  \def\@Rubbish{}%
-  \expandafter\next#1/\@nil% recursion starts
-  \forloop{iLoop}{0}{\value{iLoop} < \value{AddrNum}}{%
-    \stepcounter{iName}%
-    \edef\@CurrPath{\csname Addr\roman{iName}\endcsname}%
-    \ifx\@CurrPath\@ToTop%
-	  \ifnum\value{Cutable} = 0%
-        \edef\@CanPath{\@CanPath\csname Addr\roman{iName}\endcsname/}%
-        \stepcounter{RealAddrNum}%
-      \else%
-        % cut the last part, and add a slash at the end
-        \StrCut[\value{RealAddrNum}]{/\@CanPath}{/}\@TempPath\@Rubbish%
-        \StrCut[1]{\@TempPath/}{/}\@Rubbish\@CanPath%
-        \addtocounter{RealAddrNum}{-1}%
-        \addtocounter{Cutable}{-1}%
+    \edef\pathsuris@temp{#1}%
+    \def\@CanPath{}%
+    \IfBeginWith\pathsuris@temp\@Slash{%
+      \@cpath@loop%
+      \edef\@CanPath{\@Slash\@CanPath}%
+    }{%
+      \@cpath@loop%
+    }%
+    \IfEndWith\@CanPath\@Slash{%
+      \ifx\@CanPath\@Slash\else%
+        \StrGobbleRight\@CanPath1[\@CanPath]%
       \fi%
-    \else%
-      \edef\@CanPath{\@CanPath\csname Addr\roman{iName}\endcsname/}%
-      \stepcounter{RealAddrNum}%
-      \stepcounter{Cutable}%
-    \fi%
-  }%
-  \StrCut[\value{RealAddrNum}]{\@CanPath}{/}\@CanPath\@Rubbish% cut last /
-}%
+    }{}%
+}
+
+\def\@cpath@loop{%
+    \IfSubStr\pathsuris@temp\@Slash{%
+        \StrCut\pathsuris@temp\@Slash\pathsuris@temp@a\pathsuris@temp%
+        \ifx\pathsuris@temp@a\@ToTop%
+            \ifx\@CanPath\@empty%
+                \edef\@CanPath{\@ToTop}%
+            \else%
+                \edef\@CanPath{\@CanPath\@Slash\@ToTop}%
+            \fi%
+            \@cpath@loop%
+        \else%
+        \IfBeginWith\pathsuris@temp\@ToTop{%
+            \StrBehind{\pathsuris@temp}{\@ToTop}[\pathsuris@temp]%
+            \IfBeginWith\pathsuris@temp\@Slash{%
+                \edef\pathsuris@temp{\@CanPath\pathsuris@temp}%
+            }{%
+                \ifx\@CanPath\@empty\else%
+                    \edef\pathsuris@temp{\@CanPath\@Slash\pathsuris@temp}
+                \fi%
+            }%
+            \def\@CanPath{}%
+            \@cpath@loop%
+        }{%
+            \ifx\@CanPath\@empty%
+                \edef\@CanPath{\pathsuris@temp@a}%
+            \else%
+                \edef\@CanPath{\@CanPath\@Slash\pathsuris@temp@a}%
+            \fi%
+            \@cpath@loop
+        }%
+        \fi%
+    }{
+        \ifx\@CanPath\@empty%
+            \edef\@CanPath{\pathsuris@temp}%
+        \else%
+            \edef\@CanPath{\@CanPath\@Slash\pathsuris@temp}%
+        \fi%
+    }%
+}
 %    \end{macrocode}
 % \end{macro}
 %
@@ -222,10 +265,192 @@
 %
 % \begin{macro}{\cpath}
 %    \begin{macrocode}
-\newcommand\cpath[1]{\@cpath{#1}\@CanPath}
-%</package>
+\newcommand\cpath[1]{%
+    \@cpath{#1}%
+    \@CanPath%
+}
 %    \end{macrocode}
 % \end{macro}
+% \subsection{URI splitting}\label{sec:impl:uri}
+%
+% \begin{macro}{\seturi@}
+%    \begin{macrocode}
+\newif\if@pathsuris@done@
+
+\def\seturi@[#1]#2{%
+    \@pathsuris@done@false%
+    \def\pathsuris@prefix@temp{#1}
+    \edef\pathsuris@curruri{#2}%
+    \edef\pathsuris@temp{\pathsuris@curruri}%
+    \def\pathsuris@curruri@scheme{}%
+    \def\pathsuris@curruri@authority{}%
+    \def\pathsuris@curruri@path{}%
+    \def\pathsuris@curruri@query{}%
+    \def\pathsuris@curruri@fragment{}%
+    % scheme
+    \IfSubStr{\pathsuris@temp}{\@Colon}{%
+        % TODO check for valid scheme
+        \StrBefore{\pathsuris@temp}{\@Colon}[\pathsuris@curruri@scheme]%
+        \StrBehind{\pathsuris@temp}{\@Colon}[\pathsuris@temp]%
+    }{}%
+    % authority
+    \IfBeginWith{\pathsuris@temp}{\@Slash\@Slash}{%
+        \StrBehind{\pathsuris@temp}{\@Slash\@Slash}[\pathsuris@temp]%
+        \IfSubStr{\pathsuris@temp}{\@Slash}{%
+            \StrBefore{\pathsuris@temp}{\@Slash}[\pathsuris@curruri@authority]%
+            \StrBehind{\pathsuris@temp}{\@Slash}[\pathsuris@temp]%
+            % TODO userinfo,host,port
+        }{%
+            % TODO query,fragment
+            \edef\pathsuris@curruri@authority{\pathsuris@temp}%
+            \@pathsuris@done@true%
+        }%
+    }{}%
+    % path, query, fragment
+    \if@pathsuris@done@\else%
+        \IfSubStr{\pathsuris@temp}{\@QuestionMark}{%
+            % path
+            \StrBefore{\pathsuris@temp}{\@QuestionMark}[\pathsuris@curruri@path]%
+            \StrBehind{\pathsuris@temp}{\@QuestionMark}[\pathsuris@temp]%
+            % query,fragment
+            \IfSubStr{\pathsuris@temp}{\@Fragment}{%
+                \StrBefore{\pathsuris@temp}{\@Fragment}[\pathsuris@curruri@query]%
+                \StrBehind{\pathsuris@temp}{\@Fragment}[\pathsuris@curruri@fragment]%
+            }{%
+                \edef\pathsuris@curruri@query{\pathsuris@temp}%
+            }%
+        }{%
+            % path,fragment
+            \IfSubStr{\pathsuris@temp}{\@Fragment}{%
+                \StrBefore{\pathsuris@temp}{\@Fragment}[\pathsuris@curruri@path]%
+                \StrBehind{\pathsuris@temp}{\@Fragment}[\pathsuris@curruri@fragment]%
+            }{%
+                \edef\pathsuris@curruri@path{\pathsuris@temp}%
+            }%
+        }%
+    \fi%
+    %drop trailing slash of path
+    %\IfEndWith{\pathsuris@curruri@path}{\@Slash}{%
+    %    \StrGobbleRight{\pathsuris@curruri@path}{1}[\pathsuris@curruri@path]
+    %}{}%
+    %
+    %\edef\pathsuris@curruri@path{\cpath{\pathsuris@curruri@path}}%
+    \ifx\pathsuris@prefix@temp\@empty\else%
+        \expandafter\edef\csname \pathsuris@prefix@temp scheme\endcsname{\pathsuris@curruri@scheme}%
+        \expandafter\edef\csname \pathsuris@prefix@temp authority\endcsname{\pathsuris@curruri@authority}%
+        \expandafter\edef\csname \pathsuris@prefix@temp path\endcsname{\pathsuris@curruri@path}%
+        \expandafter\edef\csname \pathsuris@prefix@temp query\endcsname{\pathsuris@curruri@query}%
+        \expandafter\edef\csname \pathsuris@prefix@temp fragment\endcsname{\pathsuris@curruri@fragment}%
+    \fi%
+}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\seturi}
+%    \begin{macrocode}
+\newrobustcmd\seturi[1][]{%
+    \pathsuris@setcatcodes%
+    \expandafter\pathsuris@resetcatcodes\seturi@[#1]%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% auxiliary code:
+%
+%    \begin{macrocode}
+\def\@Space{ }
+\def\trimstring#1{
+    \edef\pathsuris@trim@temp{#1}
+    \IfBeginWith\pathsuris@trim@temp\@Space{
+        \StrGobbleLeft\pathsuris@trim@temp1[#1]
+        \trimstring{#1}
+    }{
+        \IfEndWith\pathsuris@trim@temp\@Space{
+            \StrGobbleRight\pathsuris@trim@temp1[#1]
+            \trimstring{#1}
+        }{
+            \edef#1{\pathsuris@trim@temp}
+        }
+    }
+}
+
+% windows paths
+
+\catcode`\.=0
+.catcode`.\=12
+.let.@BackSlash\
+.catcode`.\=0
+\catcode`\.=12
+
+\newif\if@windowstopath@inpath@
+\def\windows@to@path#1{
+    \@windowstopath@inpath@false
+    \def\windows@temp{}
+    \edef\windows@path{#1}
+    \ifx\windows@path\@empty\else
+        \expandafter\windows@path@loop\windows@path\windows@path@end
+    \fi
+    \let#1\windows@temp
+}
+\def\windows@path@loop#1#2\windows@path@end{
+    \def\windows@temp@b{#2}
+    \ifx\windows@temp@b\@empty
+        \def\windows@continue{}
+    \else
+        \def\windows@continue{\windows@path@loop#2\windows@path@end}
+    \fi
+    \if@windowstopath@inpath@
+        \ifx#1\@BackSlash
+            \edef\windows@temp{\windows@temp\@Slash}
+        \else
+            \edef\windows@temp{\windows@temp#1}
+        \fi
+    \else
+        \ifx#1:
+            \edef\windows@temp{\@Slash\windows@temp}
+            \@windowstopath@inpath@true
+        \else
+            \edef\windows@temp{\windows@temp#1}
+        \fi
+    \fi
+    \windows@continue
+}
+
+\def\path@to@windows#1{
+    \@windowstopath@inpath@false
+    \def\windows@temp{}
+    \edef\windows@path{#1}
+    \edef\windows@path{\expandafter\@gobble\windows@path}
+    \ifx\windows@path\@empty\else
+        \expandafter\path@windows@loop\windows@path\windows@path@end
+    \fi
+    \let#1\windows@temp
+}
+\def\path@windows@loop#1#2\windows@path@end{
+    \def\windows@temp@b{#2}
+    \ifx\windows@temp@b\@empty
+        \def\windows@continue{}
+    \else
+        \def\windows@continue{\path@windows@loop#2\windows@path@end}
+    \fi
+    \if@windowstopath@inpath@
+        \ifx#1/
+            \edef\windows@temp{\windows@temp\@BackSlash}
+        \else
+            \edef\windows@temp{\windows@temp#1}
+        \fi
+    \else
+        \ifx#1/
+            \edef\windows@temp{\windows@temp:\@BackSlash}
+            \@windowstopath@inpath@true
+        \else
+            \edef\windows@temp{\windows@temp#1}
+        \fi
+    \fi
+    \windows@continue
+}
+
+%</package>
+%    \end{macrocode}
 %
 % \Finale
 % \endinput
@@ -240,3 +465,7 @@
 %  LocalWords:  bbb bbb bbb printbibliography sec:impl xstring forloop etoolbox endcsname
 %  LocalWords:  newcommand newrobustcmd expandafter AddrNum Addri Addrii Cutable ifx Addr
 %  LocalWords:  newcounter stepcounter setcounter ifnum addtocounter doctex stex-base
+%  LocalWords:  seturi macronamescheme macronameauthority macronamequery myuri myuriquery
+%  LocalWords:  pathsuris@curruri myurischeme myurischeme myuriauthority myuriauthority
+%  LocalWords:  myuriquery pathsuris@setcatcodes catcode pathsuris@resetcatcodes newif
+%  LocalWords:  userinfo,host,port query,fragment path,fragment trimstring

@@ -43,6 +43,7 @@
 % \changes{v1.1}{2017/11/09}{Changed the semantics of \texttt{libinput} to input first the
 % \texttt{meta-inf}-level and then repos-level file; this allows more sharing and does not
 % break MathHub content (only one of them currently exists)}
+% \changes{v1.2}{2020/10/01}{got rid of the dependency on |localpaths.tex|}
 % 
 % \MakeShortVerb{\|}
 %
@@ -56,10 +57,10 @@
 % \maketitle
 %
 % \begin{abstract}
-%   The |sref| package is part of the {\sTeX} collection, a version of {\TeX/\LaTeX} that
-%   allows to markup {\TeX/\LaTeX} documents semantically without leaving the document
-%   format, essentially turning {\TeX/\LaTeX} into a document format for mathematical
-%   knowledge management (MKM).
+%   The |mathhub| package collection is part of the {\sTeX} collection, a version of
+%   {\TeX/\LaTeX} that allows to markup {\TeX/\LaTeX} documents semantically without
+%   leaving the document format, essentially turning {\TeX/\LaTeX} into a document format
+%   for mathematical knowledge management (MKM).
 %
 %   The |mathhub| packages extend \sTeX with support for \textsf{MathHub} file system
 %   layout, which has co-eveolved with the \textsf{MathHub.info} portal for active
@@ -77,61 +78,65 @@
 % supporting a regular $\leadsto$ manageable file system layout schema that has
 % co-eveolved with the \textsf{MathHub.info} portal for active documents, but is useful
 % for organizing collections of \sTeX documents in its own right. In particular, since the
-% layout scheme is supported by the |lmh| tool (\underline{l}ocal
-% \underline{m}ath\underline{h}ub)~\cite{lmh:on}, which automates many management tasks.
+% layout scheme is supported by the |lmh| (\underline{l}ocal
+% \underline{m}ath\underline{h}ub~\cite{mmt:lmh:on}), and |make| (a build
+% system~\cite{mmt:buildsys:on} for MathHub archives) in MMT~\cite{uniformal:on} which
+% automates many management tasks.  For instance, after installing the |mmt.jar|, the
+% shell command |mmt lmh install| \meta{group}|/|\meta{arch} installs the installs the
+% MathHub archive \meta{group}|/|\meta{arch} together with all of its dependencies and
+% |mmt make pdflatex| \meta{file} generates PDF for the file \meta{file} (and
+% generates/updates all auxiliary files necessary along the way). 
 % 
 % \textsf{MathHub} (\url{http://MathHub.info}), is a portal and archive for flexiformal
 % mathematics. It hosts much of the \sTeX content \textsf{MathHub} on GIT repositories
 % (public and private escrow) for mathematical documentation projects. \textsf{MathHub}
 % supports online and offline (via |lmh|) authoring and document development
-% infrastructure, and a rich, interactive reading interface. 
+% infrastructure, and a rich, interactive reading interface.
 % 
 % The \textbf{\textsf{MathHub} file system layout} has a \textbf{\textsf{MathHub} root
-% folder} (e.g. |~/localmh/MathHub|) which contains all \sTeX sources. These are organized
+% folder} (e.g. |~/localmh/MathHub|) which conibetains all \sTeX sources, which are in turn
+% organized in \textbf{MathHub archives}~\cite{HorIacJuc:cscpnrr11}.  These are organized
 % in a two-level folder system that is compatible by GIT repository managers like
 % GitHub~\cite{GitHub:on} and GitLab~\cite{GitLab:on}. Even though it is not necessary for
 % the |mathhub| package we will assume that these are GIT repositories, which have names
-% of the form \meta{group}|/|\meta{repo}, where \meta{group} is a \textsf{MathHub}-unique
-% repository group and \meta{repo} a repository name that is \meta{group}-unique. The file
-% and directory structure of a repository is arbitrary -- except that it starts with the
-% directory |source| because they are Math Archives in the sense
-% of~\cite{HorIacJuc:cscpnrr11}. But this structure can be hidden from the \sTeX author
-% with \textsf{MathHub}-enabled versions of the \sTeX macros (let's call them
-% \textbf{mh-variants}), which are defined in the |mh|-packages of the |mathhub| bundle,
-% which we document in this manual.
-% 
-% \ednote{document lmh here, how to install, what it does (build system)}
+% of the form \meta{group}|/|\meta{arch}, where \meta{group} is a \textsf{MathHub}-unique
+% repository group and \meta{arch} a MathHub archive name that is \meta{group}-unique.
 %
+% The MathHub archives have a prescribed structure; see~\cite{HorIacJuc:cscpnrr11} for
+% details. For our purposes, we only need two aspects:
+% \begin{itemize}
+% \item the \sTeX sources are all in a top-level subdirectory |source|,
+% \item there is a top-level sub-directory |META-INF| with a manifest file
+% |MANIFEST.MF| which consists of lines of the form \meta{key}|: |\meta{values}.
+% \end{itemize}
+% For the purposes of the |mathhub| package we assume that the |MANIFEST.MF| file has at
+% least the |id| key specified and the the value is exactly
+% \meta{group}|/|\meta{arch}. Furthermore, we assume that the |MATHHUB| environment
+% variable is set with the system path to the \textsf{MathHub} root folder.
+%
+% With this information the mechanics of the MathHub archive structure can be hidden from
+% the \sTeX author with \textsf{MathHub}-enabled versions of the \sTeX macros (let's call
+% them \textbf{mh-variants}), which are defined in the |mh|-packages of the |mathhub|
+% bundle, which we document in this manual. The mechanics of the |mathhub| bundle is as
+% follows: For most \sTeX package \meta{pack}|.sty| there is a |mh|-variant
+% \meta{pack}|-mh.sty|, and \meta{pack}|.sty| takes the option |mh|. When that is given
+% (by calling |\usepackage[mh]{|\meta{pack}|}|), then \meta{pack}|.sty| inputs
+% \meta{pack}|-mh.sty| from the |mathhub| bundle, which augments the \meta{pack} package
+% with MathHub functionality.
+% 
 % \section{The User Interface}\label{sec:user}
+%
+% We now document mh-variants of the \sTeX packages that have MathHub functionality.
 % 
 % \subsection{\texttt{mathhub.sty}: General Infrastructure}\label{sec:impl:infra}
-% 
-% Generally, the \TeX formatter |pdflatex| needs to know the file system paths of the
-% referenced \sTeX files: usually long relative paths. The |pathsuris|
-% package~\ctancite{ZhaKoh:pus} from the \sTeX bundle makes this somewhat more palatable
-% by supplying the |\defpath| macro, which we can use to set the \textsf{MathHub} root
-% path, e.g. by |\defpath{MathHub}{/user/foo/localmh/MathHub}| (we will assume this
-% setting for all examples below). 
-% 
-% The next information needed for referencing in the \textsf{MathHub} file system layout
-% is the repository of the referencing file and that of the referenced one. The latter
-% will be part of the mh-variants of the referencing commands introduced below, the
-% former, can be declared by the \DescribeMacro{\mhcurrentrepos}|\mhcurrentrepos| macro
-% relative to the \textsf{MathHub} root path. Thus a typical top-level \sTeX file will
-% have lines like the following in the preamble: 
-% 
-% \begin{verbatim}
-% \defpath{MathHub}{/user/foo/localmh/MathHub}
-% \mhcurrentrepos{group/repos}
-% \end{verbatim}
-% They declare that it resides at the path \url{/user/foo/localmh/MathHub/group/repos} and
-% declares the \textsf{MathHub} root path. But this fixed declaration makes the \sTeX
-% files less mobile, therefore it is a better idea to externalize these declarations into
-% an external file (usually called |localpaths.tex| that is not under GIT control since it
-% contains system-specific path information) and |\input| that in the \sTeX file
-% instead. Indeed |lmh| can generate these files automatically, which simplifies the
-% management significantly.
-% 
+%
+% For the generation of absolute file paths, the |mathhub| package keeps track of the
+% current archive. If this ever needs to be set manually, it can be declared by the
+% \DescribeMacro{\mhcurrentrepos}|\mhcurrentrepos| macro relative to the \textsf{MathHub}
+% root path. |\mhcurrentrepos{group/repos}| declare that it resides at the path
+% \url{/user/foo/localmh/MathHub/group/repos} given that the \textsf{MathHub} root
+% path is |/user/foo/| |localmh/mathhub|.
+%
 % Given a systematic grouping in the \textsf{MathHub} file layout scheme, \sTeX files in
 % the same repository (and often even in the same group) share much of the preamble
 % material. Thus it makes sense to centralize that in external (shared) files and situate
@@ -145,13 +150,12 @@
 % \meta{group}|/|\meta{repos}|/lib/|\meta{filename} if they exist. Thus a typical
 % top-level \sTeX file has the following lines in the preamble:
 % \begin{verbatim}
-% \input{localpaths}
 % \libinput{preamble}
 % \end{verbatim}
-% The \DescribeMacro{\libusepackage}|\libusepackage| is analogous. 
-% \ednote{explain the pre.tex and post.tex setup for sTeX modules (see the omdoc package)}
+% The \DescribeMacro{\libusepackage}|\libusepackage| is analogous it allows to share
+% {\LaTeX} package between MathHub archives. 
 %
-% \subsection{\texttt{omdoc--mh.sty}: MH Document Infrastructure}\label{sec:user:modules}
+% \subsection{\texttt{omdoc-mh.sty}: MH Document Infrastructure}\label{sec:user:modules}
 %
 % The \DescribeMacro{\addmhbibresource}|\addmhbibresource| macro is a variant of
 % |\addbibresource| from {bib\LaTeX} with repository support. Concretely,
@@ -328,8 +332,13 @@
 %
 %    \begin{macrocode}
 %<*package>
+\ProvidesPackage{mathhub}[2010/10/01 v1.2 Basic MathHub functionality]
 \RequirePackage{keyval}
 \RequirePackage{pathsuris}
+\if@latexml\else
+\RequirePackage{xparse}
+\RequirePackage{expl3}
+\fi
 %    \end{macrocode}
 % 
 % \subsection{\texttt{mathhub.sty}: General Infrastructure}\label{sec:impl:infra}
@@ -392,11 +401,168 @@
     Both \mh@libfile.sty\MessageBreak and \mh@inffile.sty\MessageBreak%
     do not exist}%
   {Check whether the file name is correct}}}}
-\IfFileExists{\mh@libfile.sty}{\usepackage[#1]{\mh@libfile}}{}
+\IfFileExists\mh@libfile{\input\mh@libfile\relax}{}
 \let\mh@inffile\orig@inffile\let\mh@libfile\orig@libfile}
-%</package>
 %    \end{macrocode}
 % \end{macro}
+%
+% Generally, the {\TeX} formatter |pdflatex| needs to know the file system paths of the
+% referenced \sTeX files: usually long relative paths. The |pathsuris|
+% package~\ctancite{ZhaKoh:pus} from the \sTeX bundle makes this somewhat more palatable
+% by supplying the |\defpath| macro, which we can use to set the \textsf{MathHub} root
+% path, e.g. by |\defpath{MathHub}{/user/foo/localmh/MathHub}| (we will assume this
+% setting for all examples below). Fortunately, we can compute this automatically.
+% 
+% The next piece of code is adapted from
+% \url{https://tex.stackexchange.com/questions/62010/can-i-access-system-environment-variables-from-latex-for-instance-home}, check there if it breaks.
+% We use it to parse the |MATHHUB| environment variable via |kpsewhich| ({\LaTeX} can run
+% this even in paranoid mode) and then set the |MathMub| path using |\defpath|. 
+%
+%    \begin{macrocode}
+\ExplSyntaxOn
+\sys_get_shell:nnN{kpsewhich ~ --var-value ~ MATHHUB} { } \MATHHUB
+\tl_trim_spaces:N \MATHHUB
+\ifx\MATHHUB\empty\else
+\def\temp_def_path#1{\defpath{MathHub}{#1}}
+\expandafter\temp_def_path\expandafter{\MATHHUB}
+\fi
+\ExplSyntaxOff
+%    \end{macrocode}
+%
+% Next we find the manifest of the MathHub archive: a file |MANIFEST.MF| up and over in
+% the file system tree.
+%
+%    \begin{macrocode}
+\def\findmanifest#1{
+  \@cpath{#1}
+  \ifx\@CanPath\@Slash
+    \def\manifest@mf{}
+  \else\ifx\@CanPath\@empty
+      \def\manifest@mf{}
+  \else
+    \edef\@findmanifest@path{\@CanPath/MANIFEST.MF}
+    \if@iswindows@\path@to@windows\@findmanifest@path\fi
+    \IfFileExists{\@findmanifest@path}{
+      \edef\manifest@mf{\@findmanifest@path}
+    }{
+    \edef\@findmanifest@path{\@CanPath/META-INF/MANIFEST.MF}
+    \if@iswindows@\path@to@windows\@findmanifest@path\fi
+    \IfFileExists{\@findmanifest@path}{
+      \edef\manifest@mf{\@findmanifest@path}
+    }{
+    \edef\@findmanifest@path{\@CanPath/meta-inf/MANIFEST.MF}
+    \if@iswindows@\path@to@windows\@findmanifest@path\fi
+    \IfFileExists{\@findmanifest@path}{
+      \edef\manifest@mf{\@findmanifest@path}
+    }{
+      \findmanifest{\@CanPath/..}
+    }}}
+  \fi\fi
+}
+%    \end{macrocode}
+%
+% the next macro is a helper function for parsing |MANIFEST.MF|
+%
+%    \begin{macrocode}
+\def\split@manifest@key{
+  \IfSubStr{\manifest@line}{\@Colon}{
+      \StrBefore{\manifest@line}{\@Colon}[\manifest@key]
+      \StrBehind{\manifest@line}{\@Colon}[\manifest@line]
+      \trimstring\manifest@line
+      \trimstring\manifest@key
+  }{
+      \def\manifest@key{}
+  }
+}
+%    \end{macrocode}
+%
+% the next helper function iterates over lines in |MANIFEST.MF|
+%
+%    \begin{macrocode}
+\def\parse@manifest@loop{
+  \ifeof\@manifest
+  \else
+    \read\@manifest to \manifest@line\relax
+    \split@manifest@key
+    % id
+    \IfStrEq\manifest@key{id}{
+        \xdef\manifest@mf@id{\manifest@line}
+    }{
+    % narration-base
+    \IfStrEq\manifest@key{narration-base}{
+        \xdef\manifest@mf@narr{\manifest@line}
+    }{
+    % namespace
+    \IfStrEq\manifest@key{source-base}{
+        \xdef\manifest@mf@ns{\manifest@line}
+    }{
+    \IfStrEq\manifest@key{ns}{
+        \xdef\manifest@mf@ns{\manifest@line}
+    }{
+    % dependencies
+    \IfStrEq\manifest@key{dependencies}{
+        \xdef\manifest@mf@deps{\manifest@line}
+    }{
+            
+    }}}}}
+    \parse@manifest@loop
+  \fi
+}
+%    \end{macrocode}
+%
+% and finally, we find path of main file
+%
+%    \begin{macrocode}
+\newif\if@iswindows@\@iswindows@false
+\begingroup
+  \edef\oldpercentcatcode{\the\catcode`\%}
+  \catcode`\%=12
+  \def\percent{%}
+  \catcode`\%=\oldpercentcatcode
+  \ExplSyntaxOn
+    \edef\windowsstring{\detokenize{windows}}
+    \edef\os_string{\expandafter\detokenize\expandafter{\c_sys_platform_str}}
+    \ifx\os_string\windowsstring
+      \global\@iswindows@true
+      \edef\cmd_string{kpsewhich ~ -expand-var ~ \percent CD\percent}
+    \else
+      \edef\cmd_string{kpsewhich ~ -var-value ~ PWD}
+    \fi
+	\expandafter\sys_get_shell:nnN\expandafter{\cmd_string} { } \mainfile_dir
+    	\tl_trim_spaces:N \mainfile_dir
+	\xdef\mainfile_dir{\expandafter\detokenize\expandafter{\mainfile_dir}}
+  \csname if@iswindows@\endcsname
+    \windows@to@path\mainfile_dir
+    \gdef\mainfile_dir{\mainfile_dir}
+  \fi
+  \ExplSyntaxOff
+\endgroup
+\expandafter\let\expandafter\mathhub@maindir\csname mainfile_dir\endcsname
+%    \end{macrocode}
+%
+% We read in and parse |MANIFEST.MF|
+%
+%    \begin{macrocode}
+\findmanifest{\mathhub@maindir}
+\begingroup
+  \gdef\manifest@mf@id{}
+  \gdef\manifest@mf@narr{}
+  \gdef\manifest@mf@ns{}
+  \gdef\manifest@mf@deps{}
+  \newread\@manifest
+  \openin\@manifest\manifest@mf
+  \parse@manifest@loop
+  \closein\@manifest
+\endgroup
+\if@iswindows@\windows@to@path\manifest@mf\fi
+%    \end{macrocode}
+%
+% Finally -- and that is the ultimate goal of all of the above, we set the current repos.  
+%
+%    \begin{macrocode}
+\mhcurrentrepos{\manifest@mf@id}
+%</package>
+%    \end{macrocode}
 %
 % \subsection{\texttt{omdoc--mh.sty}: MH Document Infrastructure}\label{sec:impl:modules}
 %
@@ -866,4 +1032,8 @@
 %  LocalWords:  flexiformal ednote libusepackage libusepackage mh.sty addmhbibresource
 %  LocalWords:  addmhbibresource addbibresource Multilinguality modnl smultiing 2,ext
 %  LocalWords:  transclude usepackage smultiling 1,ext 3,ext nmhinputref ifnotes 2,ext
-%  LocalWords:  clstinputmhlisting cmhgraphics 1,ext 3,ext mhinlineView
+%  LocalWords:  clstinputmhlisting cmhgraphics 1,ext 3,ext mhinlineView xparse libinputs
+%  LocalWords:  mh@inffile mh@libfile orig@inffile orig@libfile kpsewhich MathMub ifeof
+%  LocalWords:  ExplSyntaxOn ExplSyntaxOff trimstring xdef begingroup oldpercentcatcode
+%  LocalWords:  catcode windowsstring detokenize endgroup csname endcsname newread 2,ext
+%  LocalWords:  closein 1,ext 3,ext mmt.jar
