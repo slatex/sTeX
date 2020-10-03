@@ -1,3 +1,3 @@
-AUX = problem1.tex
+AUX = prob1.tex
 include ../../make/Makefile.in
 
