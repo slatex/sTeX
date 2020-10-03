@@ -12,7 +12,6 @@
 \RequirePackage{pathsuris}
 \if@latexml\else
 \RequirePackage{xparse}
-\RequirePackage{expl3}
 \fi
 \newcommand\mhcurrentrepos[1]{%
   \edef\@test{#1}%
@@ -53,14 +52,23 @@
   {Check whether the file name is correct}}}}
 \IfFileExists\mh@libfile{\input\mh@libfile\relax}{}
 \let\mh@inffile\orig@inffile\let\mh@libfile\orig@libfile}
-\ExplSyntaxOn
-\sys_get_shell:nnN{kpsewhich ~ --var-value ~ MATHHUB} { } \MATHHUB
-\tl_trim_spaces:N \MATHHUB
-\ifx\MATHHUB\empty\else
-\def\temp_def_path#1{\defpath{MathHub}{#1}}
-\expandafter\temp_def_path\expandafter{\MATHHUB}
-\fi
-\ExplSyntaxOff
+\newif\if@iswindows@\@iswindows@false
+\IfFileExists{nul:}{\IfFileExists{/dev/null}{}{\@iswindows@true}}{}
+
+\def\kpsewhich#1#2{\begingroup
+  \def\@Space{ }
+  \edef\kpsewhich@cmd{"|kpsewhich #2"}
+  \everyeof{\noexpand}
+  \catcode`\\=12
+  \edef#1{\@@input\kpsewhich@cmd\@Space}
+  \trimstring#1
+  \global\let#1#1
+\endgroup}
+
+\kpsewhich\mathhub@path{--var-value MATHHUB}
+\if@iswindows@\windows@to@path\mathhub@path\fi
+\ifx\mathhub@path\@empty\else\defpath{MathHub}{\mathhub@path}\fi
+
 \def\findmanifest#1{
   \@cpath{#1}
   \ifx\@CanPath\@Slash
@@ -126,31 +134,15 @@
     \parse@manifest@loop
   \fi
 }
-\newif\if@iswindows@\@iswindows@false
-\begingroup
-  \edef\oldpercentcatcode{\the\catcode`\%}
-  \catcode`\%=12
-  \def\percent{%}
-  \catcode`\%=\oldpercentcatcode
-  \ExplSyntaxOn
-    \edef\windowsstring{\detokenize{windows}}
-    \edef\os_string{\expandafter\detokenize\expandafter{\c_sys_platform_str}}
-    \ifx\os_string\windowsstring
-      \global\@iswindows@true
-      \edef\cmd_string{kpsewhich ~ -expand-var ~ \percent CD\percent}
-    \else
-      \edef\cmd_string{kpsewhich ~ -var-value ~ PWD}
-    \fi
-\expandafter\sys_get_shell:nnN\expandafter{\cmd_string} { } \mainfile_dir
-     \tl_trim_spaces:N \mainfile_dir
-\xdef\mainfile_dir{\expandafter\detokenize\expandafter{\mainfile_dir}}
-  \csname if@iswindows@\endcsname
-    \windows@to@path\mainfile_dir
-    \gdef\mainfile_dir{\mainfile_dir}
-  \fi
-  \ExplSyntaxOff
-\endgroup
-\expandafter\let\expandafter\mathhub@maindir\csname mainfile_dir\endcsname
+
+\edef\oldpercentcatcode{\the\catcode`\%}
+\catcode`\%=12
+\let\percent%
+\catcode`\%=\oldpercentcatcode
+
+\edef\pwd@cmd{\if@iswindows@ -expand-var \percent CD\percent\else -var-value PWD\fi}
+\kpsewhich\mathhub@maindir\pwd@cmd
+\if@iswindows@\windows@to@path\mathhub@maindir\fi
 \findmanifest{\mathhub@maindir}
 \begingroup
   \gdef\manifest@mf@id{}

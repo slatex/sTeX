@@ -337,7 +337,6 @@
 \RequirePackage{pathsuris}
 \if@latexml\else
 \RequirePackage{xparse}
-\RequirePackage{expl3}
 \fi
 %    \end{macrocode}
 % 
@@ -413,20 +412,27 @@
 % path, e.g. by |\defpath{MathHub}{/user/foo/localmh/MathHub}| (we will assume this
 % setting for all examples below). Fortunately, we can compute this automatically.
 % 
-% The next piece of code is adapted from
-% \url{https://tex.stackexchange.com/questions/62010/can-i-access-system-environment-variables-from-latex-for-instance-home}, check there if it breaks.
-% We use it to parse the |MATHHUB| environment variable via |kpsewhich| ({\LaTeX} can run
+% We parse the |MATHHUB| environment variable via |kpsewhich| ({\LaTeX} can run
 % this even in paranoid mode) and then set the |MathMub| path using |\defpath|. 
 %
 %    \begin{macrocode}
-\ExplSyntaxOn
-\sys_get_shell:nnN{kpsewhich ~ --var-value ~ MATHHUB} { } \MATHHUB
-\tl_trim_spaces:N \MATHHUB
-\ifx\MATHHUB\empty\else
-\def\temp_def_path#1{\defpath{MathHub}{#1}}
-\expandafter\temp_def_path\expandafter{\MATHHUB}
-\fi
-\ExplSyntaxOff
+\newif\if@iswindows@\@iswindows@false
+\IfFileExists{nul:}{\IfFileExists{/dev/null}{}{\@iswindows@true}}{}
+
+\def\kpsewhich#1#2{\begingroup
+  \def\@Space{ }
+  \edef\kpsewhich@cmd{"|kpsewhich #2"}
+  \everyeof{\noexpand}
+  \catcode`\\=12
+  \edef#1{\@@input\kpsewhich@cmd\@Space}
+  \trimstring#1
+  \global\let#1#1
+\endgroup}
+
+\kpsewhich\mathhub@path{--var-value MATHHUB}
+\if@iswindows@\windows@to@path\mathhub@path\fi
+\ifx\mathhub@path\@empty\else\defpath{MathHub}{\mathhub@path}\fi
+
 %    \end{macrocode}
 %
 % Next we find the manifest of the MathHub archive: a file |MANIFEST.MF| up and over in
@@ -513,31 +519,15 @@
 % and finally, we find path of main file
 %
 %    \begin{macrocode}
-\newif\if@iswindows@\@iswindows@false
-\begingroup
-  \edef\oldpercentcatcode{\the\catcode`\%}
-  \catcode`\%=12
-  \def\percent{%}
-  \catcode`\%=\oldpercentcatcode
-  \ExplSyntaxOn
-    \edef\windowsstring{\detokenize{windows}}
-    \edef\os_string{\expandafter\detokenize\expandafter{\c_sys_platform_str}}
-    \ifx\os_string\windowsstring
-      \global\@iswindows@true
-      \edef\cmd_string{kpsewhich ~ -expand-var ~ \percent CD\percent}
-    \else
-      \edef\cmd_string{kpsewhich ~ -var-value ~ PWD}
-    \fi
-	\expandafter\sys_get_shell:nnN\expandafter{\cmd_string} { } \mainfile_dir
-    	\tl_trim_spaces:N \mainfile_dir
-	\xdef\mainfile_dir{\expandafter\detokenize\expandafter{\mainfile_dir}}
-  \csname if@iswindows@\endcsname
-    \windows@to@path\mainfile_dir
-    \gdef\mainfile_dir{\mainfile_dir}
-  \fi
-  \ExplSyntaxOff
-\endgroup
-\expandafter\let\expandafter\mathhub@maindir\csname mainfile_dir\endcsname
+
+\edef\oldpercentcatcode{\the\catcode`\%}
+\catcode`\%=12
+\let\percent%
+\catcode`\%=\oldpercentcatcode
+
+\edef\pwd@cmd{\if@iswindows@ -expand-var \percent CD\percent\else -var-value PWD\fi}
+\kpsewhich\mathhub@maindir\pwd@cmd
+\if@iswindows@\windows@to@path\mathhub@maindir\fi
 %    \end{macrocode}
 %
 % We read in and parse |MANIFEST.MF|
