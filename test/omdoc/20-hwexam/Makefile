@@ -1,3 +1,4 @@
+STEXDIR = ../../..
 AUX = ass1.tex
-include ../../make/Makefile.in
+include $(STEXDIR)/test/make/Makefile.in
 

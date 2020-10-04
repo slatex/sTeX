@@ -1,3 +1,4 @@
+STEXDIR = ../../..
 REPOS = omdoc/18-smglom
-include ../../make/Makefile.in
+include $(STEXDIR)/test/make/Makefile.in
 

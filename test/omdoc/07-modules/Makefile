@@ -1,3 +1,4 @@
-AUX = FOO.tex BAR.tex BAZ.tex
+STEXDIR = ../../..
 MOD = FOO.tex BAR.tex BAZ.tex
-include ../../make/Makefile.in
+AUX = $(MOD)
+include $(STEXDIR)/test/make/Makefile.in

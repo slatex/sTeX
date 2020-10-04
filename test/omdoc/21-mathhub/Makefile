@@ -1,2 +1,3 @@
+STEXDIR = ../../..
 REPOS = omdoc/21-mathhub
-include ../../make/Makefile.in
+include $(STEXDIR)/test/make/Makefile.in
