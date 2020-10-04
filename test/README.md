@@ -11,7 +11,7 @@ There are two test targets:
 * `omdoc` for  OMDoc generated and
 * `html` for sTeX annotations in HTML (later).
 
-## ManIfest
+## Manifest
 * `omdoc`: Files for the `omdoc` target. This is organized by
 [sTeX package/class](https://github.com/sLaTeX/sTeX/tree/master/sty/): one directory for
 each that contains various `*.tex` files that can be run via the `Makefile` in the
