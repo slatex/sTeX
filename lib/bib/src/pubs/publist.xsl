@@ -27,8 +27,11 @@
       <xsl:when test="$id='mrapp'"><xsl:text>Max Rapp</xsl:text></xsl:when> 
       <xsl:when test="$id='kbercic'"><xsl:text>Katja Bercic</xsl:text></xsl:when> 
       <xsl:when test="$id='cshi'"><xsl:text>Chenwei Schi</xsl:text></xsl:when> 
-      <xsl:when test="$id='jfschaefer'"><xsl:text>Frederik Schaefer</xsl:text></xsl:when> 
+      <xsl:when test="$id='jfschaefer'"><xsl:text>Frederik Schaefer</xsl:text></xsl:when>
+      <xsl:when test="$id='nroux'"><xsl:text>Navid Roux</xsl:text></xsl:when>
+      <xsl:when test="$id='rmarcus'"><xsl:text>Richard Marcus</xsl:text></xsl:when> 
      
+      <xsl:when test="$id='frameit'"><xsl:text>Project FrameIT</xsl:text></xsl:when>
       <xsl:when test="$id='almanac'"><xsl:text>Project ALMANAC</xsl:text></xsl:when>
       <xsl:when test="$id='comma'"><xsl:text>Project COMMA</xsl:text></xsl:when>
       <xsl:when test="$id='sissi'"><xsl:text>Project SiSsI</xsl:text></xsl:when>
