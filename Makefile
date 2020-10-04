@@ -16,7 +16,7 @@ package doc filedate checksum enablechecksum disablechecksum:
 	@for d in $(DTXDIRS); do (cd $$d && $(MAKE) -$(MAKEFLAGS) $@) done
 
 test:
-	@for d in $(TESTDIRS); do (cd $$d && $(MAKE) -$(MAKEFLAGS) $@) done
+	@for d in $(TESTDIRS); do (cd $$d && $(MAKE) -B $@) done
 
 TDSCOLL = stex
 TDS.tex = 
