@@ -12,6 +12,7 @@ The state of the test in these directories
 * `modules`:
 * `omdoc`:
 * `omtext`:
+* `otherarchive`: auxiliary archive, only needed for `mathhub` (do not run make over it) 
 * `pathsuris`:
 * `presentation`:
 * `problem`:
