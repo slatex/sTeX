@@ -1,7 +1,7 @@
-MAKEDIRS = metakeys pathsuris presentation cmath modules structview\
-           statements problem hwexam mathhub/source smglom
+MAKEDIRS = 02-metakeys 01-pathsuris 03-presentation 05-cmath 07-modules 12-structview\
+           13-statements 16-problem 20-hwexam 21-mathhub/source 22-smglom
 # the following still need content:
-EDIRS = tikzinput sref workaddress omdoc sproof omtext dcm smultiling stex mikoslides
+EDIRS = tikzinput 04-sref 06-workaddress 08-omdoc 09-sproof 11-omtext 10-dcm 14-smultiling 15-stex 19-mikoslides
 all clean distclean: 
 	@for d in $(MAKEDIRS); do (cd $$d && $(MAKE) -$(MAKEFLAGS) $@) done
 
