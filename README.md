@@ -30,11 +30,11 @@ For a LaTeX IDE, update the directory path where `pdflatex` looks for paths.
 
 It is usually a good idea to enlarge the internal memory allocation of the TEX/LATEX executables. This can be done by adding the following configurations in `texmf.cnf` (or changing them, if they already exist). 
 ```
-% max_in_open = 50        % simultaneous input files and error insertions, 
-% param_size = 20000      % simultaneous macro parameters, also applies to MP
-% nest_size = 1000        % simultaneous semantic levels (e.g., groups)
-% stack_size = 10000      % simultaneous input sources
-% main_memory = 12000000
+max_in_open = 50        % simultaneous input files and error insertions, 
+param_size = 20000      % simultaneous macro parameters, also applies to MP
+nest_size = 1000        % simultaneous semantic levels (e.g., groups)
+stack_size = 10000      % simultaneous input sources
+main_memory = 12000000
 ```
 Note that you will probably need `sudo` to do this. After that, you have to run the command 
 ```
