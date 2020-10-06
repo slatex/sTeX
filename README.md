@@ -1,6 +1,6 @@
 sTeX: An Infrastructure for Semantic Preloading of LaTeX Documents
 ====
-[![Build Status](https://travis-ci.org/sLaTeX/sTeX.svg?branch=master)](https://travis-ci.org/sLaTeX/sTeX)
+![CI Status](https://github.com/slatex/sTeX/workflows/CI/badge.svg)
 
 This repository contains the sTeX package collection, a version of TeX/LaTeX that allows
 to markup TeX/LaTeX documents semantically without leaving the document format,
