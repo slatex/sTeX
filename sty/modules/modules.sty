@@ -27,6 +27,7 @@
 \RequirePackage{stex-base}
 \RequirePackage{sref}
 \RequirePackage{pathsuris}
+\RequirePackage{standalone}
 \if@modules@mh@\RequirePackage{modules-mh}\fi
 \if@mmt\RequirePackage{mmt}\fi
 \RequirePackage{xspace}
@@ -71,10 +72,10 @@
   }%
   \if@mmt\if@importing\else\mmtheory{\mod@id}{????}\fi\fi%
   \module@heading% make the headings
-  \ignorespacesandpars}{%
+  \ignorespacesandpars\usemodule@maybesetcodes}{%
   \if@mmt\if@importing\else\mmtheoryend\fi\fi%
   \end{@module}%
-  \ignorespacesafterend%
+  \ignorespacesafterend\usemodule@maybesetcodes%
 }%
 \ifmod@show\surroundwithmdframed{module@om@common}\fi%
 \newenvironment{@module}[1][]{\metasetkeys{module}{#1}}{}%
@@ -104,7 +105,7 @@
 \ifx\importmodule@dir\@empty
 \@importmodule[\importmodule@load]{#2}{\importmodule@ext}{export}%
 \else\@importmodule[\importmodule@dir/#2]{#2}{\importmodule@ext}{export}\fi%
-\ignorespacesandpars}
+\ignorespacesandpars\usemodule@maybesetcodes}
 \newcommand\@importmodule[4][]{%
 {\@importingtrue% to shut up macros while in the group opened here
 \edef\@load{#1}%
@@ -186,7 +187,7 @@ same name; this is dangerous -- not importing}%
       \expandafter\g@addto@macro\this@module%
       {\expandafter\mod@newcommand\csname #2\endcsname[1][]%
       {\csname modules@#2@pres@##1\endcsname}}%
-      \expandafter\g@addto@macro\csname  module@defs@\mod@id\expandafter\endcsname\expandafter%
+      \expandafter\g@addto@macro\csname module@defs@\mod@id\expandafter\endcsname\expandafter%
       {\expandafter\@mod@nc\csname mod@symref@#2\expandafter\endcsname\expandafter%
       {\expandafter\mod@termref\expandafter{\mod@id}{#2}{##1}}}%
       \ifmod@qualified%
@@ -202,6 +203,7 @@ same name; this is dangerous -- not importing}%
     \ifx\symdef@title\@empty~\else~(\stDMemph{\symdef@title})\par\fi%
   \fi%
   \ignorespacesandpars%
+  \usemodule@maybesetcodes%
 }% mod@show
 \def\symdef@type{Symbol}%
 \def\symvariant#1{%
@@ -295,6 +297,135 @@ same name; this is dangerous -- not importing}%
 }%
   }}%
 \def\@Sms{sms}
+\newif\if@smsmode\@smsmodefalse
+
+\def\usemodule@escapechar@allowed{true}
+\def\usemodule@allowedmacro@symdef{true}
+\def\usemodule@allowedmacro@importmodule{true}
+
+\catcode`\.=0
+.catcode`.\=13
+.def.@active@slash{\}
+.catcode`.<=1
+.catcode`.>=2
+.catcode`.{=12
+.catcode`.}=12
+.def.@open@brace<{>
+.def.@close@brace<}>
+.catcode`.\=0
+\catcode`\.=12
+\catcode`\{=1
+\catcode`\}=2
+\catcode`\<=12
+\catcode`\>=12
+
+\def\usemodule@escapechar{%
+    \def\usemodule@escape@currcs{}%
+    \usemodule@escape@parse@nextchar@%
+}%
+
+\long\def\usemodule@escape@parse@nextchar@#1{%
+    \ifcat a#1 %
+        \edef\usemodule@escape@currcs{\usemodule@escape@currcs#1}%
+        \let\usemodule@do@next\usemodule@escape@parse@nextchar@%
+    \else%
+      \def\usemodule@last@char{#1}%
+      \def\usemodule@do@next{\usemodule@escapechar@checkcs}%
+    \fi%
+    \usemodule@do@next%
+}
+
+\def\usemodule@escapechar@beginstring{begin}
+\def\usemodule@escapechar@endstring{end}
+\def\usemodule@escapechar@modulestring{module}
+
+\def\usemodule@escapechar@checkcs{
+    \ifx\usemodule@escape@currcs\usemodule@escapechar@beginstring%
+        \edef\usemodule@do@next{\noexpand\usemodule@escapechar@checkbeginmodule\usemodule@last@char}%
+    \else%
+        \ifx\usemodule@escape@currcs\usemodule@escapechar@endstring%
+          \edef\usemodule@do@next{\noexpand\usemodule@escapechar@checkendmodule\usemodule@last@char}%
+        \else%
+            \expandafter\ifx\csname usemodule@allowedmacro@\usemodule@escape@currcs\endcsname%
+                \usemodule@escapechar@allowed%
+              \message{^^J calling \usemodule@escape@currcs... ^^J}%
+              \ifx\usemodule@last@char\@open@brace%
+                \expandafter\let\expandafter\usemodule@do@next@ii\csname\usemodule@escape@currcs\endcsname
+                \edef\usemodule@do@next{\noexpand\usemodule@converttoproperbraces\@open@brace}
+              \else%
+                \reset@usemodule@catcodes%
+                \edef\usemodule@do@next{\expandafter\noexpand\csname\usemodule@escape@currcs\endcsname\usemodule@last@char}
+              \fi%
+            \else\let\usemodule@do@next\relax\fi%
+        \fi%
+    \fi%
+    \usemodule@do@next%
+}
+
+\expandafter\expandafter\expandafter\def%
+\expandafter\expandafter\expandafter\usemodule@converttoproperbraces%
+\expandafter\@open@brace\expandafter#\expandafter1\@close@brace{%
+  \reset@usemodule@catcodes%
+  \usemodule@do@next@ii{#1}%
+}
+
+\expandafter\expandafter\expandafter\def%
+\expandafter\expandafter\expandafter\usemodule@escapechar@checkbeginmodule%
+\expandafter\@open@brace\expandafter#\expandafter1\@close@brace{%
+    \def\usemodule@escapechar@begin@arg{#1}%
+    \ifx\usemodule@escapechar@begin@arg\usemodule@escapechar@modulestring%
+        \message{^^J begin{module}... ^^J}%
+        \reset@usemodule@catcodes%
+        \def\usemodule@do@next{\begin{module}}%
+    \else%
+        \def\usemodule@do@next{#1}%
+    \fi%
+    \usemodule@do@next%
+}
+
+\expandafter\expandafter\expandafter\def%
+\expandafter\expandafter\expandafter\usemodule@escapechar@checkendmodule%
+\expandafter\@open@brace\expandafter#\expandafter1\@close@brace{%
+    \def\usemodule@escapechar@end@arg{#1}%
+    \ifx\usemodule@escapechar@end@arg\usemodule@escapechar@modulestring%
+        \reset@usemodule@catcodes%
+        \message{^^J end{module}... ^^J}%
+        \def\usemodule@do@next{\end{module}}%
+    \else%
+      \def\usemodule@do@next{#1}%
+    \fi%
+    \usemodule@do@next%
+}
+
+\def\set@usemodule@catcodes{%
+        \message{^^J parse mode... ^^J}
+    \global\catcode`\\=13%
+    \global\catcode`\#=12%
+    \global\catcode`\{=12%
+    \global\catcode`\}=12%
+    \global\catcode`\$=12%
+    \global\catcode`\^=12%
+    \global\catcode`\_=12%
+    \global\catcode`\&=12%
+    \expandafter\let\@active@slash\usemodule@escapechar%
+}
+
+\def\reset@usemodule@catcodes{%
+  \message{^^J back to normal... ^^J}
+    \global\catcode`\\=0%
+    \global\catcode`\#=6%
+    \global\catcode`\{=1%
+    \global\catcode`\}=2%
+    \global\catcode`\$=3%
+    \global\catcode`\^=7%
+    \global\catcode`\_=8%
+    \global\catcode`\&=4%
+}
+
+\def\usemodule@maybesetcodes{%
+  \if@smsmode\set@usemodule@catcodes\fi%
+}
+
 \newbox\modules@import@tempbox
 \newrobustcmd\requiremodules[2]{%
   \mod@showfalse%
@@ -302,19 +433,18 @@ same name; this is dangerous -- not importing}%
   \edef\mod@path{#1}%
   \edef\mod@ext{#2}% set up path/ext
   \ifx\mod@ext\@Sms%
-    \setbox\modules@import@tempbox\vbox{
-      \let\document\@empty%
-      \let\usepackage\@empty%
-      \let\documentclass\@empty%
-      \let\enddocument\@empty%
-      \let\addbibresource\@empty%
-      \let\ednote\@empty%
-      \let\Ednote\@empty%
-      % \renewcommand\mhtikzinput[2][]{}%
-      % \renewcommand\cmhtikzinput[2][]{}%
-      % \renewcommand\lstinputmhlisting[2][]{}%
-      \input{#1.tex}
+  %  \if@smsmode\else
+      \let\@oldsmsmode\if@smsmode%
+      \@smsmodetrue%
+    \setbox\modules@import@tempbox\vbox{%
+      %\begin{minipage}\textwidth
+      \set@usemodule@catcodes%
+      \input{#1.tex}%
+      \reset@usemodule@catcodes%
+      %\end{minipage}
       }%
+  %    \fi
+    \let\if@smsmode\@oldsmsmode%
   \else%
     \input{#1.#2}%
   \fi%
