@@ -10,7 +10,7 @@
 %  
 % \iffalse
 %<package>\NeedsTeXFormat{LaTeX2e}[1999/12/01]
-%<package>\ProvidesPackage{modules}[2019/03/20 v1.4 Semantic Markup]
+%<package>\ProvidesPackage{modules}[2020/10/14 v1.6 Semantic Markup]
 %
 %<*driver>
 \documentclass{ltxdoc}
@@ -73,6 +73,7 @@
 % \changes{v1.5}{2015/11/02}{Moved MH Versions to a separate \texttt{mathhub} package}
 % \changes{v1.5}{2018/06/15}{``unidentified cd'' in termref is now an error.}
 % \changes{v1.5}{2019/11/25}{adding dir attribute to import/usemodule}
+% \changes{v1.6}{2020/10/14}{getting rid of \texttt{sms} files}
 % 
 % \GetFileInfo{modules.sty}
 % 
@@ -167,20 +168,17 @@
 % 
 % \subsection{Package Options}\label{sec:options}
 %
-% The |modules| package takes six options: If we set
-% \DescribeMacro{showmods}|showmods|\ednote{This mechanism does not work yet, since we
-% cannot disable it when importing modules and that leads to unwanted boxes. What we need
-% to do instead is to tweak the sms utility to use an internal version that never shows
-% anything during sms reading.}, then the views (see Section~\ref{sec:user:views}) are
-% shown. If we set the \DescribeMacro{qualifiedimports}|qualifiedimports| option, then
-% qualified imports are enabled. Qualified imports give more flexibility in module
-% inheritance, but consume more internal memory. As qualified imports are not fully
-% implemented at the moment, they are turned off by default see
-% Limitation~\ref{sec:limitations:qualified-imports}. The option
+% The |modules| package takes six options: If we set \DescribeMacro{showmods}|showmods|,
+% then the views (see Section~\ref{sec:user:views}) are shown. If we set the
+% \DescribeMacro{qualifiedimports}|qualifiedimports| option, then qualified imports are
+% enabled. Qualified imports give more flexibility in module inheritance, but consume more
+% internal memory. As qualified imports are not fully implemented at the moment, they are
+% turned off by default see Limitation~\ref{sec:limitations:qualified-imports}. The option
 % \DescribeMacro{noauxreq}|noauxreq| prohibits the registration of |\@requiremodules|
-% commands in the |aux| file. They are necessary for preloading the module signatures so
+% commands in the |aux| file. They are necessary for preloading the modules so
 % that entries in the table of contents can have semantic macros; but as they sometimes
-% cause trouble the option allows to turn off preloading. 
+% cause trouble the option allows to turn off preloading.\ednote{MK: is this still needed
+% without sms files?}
 % 
 % If the \DescribeMacro{showmeta}|showmeta| option is set, then the metadata keys are shown
 % (see~\ctancite{Kohlhase:metakeys} for details and customization options).
@@ -488,26 +486,15 @@
 % Moreover, most mathematical documents are not self-contained, i.e. they do not build up
 % the theory from scratch, but pre-suppose the knowledge (and notation) from other
 % documents. In this case we want to make use of the semantic macros from these
-% prerequisite documents without including their text into the current document. One way
-% to do this would be to have {\LaTeX} read the prerequisite documents without producing
-% output. For efficiency reasons, {\stex} chooses a different route, the |module| package
-% uses auxiliary files called {\textbf{\sTeX module signatures}}. For any file,
-% \meta{file}|.tex|, we generate a corresponding \sTeX module signature \meta{file}|.sms|
-% with the |sms| utility (see also Limitation~\ref{sec:limitations:sms}), which contains
-% (copies of) all |\begin|/|\end{module}|, |\importmodule|, |\symdef|, and |\termdef|
-% invocations in \meta{file}|.tex|. The value of an \sTeX module signature is that it can
-% be loaded instead its corresponding \sTeX document, if we are only interested in the
-% semantic macros.
-%
+% prerequisite documents without including their text into the current document.
+% 
 % The \DescribeMacro{\importmodule}|\importmodule| macro can be given an optional first
-% keyword argument that can be used to specify which \sTeX module signatures to load.
-% \DescribeMacro{load}|\importmodule[|load=\meta{filepath}|]{|\meta{mod}|}| will load the
-% \sTeX module signature \meta{filepath}|.sms| (if it exists and has not been loaded
-% before) and activate the semantic macros from module \meta{mod} (which was supposedly
-% defined in \meta{filepath}|.tex|). Note that since \meta{filepath}|.sms| contains all
-% |\importmodule| statements that \meta{filepath}|.tex| does, an |\importmodule|
-% recursively loads all necessary files to supply the semantic macros inherited by the
-% current module.
+% keyword argument that can be used to specify which \sTeX modules to load.
+% \DescribeMacro{load}|\importmodule[|load=\meta{filepath}|]{|\meta{mod}|}| will read the
+% \sTeX file at \meta{filepath}|.tex| without producing output (if it exists and has not
+% been loaded before) and activate the semantic macros from module \meta{mod} (which was
+% supposedly defined in \meta{filepath}|.tex|). Note that an |\importmodule| recursively
+% loads all necessary files to supply the semantic macros inherited by the current module.
 %
 % Thus |\importmodule| can be used to make module files truly self-contained. To arrive at
 % a file-based content management system, it is good practice to reuse the module
@@ -518,7 +505,7 @@
 % \importmhmodule[path=foo/en/very-long-name]{very-long-name}
 % \end{verbatim}
 % To avoid this, |\importmhmodule| allows a second key: \DescribeMacro{dir}|dir|, which
-% specifies the directory of the \sTeX module signature. So we can write
+% specifies the directory of the \sTeX module. So we can write
 % \begin{verbatim}
 % \importmhmodule[dir=foo/en]{very-long-name}
 % \end{verbatim}
@@ -568,7 +555,7 @@
 % 15, then we cannot naively import it in this way. If module |bar| depended say on a
 % module |base| on the critical load path, then we could add a statement
 % \DescribeMacro{\requiremodules} |\requiremodules{../base}| in the second line.  This
-% would load the modules from |../base.sms| in advance (uncritical, since it has load
+% would load the modules from |../base.tex| in advance (uncritical, since it has load
 % depth 10) without activating them, so that it would not have to be re-loaded in the
 % critical path of the module |foo|. Solving the load depth problem.
 % 
@@ -588,11 +575,11 @@
 % environment (and not re-export them). Indeed, this is the normal situation for most
 % parts of mathematical documents. For that \sTeX provides the
 % \DescribeMacro{\usemodule}|\usemodule| macro, which takes the same arguments as
-% |\importmodule|, but is treated differently in the \sTeX module signatures. A typical
-% situation is shown in Figure~\ref{fig:use-ring}, where we open the module |ring| (see
-% Figure~\ref{fig:ring}) and use its semantic macros (in the |omtext| environment). In
-% earlier versions of \sTeX, we would have to wrap the |omtext| environment in an
-% anonymous |module| environment to prevent re-export. 
+% |\importmodule|, but the semantic macros the module imports are not re-exported from the
+% current module. A typical situation is shown in Figure~\ref{fig:use-ring}, where we open
+% the module |ring| (see Figure~\ref{fig:ring}) and use its semantic macros (in the
+% |omtext| environment). In earlier versions of \sTeX, we would have to wrap the |omtext|
+% environment in an anonymous |module| environment to prevent re-export.
 % 
 %\begin{exfig}
 % \begin{verbatim}
@@ -672,16 +659,7 @@
 % In this section we will discuss limitations and possible extensions of the |modules|
 % package. Any contributions and extension ideas are welcome; please discuss ideas,
 % requests, fixes, etc on the {\sTeX} TRAC~\cite{sTeX:github:on}.
-% 
-% \subsection{Perl Utility \texttt{sms}}\label{sec:limitations:sms}
-% 
-% Currently we have to use an external perl utility |sms| to extract \sTeX module
-% signatures from \sTeX files. This considerably adds to the complexity of the \sTeX
-% installation and workflow. If we can solve security setting problems that allows us to
-% write to \sTeX module signatures outside the current directory, writing them from \sTeX
-% may be an avenue of future development see~\cite[issue \#1522]{sTeX:github:on} for a
-% discussion.
-% 
+%
 % \subsection{Qualified Imports}\label{sec:limitations:qualified-imports}
 % 
 % In an earlier version of the \texttt{modules} package we used the \texttt{usesqualified}
@@ -710,16 +688,16 @@
 % rules. Thus they have to be at the top level of a module to be visible throughout the
 % module as intended. As a consequence, the location of the |\symdef| elements cannot be
 % used as targets for crossreferencing, which is currently supplied by the |statement|
-% package~\ctancite{Kohlhase:smms}. A way around this limitation would be to import
-% the current module from the \sTeX module signature (see Section~\ref{sec:modules}) via
-% the |\importmodule| declaration.
+% package~\ctancite{Kohlhase:smms}. A way around this limitation would be to import the
+% current module from the \sTeX module (see Section~\ref{sec:modules}) via the
+% |\importmodule| declaration.
 % 
 % \subsection{No Forward Imports}\label{sec:limitations:forward-imports}
 % 
-% {\sTeX} allows imports in the same file via |\importmodule{|\meta{mod}|}|, but due to
-% the single-pass linear processing model of {\TeX}, \meta{mod} must be the name of a
-% module declared {\emph{before}} the current point. So we cannot have forward imports as
-% in \ednote{usemodule should work here; revise}
+% \sTeX allows imports in the same file via |\importmodule{|\meta{mod}|}|, but due to the
+% single-pass linear processing model of {\TeX}, \meta{mod} must be the name of a module
+% declared {\emph{before}} the current point. So we cannot have forward imports as in
+% \ednote{usemodule should work here; revise}
 % \begin{verbatim}
 % \begin{module}[id=foo]
 %   \importmodule{mod}
@@ -959,10 +937,9 @@
 % \end{macro}
 %
 % \begin{macro}{\@importmodule} 
-%   |\@importmodule[|\meta{filepath}|]{|\meta{mod}|}{|\meta{ext}|}{|\meta{export?}|}|
-%   loads \meta{filepath}|.|\meta{ext} (if it is given) and activates the module
-%   \meta{mod}. If \meta{export?} is |export|, then it also re-exports the |\symdef|s from
-%   \meta{mod}.
+%   |\@importmodule[|\meta{filepath}|]{|\meta{mod}|}{|\meta{export?}|}|
+%   loads \meta{filepath}|.tex| and activates the module \meta{mod}. If \meta{export?} is
+%   |export|, then it also re-exports the |\symdef|s from \meta{mod}.
 %
 %   First |\@load| will store the base file name with full path, then check if
 %   |\module@|\meta{mod}|@path| is defined. If this macro is defined, a module of this
@@ -993,8 +970,8 @@ same name; this is dangerous -- not importing}%
 % \end{macro}
 % 
 % \begin{macro}{\usemodule} 
-%   |\usemodule| acts like |\importmodule|, except that the |sms| utility does not
-%   transfer it to the module signatures and it does not re-export the symdefs.
+%   |\usemodule| acts like |\importmodule|, except that it does not re-export the semantic
+%   macros in the modules it loads. 
 %    \begin{macrocode}
 \newcommand\usemodule[2][]{%
 \metasetkeys{importmodule}{#1}%
@@ -1396,7 +1373,7 @@ same name; this is dangerous -- not importing}%
 %    \end{macrocode}
 % \end{macro}
 %
-% \subsection{Loading Module Signatures}
+% \subsection{Loading Modules}
 %
 % \subsubsection{Selective Inclusion}
 %
@@ -1406,7 +1383,6 @@ same name; this is dangerous -- not importing}%
 %   remembers the file name and extension in |\mod@path| and |\mod@ext| so that
 %   |\begin{module}| can pick them up later.
 %    \begin{macrocode}
-\def\@Sms{sms}
 \newif\if@smsmode\@smsmodefalse
 
 \def\usemodule@escapechar@allowed{true}
@@ -1564,7 +1540,6 @@ same name; this is dangerous -- not importing}%
     \usemodule@maybesetcodes
 }
 
-\newif\if@oldsmsmode\@oldsmsmodefalse
 \newbox\modules@import@tempbox
 \newrobustcmd\requiremodules[1]{%
   \mod@showfalse%
@@ -1717,7 +1692,7 @@ same name; this is dangerous -- not importing}%
 % I document below. If I decide to do away with relative paths, this would be it.
 % 
 % \begin{macro}{\reqmodules}
-%   We keep a file path registry |\@register| and only load a module signature, if it is
+%   We keep a file path registry |\@register| and only load a module, if it is
 %   not in there.
 %    \begin{macrocode}
 \newrobustcmd\reqmodules[2]{%
