@@ -873,7 +873,7 @@
   \ignorespacesandpars\usemodule@maybesetcodes}{%
   \if@mmt\if@importing\else\mmtheoryend\fi\fi%
   \end{@module}%
-  \ignorespacesafterend\usemodule@maybesetcodes%
+  \ignorespacesafterend%
 }%
 \ifmod@show\surroundwithmdframed{module@om@common}\fi%
 %    \end{macrocode}
@@ -951,11 +951,12 @@
 \addmetakey[false]{importmodule}{conservative}[true]
 \newcommand\importmodule[2][]{%
 \metasetkeys{importmodule}{#1}%
+\usemodule@maybesetcodes
 \update@used@modules{#2}%
 \ifx\importmodule@dir\@empty
 \@importmodule[\importmodule@load]{#2}{\importmodule@ext}{export}%
 \else\@importmodule[\importmodule@dir/#2]{#2}{\importmodule@ext}{export}\fi%
-\ignorespacesandpars\usemodule@maybesetcodes}
+\ignorespacesandpars}
 %    \end{macrocode}
 % \end{macro}
 %
@@ -1126,6 +1127,7 @@ same name; this is dangerous -- not importing}%
 %    \begin{macrocode}
   \@symdeflocalfalse%
   \metasetkeys{symdef}{#1}%
+  \usemodule@maybesetcodes%
 %    \end{macrocode}
 % If the |mmt| option is set and we are not importing, then we write out the constant
 % declaration for this symdef\ednote{eventually we may want to do something about the
@@ -1201,7 +1203,6 @@ same name; this is dangerous -- not importing}%
     \ifx\symdef@title\@empty~\else~(\stDMemph{\symdef@title})\par\fi%
   \fi%
   \ignorespacesandpars%
-  \usemodule@maybesetcodes%
 }% mod@show
 \def\symdef@type{Symbol}%
 %    \end{macrocode}
@@ -1408,11 +1409,28 @@ same name; this is dangerous -- not importing}%
 \def\@Sms{sms}
 \newif\if@smsmode\@smsmodefalse
 
-
 \def\usemodule@escapechar@allowed{true}
-\def\usemodule@allowedmacro@symdef{true}
-\def\usemodule@allowedmacro@importmodule{true}
-\def\usemodule@allowedenv@module{true}
+\def\usemodule@allow#1{
+  \expandafter\let\csname usemodule@allowedmacro@#1\endcsname\usemodule@escapechar@allowed
+}
+\def\usemodule@allowenv#1{
+  \expandafter\let\csname usemodule@allowedenv@#1\endcsname\usemodule@escapechar@allowed
+}
+
+\usemodule@allow{symdef}
+\usemodule@allow{abbrdef}
+\usemodule@allow{importmodule}
+\usemodule@allowenv{module}
+\usemodule@allow{importmhmodule}
+\usemodule@allow{gimport}
+\usemodule@allowenv{modsig}
+\usemodule@allowenv{mhmodsig}
+\usemodule@allowenv{mhmodnl}
+\usemodule@allowenv{modnl}
+
+%% TODO
+
+
 
 \catcode`\.=0
 .catcode`.\=13
@@ -1458,7 +1476,6 @@ same name; this is dangerous -- not importing}%
         \else%
             \expandafter\ifx\csname usemodule@allowedmacro@\usemodule@escape@currcs\endcsname%
                 \usemodule@escapechar@allowed%
-              \message{^^J calling \usemodule@escape@currcs... ^^J}%
               \ifx\usemodule@last@char\@open@brace%
                 \expandafter\let\expandafter\usemodule@do@next@ii\csname\usemodule@escape@currcs\endcsname
                 \edef\usemodule@do@next{\noexpand\usemodule@converttoproperbraces\@open@brace}
@@ -1466,7 +1483,7 @@ same name; this is dangerous -- not importing}%
                 \reset@usemodule@catcodes%
                 \edef\usemodule@do@next{\expandafter\noexpand\csname\usemodule@escape@currcs\endcsname\usemodule@last@char}
               \fi%
-            \else\let\usemodule@do@next\relax\fi%
+            \else\def\usemodule@do@next{\relax\usemodule@last@char}\fi%
         \fi%
     \fi%
     \usemodule@do@next%
@@ -1483,7 +1500,6 @@ same name; this is dangerous -- not importing}%
 \expandafter\expandafter\expandafter\usemodule@escapechar@checkbeginenv%
 \expandafter\@open@brace\expandafter#\expandafter1\@close@brace{%
     \expandafter\ifx\csname usemodule@allowedenv@#1\endcsname\usemodule@escapechar@allowed%
-        \message{^^J begin{#1}... ^^J}%
         \reset@usemodule@catcodes%
         \def\usemodule@do@next{\begin{#1}}%
     \else%
@@ -1497,8 +1513,7 @@ same name; this is dangerous -- not importing}%
 \expandafter\expandafter\expandafter\usemodule@escapechar@checkendenv%
 \expandafter\@open@brace\expandafter#\expandafter1\@close@brace{%
     \expandafter\ifx\csname usemodule@allowedenv@#1\endcsname\usemodule@escapechar@allowed%
-        \reset@usemodule@catcodes%
-        \message{^^J end{#1}... ^^J}%
+        %\reset@usemodule@catcodes%
         \def\usemodule@do@next{\end{#1}}%
     \else%
       \def\usemodule@do@next{#1}%
@@ -1507,7 +1522,6 @@ same name; this is dangerous -- not importing}%
 }
 
 \def\set@usemodule@catcodes{%
-        \message{^^J parse mode... ^^J}
     \global\catcode`\\=13%
     \global\catcode`\#=12%
     \global\catcode`\{=12%
@@ -1520,7 +1534,6 @@ same name; this is dangerous -- not importing}%
 }
 
 \def\reset@usemodule@catcodes{%
-  \message{^^J back to normal... ^^J}
     \global\catcode`\\=0%
     \global\catcode`\#=6%
     \global\catcode`\{=1%
@@ -1535,7 +1548,17 @@ same name; this is dangerous -- not importing}%
   \if@smsmode\set@usemodule@catcodes\fi%
 }
 
+\def\requiremodules@smsmode#1{
+  \setbox\modules@import@tempbox\vbox{%
+    \@smsmodetrue%
+    \set@usemodule@catcodes%
+    \input{#1.tex}%
+    \reset@usemodule@catcodes%
+    }%
+    \usemodule@maybesetcodes
+}
 
+\newif\if@oldsmsmode\@oldsmsmodefalse
 \newbox\modules@import@tempbox
 \newrobustcmd\requiremodules[2]{%
   \mod@showfalse%
@@ -1543,21 +1566,12 @@ same name; this is dangerous -- not importing}%
   \edef\mod@path{#1}%
   \edef\mod@ext{#2}% set up path/ext
   \ifx\mod@ext\@Sms%
-  %  \if@smsmode\else
-      \let\@oldsmsmode\if@smsmode%
-      \@smsmodetrue%
-    \setbox\modules@import@tempbox\vbox{%
-      %\begin{minipage}\textwidth
-      \set@usemodule@catcodes%
-      \input{#1.tex}%
-      \reset@usemodule@catcodes%
-      %\end{minipage}
-      }%
-  %    \fi
-    \let\if@smsmode\@oldsmsmode%
-  \else%
-    \input{#1.#2}%
-  \fi%
+        \requiremodules@smsmode{#1}
+  \else\if@smsmode
+      \requiremodules@smsmode{#1}
+    \else%
+      \input{#1.#2}%
+  \fi\fi%
 }%
 %    \end{macrocode}
 % \end{macro}
