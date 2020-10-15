@@ -34,6 +34,7 @@
 \newfloat{exfig}{thp}{lop}
 \floatname{exfig}{Example}
 \def\githubissue#1{\cite{sTeX:github:on}, \hyperlink{https://github.com/sLaTeX/sTeX/issues/#1}{issue #1}}
+\def\defemph#1{\textbf{#1}}
 \begin{document}
 \RecordChanges
 \DocInput{modules.dtx}
@@ -709,17 +710,17 @@
 % \end{module}
 % \end{verbatim}
 % a workaround, we can extract the module \meta{mod} into a file {{{mod.tex}}} and replace
-% it with |\sinput{mod}|, as in
+% it with |\inputref{mod}|, as in
 % \begin{verbatim}
 % \begin{module}[id=foo]
 %   \importmodule[load=mod]{mod}
 %   ...
 % \end{module}
 % ... 
-% \sinput{mod}
+% \inputref{mod}
 % \end{verbatim}
-% then the |\importmodule| command can read |mod.sms| (created via the |sms| utility)
-% without having to wait for the module \meta{mod} to be defined.
+% then the |\importmodule| command can read |mod.tex| without having to wait for the
+% module \meta{mod} to be defined.
 % 
 % \StopEventually{\newpage\PrintIndex\newpage\PrintChanges\newpage\printbibliography}\newpage
 %
@@ -1377,14 +1378,20 @@ same name; this is dangerous -- not importing}%
 %
 % \subsubsection{Selective Inclusion}
 %
-% \begin{macro}{\requiremodules}
-%   this macro loads the modules in a file and makes sure that no text is deposited (we
-%   set the flags |\mod@showfalse| and |\@importingtrue| in the local group). It also
-%   remembers the file name and extension in |\mod@path| and |\mod@ext| so that
-%   |\begin{module}| can pick them up later.
+% The next great goal is to establish the |\requiremodules| macro, which reads an \sTeX
+% file and processes all the module signature information in them, but does not produce
+% any output. This is a tricky business, as we need to ``parse'' the modules and treat the
+% module signature macros specially (we refer to this as ``\defemph{sms mode}'', since it
+% is equivalent to what the -- now deprecated -- |sms| utility did).
+%
+% In the following we introduce a lot of auxiliary functionality before we can define
+% |\requiremodules|.
+%
+% \begin{macro}{\usemodule@allow*}
+%   The first step is setting up a functionality for registering |\sTeX| macros and
+%   environments as part of a module signature. 
 %    \begin{macrocode}
 \newif\if@smsmode\@smsmodefalse
-
 \def\usemodule@escapechar@allowed{true}
 \def\usemodule@allow#1{
   \expandafter\let\csname usemodule@allowedmacro@#1\endcsname\usemodule@escapechar@allowed
@@ -1392,7 +1399,13 @@ same name; this is dangerous -- not importing}%
 \def\usemodule@allowenv#1{
   \expandafter\let\csname usemodule@allowedenv@#1\endcsname\usemodule@escapechar@allowed
 }
-
+%    \end{macrocode}
+% \end{macro}
+% 
+% and now we use that to actually register all the \sTeX functionality as relevant for
+% |sms| mode. 
+%
+%    \begin{macrocode}
 \usemodule@allow{symdef}
 \usemodule@allow{abbrdef}
 \usemodule@allow{importmodule}
@@ -1408,9 +1421,11 @@ same name; this is dangerous -- not importing}%
 \usemodule@allow{symii}
 \usemodule@allow{symiii}
 \usemodule@allow{symiv}
-
-
-
+%    \end{macrocode}
+% 
+% \ednote{MK@DM: why do we need the catcodes here? }
+%
+%    \begin{macrocode}
 \catcode`\.=0
 .catcode`.\=13
 .def.@active@slash{\}
@@ -1467,14 +1482,12 @@ same name; this is dangerous -- not importing}%
     \fi%
     \usemodule@do@next%
 }
-
 \expandafter\expandafter\expandafter\def%
 \expandafter\expandafter\expandafter\usemodule@converttoproperbraces%
 \expandafter\@open@brace\expandafter#\expandafter1\@close@brace{%
   \reset@usemodule@catcodes%
   \usemodule@do@next@ii{#1}%
 }
-
 \expandafter\expandafter\expandafter\def%
 \expandafter\expandafter\expandafter\usemodule@escapechar@checkbeginenv%
 \expandafter\@open@brace\expandafter#\expandafter1\@close@brace{%
@@ -1486,8 +1499,6 @@ same name; this is dangerous -- not importing}%
     \fi%
     \usemodule@do@next%
 }
-
-
 \expandafter\expandafter\expandafter\def%
 \expandafter\expandafter\expandafter\usemodule@escapechar@checkendenv%
 \expandafter\@open@brace\expandafter#\expandafter1\@close@brace{%
@@ -1499,34 +1510,51 @@ same name; this is dangerous -- not importing}%
     \fi%
     \usemodule@do@next%
 }
-
+%    \end{macrocode}
+%
+% \begin{macro}{\set@usemodule@catcodes}
+%    \begin{macrocode}
 \def\set@usemodule@catcodes{%
     \global\catcode`\\=13%
     \global\catcode`\#=12%
     \global\catcode`\{=12%
     \global\catcode`\}=12%
-    \global\catcode`\$=12%
+    \global\catcode`\$=12%$
     \global\catcode`\^=12%
     \global\catcode`\_=12%
     \global\catcode`\&=12%
     \expandafter\let\@active@slash\usemodule@escapechar%
 }
-
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\reset@usemodule@catcodes}
+%    \begin{macrocode}
 \def\reset@usemodule@catcodes{%
     \global\catcode`\\=0%
     \global\catcode`\#=6%
     \global\catcode`\{=1%
     \global\catcode`\}=2%
-    \global\catcode`\$=3%
+    \global\catcode`\$=3%$
     \global\catcode`\^=7%
     \global\catcode`\_=8%
     \global\catcode`\&=4%
 }
-
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\requiremodules@smsmode}
+%   this read \sTeX modules and treats the 
+%    \begin{macrocode}
 \def\usemodule@maybesetcodes{%
   \if@smsmode\set@usemodule@catcodes\fi%
 }
-
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\requiremodules@smsmode}
+%   this read \sTeX modules and treats the 
+%    \begin{macrocode}
 \def\requiremodules@smsmode#1{
   \setbox\modules@import@tempbox\vbox{%
     \@smsmodetrue%
@@ -1539,11 +1567,19 @@ same name; this is dangerous -- not importing}%
     }%
     \usemodule@maybesetcodes
 }
-
+%    \end{macrocode}
+% \end{macro}
+% 
+% \begin{macro}{\requiremodules}
+%   This macro loads the module signatures in a file using the |\requiremodules@smsmode|
+%   above. We set the flags |\mod@showfalse| and
+%   |\@importingtrue| in the local group, so that the macros know now to pollute the
+%   result.\ednote{MK: maybe we do not need to do that when we put all in a box anyways. } 
+%    \begin{macrocode}
 \newbox\modules@import@tempbox
 \newrobustcmd\requiremodules[1]{%
   \mod@showfalse%
-  \@importingtrue% save state and ensure silence while reading sms
+  \@importingtrue% save state and ensure silence while in sms mode
   \edef\mod@path{#1}%
   \edef\mod@path{\expandafter\detokenize\expandafter{\mod@path}}%
   \requiremodules@smsmode{#1}%
