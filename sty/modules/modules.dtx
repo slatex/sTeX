@@ -10,7 +10,7 @@
 %  
 % \iffalse
 %<package>\NeedsTeXFormat{LaTeX2e}[1999/12/01]
-%<package>\ProvidesPackage{modules}[2019/03/20 v1.4 Semantic Markup]
+%<package>\ProvidesPackage{modules}[2020/10/14 v1.6 Semantic Markup]
 %
 %<*driver>
 \documentclass{ltxdoc}
@@ -34,6 +34,7 @@
 \newfloat{exfig}{thp}{lop}
 \floatname{exfig}{Example}
 \def\githubissue#1{\cite{sTeX:github:on}, \hyperlink{https://github.com/sLaTeX/sTeX/issues/#1}{issue #1}}
+\def\defemph#1{\textbf{#1}}
 \begin{document}
 \RecordChanges
 \DocInput{modules.dtx}
@@ -73,6 +74,7 @@
 % \changes{v1.5}{2015/11/02}{Moved MH Versions to a separate \texttt{mathhub} package}
 % \changes{v1.5}{2018/06/15}{``unidentified cd'' in termref is now an error.}
 % \changes{v1.5}{2019/11/25}{adding dir attribute to import/usemodule}
+% \changes{v1.6}{2020/10/14}{getting rid of \texttt{sms} files}
 % 
 % \GetFileInfo{modules.sty}
 % 
@@ -93,11 +95,9 @@
 % \def\cT{\mathcal{T}}\def\cD{\mathcal{D}}
 % \title{{\texttt{modules.sty}}: Semantic Macros and Module Scoping   in {\stex}\thanks{Version {\fileversion} (last revised
 % {\filedate})}}
-% \author{Michael Kohlhase\\
+% \author{Michael Kohlhase, Dennis M\"uller\\
 %    FAU Erlangen-N\"urnberg\\
-%    \url{http://kwarc.info/kohlhase}\and
-%    Deyan Ginev\\Authorea\and 
-%    Rares Ambrus\\Jacobs University Bremen}
+%    \url{http://kwarc.info/}}
 % \maketitle
 %
 % \begin{abstract}
@@ -167,20 +167,17 @@
 % 
 % \subsection{Package Options}\label{sec:options}
 %
-% The |modules| package takes six options: If we set
-% \DescribeMacro{showmods}|showmods|\ednote{This mechanism does not work yet, since we
-% cannot disable it when importing modules and that leads to unwanted boxes. What we need
-% to do instead is to tweak the sms utility to use an internal version that never shows
-% anything during sms reading.}, then the views (see Section~\ref{sec:user:views}) are
-% shown. If we set the \DescribeMacro{qualifiedimports}|qualifiedimports| option, then
-% qualified imports are enabled. Qualified imports give more flexibility in module
-% inheritance, but consume more internal memory. As qualified imports are not fully
-% implemented at the moment, they are turned off by default see
-% Limitation~\ref{sec:limitations:qualified-imports}. The option
+% The |modules| package takes six options: If we set \DescribeMacro{showmods}|showmods|,
+% then the views (see Section~\ref{sec:user:views}) are shown. If we set the
+% \DescribeMacro{qualifiedimports}|qualifiedimports| option, then qualified imports are
+% enabled. Qualified imports give more flexibility in module inheritance, but consume more
+% internal memory. As qualified imports are not fully implemented at the moment, they are
+% turned off by default see Limitation~\ref{sec:limitations:qualified-imports}. The option
 % \DescribeMacro{noauxreq}|noauxreq| prohibits the registration of |\@requiremodules|
-% commands in the |aux| file. They are necessary for preloading the module signatures so
+% commands in the |aux| file. They are necessary for preloading the modules so
 % that entries in the table of contents can have semantic macros; but as they sometimes
-% cause trouble the option allows to turn off preloading. 
+% cause trouble the option allows to turn off preloading.\ednote{MK: is this still needed
+% without sms files?}
 % 
 % If the \DescribeMacro{showmeta}|showmeta| option is set, then the metadata keys are shown
 % (see~\ctancite{Kohlhase:metakeys} for details and customization options).
@@ -441,7 +438,7 @@
 % \caption{Extending Example~\ref{fig:symvariant} with Term References}\label{fig:termref}
 % \end{exfig}
 %
-% \subsection{Modules and Inheritance}\label{sec:modules}
+% \subsection{Modules, Inheritance, and \sTeX Module Signatures}\label{sec:modules}
 %
 % The\DescribeEnv{module}|module| environment takes an optional |KeyVal|
 % argument. Currently, only the |id| key is supported for specifying the identifier of a
@@ -488,26 +485,20 @@
 % Moreover, most mathematical documents are not self-contained, i.e. they do not build up
 % the theory from scratch, but pre-suppose the knowledge (and notation) from other
 % documents. In this case we want to make use of the semantic macros from these
-% prerequisite documents without including their text into the current document. One way
-% to do this would be to have {\LaTeX} read the prerequisite documents without producing
-% output. For efficiency reasons, {\stex} chooses a different route, the |module| package
-% uses auxiliary files called {\textbf{\sTeX module signatures}}. For any file,
-% \meta{file}|.tex|, we generate a corresponding \sTeX module signature \meta{file}|.sms|
-% with the |sms| utility (see also Limitation~\ref{sec:limitations:sms}), which contains
-% (copies of) all |\begin|/|\end{module}|, |\importmodule|, |\symdef|, and |\termdef|
-% invocations in \meta{file}|.tex|. The value of an \sTeX module signature is that it can
-% be loaded instead its corresponding \sTeX document, if we are only interested in the
-% semantic macros.
-%
+% prerequisite documents without including their text into the current document.
+% 
 % The \DescribeMacro{\importmodule}|\importmodule| macro can be given an optional first
-% keyword argument that can be used to specify which \sTeX module signatures to load.
-% \DescribeMacro{load}|\importmodule[|load=\meta{filepath}|]{|\meta{mod}|}| will load the
-% \sTeX module signature \meta{filepath}|.sms| (if it exists and has not been loaded
-% before) and activate the semantic macros from module \meta{mod} (which was supposedly
-% defined in \meta{filepath}|.tex|). Note that since \meta{filepath}|.sms| contains all
-% |\importmodule| statements that \meta{filepath}|.tex| does, an |\importmodule|
-% recursively loads all necessary files to supply the semantic macros inherited by the
-% current module.
+% keyword argument that can be used to specify which \sTeX modules to load.
+% 
+% \DescribeMacro{load}|\importmodule[|load=\meta{filepath}|]{|\meta{mod}|}| will read the
+% \sTeX file at \meta{filepath}|.tex| without producing output (if it exists and has not
+% been loaded before) and activate the semantic macros from module \meta{mod} (which was
+% supposedly defined in \meta{filepath}|.tex|). Note that an |\importmodule| recursively
+% loads all necessary files to supply the semantic macros inherited by the current
+% module. |\importmhmodule| does not produce output, it only uses the side effects of the
+% symbol declarations |\symi*| and definitions (|\symdef| and |\symvariant|) the module
+% environment (|\begin|/|\end{module}|, as well as the |\import|/|\usemodule| directives --
+% we jointly call this information the \defemph{\sTeX module signatures}.
 %
 % Thus |\importmodule| can be used to make module files truly self-contained. To arrive at
 % a file-based content management system, it is good practice to reuse the module
@@ -518,7 +509,7 @@
 % \importmhmodule[path=foo/en/very-long-name]{very-long-name}
 % \end{verbatim}
 % To avoid this, |\importmhmodule| allows a second key: \DescribeMacro{dir}|dir|, which
-% specifies the directory of the \sTeX module signature. So we can write
+% specifies the directory of the \sTeX module. So we can write
 % \begin{verbatim}
 % \importmhmodule[dir=foo/en]{very-long-name}
 % \end{verbatim}
@@ -568,7 +559,7 @@
 % 15, then we cannot naively import it in this way. If module |bar| depended say on a
 % module |base| on the critical load path, then we could add a statement
 % \DescribeMacro{\requiremodules} |\requiremodules{../base}| in the second line.  This
-% would load the modules from |../base.sms| in advance (uncritical, since it has load
+% would load the modules from |../base.tex| in advance (uncritical, since it has load
 % depth 10) without activating them, so that it would not have to be re-loaded in the
 % critical path of the module |foo|. Solving the load depth problem.
 % 
@@ -588,11 +579,11 @@
 % environment (and not re-export them). Indeed, this is the normal situation for most
 % parts of mathematical documents. For that \sTeX provides the
 % \DescribeMacro{\usemodule}|\usemodule| macro, which takes the same arguments as
-% |\importmodule|, but is treated differently in the \sTeX module signatures. A typical
-% situation is shown in Figure~\ref{fig:use-ring}, where we open the module |ring| (see
-% Figure~\ref{fig:ring}) and use its semantic macros (in the |omtext| environment). In
-% earlier versions of \sTeX, we would have to wrap the |omtext| environment in an
-% anonymous |module| environment to prevent re-export. 
+% |\importmodule|, but the semantic macros the module imports are not re-exported from the
+% current module. A typical situation is shown in Figure~\ref{fig:use-ring}, where we open
+% the module |ring| (see Figure~\ref{fig:ring}) and use its semantic macros (in the
+% |omtext| environment). In earlier versions of \sTeX, we would have to wrap the |omtext|
+% environment in an anonymous |module| environment to prevent re-export.
 % 
 %\begin{exfig}
 % \begin{verbatim}
@@ -672,16 +663,7 @@
 % In this section we will discuss limitations and possible extensions of the |modules|
 % package. Any contributions and extension ideas are welcome; please discuss ideas,
 % requests, fixes, etc on the {\sTeX} TRAC~\cite{sTeX:github:on}.
-% 
-% \subsection{Perl Utility \texttt{sms}}\label{sec:limitations:sms}
-% 
-% Currently we have to use an external perl utility |sms| to extract \sTeX module
-% signatures from \sTeX files. This considerably adds to the complexity of the \sTeX
-% installation and workflow. If we can solve security setting problems that allows us to
-% write to \sTeX module signatures outside the current directory, writing them from \sTeX
-% may be an avenue of future development see~\cite[issue \#1522]{sTeX:github:on} for a
-% discussion.
-% 
+%
 % \subsection{Qualified Imports}\label{sec:limitations:qualified-imports}
 % 
 % In an earlier version of the \texttt{modules} package we used the \texttt{usesqualified}
@@ -710,16 +692,15 @@
 % rules. Thus they have to be at the top level of a module to be visible throughout the
 % module as intended. As a consequence, the location of the |\symdef| elements cannot be
 % used as targets for crossreferencing, which is currently supplied by the |statement|
-% package~\ctancite{Kohlhase:smms}. A way around this limitation would be to import
-% the current module from the \sTeX module signature (see Section~\ref{sec:modules}) via
-% the |\importmodule| declaration.
+% package~\ctancite{Kohlhase:smms}. A way around this limitation would be to import the
+% current module from the \sTeX module (see Section~\ref{sec:modules}) via the
+% |\importmodule| declaration.
 % 
 % \subsection{No Forward Imports}\label{sec:limitations:forward-imports}
 % 
-% {\sTeX} allows imports in the same file via |\importmodule{|\meta{mod}|}|, but due to
-% the single-pass linear processing model of {\TeX}, \meta{mod} must be the name of a
-% module declared {\emph{before}} the current point. So we cannot have forward imports as
-% in \ednote{usemodule should work here; revise}
+% \sTeX allows imports in the same file via |\importmodule{|\meta{mod}|}|, but due to the
+% single-pass linear processing model of {\TeX}, \meta{mod} must be the name of a module
+% declared {\emph{before}} the current point. So we cannot have forward imports as in
 % \begin{verbatim}
 % \begin{module}[id=foo]
 %   \importmodule{mod}
@@ -731,17 +712,17 @@
 % \end{module}
 % \end{verbatim}
 % a workaround, we can extract the module \meta{mod} into a file {{{mod.tex}}} and replace
-% it with |\sinput{mod}|, as in
+% it with |\inputref{mod}|, as in
 % \begin{verbatim}
 % \begin{module}[id=foo]
 %   \importmodule[load=mod]{mod}
 %   ...
 % \end{module}
 % ... 
-% \sinput{mod}
+% \inputref{mod}
 % \end{verbatim}
-% then the |\importmodule| command can read |mod.sms| (created via the |sms| utility)
-% without having to wait for the module \meta{mod} to be defined.
+% then the |\importmodule| command can read |mod.tex| without having to wait for the
+% module \meta{mod} to be defined.
 % 
 % \StopEventually{\newpage\PrintIndex\newpage\PrintChanges\newpage\printbibliography}\newpage
 %
@@ -784,6 +765,7 @@
 \RequirePackage{stex-base}
 \RequirePackage{sref}
 \RequirePackage{pathsuris}
+\RequirePackage{standalone}
 \if@modules@mh@\RequirePackage{modules-mh}\fi
 \if@mmt\RequirePackage{mmt}\fi
 \RequirePackage{xspace}
@@ -865,11 +847,10 @@
   \begin{@module}[#1]%
   \ifcsundef{mod@id}{}{% only define if components are!
     \ifcsundef{mod@path}{}{\csxdef{module@\mod@id @path}{\mod@path}}%
-    \ifcsundef{mod@ext}{}{\csxdef{module@\mod@id @ext}{\mod@ext}}%
   }%
   \if@mmt\if@importing\else\mmtheory{\mod@id}{????}\fi\fi%
   \module@heading% make the headings
-  \ignorespacesandpars}{%
+  \ignorespacesandpars\usemodule@maybesetcodes}{%
   \if@mmt\if@importing\else\mmtheoryend\fi\fi%
   \end{@module}%
   \ignorespacesafterend%
@@ -946,23 +927,22 @@
 \srefaddidkey{importmodule}
 \addmetakey{importmodule}{load}
 \addmetakey{importmodule}{dir}
-\addmetakey[sms]{importmodule}{ext}
 \addmetakey[false]{importmodule}{conservative}[true]
 \newcommand\importmodule[2][]{%
 \metasetkeys{importmodule}{#1}%
+\usemodule@maybesetcodes
 \update@used@modules{#2}%
 \ifx\importmodule@dir\@empty
-\@importmodule[\importmodule@load]{#2}{\importmodule@ext}{export}%
-\else\@importmodule[\importmodule@dir/#2]{#2}{\importmodule@ext}{export}\fi%
+\@importmodule[\importmodule@load]{#2}{export}%
+\else\@importmodule[\importmodule@dir/#2]{#2}{export}\fi%
 \ignorespacesandpars}
 %    \end{macrocode}
 % \end{macro}
 %
 % \begin{macro}{\@importmodule} 
-%   |\@importmodule[|\meta{filepath}|]{|\meta{mod}|}{|\meta{ext}|}{|\meta{export?}|}|
-%   loads \meta{filepath}|.|\meta{ext} (if it is given) and activates the module
-%   \meta{mod}. If \meta{export?} is |export|, then it also re-exports the |\symdef|s from
-%   \meta{mod}.
+%   |\@importmodule[|\meta{filepath}|]{|\meta{mod}|}{|\meta{export?}|}|
+%   loads \meta{filepath}|.tex| and activates the module \meta{mod}. If \meta{export?} is
+%   |export|, then it also re-exports the |\symdef|s from \meta{mod}.
 %
 %   First |\@load| will store the base file name with full path, then check if
 %   |\module@|\meta{mod}|@path| is defined. If this macro is defined, a module of this
@@ -970,11 +950,12 @@
 %   is fine and we do nothing otherwise we give a suitable error. If this macro is
 %   undefined we load the path by |\requiremodules|.
 %    \begin{macrocode}
-\newcommand\@importmodule[4][]{%
+\newcommand\@importmodule[3][]{%
 {\@importingtrue% to shut up macros while in the group opened here
 \edef\@load{#1}%
+\edef\@load{\expandafter\detokenize\expandafter{\@load}}%
 \ifx\@load\@empty\relax\else%
-\ifcsundef{module@#2@path}{\requiremodules{#1}{#3}}%
+\ifcsundef{module@#2@path}{\requiremodules{#1}}%
 {\edef\@path{\csname module@#2@path\endcsname}%
 \IfStrEq\@load\@path{\relax}% if the known path is the same as the requested one do nothing
 {\PackageError{modules}% else signal an error
@@ -985,22 +966,22 @@ same name; this is dangerous -- not importing}%
 {Check whether the Module name is correct}}}%
 \fi}%
 \activate@defs{#2}% activate the module
-\edef\@export{#4}\def\@@export{export}%prepare comparison
+\edef\@export{#3}\def\@@export{export}%prepare comparison
 \ifx\@export\@@export\export@defs{#2}\fi% export the module
 \if@importing\else\if@mmt\mmtinclude{#1?#2}\fi\fi}%
 %    \end{macrocode}
 % \end{macro}
 % 
 % \begin{macro}{\usemodule} 
-%   |\usemodule| acts like |\importmodule|, except that the |sms| utility does not
-%   transfer it to the module signatures and it does not re-export the symdefs.
+%   |\usemodule| acts like |\importmodule|, except that it does not re-export the semantic
+%   macros in the modules it loads. 
 %    \begin{macrocode}
 \newcommand\usemodule[2][]{%
 \metasetkeys{importmodule}{#1}%
 \update@used@modules{#2}%
 \ifx\importmodule@dir\@empty
-\@importmodule[\importmodule@load]{#2}{\importmodule@ext}{noexport}%
-\else\@importmodule[\importmodule@dir/#2]{#2}{\importmodule@ext}{noexport}\fi%
+\@importmodule[\importmodule@load]{#2}{noexport}%
+\else\@importmodule[\importmodule@dir/#2]{#2}{noexport}\fi%
 \ignorespacesandpars}
 %    \end{macrocode}
 % \end{macro}
@@ -1125,6 +1106,7 @@ same name; this is dangerous -- not importing}%
 %    \begin{macrocode}
   \@symdeflocalfalse%
   \metasetkeys{symdef}{#1}%
+  \usemodule@maybesetcodes%
 %    \end{macrocode}
 % If the |mmt| option is set and we are not importing, then we write out the constant
 % declaration for this symdef\ednote{eventually we may want to do something about the
@@ -1177,7 +1159,7 @@ same name; this is dangerous -- not importing}%
 % We also add |\mod@symref@|\meta{sym} macro to the macro pool so that the |\symref| macro
 % can pick it up.
 %    \begin{macrocode}
-      \expandafter\g@addto@macro\csname  module@defs@\mod@id\expandafter\endcsname\expandafter%
+      \expandafter\g@addto@macro\csname module@defs@\mod@id\expandafter\endcsname\expandafter%
       {\expandafter\@mod@nc\csname mod@symref@#2\expandafter\endcsname\expandafter%
       {\expandafter\mod@termref\expandafter{\mod@id}{#2}{##1}}}%
 %    \end{macrocode}
@@ -1217,6 +1199,7 @@ same name; this is dangerous -- not importing}%
   \@ifnextchar[{\@symvariant{#1}}{\@symvariant{#1}[0]}%
   }%
 \def\@symvariant#1[#2]#3#4{%
+  \usemodule@maybesetcodes
   \expandafter\mod@newcommand\csname modules@#1@pres@#3\endcsname[#2]{#4}%
 %    \end{macrocode}
 % and if we are in a named module, then we need to export the function
@@ -1393,23 +1376,276 @@ same name; this is dangerous -- not importing}%
 %    \end{macrocode}
 % \end{macro}
 %
-% \subsection{Loading Module Signatures}
+% \subsection{Loading Modules}
 %
 % \subsubsection{Selective Inclusion}
 %
-% \begin{macro}{\requiremodules}
-%   this macro loads the modules in a file and makes sure that no text is deposited (we
-%   set the flags |\mod@showfalse| and |\@importingtrue| in the local group). It also
-%   remembers the file name and extension in |\mod@path| and |\mod@ext| so that
-%   |\begin{module}| can pick them up later.
+% The next great goal is to establish the |\requiremodules| macro, which reads an \sTeX
+% file and processes all the module signature information in them, but does not produce
+% any output. This is a tricky business, as we need to ``parse'' the modules and treat the
+% module signature macros specially (we refer to this as ``\defemph{sms mode}'', since it
+% is equivalent to what the -- now deprecated -- |sms| utility did).
+%
+% In the following we introduce a lot of auxiliary functionality before we can define
+% |\requiremodules|.
+%
+% \begin{macro}{\usemodule@allow*}
+%   The first step is setting up a functionality for registering |\sTeX| macros and
+%   environments as part of a module signature. 
 %    \begin{macrocode}
-\newrobustcmd\requiremodules[2]{%
-  \mod@showfalse%
-  \@importingtrue% save state and ensure silence while reading sms
-  \edef\mod@path{#1}%
-  \edef\mod@ext{#2}% set up path/ext
-  \input{#1.#2}%
+\newif\if@smsmode\@smsmodefalse
+\def\usemodule@escapechar@allowed{true}
+\def\usemodule@allow#1{
+  \expandafter\let\csname usemodule@allowedmacro@#1\endcsname\usemodule@escapechar@allowed
+}
+\def\usemodule@allowenv#1{
+  \expandafter\let\csname usemodule@allowedenv@#1\endcsname\usemodule@escapechar@allowed
+}
+\def\usemodule@escapechar@beginstring{begin}
+\def\usemodule@escapechar@endstring{end}
+%    \end{macrocode}
+% \end{macro}
+% 
+% and now we use that to actually register all the \sTeX functionality as relevant for
+% |sms| mode. 
+%
+%    \begin{macrocode}
+\usemodule@allow{symdef}
+\usemodule@allow{abbrdef}
+\usemodule@allow{importmodule}
+\usemodule@allowenv{module}
+\usemodule@allow{importmhmodule}
+\usemodule@allow{gimport}
+\usemodule@allowenv{modsig}
+\usemodule@allowenv{mhmodsig}
+\usemodule@allowenv{mhmodnl}
+\usemodule@allowenv{modnl}
+\usemodule@allow{symvariant}
+\usemodule@allow{symi}
+\usemodule@allow{symii}
+\usemodule@allow{symiii}
+\usemodule@allow{symiv}
+%    \end{macrocode}
+% 
+% To read external modules without producing output, |\requiremodules| redefines the \textbackslash-character
+% to be an \emph{active} character that, instead of executing a macro, checks whether a macro name
+% has been registered using |\usemodule@allow| before selectively executing the corresponding macro or ignoring it. 
+% To produce the relevant code, we therefore
+% define a macro |\@active@slash| that produces a \textbackslash-character with category code 13 (\emph{active}),
+% as well as |\@open@brace| and |\@close@brace|, which produce open and closing braces with
+% category code 12 (\emph{other}).
+%
+%    \begin{macrocode}
+\catcode`\.=0
+.catcode`.\=13
+.def.@active@slash{\}
+.catcode`.<=1
+.catcode`.>=2
+.catcode`.{=12
+.catcode`.}=12
+.def.@open@brace<{>
+.def.@close@brace<}>
+.catcode`.\=0
+\catcode`\.=12
+\catcode`\{=1
+\catcode`\}=2
+\catcode`\<=12
+\catcode`\>=12
+%    \end{macrocode}
+%
+% The next two macros set and reset the category codes before/after |sms| mode.
+%
+% \begin{macro}{\set@usemodule@catcodes}
+%    \begin{macrocode}
+  \def\set@usemodule@catcodes{%
+      \global\catcode`\\=13%
+      \global\catcode`\#=12%
+      \global\catcode`\{=12%
+      \global\catcode`\}=12%
+      \global\catcode`\$=12%$
+      \global\catcode`\^=12%
+      \global\catcode`\_=12%
+      \global\catcode`\&=12%
+      \expandafter\let\@active@slash\usemodule@escapechar%
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\reset@usemodule@catcodes}
+%    \begin{macrocode}
+  \def\reset@usemodule@catcodes{%
+      \global\catcode`\\=0%
+      \global\catcode`\#=6%
+      \global\catcode`\{=1%
+      \global\catcode`\}=2%
+      \global\catcode`\$=3%$
+      \global\catcode`\^=7%
+      \global\catcode`\_=8%
+      \global\catcode`\&=4%
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\usemodule@maybesetcodes}
+%   Before a macro is executed in |sms|-mode, the category codes will be reset to normal,
+%   to ensure that all macro arguments are parsed correctly. Consequently, the macros
+%   need to set the category codes back to |sms| mode after having read all arguments iff
+%   the macro got executed in
+%   |sms| mode. |\usemodule@maybesetcodes| takes care of that.
+%    \begin{macrocode}
+  \def\usemodule@maybesetcodes{%
+    \if@smsmode\set@usemodule@catcodes\fi%
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\requiremodules}
+%   This macro loads the module signatures in a file using the |\requiremodules@smsmode|
+%   above. We set the flag |\mod@showfalse| in the local group, so that the macros know
+%   now to pollute the  result.
+%    \begin{macrocode}
+  \newrobustcmd\requiremodules[1]{%
+    \mod@showfalse%
+    \edef\mod@path{#1}%
+    \edef\mod@path{\expandafter\detokenize\expandafter{\mod@path}}%
+    \requiremodules@smsmode{#1}%
+  }%
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\requiremodules@smsmode}
+%   this reads \sTeX modules by setting the category codes for |sms| mode,
+%   |\input|ting the required file and wrapping it in a |\vbox| that gets stored away
+%   and ignored, in order to not produce any output. It also sets |\hbadness|, |\hfuzz|
+%   and friends to values that suppress overfull and underfull hbox messages.
+%    \begin{macrocode}
+  \newbox\modules@import@tempbox
+  \def\requiremodules@smsmode#1{
+    \setbox\modules@import@tempbox\vbox{%
+      \@smsmodetrue%
+      \set@usemodule@catcodes%
+      \hbadness=100000\relax%
+      \hsize=10pt%
+      \hfuzz=10000pt\relax%
+      \input{#1.tex}%
+      \reset@usemodule@catcodes%
+      }%
+      \usemodule@maybesetcodes
+  }
+%    \end{macrocode}
+% \end{macro}
+% 
+% \begin{macro}{\usemodule@escapechar}
+% This macro gets called whenever a \textbackslash-character occurs in |sms| mode.
+% It is split into several macros that parse and store characters in
+% |\usemodule@escape@currcs| until a character
+% with category code $\neq$ 11 occurs (i.e. the macro name is complete), check
+% whether the macro is allowed in |sms| mode, and then either ignore it or execute it
+% after setting category codes back to normal. Special care needs to be taken to make
+% sure that braces have the right category codes (1 and 2 for open and closing braces,
+% respectively) when delimiting macro arguments.
+%
+% Entry point:
+%    \begin{macrocode}
+
+\def\usemodule@escapechar{%
+    \def\usemodule@escape@currcs{}%
+    \usemodule@escape@parse@nextchar@%
 }%
+%    \end{macrocode}
+% The next macro simply reads the next character and checks whether it has category code 11.
+% If so, it stores it in |\usemodule@escape@currcs|. Otherwise, the macro name
+% is complete, it stores the last
+% character in |\usemodule@last@char| and calls |\usemodule@escapechar@checkcs|.
+%
+%    \begin{macrocode}
+\long\def\usemodule@escape@parse@nextchar@#1{%
+    \ifcat a#1 %
+        \edef\usemodule@escape@currcs{\usemodule@escape@currcs#1}%
+        \let\usemodule@do@next\usemodule@escape@parse@nextchar@%
+    \else%
+      \def\usemodule@last@char{#1}%
+      \def\usemodule@do@next{\usemodule@escapechar@checkcs}%
+    \fi%
+    \usemodule@do@next%
+}
+%    \end{macrocode}
+%
+% The next macro checks whether the currently stored macroname is allowed in |sms| mode.
+% There are four cases that need to be considered: |\begin|, |\end|, allowed macros, and others.
+% In the first two cases, we reinsert |\usemodule@last@char| and continue with |\usemodule@escapechar@checkbeginenv|
+% or |\usemodule@escapechar@checkendenv| respectively, to check whether the environment
+% being openend/closed is allowed in |sms| mode. In both cases, |\usemodule@last@char|
+% is an open brace with category code 12. In the third case, we need to check whether
+% |\usemodule@last@char| is an open brace, in which case we call |\usemodule@converttoproperbraces|,
+% otherwise, we set category codes to normal and execute the macro.
+% In the fourth case, we just reinsert |\usemodule@last@char| and continue.
+%    \begin{macrocode}
+\def\usemodule@escapechar@checkcs{
+    \ifx\usemodule@escape@currcs\usemodule@escapechar@beginstring%
+        \edef\usemodule@do@next{\noexpand\usemodule@escapechar@checkbeginenv\usemodule@last@char}%
+    \else%
+        \ifx\usemodule@escape@currcs\usemodule@escapechar@endstring%
+          \edef\usemodule@do@next{\noexpand\usemodule@escapechar@checkendenv\usemodule@last@char}%
+        \else%
+            \expandafter\ifx\csname usemodule@allowedmacro@\usemodule@escape@currcs\endcsname%
+                \usemodule@escapechar@allowed%
+              \ifx\usemodule@last@char\@open@brace%
+                \expandafter\let\expandafter\usemodule@do@next@ii\csname\usemodule@escape@currcs\endcsname
+                \edef\usemodule@do@next{\noexpand\usemodule@converttoproperbraces\@open@brace}
+              \else%
+                \reset@usemodule@catcodes%
+                \edef\usemodule@do@next{\expandafter\noexpand\csname\usemodule@escape@currcs\endcsname\usemodule@last@char}
+              \fi%
+            \else\def\usemodule@do@next{\relax\usemodule@last@char}\fi%
+        \fi%
+    \fi%
+    \usemodule@do@next%
+}
+%    \end{macrocode}
+% This macro simply takes an argument in braces (with category codes 12), reinserts it
+% with ``proper'' braces (category codes 1 and 2), sets category codes back to normal and calls |\usemodule@do@next@ii|,
+% which has been |\let| as the macro to be executed.
+%
+%    \begin{macrocode}
+\expandafter\expandafter\expandafter\def%
+\expandafter\expandafter\expandafter\usemodule@converttoproperbraces%
+\expandafter\@open@brace\expandafter#\expandafter1\@close@brace{%
+  \reset@usemodule@catcodes%
+  \usemodule@do@next@ii{#1}%
+}
+%    \end{macrocode}
+%
+% The next two macros apply in the |\begin| and |\end| cases. They check whether the
+% environment is allowed in |sms| mode, if so, open/close the environment, and otherwise
+% do nothing.
+%
+% Notably, |\usemodule@escapechar@checkendenv| does not set category codes back to normal,
+% since |\end{environment}| never takes additional arguments that need to be parsed anyway.
+%
+%    \begin{macrocode}
+\expandafter\expandafter\expandafter\def%
+\expandafter\expandafter\expandafter\usemodule@escapechar@checkbeginenv%
+\expandafter\@open@brace\expandafter#\expandafter1\@close@brace{%
+    \expandafter\ifx\csname usemodule@allowedenv@#1\endcsname\usemodule@escapechar@allowed%
+        \reset@usemodule@catcodes%
+        \def\usemodule@do@next{\begin{#1}}%
+    \else%
+        \def\usemodule@do@next{#1}%
+    \fi%
+    \usemodule@do@next%
+}
+\expandafter\expandafter\expandafter\def%
+\expandafter\expandafter\expandafter\usemodule@escapechar@checkendenv%
+\expandafter\@open@brace\expandafter#\expandafter1\@close@brace{%
+    \expandafter\ifx\csname usemodule@allowedenv@#1\endcsname\usemodule@escapechar@allowed%
+        %\reset@usemodule@catcodes%
+        \def\usemodule@do@next{\end{#1}}%
+    \else%
+      \def\usemodule@do@next{#1}%
+    \fi%
+    \usemodule@do@next%
+}
 %    \end{macrocode}
 % \end{macro}
 % 
@@ -1418,8 +1654,8 @@ same name; this is dangerous -- not importing}%
 %   at the end of the document, so that when the |aux| file is read again, nothing is
 %   loaded.
 %    \begin{macrocode}
-\newrobustcmd\@requiremodules[2]{%
-  \if@tempswa\requiremodules{#1}{#2}\fi%
+\newrobustcmd\@requiremodules[1]{%
+  \if@tempswa\requiremodules{#1}\fi%
 }%
 %    \end{macrocode}
 % \end{macro}
@@ -1444,7 +1680,7 @@ same name; this is dangerous -- not importing}%
   \inputref@preskip%
   \ifx\@testchar\@Slash%
     \edef\mod@path{#1}%
-    \edef\mod@ext{tex}%
+    \edef\mod@path{\expandafter\detokenize\expandafter{\mod@path}}%
     \input{#1}%
   \else%
     \@cpath{#1}\input{\@CanPath.tex}%
@@ -1554,7 +1790,7 @@ same name; this is dangerous -- not importing}%
 % I document below. If I decide to do away with relative paths, this would be it.
 % 
 % \begin{macro}{\reqmodules}
-%   We keep a file path registry |\@register| and only load a module signature, if it is
+%   We keep a file path registry |\@register| and only load a module, if it is
 %   not in there.
 %    \begin{macrocode}
 \newrobustcmd\reqmodules[2]{%
@@ -1676,7 +1912,7 @@ same name; this is dangerous -- not importing}%
 % LocalWords:  setcounter tableofcontents mathbb symvariant importmodulevia  assdef Jinbo
 % LocalWords:  importmodulevia compactdesc tassign tassign tname source-tname frompath
 % LocalWords:  ttassign metakeys addmetakey themodule metasetkeys aftergroup addtocounter
-% LocalWords:  groupling requation IMPORTCD CURRENTCD bindargs defmathop cnode topath
+% LocalWords:  groupling requation IMPORTCD CURRENTCD bindargs defmathop cnode topath neq
 % LocalWords:  icvariant aftercounter prestok inputref oref loadfrom loadto customization
 % LocalWords:  csymdef notationdef noauxreq noauxreq rinput ifaux reqtrue bargs assdef
 % LocalWords:  reqfalse currmod importmoduleenv conceptdef stDMemph  tempswa mhviewsketch
@@ -1693,4 +1929,8 @@ same name; this is dangerous -- not importing}%
 % mode: doctex
 % TeX-master: t
 % End:
-%  LocalWords:  noverb smultiling emptyset aeset
+%  LocalWords:  noverb smultiling emptyset aeset inputref@preskip inputref@preskip modnl
+%  LocalWords:  medskip usemodule@maybesetcodes detokenize defemph if@smsmode mhmodsig
+%  LocalWords:  usemodule@allowedmacro usemodule@allowenv usemodule@allowedenv mhmodnl
+%  LocalWords:  symii symiii symiv catcode usemodule@escapechar requiremodules@smsmode
+%  LocalWords:  hbadness hfuzz newbox hsize ifcat usemodule@converttoproperbraces

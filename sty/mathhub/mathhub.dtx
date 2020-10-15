@@ -343,15 +343,18 @@
 %   |\mhcurrentrepos| is used to initialize the current repository. If the repository has
 %   changed, it writes a call to the internal macro
 %   \DescribeMacro{\@mhcurrentrepos}|\@mhcurrentrepos| for the aux file and calls it. So
-%   that the |\importmodule| calls there work with the correct repository.
+%   that the |\importmodule| calls there work with the correct repository.\ednote{MK: It
+%   seems that we do not need the |\@currentrepos| in the |aux| file, leaving the commenting
+%   out just in case we do. We can consolidate this further if it turns out that we do not
+%   need this.}
 %    \begin{macrocode}
 \newcommand\mhcurrentrepos[1]{%
-  \edef\@test{#1}%
-  \ifx\@test\mh@currentrepos% if new dir = old dir
-    \relax% no need to change
-  \else%
-    \protected@write\@auxout{}{\string\@mhcurrentrepos{#1}}%
-  \fi%
+  % \edef\@test{#1}%
+  % \ifx\@test\mh@currentrepos% if new dir = old dir
+  %   \relax% no need to change
+  % \else%
+  %   \protected@write\@auxout{}{\string\@mhcurrentrepos{#1}}%
+  % \fi%
   \@mhcurrentrepos{#1}% define mh@currentrepos
 }%
 \newcommand\@mhcurrentrepos[1]{\edef\mh@currentrepos{#1}}%
@@ -446,16 +449,19 @@
     \edef\@findmanifest@path{\@CanPath/MANIFEST.MF}
     \if@iswindows@\path@to@windows\@findmanifest@path\fi
     \IfFileExists{\@findmanifest@path}{
+      \message{MANIFEST.MF found at \@findmanifest@path}
       \edef\manifest@mf{\@findmanifest@path}
     }{
     \edef\@findmanifest@path{\@CanPath/META-INF/MANIFEST.MF}
     \if@iswindows@\path@to@windows\@findmanifest@path\fi
     \IfFileExists{\@findmanifest@path}{
+      \message{MANIFEST.MF found at \@findmanifest@path}
       \edef\manifest@mf{\@findmanifest@path}
     }{
     \edef\@findmanifest@path{\@CanPath/meta-inf/MANIFEST.MF}
     \if@iswindows@\path@to@windows\@findmanifest@path\fi
     \IfFileExists{\@findmanifest@path}{
+      \message{MANIFEST.MF found at \@findmanifest@path}
       \edef\manifest@mf{\@findmanifest@path}
     }{
       \findmanifest{\@CanPath/..}
@@ -486,24 +492,30 @@
   \ifeof\@manifest
   \else
     \read\@manifest to \manifest@line\relax
+    \edef\manifest@line{\expandafter\detokenize\expandafter{\manifest@line}}
     \split@manifest@key
     % id
-    \IfStrEq\manifest@key{id}{
+    \IfStrEq\manifest@key{\detokenize{id}}{
+        \message{archive id: \manifest@line}
         \xdef\manifest@mf@id{\manifest@line}
     }{
     % narration-base
-    \IfStrEq\manifest@key{narration-base}{
+    \IfStrEq\manifest@key{\detokenize{narration-base}}{
+        \message{archive narration-base: \manifest@line}
         \xdef\manifest@mf@narr{\manifest@line}
     }{
     % namespace
-    \IfStrEq\manifest@key{source-base}{
+    \IfStrEq\manifest@key{\detokenize{source-base}}{
+        \message{archive source-base: \manifest@line}
         \xdef\manifest@mf@ns{\manifest@line}
     }{
-    \IfStrEq\manifest@key{ns}{
+    \IfStrEq\manifest@key{\detokenize{ns}}{
+        \message{archive ns: \manifest@line}
         \xdef\manifest@mf@ns{\manifest@line}
     }{
     % dependencies
-    \IfStrEq\manifest@key{dependencies}{
+    \IfStrEq\manifest@key{\detokenize{dependencies}}{
+        \message{archive dependencies: \manifest@line}
         \xdef\manifest@mf@deps{\manifest@line}
     }{
             
@@ -525,6 +537,7 @@
 \edef\pwd@cmd{\if@iswindows@ -expand-var \percent CD\percent\else -var-value PWD\fi}
 \kpsewhich\mathhub@maindir\pwd@cmd
 \if@iswindows@\windows@to@path\mathhub@maindir\fi
+\message{PWD: \mathhub@maindir}
 %    \end{macrocode}
 %
 % We read in and parse |MANIFEST.MF|
@@ -593,9 +606,9 @@
 \addmetakey{importmhmodule}{mhrepos}%
 \addmetakey{importmhmodule}{path}%
 \addmetakey{importmhmodule}{dir}%
-\addmetakey[sms]{importmhmodule}{ext}%
 \addmetakey[false]{importmhmodule}{conservative}[true]%
 \newcommand\importmhmodule[2][]{%
+\usemodule@maybesetcodes
 \metasetkeys{importmhmodule}{#1}%
 \ifx\importmhmodule@dir\@empty%
 \edef\@path{\importmhmodule@path}%
@@ -610,7 +623,7 @@
 \mhcurrentrepos{\importmhmodule@mhrepos}% change it. 
 \fi%
 \importmodule[load=\MathHub{\mh@currentrepos/source/\@path},
-                         ext=\importmhmodule@ext,id=\importmhmodule@id]{#2}%
+                         id=\importmhmodule@id]{#2}%
 \mhcurrentrepos{\mh@@repos}% after importing, reset to old value
 \fi%
 \ignorespacesandpars}
@@ -631,7 +644,7 @@
 \ifx\importmhmodule@mhrepos\@empty%
 \else\mhcurrentrepos{\importmhmodule@mhrepos}\fi%
 \usemodule[load=\MathHub{\mh@currentrepos/source/\@path},
-                        ext=\importmhmodule@ext,id=\importmhmodule@id]{#2}%
+                        id=\importmhmodule@id]{#2}%
 \mhcurrentrepos\mh@@repos%
 \fi%
 \ignorespacesandpars}
@@ -739,8 +752,8 @@
 %    \begin{macrocode}
 \newenvironment{mhviewsig}[4][]{% keys, id, from, to
 \def\@test{#1}\ifx\@test\@empty%
-\begin{mhview}[id=#2,ext=tex]{#3}{#4}\else%
-\begin{mhview}[id=#2,#1,ext=tex]{#3}{#4}\fi%
+\begin{mhview}[id=#2]{#3}{#4}\else%
+\begin{mhview}[id=#2,#1]{#3}{#4}\fi%
 \ignorespacesandpars}
 {\end{mhview}\ignorespacesandparsafterend}
 %    \end{macrocode}
@@ -754,8 +767,8 @@
 %    \begin{macrocode}
 \newenvironment{mhviewnl}[5][]{% keys, id, lang, from, to
 \def\@test{#1}\ifx\@test\@empty%
-\begin{mhview}[id=#2.#3,ext=tex]{#4}{#5}\else%
-\begin{mhview}[id=#2.#3,#1,ext=tex]{#4}{#5}\fi%
+\begin{mhview}[id=#2.#3]{#4}{#5}\else%
+\begin{mhview}[id=#2.#3,#1]{#4}{#5}\fi%
 \ignorespacesandpars}
 {\end{mhview}\ignorespacesandparsafterend}
 %</smultiling>
@@ -805,7 +818,6 @@
 \addmetakey{mhview}{torepos}
 \addmetakey{mhview}{frompath}
 \addmetakey{mhview}{topath}
-\addmetakey[sms]{mhview}{ext}
 %    \end{macrocode}
 %
 % \begin{environment}{mhview}
@@ -826,8 +838,8 @@
 %   The |@mhview| does the actual bookkeeping at the module level.
 %    \begin{macrocode}
 \newenvironment{@mhview}[2]{%from, to
-  \importmhmodule[mhrepos=\mhview@fromrepos,path=\mhview@frompath,ext=\mhview@ext]{#1}%
-  \importmhmodule[mhrepos=\mhview@torepos,path=\mhview@topath,ext=\mhview@ext]{#2}%
+  \importmhmodule[mhrepos=\mhview@fromrepos,path=\mhview@frompath]{#1}%
+  \importmhmodule[mhrepos=\mhview@torepos,path=\mhview@topath]{#2}%
 }{}%
 %    \end{macrocode}
 % \end{environment}
@@ -848,7 +860,7 @@
 %    \begin{macrocode}
 \newenvironment{mhinlineView}[2][]% keys, source
 {\metasetkeys{mhview}{#1}\sref@target%
-  \importmhmodule[mhrepos=\mhview@fromrepos,path=\mhview@frompath,ext=\mhview@ext]{#2}%
+  \importmhmodule[mhrepos=\mhview@fromrepos,path=\mhview@frompath]{#2}%
   \ignorespacesandpars}
 {\ignorespacesandpars}
 %    \end{macrocode}
