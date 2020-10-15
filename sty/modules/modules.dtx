@@ -1399,6 +1399,8 @@ same name; this is dangerous -- not importing}%
 \def\usemodule@allowenv#1{
   \expandafter\let\csname usemodule@allowedenv@#1\endcsname\usemodule@escapechar@allowed
 }
+\def\usemodule@escapechar@beginstring{begin}
+\def\usemodule@escapechar@endstring{end}
 %    \end{macrocode}
 % \end{macro}
 % 
@@ -1423,7 +1425,13 @@ same name; this is dangerous -- not importing}%
 \usemodule@allow{symiv}
 %    \end{macrocode}
 % 
-% \ednote{MK@DM: why do we need the catcodes here? }
+% To read external modules without producing output, |\requiremodules| redefines the \textbackslash-character
+% to be an \emph{active} character that, instead of executing a macro, checks whether a macro name
+% has been registered using |\usemodule@allow| before selectively executing the corresponding macro or ignoring it. 
+% To produce the relevant code, we therefore
+% define a macro |\@active@slash| that produces a \textbackslash-character with category code 13 (\emph{active}),
+% as well as |\@open@brace| and |\@close@brace|, which produce open and closing braces with
+% category code 12 (\emph{other}).
 %
 %    \begin{macrocode}
 \catcode`\.=0
@@ -1441,12 +1449,116 @@ same name; this is dangerous -- not importing}%
 \catcode`\}=2
 \catcode`\<=12
 \catcode`\>=12
+%    \end{macrocode}
+%
+% The next two macros set and reset the category codes before/after |sms| mode.
+%
+% \begin{macro}{\set@usemodule@catcodes}
+%    \begin{macrocode}
+  \def\set@usemodule@catcodes{%
+      \global\catcode`\\=13%
+      \global\catcode`\#=12%
+      \global\catcode`\{=12%
+      \global\catcode`\}=12%
+      \global\catcode`\$=12%$
+      \global\catcode`\^=12%
+      \global\catcode`\_=12%
+      \global\catcode`\&=12%
+      \expandafter\let\@active@slash\usemodule@escapechar%
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\reset@usemodule@catcodes}
+%    \begin{macrocode}
+  \def\reset@usemodule@catcodes{%
+      \global\catcode`\\=0%
+      \global\catcode`\#=6%
+      \global\catcode`\{=1%
+      \global\catcode`\}=2%
+      \global\catcode`\$=3%$
+      \global\catcode`\^=7%
+      \global\catcode`\_=8%
+      \global\catcode`\&=4%
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\usemodule@maybesetcodes}
+%   Before a macro is executed in |sms|-mode, the category codes will be reset to normal,
+%   to ensure that all macro arguments are parsed correctly. Consequently, the macros
+%   need to set the category codes back to |sms| mode after having read all arguments iff
+%   the macro got executed in
+%   |sms| mode. |\usemodule@maybesetcodes| takes care of that.
+%    \begin{macrocode}
+  \def\usemodule@maybesetcodes{%
+    \if@smsmode\set@usemodule@catcodes\fi%
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\requiremodules}
+%   This macro loads the module signatures in a file using the |\requiremodules@smsmode|
+%   above. We set the flags |\mod@showfalse| and
+%   |\@importingtrue| in the local group, so that the macros know now to pollute the
+%   result.\ednote{MK: maybe we do not need to do that when we put all in a box anyways. } 
+%    \begin{macrocode}
+  \newrobustcmd\requiremodules[1]{%
+    \mod@showfalse%
+    \@importingtrue% save state and ensure silence while in sms mode
+    \edef\mod@path{#1}%
+    \edef\mod@path{\expandafter\detokenize\expandafter{\mod@path}}%
+    \requiremodules@smsmode{#1}%
+  }%
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\requiremodules@smsmode}
+%   this reads \sTeX modules by setting the category codes for |sms| mode,
+%   |\input|ting the required file and wrapping it in a |\vbox| that gets stored away
+%   and ignored, in order to not produce any output. It also sets |\hbadness|, |\hfuzz|
+%   and friends to values that suppress overfull and underfull hbox messages.
+%    \begin{macrocode}
+  \newbox\modules@import@tempbox
+  \def\requiremodules@smsmode#1{
+    \setbox\modules@import@tempbox\vbox{%
+      \@smsmodetrue%
+      \set@usemodule@catcodes%
+      \hbadness=100000\relax%
+      \hsize=10pt%
+      \hfuzz=10000pt\relax%
+      \input{#1.tex}%
+      \reset@usemodule@catcodes%
+      }%
+      \usemodule@maybesetcodes
+  }
+%    \end{macrocode}
+% \end{macro}
+% 
+% \begin{macro}{\usemodule@escapechar}
+% This macro gets called whenever a \textbackslash-character occurs in |sms| mode.
+% It is split into several macros that parse and store characters in
+% |\usemodule@escape@currcs| until a character
+% with category code $\neq$ 11 occurs (i.e. the macro name is complete), check
+% whether the macro is allowed in |sms| mode, and then either ignore it or execute it
+% after setting category codes back to normal. Special care needs to be taken to make
+% sure that braces have the right category codes (1 and 2 for open and closing braces,
+% respectively) when delimiting macro arguments.
+%
+% Entry point:
+%    \begin{macrocode}
 
 \def\usemodule@escapechar{%
     \def\usemodule@escape@currcs{}%
     \usemodule@escape@parse@nextchar@%
 }%
-
+%    \end{macrocode}
+% The next macro simply reads the next character and checks whether it has category code 11.
+% If so, it stores it in |\usemodule@escape@currcs|. Otherwise, the macro name
+% is complete, it stores the last
+% character in |\usemodule@last@char| and calls |\usemodule@escapechar@checkcs|.
+%
+%    \begin{macrocode}
 \long\def\usemodule@escape@parse@nextchar@#1{%
     \ifcat a#1 %
         \edef\usemodule@escape@currcs{\usemodule@escape@currcs#1}%
@@ -1457,10 +1569,18 @@ same name; this is dangerous -- not importing}%
     \fi%
     \usemodule@do@next%
 }
-
-\def\usemodule@escapechar@beginstring{begin}
-\def\usemodule@escapechar@endstring{end}
-
+%    \end{macrocode}
+%
+% The next macro checks whether the currently stored macroname is allowed in |sms| mode.
+% There are four cases that need to be considered: |\begin|, |\end|, allowed macros, and others.
+% In the first two cases, we reinsert |\usemodule@last@char| and continue with |\usemodule@escapechar@checkbeginenv|
+% or |\usemodule@escapechar@checkendenv| respectively, to check whether the environment
+% being openend/closed is allowed in |sms| mode. In both cases, |\usemodule@last@char|
+% is an open brace with category code 12. In the third case, we need to check whether
+% |\usemodule@last@char| is an open brace, in which case we call |\usemodule@converttoproperbraces|,
+% otherwise, we set category codes to normal and execute the macro.
+% In the fourth case, we just reinsert |\usemodule@last@char| and continue.
+%    \begin{macrocode}
 \def\usemodule@escapechar@checkcs{
     \ifx\usemodule@escape@currcs\usemodule@escapechar@beginstring%
         \edef\usemodule@do@next{\noexpand\usemodule@escapechar@checkbeginenv\usemodule@last@char}%
@@ -1482,12 +1602,28 @@ same name; this is dangerous -- not importing}%
     \fi%
     \usemodule@do@next%
 }
+%    \end{macrocode}
+% This macro simply takes an argument in braces (with category codes 12), reinserts it
+% with ``proper'' braces (category codes 1 and 2), sets category codes back to normal and calls |\usemodule@do@next@ii|,
+% which has been |\let| as the macro to be executed.
+%
+%    \begin{macrocode}
 \expandafter\expandafter\expandafter\def%
 \expandafter\expandafter\expandafter\usemodule@converttoproperbraces%
 \expandafter\@open@brace\expandafter#\expandafter1\@close@brace{%
   \reset@usemodule@catcodes%
   \usemodule@do@next@ii{#1}%
 }
+%    \end{macrocode}
+%
+% The next two macros apply in the |\begin| and |\end| cases. They check whether the
+% environment is allowed in |sms| mode, if so, open/close the environment, and otherwise
+% do nothing.
+%
+% Notably, |\usemodule@escapechar@checkendenv| does not set category codes back to normal,
+% since |\end{environment}| never takes additional arguments that need to be parsed anyway.
+%
+%    \begin{macrocode}
 \expandafter\expandafter\expandafter\def%
 \expandafter\expandafter\expandafter\usemodule@escapechar@checkbeginenv%
 \expandafter\@open@brace\expandafter#\expandafter1\@close@brace{%
@@ -1510,80 +1646,6 @@ same name; this is dangerous -- not importing}%
     \fi%
     \usemodule@do@next%
 }
-%    \end{macrocode}
-%
-% \begin{macro}{\set@usemodule@catcodes}
-%    \begin{macrocode}
-\def\set@usemodule@catcodes{%
-    \global\catcode`\\=13%
-    \global\catcode`\#=12%
-    \global\catcode`\{=12%
-    \global\catcode`\}=12%
-    \global\catcode`\$=12%$
-    \global\catcode`\^=12%
-    \global\catcode`\_=12%
-    \global\catcode`\&=12%
-    \expandafter\let\@active@slash\usemodule@escapechar%
-}
-%    \end{macrocode}
-% \end{macro}
-%
-% \begin{macro}{\reset@usemodule@catcodes}
-%    \begin{macrocode}
-\def\reset@usemodule@catcodes{%
-    \global\catcode`\\=0%
-    \global\catcode`\#=6%
-    \global\catcode`\{=1%
-    \global\catcode`\}=2%
-    \global\catcode`\$=3%$
-    \global\catcode`\^=7%
-    \global\catcode`\_=8%
-    \global\catcode`\&=4%
-}
-%    \end{macrocode}
-% \end{macro}
-%
-% \begin{macro}{\requiremodules@smsmode}
-%   this read \sTeX modules and treats the 
-%    \begin{macrocode}
-\def\usemodule@maybesetcodes{%
-  \if@smsmode\set@usemodule@catcodes\fi%
-}
-%    \end{macrocode}
-% \end{macro}
-%
-% \begin{macro}{\requiremodules@smsmode}
-%   this read \sTeX modules and treats the 
-%    \begin{macrocode}
-\def\requiremodules@smsmode#1{
-  \setbox\modules@import@tempbox\vbox{%
-    \@smsmodetrue%
-    \set@usemodule@catcodes%
-    \hbadness=100000\relax%
-    \hsize=10pt%
-    \hfuzz=10000pt\relax%
-    \input{#1.tex}%
-    \reset@usemodule@catcodes%
-    }%
-    \usemodule@maybesetcodes
-}
-%    \end{macrocode}
-% \end{macro}
-% 
-% \begin{macro}{\requiremodules}
-%   This macro loads the module signatures in a file using the |\requiremodules@smsmode|
-%   above. We set the flags |\mod@showfalse| and
-%   |\@importingtrue| in the local group, so that the macros know now to pollute the
-%   result.\ednote{MK: maybe we do not need to do that when we put all in a box anyways. } 
-%    \begin{macrocode}
-\newbox\modules@import@tempbox
-\newrobustcmd\requiremodules[1]{%
-  \mod@showfalse%
-  \@importingtrue% save state and ensure silence while in sms mode
-  \edef\mod@path{#1}%
-  \edef\mod@path{\expandafter\detokenize\expandafter{\mod@path}}%
-  \requiremodules@smsmode{#1}%
-}%
 %    \end{macrocode}
 % \end{macro}
 % 

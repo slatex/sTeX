@@ -305,6 +305,8 @@ same name; this is dangerous -- not importing}%
 \def\usemodule@allowenv#1{
   \expandafter\let\csname usemodule@allowedenv@#1\endcsname\usemodule@escapechar@allowed
 }
+\def\usemodule@escapechar@beginstring{begin}
+\def\usemodule@escapechar@endstring{end}
 \usemodule@allow{symdef}
 \usemodule@allow{abbrdef}
 \usemodule@allow{importmodule}
@@ -335,12 +337,55 @@ same name; this is dangerous -- not importing}%
 \catcode`\}=2
 \catcode`\<=12
 \catcode`\>=12
+  \def\set@usemodule@catcodes{%
+      \global\catcode`\\=13%
+      \global\catcode`\#=12%
+      \global\catcode`\{=12%
+      \global\catcode`\}=12%
+      \global\catcode`\$=12%$
+      \global\catcode`\^=12%
+      \global\catcode`\_=12%
+      \global\catcode`\&=12%
+      \expandafter\let\@active@slash\usemodule@escapechar%
+  }
+  \def\reset@usemodule@catcodes{%
+      \global\catcode`\\=0%
+      \global\catcode`\#=6%
+      \global\catcode`\{=1%
+      \global\catcode`\}=2%
+      \global\catcode`\$=3%$
+      \global\catcode`\^=7%
+      \global\catcode`\_=8%
+      \global\catcode`\&=4%
+  }
+  \def\usemodule@maybesetcodes{%
+    \if@smsmode\set@usemodule@catcodes\fi%
+  }
+  \newrobustcmd\requiremodules[1]{%
+    \mod@showfalse%
+    \@importingtrue% save state and ensure silence while in sms mode
+    \edef\mod@path{#1}%
+    \edef\mod@path{\expandafter\detokenize\expandafter{\mod@path}}%
+    \requiremodules@smsmode{#1}%
+  }%
+  \newbox\modules@import@tempbox
+  \def\requiremodules@smsmode#1{
+    \setbox\modules@import@tempbox\vbox{%
+      \@smsmodetrue%
+      \set@usemodule@catcodes%
+      \hbadness=100000\relax%
+      \hsize=10pt%
+      \hfuzz=10000pt\relax%
+      \input{#1.tex}%
+      \reset@usemodule@catcodes%
+      }%
+      \usemodule@maybesetcodes
+  }
 
 \def\usemodule@escapechar{%
     \def\usemodule@escape@currcs{}%
     \usemodule@escape@parse@nextchar@%
 }%
-
 \long\def\usemodule@escape@parse@nextchar@#1{%
     \ifcat a#1 %
         \edef\usemodule@escape@currcs{\usemodule@escape@currcs#1}%
@@ -351,10 +396,6 @@ same name; this is dangerous -- not importing}%
     \fi%
     \usemodule@do@next%
 }
-
-\def\usemodule@escapechar@beginstring{begin}
-\def\usemodule@escapechar@endstring{end}
-
 \def\usemodule@escapechar@checkcs{
     \ifx\usemodule@escape@currcs\usemodule@escapechar@beginstring%
         \edef\usemodule@do@next{\noexpand\usemodule@escapechar@checkbeginenv\usemodule@last@char}%
@@ -404,50 +445,6 @@ same name; this is dangerous -- not importing}%
     \fi%
     \usemodule@do@next%
 }
-\def\set@usemodule@catcodes{%
-    \global\catcode`\\=13%
-    \global\catcode`\#=12%
-    \global\catcode`\{=12%
-    \global\catcode`\}=12%
-    \global\catcode`\$=12%$
-    \global\catcode`\^=12%
-    \global\catcode`\_=12%
-    \global\catcode`\&=12%
-    \expandafter\let\@active@slash\usemodule@escapechar%
-}
-\def\reset@usemodule@catcodes{%
-    \global\catcode`\\=0%
-    \global\catcode`\#=6%
-    \global\catcode`\{=1%
-    \global\catcode`\}=2%
-    \global\catcode`\$=3%$
-    \global\catcode`\^=7%
-    \global\catcode`\_=8%
-    \global\catcode`\&=4%
-}
-\def\usemodule@maybesetcodes{%
-  \if@smsmode\set@usemodule@catcodes\fi%
-}
-\def\requiremodules@smsmode#1{
-  \setbox\modules@import@tempbox\vbox{%
-    \@smsmodetrue%
-    \set@usemodule@catcodes%
-    \hbadness=100000\relax%
-    \hsize=10pt%
-    \hfuzz=10000pt\relax%
-    \input{#1.tex}%
-    \reset@usemodule@catcodes%
-    }%
-    \usemodule@maybesetcodes
-}
-\newbox\modules@import@tempbox
-\newrobustcmd\requiremodules[1]{%
-  \mod@showfalse%
-  \@importingtrue% save state and ensure silence while in sms mode
-  \edef\mod@path{#1}%
-  \edef\mod@path{\expandafter\detokenize\expandafter{\mod@path}}%
-  \requiremodules@smsmode{#1}%
-}%
 \newrobustcmd\@requiremodules[1]{%
   \if@tempswa\requiremodules{#1}\fi%
 }%
