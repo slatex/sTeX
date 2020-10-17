@@ -10,8 +10,8 @@
 %   
 % \iffalse
 %<package|cls>\NeedsTeXFormat{LaTeX2e}[1999/12/01]
-%<package>\ProvidesPackage{omdoc}[2019/03/20 v1.3 OMDoc document Structure]
-%<cls>\ProvidesClass{omdoc}[2019/03/20 v1.3 OMDoc Documents]
+%<package>\ProvidesPackage{omdoc}[2020/10/17 v1.4 OMDoc document Structure]
+%<cls>\ProvidesClass{omdoc}[2020/10/17 v1.4 OMDoc Documents]
 %
 %<*driver>
 \documentclass{ltxdoc}
@@ -57,6 +57,7 @@
 % \changes{v1.3}{2018/12/03}{changed to keyval class/package options, allowed arbitrary classes}
 % \changes{v1.3}{2019/10/12}{adding option \texttt{minimal} for testing}
 % \changes{v1.3}{2019/11/19}{Added support for localization}
+% \changes{v1.4}{2020/10/17}{adding \texttt{\textbackslash prematurestop} functionality}
 %
 % 
 % \MakeShortVerb{\|}
@@ -233,7 +234,17 @@
 %   definitions, which verbalize more formal definitions. The latter can be hidden by an
 %   ignore and referenced by the |verbalizes| key in |\inlinedef|.
 % \end{description}
-% 
+%
+% For prematurely stopping the formatting of a document, \sTeX provides the
+% \DescribeMacro{\prematurestop}|\prematurestop| macro. It can be used everywhere in a
+% document and ignores all input after that -- backing out of the omgroup environment as
+% needed. After that -- and before the implicit |\end{document}| it calls the internal
+% \DescribeMacro{\afterprematurestop}|\afterprematurestop|, which can be customized to do
+% additional cleanup or e.g. print the bibliography.
+%
+% |\prematurestop| is useful when one has a driver file, e.g. for a course taught multiple
+% years and wants to generate course notes up to the current point in the lecture. Instead
+% of commenting out the remaining parts, one can just move the |\prematurestop| macro.  
 % \end{omgroup}
 %
 % \begin{omgroup}[id=sec:user:sharing]{Structure Sharing}
@@ -552,10 +563,13 @@
 %    \end{macrocode}
 % now the |omgroup| environment itself. This takes care of the table of contents via the
 % helper macro above and then selects the appropriate sectioning command from
-% |article.cls|.
+% |article.cls|. It also registeres the current level of omgroups in the |\omgroup@level|
+% counter. 
 %    \begin{macrocode}
+\newcount\omgroup@level 
 \newenvironment{omgroup}[2][]% keys, title
 {\metasetkeys{omgroup}{#1}\sref@target%
+\advance\omgroup@level by 1\relax%
 %    \end{macrocode}
 % If the |loadmodules| key is set on |\begin{omgroup}|, we redefine the |\addcontetsline|
 %   macro that determines how the sectioning commands below construct the entries for the
@@ -579,7 +593,7 @@
 \or\omdoc@sectioning[name=\omdoc@subparagraph@kw,ref=this \omdoc@subparagraph@kw]{paragraph}{#2}%
 \fi% \ifcase
 \at@begin@omgroup[#1]\section@level{#2}}% for customization
-{\advance\section@level by -1}
+{\advance\section@level by -1\advance\omgroup@level by -1}
 %    \end{macrocode}
 % \end{environment}
 %
@@ -660,6 +674,22 @@
 \renewenvironment{ignore}{}{}\else\excludecomment{ignore}\fi
 %    \end{macrocode}
 % \end{environment}
+%
+% \begin{macro}{\prematurestop}
+%   We initialize |\afterprematurestop|, and provide 
+%   |\prematurestop@endomgroup| which looks up |\omgroup@level| and recursively ends
+%   enough |{omgroup}|s. 
+%    \begin{macrocode}
+\newcommand\afterprematurestop{}
+\def\prematurestop@endomgroup{\ifnum\omgroup@level=0\else%
+\end{omgroup}\advance\omgroup@level by -1\prematurestop@endomgroup\fi}
+\newcommand\prematurestop{%
+\message{Stopping sTeX processing prematurely}
+\prematurestop@endomgroup\afterprematurestop
+\end{document}}
+%    \end{macrocode}
+% \end{macro}
+%
 % \end{omgroup}
 % 
 % \begin{omgroup}[id=sec:impl:share]{Structure Sharing}
@@ -804,5 +834,6 @@
 %  LocalWords:  crossreferencing Chapter,clear,num Subsection,num Subsubsection,num cslet
 %  LocalWords:  Paragraph,ref Subparagraph,ref useSGvar useSGvar ifSGvar ifSGvar topsect
 %  LocalWords:  sTeX@Gvar kvoptions omdoc@cls,prefix book,topsect xappto omdoc@sty,prefix
-%  LocalWords:  ifdefstring ifcsdef cslet localization ngerman omdoc-ngerman.ldf
-%  LocalWords:  Kohlhase:smmtf endbackmatter
+%  LocalWords:  ifdefstring ifcsdef cslet localization ngerman omdoc-ngerman.ldf omgroups
+%  LocalWords:  Kohlhase:smmtf endbackmatter prematurestop prematurestop clear,num
+%  LocalWords:  prematurestop@endomgroup
