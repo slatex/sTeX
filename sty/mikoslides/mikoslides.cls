@@ -7,7 +7,7 @@
 %% mikoslides.dtx  (with options: `cls')
 %% 
 \NeedsTeXFormat{LaTeX2e}[1999/12/01]
-\ProvidesClass{mikoslides}[2019/03/20 v1.2 MiKo slides Class]
+\ProvidesClass{mikoslides}[2020/10/17 v1.3 MiKo slides Class]
 \RequirePackage{stex-base}
 \RequirePackage{kvoptions}
 \RequirePackage{etoolbox}

@@ -10,8 +10,8 @@
 % 
 % \iffalse
 %<cls|package>\NeedsTeXFormat{LaTeX2e}[1999/12/01]
-%<cls>\ProvidesClass{mikoslides}[2019/03/20 v1.2 MiKo slides Class]
-%<package>\ProvidesPackage{mikoslides}[2019/03/20 v1.2 MiKo slides Package]
+%<cls>\ProvidesClass{mikoslides}[2020/10/17 v1.3 MiKo slides Class]
+%<package>\ProvidesPackage{mikoslides}[2020/10/17 v1.3 MiKo slides Package]
 %
 %<*driver>
 \documentclass{ltxdoc}
@@ -56,6 +56,7 @@
 % \changes{v1.1}{2015/10/25}{reinterpreting omgroup}
 % \changes{v1.1}{2015/11/04}{moving MathHub support out to separate package}
 % \changes{v1.2}{2018/12/03}{changed to keyval class/package options, allowed arbitrary classes}
+% \changes{v1.3}{2020/10/17}{reusing the sectioning counters of beamer}
 % 
 % \GetFileInfo{mikoslides.cls}
 % \MakeShortVerb{\|}
@@ -122,8 +123,8 @@
 % \begin{itemize}
 % \item The options \DescribeMacro{slides}|slides|\DescribeMacro and {notes}|notes| switch
 %   between slides mode and notes mode (see Section~\ref{sec:user:notesslides}).
-% \item If the option \DescribeMacro{sectocframes}|sectocframes| is given, then special
-%   frames with section table of contents are produced headers \ednote{document the functionality}
+% \item If the option \DescribeMacro{sectocframes}|sectocframes| is given, then for the
+%   |omgroup|s, special frames with the |omgroup| title (and number) are generated.
 % \item \DescribeMacro{showmeta}|showmeta|. If this is set, then the metadata keys are
 %   shown (see~\ctancite{Kohlhase:metakeys} for details and customization options).
 % \item If the option \DescribeMacro{frameimages}|frameimages| is set, then slide mode
@@ -283,7 +284,6 @@
 \DeclareComplementaryOption{slides}{notes}
 \AddToKeyvalOption*{slides}{\notesfalse\PassOptionsToPackage{nontheorem}{statements}}
 \DeclareBoolOption{sectocframes}
-\AddToKeyvalOption*{sectocframes}{\PassOptionsToPackage{msection}{statements}}
 \DeclareBoolOption{frameimages}
 \DeclareBoolOption{fiboxed}
 \DeclareBoolOption{noproblems}
@@ -657,19 +657,14 @@
 %
 % \subsection{Sectioning}
 %
-% If the |sectocframes| option is set, then we make section frames. We first define a set
-% of counters\ednote{I forget: why not use the counters from beamer/article? --> document
-% this.}
+% If the |sectocframes| option is set, then we make section frames. We first define
+% counters for |part| and |chapter|, which |beamer.cls| does not have and we make the
+% |section| counter which it does dependent on |chapter|. 
 %    \begin{macrocode}
 \ifmks@sty@sectocframes%
 \ifdefstring\@@topsect{part}{%
-  \newcounter{mpart}\newcounter{mchapter}\newcounter{msection}[mchapter]}
-{\ifdefstring\@@topsect{chapter}{%
-    \newcounter{mchapter}\newcounter{msection}[mchapter]}
-  {\newcounter{msection}}}
-\newcounter{msubsection}[msection]%
-\newcounter{msubsubsection}[msubsection]%
-\newcounter{mparagraph}[msubsubsection]%
+  \newcounter{part}\newcounter{chapter}\counterwithin*{section}{chapter}}
+{\ifdefstring\@@topsect{chapter}{\newcounter{chapter}\counterwithin*{section}{chapter}}{}}
 \fi% ifsectocframes
 %    \end{macrocode}
 %
@@ -688,10 +683,15 @@
 %
 %    \begin{macrocode}
 \section@level=2
-\ifdefstring{\@@topsect}{part}{\section@level=0}{}
-\ifdefstring{\@@topsect}{chapter}{\section@level=1}{}
+\ifdefstring{\@@topsect}{part}
+{\section@level=0%
+  \def\thesection{\arabic{chapter}.\arabic{section}}%
+  \def\part@prefix{\arabic{chapter}.}}{}
+\ifdefstring{\@@topsect}{chapter}
+{\section@level=1%
+  \def\thesection{\arabic{chapter}.\arabic{section}}%
+  \def\part@prefix{\arabic{chapter}.}}{}
 \ifmks@sty@notes\else% only in slides
-\def\part@prefix{\ifdefstring\@@topsect{part}{\arabic{mchapter}.}{}}
 \renewenvironment{omgroup}[2][]{%
   \metasetkeys{omgroup}{#1}\sref@target%
   \advance\section@level by 1%
@@ -701,28 +701,28 @@
   \vfill\Large\centering%
   \red{%
     \ifcase\section@level\or
-    \stepcounter{mpart}
-    \def\@@label{\omdoc@part@kw~\Roman{mpart}}
-    \def\currentsectionlevel{\omdoc@part@\kw}
+    \stepcounter{part}
+    \def\@@label{\omdoc@part@kw~\Roman{part}}
+    \def\currentsectionlevel{\omdoc@part@kw}
     \or%
-    \stepcounter{mchapter}
-    \def\@@label{\omdoc@chapter@kw~\arabic{mchapter}}
+    \stepcounter{chapter}
+    \def\@@label{\omdoc@chapter@kw~\arabic{chapter}}
     \def\currentsectionlevel{\omdoc@chapter@kw}
     \or
-    \stepcounter{msection}
-    \def\@@label{\part@prefix\arabic{msection}}
+    \stepcounter{section}
+    \def\@@label{\part@prefix\arabic{section}}
     \def\currentsectionlevel{\omdoc@section@kw}
     \or
-    \stepcounter{msubsection}
-    \def\@@label{\part@prefix\arabic{msection}.\arabic{msubsection}}
+    \stepcounter{subsection}
+    \def\@@label{\part@prefix\arabic{section}.\arabic{subsection}}
     \def\currentsectionlevel{\omdoc@subsection@kw}
     \or
-    \stepcounter{msubsubsection}
-    \def\@@label{\part@prefix\arabic{msection}.\arabic{msubsection}.\arabic{msubsubsection}}
+    \stepcounter{subsubsection}
+    \def\@@label{\part@prefix\arabic{section}.\arabic{subsection}.\arabic{subsubsection}}
     \def\currentsectionlevel{\omdoc@subsubsection@kw}
     \or
     \stepcounter{mparagraph}
-    \def\@@label{\part@prefix\arabic{msection}.\arabic{msubsection}.\arabic{msubsubsection}.\arabic{mparagraph}}
+    \def\@@label{\part@prefix\arabic{section}.\arabic{msubsection}.\arabic{subsubsection}.\arabic{mparagraph}}
     \def\currentsectionlevel{\omdoc@paragraph@kw}
     \fi% end ifcase
     \@@label\sref@label@id\@@label
@@ -773,7 +773,7 @@
 % beamer compatibility, which has similar definitions but only up to 1. 
 %    \begin{macrocode}
 \expandafter\def\csname Parent2\endcsname{}
-\fi% ifmks@sty@notes 
+\fi% ifmks@sty@notes
 \ifmks@sty@notes%
   \renewenvironment{columns}[1][]{%
     \par\noindent%
