@@ -7,7 +7,7 @@
 %% omdoc.dtx  (with options: `cls')
 %% 
 \NeedsTeXFormat{LaTeX2e}[1999/12/01]
-\ProvidesClass{omdoc}[2020/10/17 v1.4 OMDoc Documents]
+\ProvidesClass{omdoc}[2020/10/19 v1.4 OMDoc Documents]
 \RequirePackage{etoolbox}
 \RequirePackage{kvoptions}
 \SetupKeyvalOptions{family=omdoc@cls,prefix=omdoc@cls@}
