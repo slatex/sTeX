@@ -401,18 +401,6 @@
 % this even in paranoid mode) and then set the |MathMub| path using |\defpath|. 
 %
 %    \begin{macrocode}
-\newif\if@iswindows@\@iswindows@false
-\IfFileExists{nul:}{\IfFileExists{/dev/null}{}{\@iswindows@true}}{}
-
-\def\kpsewhich#1#2{\begingroup
-  \def\@Space{ }
-  \edef\kpsewhich@cmd{"|kpsewhich #2"}
-  \everyeof{\noexpand}
-  \catcode`\\=12
-  \edef#1{\@@input\kpsewhich@cmd\@Space}
-  \trimstring#1
-  \global\let#1#1
-\endgroup}
 
 \kpsewhich\mathhub@path{--var-value MATHHUB}
 \if@iswindows@\windows@to@path\mathhub@path\fi
@@ -436,18 +424,21 @@
     \IfFileExists{\@findmanifest@path}{
       \message{MANIFEST.MF found at \@findmanifest@path}
       \edef\manifest@mf{\@findmanifest@path}
+      \let\temp@archive@dir\@CanPath
     }{
     \edef\@findmanifest@path{\@CanPath/META-INF/MANIFEST.MF}
     \if@iswindows@\path@to@windows\@findmanifest@path\fi
     \IfFileExists{\@findmanifest@path}{
       \message{MANIFEST.MF found at \@findmanifest@path}
       \edef\manifest@mf{\@findmanifest@path}
+      \let\temp@archive@dir\@CanPath
     }{
     \edef\@findmanifest@path{\@CanPath/meta-inf/MANIFEST.MF}
     \if@iswindows@\path@to@windows\@findmanifest@path\fi
     \IfFileExists{\@findmanifest@path}{
       \message{MANIFEST.MF found at \@findmanifest@path}
       \edef\manifest@mf{\@findmanifest@path}
+      \let\temp@archive@dir\@CanPath
     }{
       \findmanifest{\@CanPath/..}
     }}}
@@ -513,31 +504,33 @@
 % and finally, we find path of main file
 %
 %    \begin{macrocode}
-\edef\oldpercentcatcode{\the\catcode`\%}
-\catcode`\%=12
-\let\percent%
-\catcode`\%=\oldpercentcatcode
-\edef\pwd@cmd{\if@iswindows@ -expand-var \percent CD\percent\else -var-value PWD\fi}
-\kpsewhich\mathhub@maindir\pwd@cmd
-\if@iswindows@\windows@to@path\mathhub@maindir\fi
-\message{PWD: \mathhub@maindir}
+% moved to pathsuris
 %    \end{macrocode}
 %
 % We read in and parse |MANIFEST.MF|
 %
 %    \begin{macrocode}
-\findmanifest{\mathhub@maindir}
-\begingroup
-  \gdef\manifest@mf@id{}
-  \gdef\manifest@mf@narr{}
-  \gdef\manifest@mf@ns{}
-  \gdef\manifest@mf@deps{}
-  \newread\@manifest
-  \openin\@manifest\manifest@mf
-  \parse@manifest@loop
-  \closein\@manifest
-\endgroup
-\if@iswindows@\windows@to@path\manifest@mf\fi
+\def\parsemanifest#1#2{
+  \findmanifest{#2}
+  \begingroup
+    \gdef\manifest@mf@id{}
+    \gdef\manifest@mf@narr{}
+    \gdef\manifest@mf@ns{}
+    \gdef\manifest@mf@deps{}
+    \newread\@manifest
+    \openin\@manifest\manifest@mf
+    \parse@manifest@loop
+    \closein\@manifest
+  \endgroup
+  \if@iswindows@\windows@to@path\manifest@mf\fi
+  \cslet{#1id}\manifest@mf@id
+  \cslet{#1narr}\manifest@mf@narr
+  \cslet{#1ns}\manifest@mf@ns
+  \cslet{#1deps}\manifest@mf@deps
+  \cslet{#1dir}\temp@archive@dir
+}
+
+\parsemanifest{mathhub@archive@}\stex@maindir
 %    \end{macrocode}
 %
 % Finally -- and that is the ultimate goal of all of the above, we set the current repos.  

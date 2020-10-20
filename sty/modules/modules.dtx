@@ -755,8 +755,6 @@
 \DeclareOption{qualifiedimports}{\mod@qualifiedtrue}
 \newif\if@trwarn\@trwarnfalse
 \DeclareOption{trwarn}{\@trwarntrue}
-\newif\if@mmt\@mmtfalse 
-\DeclareOption{mmt}{\@mmttrue}
 \DeclareOption*{\PassOptionsToPackage{\CurrentOption}{sref}}
 \ProcessOptions
 %    \end{macrocode}
@@ -765,9 +763,9 @@
 \RequirePackage{stex-base}
 \RequirePackage{sref}
 \RequirePackage{pathsuris}
+\RequirePackage[abspath]{currfile}
 \RequirePackage{standalone}
 \if@modules@mh@\RequirePackage{modules-mh}\fi
-\if@mmt\RequirePackage{mmt}\fi
 \RequirePackage{xspace}
 \if@latexml\else\ifmod@show\RequirePackage{mdframed}\fi\fi
 %    \end{macrocode}
@@ -781,15 +779,14 @@
 %    This |KeyVal| key is only needed for {\latexml} at the moment; use this to specify a
 %    content dictionary name that is different from the module name.
 %    \begin{macrocode}
-\addmetakey{module}{cd}% no longer used
-\addmetakey{module}{load}% ignored; specified to simplify keyval argument passing
-\addmetakey{module}{path}% ignored; specified to simplify keyval argument passing
 \addmetakey*{module}{title}
+\addmetakey*{module}{id}
 \addmetakey*{module}{creators}
 \addmetakey*{module}{contributors}
 \addmetakey*{module}{srccite}
 \addmetakey*{module}{align}[WithTheModuleOfTheSameName]
 \addmetakey*{module}{ns}
+\addmetakey*{module}{narr}
 \addmetakey*{module}{noalign}[true]
 %    \end{macrocode}
 % \end{macro}
@@ -802,21 +799,22 @@
 %   |\this@module| that expands to |\module@defs@|\meta{name}; we define it first and then
 %   initialize |\module@defs@|\meta{name} as empty. Then we do the same for qualified
 %   imports as well (if the |qualifiedimports| option was specified). Furthermore, we save
-%   the module name in the token register |\mod@id|.
+%   the module name in the token register |\module@id|.
 %    \begin{macrocode}
-\define@key{module}{id}{%
-  \edef\this@module{%
-    \expandafter\noexpand\csname module@defs@#1\endcsname%
-  }%
-  \csgdef{module@defs@#1}{}%
-  \ifmod@qualified%
-    \edef\this@qualified@module{%
-      \expandafter\noexpand\csname module@defs@#1\endcsname%
-    }%
-    \csgdef{module@defs@qualified@#1}{}%
-  \fi%
-  \def\mod@id{#1}%
-}%
+% replaced by \module@id
+%\define@key{module}{id}{%
+%  \edef\this@module{%
+%    \expandafter\noexpand\csname module@defs@#1\endcsname%
+%  }%
+%  \csgdef{module@defs@#1}{}%
+%  \ifmod@qualified%
+%    \edef\this@qualified@module{%
+%      \expandafter\noexpand\csname module@defs@#1\endcsname%
+%    }%
+%    \csgdef{module@defs@qualified@#1}{}%
+%  \fi%
+%  \def\mod@id{#1}%
+%}%
 %    \end{macrocode}
 % \end{macro}
 %
@@ -827,8 +825,8 @@
 \newrobustcmd\module@heading{%
   \stepcounter{module}%
   \ifmod@show%
-    \noindent{\textbf{Module} \thesection.\themodule [\mod@id]}%
-    \sref@label@id{Module \thesection.\themodule [\mod@id]}%
+  \noindent{\textbf{Module} \thesection.\themodule [\module@id]}%
+  \sref@label@id{Module \thesection.\themodule [\module@id]}%
     \ifx\module@title\@empty :\quad\else\quad(\module@title)\hfill\\\fi%
   \fi%
 }% mod@show
@@ -845,13 +843,10 @@
 %    \begin{macrocode}
 \newenvironment{module}[1][]{%
   \begin{@module}[#1]%
-  \ifcsundef{mod@id}{}{% only define if components are!
-    \ifcsundef{mod@path}{}{\csxdef{module@\mod@id @path}{\mod@path}}%
-  }%
-  \if@mmt\if@importing\else\mmtheory{\mod@id}{????}\fi\fi%
+    \ifcsundef{mod@path}{}{\csxdef{module@\module@id @path}{\mod@path}}%
+    \ifcsundef{mod@ext}{}{\csxdef{module@\module@id @ext}{\mod@ext}}%
   \module@heading% make the headings
   \ignorespacesandpars\usemodule@maybesetcodes}{%
-  \if@mmt\if@importing\else\mmtheoryend\fi\fi%
   \end{@module}%
   \ignorespacesafterend%
 }%
@@ -863,7 +858,82 @@
 %   A variant of the |module| environment that does not create printed representations (in
 %   particular no frames) 
 %    \begin{macrocode}
-\newenvironment{@module}[1][]{\metasetkeys{module}{#1}}{}%
+\newif\ifarchive@ns@empty@\archive@ns@empty@false
+\def\set@default@ns{
+  \edef\@module@ns@temp{\currfileabspath}
+  \edef\@module@ns@temp{\if@iswindows@\windows@to@path\@module@ns@temp\else\@module@ns@temp\fi}
+  \path@dropextension\@module@ns@temp{@module@ns@temp}
+  \archive@ns@empty@false
+  \unless\ifcsname mathhub@archive@ns\endcsname
+    \archive@ns@empty@true
+  \else
+    \ifx\mathhub@archive@ns\@empty\archive@ns@empty@true\fi
+  \fi
+  \ifarchive@ns@empty@
+    \asuri{@module@ns@temp}{file\@Colon\@Slash\@Slash\@module@ns@temp}
+    \@module@ns@temp{drop extension}
+    \setkeys{module}{ns=\@module@ns@tempuri}
+  \else
+    \asuri{@module@filepath@temp}{file\@Colon\@Slash\@Slash\@module@ns@temp}
+    \asuri{@module@ns@temp}{\mathhub@archive@ns}
+    \asuri{@module@archivedir}{file\@Colon\@Slash\@Slash\mathhub@archive@dir\@Slash source}
+    \IfBeginWith\@module@filepath@temppath\@module@archivedirpath{
+      \StrLen\@module@archivediruri[\ns@temp@length]
+      \StrGobbleLeft\@module@filepath@tempuri\ns@temp@length[\@module@filepath@tempuri]
+      \edef\@module@ns@tempuri{\@module@ns@tempuri\@module@filepath@tempuri}
+    }{}
+    \setkeys{module}{ns=\@module@ns@tempuri}
+  \fi
+}
+
+\def\set@next@moduleid{
+  \unless\ifcsname namespace@\module@ns @unnamedmodules\endcsname
+      \csgdef{namespace@\module@ns @unnamedmodules}{0}
+  \fi
+  \edef\namespace@currnum{\csname namespace@\module@ns @unnamedmodules\endcsname}
+  \edef\module@temp@setidname{\noexpand\setkeys{module}{id=module\namespace@currnum}}
+  \module@temp@setidname
+  \csxdef{namespace@\module@ns @unnamedmodules}{\the\numexpr\namespace@currnum+1}
+}
+
+
+\newenvironment{@module}[1][]{
+  \metasetkeys{module}{#1}
+  \ifx\module@ns\@empty\set@default@ns\fi
+  \ifx\module@narr\@empty
+    \setkeys{module}{narr=\module@ns}
+  \fi
+  \ifcsname module@id\endcsname
+    \ifx\module@id\@empty\set@next@moduleid\fi
+  \else\set@next@moduleid\fi
+  \seturi[module@uri@]{\module@ns\@QuestionMark\module@id}
+  \csxdef{\module@uri@uri}{\noexpand\@invoke@module{\module@uri@uri}}
+  \csxdef{moduleid@\module@id}{\noexpand\@invoke@module{\module@uri@uri}}
+  % TODO find a better cs name
+  %\csedef{\module@id}{\noexpand\@invoke@module{\module@uri@uri}}
+  \edef\this@module{%
+    \expandafter\noexpand\csname module@defs@\module@uri@uri\endcsname%
+  }%
+  \csgdef{module@defs@\module@uri@uri}{}%
+  \ifmod@qualified%
+    \edef\this@qualified@module{%
+      \expandafter\noexpand\csname module@defs@\module@uri@uri\endcsname%
+    }%
+    \csgdef{module@defs@qualified@\module@uri@uri}{}%
+  \fi%
+}{}%
+
+\def\@URI{uri}
+
+\def\@invoke@module#1#2{%
+  \ifx\@URI#2%
+    #1%
+  \else%
+    % TODO something else
+    #2%
+  \fi%
+}
+
 %    \end{macrocode}
 % \end{environment}
 %
@@ -874,8 +944,9 @@
 %   directly afterwards to prohibit further activations.
 %    \begin{macrocode}
 \def\activate@defs#1{%
-  \ifcsundef{module@#1@activated}{\csname module@defs@#1\endcsname}{}%
-  \@namedef{module@#1@activated}{true}%
+  \edef\activate@defs@uri{\csname moduleid@#1\endcsname\@URI}%
+  \ifcsundef{module@\activate@defs@uri @activated}{\csname module@defs@\activate@defs@uri\endcsname}{}%
+  \@namedef{module@\activate@defs@uri @activated}{true}%
 }%
 %    \end{macrocode}
 % \end{macro}
@@ -888,8 +959,9 @@
 % Naive understanding of this code: |#1| be will be expanded first, then |\this@module|,
 % then |\active@defs|, then |\g@addto@macro|. 
 %    \begin{macrocode}
-\def\export@defs#1{\@ifundefined{mod@id}{}{%
-\expandafter\expandafter\expandafter\g@addto@macro%
+\def\g@addto@macro@safe#1#2{\ifx#1\relax\def#1{}\fi\g@addto@macro#1{#2}}
+\def\export@defs#1{\@ifundefined{module@id}{}{%
+\expandafter\expandafter\expandafter\g@addto@macro@safe%
 \expandafter\this@module\expandafter{\activate@defs{#1}}}}%
 %    \end{macrocode}
 % \end{macro}
@@ -968,7 +1040,7 @@ same name; this is dangerous -- not importing}%
 \activate@defs{#2}% activate the module
 \edef\@export{#3}\def\@@export{export}%prepare comparison
 \ifx\@export\@@export\export@defs{#2}\fi% export the module
-\if@importing\else\if@mmt\mmtinclude{#1?#2}\fi\fi}%
+}%
 %    \end{macrocode}
 % \end{macro}
 % 
@@ -1033,8 +1105,8 @@ same name; this is dangerous -- not importing}%
 \def\conceptdef@type{Symbol}%
 \newrobustcmd\conceptdef[2][]{%
   \metasetkeys{conceptdef}{#1}%
-  \ifx\conceptdef@display\st@flow\else{\stDMemph{\conceptdef@type} #2:}\fi%
-  \ifx\conceptdef@title\@empty~\else~(\stDMemph{\conceptdef@title})\par\fi%
+  \ifx\conceptdef@display\st@flow\else{\emph{\conceptdef@type} #2:}\fi%
+  \ifx\conceptdef@title\@empty~\else~(\emph{\conceptdef@title})\par\fi%
 }%
 %    \end{macrocode}
 % \end{environment}
@@ -1112,9 +1184,7 @@ same name; this is dangerous -- not importing}%
 % notations. This would pass \#4 to MMT via a macro that makes the \# (argumentmarkers)
 % active and empty. I am not clear how well this works, so we leave out notations.}
 %    \begin{macrocode}
- \if@mmt\if@importing\else%
-\ifx\symdef@name\@empty\mmtconstdec{#2}\else\mmtconstdec{\symdef@name}\fi%
-\fi\fi%
+% deprecated mmt option
 %    \end{macrocode}
 % First, using |\mod@newcommand| we initialize the intermediate macro
 % |\module@|\meta{sym}|@pres@|, the one that can be extended with |\symvariant|
@@ -1130,8 +1200,8 @@ same name; this is dangerous -- not importing}%
 %    \end{macrocode}
 % Finally, we prepare the internal macro to be used in the |\symref| call.
 %    \begin{macrocode}
-  \expandafter\@mod@nc\csname mod@symref@#2\expandafter\endcsname\expandafter%
-  {\expandafter\mod@termref\expandafter{\mod@id}{#2}{##1}}%
+\expandafter\@mod@nc\csname mod@symref@#2\expandafter\endcsname\expandafter%
+{\expandafter\mod@termref\expandafter{\module@id}{#2}{##1}}%
 %    \end{macrocode}
 % We check if the switch for the local scope is set: if it is we are done, since this
 % function has a local scope. Similarly, if we are not inside a module, which we could
@@ -1139,46 +1209,46 @@ same name; this is dangerous -- not importing}%
 %    \begin{macrocode}
   \if@symdeflocal%
   \else%
-    \ifcsundef{mod@id}{}{%
+    \ifcsundef{module@id}{}{%
 %    \end{macrocode}
 % Otherwise, we add three functions to the module's pool of defined macros using
 % |\g@addto@macro|. We first add the definition of the intermediate function
 % |\modules@|\meta{sym}|@pres@|.
 %    \begin{macrocode}
-      \expandafter\g@addto@macro\this@module%
+      \expandafter\g@addto@macro@safe\this@module%
       {\expandafter\mod@newcommand\csname modules@#2@pres@\endcsname[#3]{#4}}%
 %    \end{macrocode}
 % Then we add add the definition of |\|\meta{sym}  which calls the intermediate
 % function and handles the optional argument.
 %    \begin{macrocode}
-      \expandafter\g@addto@macro\this@module%
+      \expandafter\g@addto@macro@safe\this@module%
       {\expandafter\mod@newcommand\csname #2\endcsname[1][]%
       {\csname modules@#2@pres@##1\endcsname}}%
 %    \end{macrocode}
 % We also add |\mod@symref@|\meta{sym} macro to the macro pool so that the |\symref| macro
 % can pick it up.
 %    \begin{macrocode}
-      \expandafter\g@addto@macro\csname module@defs@\mod@id\expandafter\endcsname\expandafter%
-      {\expandafter\@mod@nc\csname mod@symref@#2\expandafter\endcsname\expandafter%
-      {\expandafter\mod@termref\expandafter{\mod@id}{#2}{##1}}}%
+        \expandafter\expandafter\expandafter\g@addto@macro@safe\expandafter\this@module\expandafter%
+        {\expandafter\@mod@nc\csname mod@symref@#2\expandafter\endcsname\expandafter%
+        {\expandafter\mod@termref\expandafter{\module@id}{#2}{##1}}}%
 %    \end{macrocode}
 % Finally, using |\g@addto@macro| we add the two functions to the qualified version of the
 % module if the |qualifiedimports| option was set.
 %    \begin{macrocode}
       \ifmod@qualified%
-        \expandafter\g@addto@macro\this@qualified@module%
+        \expandafter\g@addto@macro@safe\this@qualified@module%
         {\expandafter\mod@newcommand\csname modules@#2@pres@qualified\endcsname[#3]{#4}}%
-        \expandafter\g@addto@macro\this@qualified@module%
+        \expandafter\g@addto@macro@safe\this@qualified@module%
         {\expandafter\def\csname#2@qualified\endcsname{\csname modules@#2@pres@qualified\endcsname}}%
       \fi%
     }% mod@qualified
-  \fi% symdeflocal
+\fi% symdeflocal
 %    \end{macrocode}
 % So now we only need to show the data in the symdef, if the options allow. 
 %    \begin{macrocode}
   \ifmod@show%
-    \ifx\symdef@display\st@flow\else{\noindent\stDMemph{\symdef@type} #2:}\fi%
-    \ifx\symdef@title\@empty~\else~(\stDMemph{\symdef@title})\par\fi%
+    \ifx\symdef@display\st@flow\else{\noindent\emph{\symdef@type} #2:}\fi%
+    \ifx\symdef@title\@empty~\else~(\emph{\symdef@title})\par\fi%
   \fi%
   \ignorespacesandpars%
 }% mod@show
@@ -1204,7 +1274,7 @@ same name; this is dangerous -- not importing}%
 % and if we are in a named module, then we need to export the function
 % |\modules@|\meta{sym}|@pres@|\meta{opt} just as we have done that in |\symdef|.
 %    \begin{macrocode}
-  \ifcsundef{mod@id}{}{%
+  \ifcsundef{module@id}{}{%
     \expandafter\g@addto@macro\this@module%
     {\expandafter\mod@newcommand\csname modules@#1@pres@#3\endcsname[#2]{#4}}%
   }%
@@ -1320,7 +1390,7 @@ same name; this is dangerous -- not importing}%
   \expandafter\mod@newcommand\csname#2\endcsname[0]{#3\xspace}%
   \ifx\termdef@local\mod@true%
   \else%
-    \ifcsundef{mod@id}{}{%
+    \ifcsundef{module@id}{}{%
       \expandafter\g@addto@macro\this@module%
       {\expandafter\mod@newcommand\csname#2\endcsname[0]{#3\xspace}}%
     }%
