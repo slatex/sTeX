@@ -763,7 +763,7 @@
 \RequirePackage{stex-base}
 \RequirePackage{sref}
 \RequirePackage{pathsuris}
-\RequirePackage[abspath]{currfile}
+\RequirePackage{currfile}
 \RequirePackage{standalone}
 \if@modules@mh@\RequirePackage{modules-mh}\fi
 \RequirePackage{xspace}
@@ -860,8 +860,11 @@
 %    \begin{macrocode}
 \newif\ifarchive@ns@empty@\archive@ns@empty@false
 \def\set@default@ns{
-  \edef\@module@ns@temp{\currfileabspath}
-  \edef\@module@ns@temp{\if@iswindows@\windows@to@path\@module@ns@temp\else\@module@ns@temp\fi}
+%  \ifcsdef{parsemanifest}{%
+%  \parsemanifest{mathhub@archive@}\currfiledir%
+%  }{} <- slow, do somewhere else
+  \edef\@module@ns@temp{\currfiledir}
+  \if@iswindows@\edef\@module@ns@temp{\windows@to@path\@module@ns@temp}\fi
   \path@dropextension\@module@ns@temp{@module@ns@temp}
   \archive@ns@empty@false
   \unless\ifcsname mathhub@archive@ns\endcsname
@@ -870,17 +873,22 @@
     \ifx\mathhub@archive@ns\@empty\archive@ns@empty@true\fi
   \fi
   \ifarchive@ns@empty@
-    \asuri{@module@ns@temp}{file\@Colon\@Slash\@Slash\@module@ns@temp}
-    \@module@ns@temp{drop extension}
-    \setkeys{module}{ns=\@module@ns@tempuri}
+    %\asuri{@module@ns@temp}{file\@Colon\@Slash\@Slash\@module@ns@temp}
+    \edef\@module@ns@temp{file\@Colon\@Slash\@Slash\@module@ns@temp}
+    %\@module@ns@temp{drop extension}
+    \setkeys{module}{ns=\@module@ns@temp}
   \else
-    \asuri{@module@filepath@temp}{file\@Colon\@Slash\@Slash\@module@ns@temp}
-    \asuri{@module@ns@temp}{\mathhub@archive@ns}
-    \asuri{@module@archivedir}{file\@Colon\@Slash\@Slash\mathhub@archive@dir\@Slash source}
+    %\asuri{@module@filepath@temp}{file\@Colon\@Slash\@Slash\@module@ns@temp}
+    \edef\@module@filepath@temppath{\@module@ns@temp}
+    %\asuri{@module@ns@temp}{\mathhub@archive@ns}
+    \edef\@module@ns@tempuri{\mathhub@archive@ns}
+    %\asuri{@module@archivedir}{file\@Colon\@Slash\@Slash\mathhub@archive@dir\@Slash source}
+    \edef\@module@archivedirpath{\mathhub@archive@dir\@Slash source}
+    \edef\@module@archivedirpath{\expandafter\detokenize\expandafter{\@module@archivedirpath}}
     \IfBeginWith\@module@filepath@temppath\@module@archivedirpath{
-      \StrLen\@module@archivediruri[\ns@temp@length]
-      \StrGobbleLeft\@module@filepath@tempuri\ns@temp@length[\@module@filepath@tempuri]
-      \edef\@module@ns@tempuri{\@module@ns@tempuri\@module@filepath@tempuri}
+      \StrLen\@module@archivedirpath[\ns@temp@length]
+      \StrGobbleLeft\@module@filepath@temppath\ns@temp@length[\@module@filepath@temprest]
+      \edef\@module@ns@tempuri{\@module@ns@tempuri\@module@filepath@temprest}
     }{}
     \setkeys{module}{ns=\@module@ns@tempuri}
   \fi
@@ -906,7 +914,8 @@
   \ifcsname module@id\endcsname
     \ifx\module@id\@empty\set@next@moduleid\fi
   \else\set@next@moduleid\fi
-  \seturi[module@uri@]{\module@ns\@QuestionMark\module@id}
+  %\seturi[module@uri@]{\module@ns\@QuestionMark\module@id}
+  \edef\module@uri@uri{\module@ns\@QuestionMark\module@id} % faster, and at this point equivalent
   \csxdef{\module@uri@uri}{\noexpand\@invoke@module{\module@uri@uri}}
   \csxdef{moduleid@\module@id}{\noexpand\@invoke@module{\module@uri@uri}}
   \csxdef{Module\module@id}{\noexpand\@invoke@module{\module@uri@uri}}
