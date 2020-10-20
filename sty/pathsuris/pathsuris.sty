@@ -36,15 +36,15 @@
 \def\@Slash{/}
 \def\@Colon{:}
 \def\@QuestionMark{?}
-\def\@ToHere{.}
+\def\@Dot{.}
 
 \pathsuris@setcatcodes
 \def\@Fragment{#}
 \pathsuris@resetcatcodes
 \def\@cpath#1{%
-    \edef\pathsuris@temp{#1}%
+    \edef\pathsuris@cpath@temp{#1}%
     \def\@CanPath{}%
-    \IfBeginWith\pathsuris@temp\@Slash{%
+    \IfBeginWith\pathsuris@cpath@temp\@Slash{%
       \@cpath@loop%
       \edef\@CanPath{\@Slash\@CanPath}%
     }{%
@@ -58,9 +58,9 @@
 }
 
 \def\@cpath@loop{%
-    \IfSubStr\pathsuris@temp\@Slash{%
-        \StrCut\pathsuris@temp\@Slash\pathsuris@temp@a\pathsuris@temp%
-        \ifx\pathsuris@temp@a\@ToTop%
+    \IfSubStr\pathsuris@cpath@temp\@Slash{%
+        \StrCut\pathsuris@cpath@temp\@Slash\pathsuris@cpath@temp@a\pathsuris@cpath@temp%
+        \ifx\pathsuris@cpath@temp@a\@ToTop%
             \ifx\@CanPath\@empty%
                 \edef\@CanPath{\@ToTop}%
             \else%
@@ -68,31 +68,31 @@
             \fi%
             \@cpath@loop%
         \else%
-        \IfBeginWith\pathsuris@temp\@ToTop{%
-            \StrBehind{\pathsuris@temp}{\@ToTop}[\pathsuris@temp]%
-            \IfBeginWith\pathsuris@temp\@Slash{%
-                \edef\pathsuris@temp{\@CanPath\pathsuris@temp}%
+        \IfBeginWith\pathsuris@cpath@temp\@ToTop{%
+            \StrBehind{\pathsuris@cpath@temp}{\@ToTop}[\pathsuris@cpath@temp]%
+            \IfBeginWith\pathsuris@cpath@temp\@Slash{%
+                \edef\pathsuris@cpath@temp{\@CanPath\pathsuris@cpath@temp}%
             }{%
                 \ifx\@CanPath\@empty\else%
-                    \edef\pathsuris@temp{\@CanPath\@Slash\pathsuris@temp}
+                    \edef\pathsuris@cpath@temp{\@CanPath\@Slash\pathsuris@cpath@temp}
                 \fi%
             }%
             \def\@CanPath{}%
             \@cpath@loop%
         }{%
             \ifx\@CanPath\@empty%
-                \edef\@CanPath{\pathsuris@temp@a}%
+                \edef\@CanPath{\pathsuris@cpath@temp@a}%
             \else%
-                \edef\@CanPath{\@CanPath\@Slash\pathsuris@temp@a}%
+                \edef\@CanPath{\@CanPath\@Slash\pathsuris@cpath@temp@a}%
             \fi%
             \@cpath@loop
         }%
         \fi%
     }{
         \ifx\@CanPath\@empty%
-            \edef\@CanPath{\pathsuris@temp}%
+            \edef\@CanPath{\pathsuris@cpath@temp}%
         \else%
-            \edef\@CanPath{\@CanPath\@Slash\pathsuris@temp}%
+            \edef\@CanPath{\@CanPath\@Slash\pathsuris@cpath@temp}%
         \fi%
     }%
 }
@@ -100,17 +100,59 @@
     \@cpath{#1}%
     \@CanPath%
 }
+\def\makeuri@setempty#1{\def#1{\relax}}
+\def\makeuri@empty{\relax}
+\def\makeuri@test#1{%
+    \ifx#1\makeuri@empty\else#1\fi%
+}
+\def\makeuri@uri{}
+\def\makeuri#1#2#3#4#5{
+    \edef\makeuri@scheme{#1}
+    \edef\makeuri@authority{#2}
+    \edef\makeuri@path{#3}
+    \ifx\makeuri@path\makeuri@empty\else
+        \@cpath{#3}
+        \edef\makeuri@path{\@CanPath}
+    \fi
+    \edef\makeuri@query{#4}
+    \edef\makeuri@fragment{#5}
+    \ifx\makeuri@scheme\makeuri@empty\else
+        \edef\makeuri@scheme{\makeuri@scheme\@Colon}
+    \fi
+    \ifx\makeuri@authority\makeuri@empty\else
+        \edef\makeuri@authority{\@Slash\@Slash\makeuri@authority}
+        \ifx\makeuri@path\makeuri@empty\else
+            \IfBeginWith\makeuri@path\@Slash{}{
+                \edef\makeuri@path{\@Slash\makeuri@path}
+            }
+        \fi
+    \fi
+    \ifx\makeuri@query\makeuri@empty\else
+        \edef\makeuri@query{\@QuestionMark\makeuri@query}
+    \fi
+    \ifx\makeuri@fragment\makeuri@empty\else
+        \edef\makeuri@fragment{\@Fragment\makeuri@fragment}
+    \fi
+    \edef\makeuri@uri{%
+        \makeuri@test\makeuri@scheme%
+        \makeuri@test\makeuri@authority%
+        \makeuri@test\makeuri@path%
+        \makeuri@test\makeuri@query%
+        \makeuri@test\makeuri@fragment%
+    }
+}
 \newif\if@pathsuris@done@
 \def\seturi@[#1]#2{%
     \@pathsuris@done@false%
     \def\pathsuris@prefix@temp{#1}
     \edef\pathsuris@curruri{#2}%
-    \edef\pathsuris@temp{\pathsuris@curruri}%
-    \def\pathsuris@curruri@scheme{}%
-    \def\pathsuris@curruri@authority{}%
-    \def\pathsuris@curruri@path{}%
-    \def\pathsuris@curruri@query{}%
-    \def\pathsuris@curruri@fragment{}%
+    \edef\pathsuris@curruri{\expandafter\detokenize\expandafter{\pathsuris@curruri}}
+    \let\pathsuris@temp\pathsuris@curruri%
+    \makeuri@setempty\pathsuris@curruri@scheme%
+    \makeuri@setempty\pathsuris@curruri@authority%
+    \makeuri@setempty\pathsuris@curruri@path%
+    \makeuri@setempty\pathsuris@curruri@query%
+    \makeuri@setempty\pathsuris@curruri@fragment%
     % scheme
     \IfSubStr{\pathsuris@temp}{\@Colon}{%
         % TODO check for valid scheme
@@ -125,9 +167,20 @@
             \StrBehind{\pathsuris@temp}{\@Slash}[\pathsuris@temp]%
             % TODO userinfo,host,port
         }{%
-            % TODO query,fragment
-            \edef\pathsuris@curruri@authority{\pathsuris@temp}%
-            \@pathsuris@done@true%
+            \IfSubStr\pathsuris@temp\@QuestionMark{
+                \StrBefore{\pathsuris@temp}{\@QuestionMark}[\pathsuris@curruri@authority]%
+                \StrBehind{\pathsuris@temp}{\@QuestionMark}[\pathsuris@temp]%
+                \edef\pathsuris@temp{\@QuestionMark\pathsuris@temp}%
+            }{
+                \IfSubStr\pathsuris@temp\@Fragment{
+                    \StrBefore{\pathsuris@temp}{\@Fragment}[\pathsuris@curruri@authority]%
+                    \StrBehind{\pathsuris@temp}{\@Fragment}[\pathsuris@temp]%
+                    \edef\pathsuris@temp{\@Fragment\pathsuris@temp}%
+                }{
+                    \edef\pathsuris@curruri@authority{\pathsuris@temp}%
+                    \@pathsuris@done@true%
+                }
+            }
         }%
     }{}%
     % path, query, fragment
@@ -135,6 +188,8 @@
         \IfSubStr{\pathsuris@temp}{\@QuestionMark}{%
             % path
             \StrBefore{\pathsuris@temp}{\@QuestionMark}[\pathsuris@curruri@path]%
+            \@cpath\pathsuris@curruri@path%
+            \edef\pathsuris@curruri@path{\@CanPath}%
             \StrBehind{\pathsuris@temp}{\@QuestionMark}[\pathsuris@temp]%
             % query,fragment
             \IfSubStr{\pathsuris@temp}{\@Fragment}{%
@@ -147,12 +202,16 @@
             % path,fragment
             \IfSubStr{\pathsuris@temp}{\@Fragment}{%
                 \StrBefore{\pathsuris@temp}{\@Fragment}[\pathsuris@curruri@path]%
+                \@cpath\pathsuris@curruri@path%
+                \edef\pathsuris@curruri@path{\@CanPath}%
                 \StrBehind{\pathsuris@temp}{\@Fragment}[\pathsuris@curruri@fragment]%
             }{%
                 \edef\pathsuris@curruri@path{\pathsuris@temp}%
             }%
         }%
     \fi%
+    \makeuri\pathsuris@curruri@scheme\pathsuris@curruri@authority\pathsuris@curruri@path\pathsuris@curruri@query\pathsuris@curruri@fragment%
+    \let\pathsuris@curruri@uri\makeuri@uri
     %drop trailing slash of path
     %\IfEndWith{\pathsuris@curruri@path}{\@Slash}{%
     %    \StrGobbleRight{\pathsuris@curruri@path}{1}[\pathsuris@curruri@path]
@@ -160,17 +219,129 @@
     %
     %\edef\pathsuris@curruri@path{\cpath{\pathsuris@curruri@path}}%
     \ifx\pathsuris@prefix@temp\@empty\else%
-        \expandafter\edef\csname \pathsuris@prefix@temp scheme\endcsname{\pathsuris@curruri@scheme}%
-        \expandafter\edef\csname \pathsuris@prefix@temp authority\endcsname{\pathsuris@curruri@authority}%
-        \expandafter\edef\csname \pathsuris@prefix@temp path\endcsname{\pathsuris@curruri@path}%
-        \expandafter\edef\csname \pathsuris@prefix@temp query\endcsname{\pathsuris@curruri@query}%
-        \expandafter\edef\csname \pathsuris@prefix@temp fragment\endcsname{\pathsuris@curruri@fragment}%
+        \expandafter\let\csname \pathsuris@prefix@temp scheme\endcsname\pathsuris@curruri@scheme%
+        \expandafter\let\csname \pathsuris@prefix@temp authority\endcsname\pathsuris@curruri@authority%
+        \expandafter\let\csname \pathsuris@prefix@temp path\endcsname\pathsuris@curruri@path%
+        \expandafter\let\csname \pathsuris@prefix@temp query\endcsname\pathsuris@curruri@query%
+        \expandafter\let\csname \pathsuris@prefix@temp fragment\endcsname\pathsuris@curruri@fragment%
+        \expandafter\let\csname \pathsuris@prefix@temp uri\endcsname\pathsuris@curruri@uri%
     \fi%
 }
 \newrobustcmd\seturi[1][]{%
     \pathsuris@setcatcodes%
     \expandafter\pathsuris@resetcatcodes\seturi@[#1]%
 }
+
+\def\asuri#1{%
+    \pathsuris@setcatcodes%
+    \expandafter\pathsuris@resetcatcodes\@asuri[#1]%
+}
+
+\def\@asuri[#1]#2{
+    \@cpath{#2}
+    \expandafter\def\csname #1\endcsname{}
+    \expandafter\edef\csname #1uri\endcsname{\@CanPath}
+    \seturi[#1]{\@CanPath}
+    \expandafter\renewcommand\csname #1\endcsname[1][]{%
+        \pathsuris@setcatcodes%
+        \@@asuri@[##1]{#1}%
+    }%
+}
+
+\protected\def\@@asuri@[#1]#2#3{
+    \pathsuris@resetcatcodes
+    \@@asuri[#1]{#2}{#3}
+}
+
+\newif\if@asuri@changed@
+\protected\def\@@asuri[#1]#2#3{
+    \@asuri@changed@false
+    \edef\@@asuri@command{#3}
+    \trimstring\@@asuri@command
+    \IfBeginWith\@@asuri@command{drop}{
+        \StrBehind{\@@asuri@command}{drop}[\@@asuri@command]
+        \trimstring\@@asuri@command
+        \IfStrEq\@@asuri@command{query}{
+            \makeuri{\csname #2scheme\endcsname}%
+                {\csname #2authority\endcsname}%
+                {\csname #2path\endcsname}%
+                \makeuri@empty%
+                {\csname #2fragment\endcsname}%
+            \@asuri@changed@true
+        }{
+        \IfStrEq\@@asuri@command{fragment}{
+            \makeuri{\csname #2scheme\endcsname}%
+                {\csname #2authority\endcsname}%
+                {\csname #2path\endcsname}%
+                {\csname #2query\endcsname}%
+                \makeuri@empty%
+            \@asuri@changed@true
+        }{
+        \IfStrEq\@@asuri@command{extension}{
+            \edef\@asuri@oldpath{\csname #2path\endcsname}
+            \StrCount\@asuri@oldpath.[\@asuri@lastdot]
+            \ifnum\@asuri@lastdot>0
+                \StrBehind[\@asuri@lastdot]\@asuri@oldpath.[\@asuri@extension]
+                \IfSubStr\@asuri@extension\@Slash{}{
+                    \StrBefore[\@asuri@lastdot]\@asuri@oldpath.[\@asuri@oldpath]
+                }
+            \fi
+            \makeuri{\csname #2scheme\endcsname}%
+                {\csname #2authority\endcsname}%
+                \@asuri@oldpath%
+                \makeuri@empty%
+                \makeuri@empty%
+            \@asuri@changed@true
+        }{}}}
+    }{
+    \IfBeginWith\@@asuri@command{\@Slash}{
+        \@cpath{\csname #2path\endcsname\@@asuri@command}
+        \makeuri{\csname #2scheme\endcsname}%
+            {\csname #2authority\endcsname}%
+            {\@CanPath}%
+            \makeuri@empty%
+            \makeuri@empty%
+        \@asuri@changed@true
+    }{
+    \IfBeginWith\@@asuri@command{\@QuestionMark}{
+        \expandafter\ifx\csname #2query\endcsname\makeuri@empty
+            \StrBehind\@@asuri@command\@QuestionMark[\@@asuri@command]
+            \edef\@@asuri@nquery{\@@asuri@command}
+        \else
+            \edef\@@asuri@nquery{\csname #2query\endcsname\@@asuri@command}
+        \fi
+        \makeuri{\csname #2scheme\endcsname}%
+            {\csname #2authority\endcsname}%
+            {\csname #2path\endcsname}%
+            {\@@asuri@nquery}%
+            \makeuri@empty%
+        \@asuri@changed@true
+    }{
+    \IfBeginWith\@@asuri@command{\@Fragment}{
+        \expandafter\ifx\csname #2fragment\endcsname\makeuri@empty
+            \StrBehind\@@asuri@command\@Fragment[\@@asuri@command]
+            \edef\@@asuri@nfrag{\@@asuri@command}
+        \else
+            \edef\@@asuri@nfrag{\csname #2fragment\endcsname\@@asuri@command}
+        \fi
+        \makeuri{\csname #2scheme\endcsname}%
+            {\csname #2authority\endcsname}%
+            {\csname #2path\endcsname}%
+            {\csname #2query\endcsname}%
+            {\@@asuri@nfrag}%
+        \@asuri@changed@true
+    }{}
+    }}}
+    \edef\@@asuri@ncs{#1}
+    \if@asuri@changed@
+        \ifx\@@asuri@ncs\@empty
+            \asuri{#2}\makeuri@uri
+        \else
+            \asuri\@@asuri@ncs\makeuri@uri
+        \fi
+    \fi
+}
+
 \def\@Space{ }
 \def\trimstring#1{
     \edef\pathsuris@trim@temp{#1}
@@ -260,6 +431,55 @@
         \fi
     \fi
     \windows@continue
+}
+
+
+\newif\if@iswindows@\@iswindows@false
+\IfFileExists{nul:}{\IfFileExists{/dev/null}{}{\@iswindows@true}}{}
+
+\def\kpsewhich#1#2{\begingroup
+  \def\@Space{ }
+  \edef\kpsewhich@cmd{"|kpsewhich #2"}
+  \everyeof{\noexpand}
+  \catcode`\\=12
+  \edef#1{\@@input\kpsewhich@cmd\@Space}
+  \trimstring#1
+  \global\let#1#1
+\endgroup}
+
+
+\edef\oldpercentcatcode{\the\catcode`\%}
+\catcode`\%=12
+\let\percent%
+\catcode`\%=\oldpercentcatcode
+
+\edef\pwd@cmd{\if@iswindows@ -expand-var \percent CD\percent\else -var-value PWD\fi}
+\kpsewhich\stex@maindir\pwd@cmd
+\if@iswindows@\windows@to@path\stex@maindir\fi
+
+\def\path@filename#1#2{
+    \edef\filename@oldpath{#1}
+    \StrCount\filename@oldpath\@Slash[\filename@lastslash]
+    \ifnum\filename@lastslash>0
+        \StrBehind[\filename@lastslash]\filename@oldpath\@Slash[\filename@oldpath]
+        \csedef{#2}{\filename@oldpath}
+    \else
+        \csedef{#2}{\filename@oldpath}
+    \fi
+}
+
+\def\path@dropextension#1#2{
+    \path@filename{#1}{dropextension@temp}
+    \StrCount\dropextension@temp\@Dot[\dropextension@lastdot]
+    \ifnum\dropextension@lastdot>0
+        \StrBehind[\dropextension@lastdot]\dropextension@temp\@Dot[\dropextension@ext]
+        \StrLen\dropextension@ext[\dropextension@lastdot]
+        \StrGobbleRight{#1}{\the\numexpr\dropextension@lastdot+1\@Space}[\dropextension@temp]
+        \trimstring\dropextension@temp
+        \csedef{#2}{\dropextension@temp}
+    \else
+        \csedef{#2}{#1}
+    \fi
 }
 
 %%% Local Variables:
