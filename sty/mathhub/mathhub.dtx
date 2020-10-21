@@ -511,6 +511,7 @@
 %    \begin{macrocode}
 \newread\@manifest
 \def\parsemanifest#1#2{
+  \gdef\temp@archive@dir{}
   \findmanifest{#2}
   \begingroup
     \gdef\manifest@mf@id{}
@@ -535,7 +536,26 @@
 % Finally -- and that is the ultimate goal of all of the above, we set the current repos.  
 %
 %    \begin{macrocode}
-\mhcurrentrepos{\manifest@mf@id}
+\def\setcurrentreposinfo#1{%
+  \ifcsdef{currentrepos@dir@#1}{%
+    \mhcurrentrepos{#1}%
+  }{%
+    \parsemanifest{mathhub@archive@}{\MathHub{#1}}%
+    \@setcurrentreposinfo%
+  }%
+}
+
+\def\@setcurrentreposinfo{%
+  \mhcurrentrepos{\mathhub@archive@id}%
+  \csxdef{currentrepos@dir@\mathhub@archive@id}{\mathhub@archive@dir}%
+  \csxdef{currentrepos@narr@\mathhub@archive@id}{\mathhub@archive@narr}%
+  \csxdef{currentrepos@ns@\mathhub@archive@id}{\mathhub@archive@ns}%
+  \csxdef{currentrepos@deps@\mathhub@archive@id}{\mathhub@archive@deps}%
+}
+
+\@setcurrentreposinfo
+
+
 %</package>
 %    \end{macrocode}
 %
@@ -595,11 +615,11 @@
 \ifx\importmhmodule@mhrepos\@empty% if in the same repos
 \relax% no need to change mh@currentrepos, i.e, current directory.
 \else%
-\mhcurrentrepos{\importmhmodule@mhrepos}% change it. 
+\setcurrentreposinfo{\importmhmodule@mhrepos}% change it. 
 \fi%
 \importmodule[load=\MathHub{\mh@currentrepos/source/\@path},
                          id=\importmhmodule@id]{#2}%
-\mhcurrentrepos{\mh@@repos}% after importing, reset to old value
+\setcurrentreposinfo{\mh@@repos}% after importing, reset to old value
 \fi%
 \ignorespacesandpars}
 %    \end{macrocode}
@@ -617,10 +637,10 @@
 \else%
 \edef\mh@@repos{\mh@currentrepos}%
 \ifx\importmhmodule@mhrepos\@empty%
-\else\mhcurrentrepos{\importmhmodule@mhrepos}\fi%
+\else\setcurrentreposinfo{\importmhmodule@mhrepos}\fi%
 \usemodule[load=\MathHub{\mh@currentrepos/source/\@path},
                         id=\importmhmodule@id]{#2}%
-\mhcurrentrepos\mh@@repos%
+\setcurrentreposinfo\mh@@repos%
 \fi%
 \ignorespacesandpars}
 %    \end{macrocode}
@@ -631,9 +651,9 @@
 \newcommand\mhinputref[2][]{%
 \def\@repos{#1}%
 \edef\mh@@repos{\mh@currentrepos}%
-\ifx\@repos\@empty\else\mhcurrentrepos{#1}\fi%
+\ifx\@repos\@empty\else\setcurrentreposinfo{#1}\fi%
 \inputref{\MathHub{\mh@currentrepos/source/#2}}%
-\mhcurrentrepos\mh@@repos%
+\setcurrentreposinfo\mh@@repos%
 \ignorespacesandpars}
 %    \end{macrocode}
 % \end{macro}
@@ -663,7 +683,7 @@
 \edef\mh@@repos{\mh@currentrepos}%
 \ifx\Gin@mhrepos\@empty\includegraphics[#1]{\MathHub{\mh@currentrepos/source/#2}}%
 \else\includegraphics[#1]{\MathHub{\Gin@mhrepos/source/#2}}\fi
-\def\Gin@mhrepos{}\mhcurrentrepos\mh@@repos}
+\def\Gin@mhrepos{}\setcurrentreposinfo\mh@@repos}
 \newcommand\cmhgraphics[2][]{\begin{center}\mhgraphics[#1]{#2}\end{center}}
 %    \end{macrocode}
 % \end{macro}
@@ -900,9 +920,9 @@
 \addmetakey{inclprob}{mhrepos}
 \newcommand\includemhproblem[2][]{\metasetkeys{inclprob}{#1}%
 \edef\mh@@repos{\mh@currentrepos}%
-\ifx\inclprob@mhrepos\@empty\else\mhcurrentrepos\inclprob@mhrepos\fi%
+\ifx\inclprob@mhrepos\@empty\else\setcurrentreposinfo\inclprob@mhrepos\fi%
 \input{\MathHub{\mh@currentrepos/source/#2}}%
-\mhcurrentrepos\mh@@repos\clear@inclprob@keys}
+\setcurrentreposinfo\mh@@repos\clear@inclprob@keys}
 %</problem>
 %    \end{macrocode}
 % \end{macro}
@@ -923,9 +943,9 @@
 %    \begin{macrocode}
 \newcommand\inputmhassignment[2][]{\metasetkeys{inclassig}{#1}%
 \edef\mh@@repos{\mh@currentrepos}%
-\ifx\inclassig@mhrepos\@empty\else\mhcurrentrepos\inclassig@mhrepos\fi%
+\ifx\inclassig@mhrepos\@empty\else\setcurrentreposinfo\inclassig@mhrepos\fi%
 \inputassignment[#1]{\MathHub{\mh@currentrepos/source/#2}}%
-\mhcurrentrepos\mh@@repos\clear@inclassig@keys}
+\setcurrentreposinfo\mh@@repos\clear@inclassig@keys}
 \newcommand\includemhassignment[2][]{\newpage\inputmhassignment[#1]{#2}}
 %</hwexam>
 %    \end{macrocode}
@@ -945,8 +965,8 @@
 \newcommand\mhtikzinput[2][]{\def\Gin@mhrepos{}\setkeys{Gin}{#1}%
 \edef\mh@@repos{\mh@currentrepos}%
 \ifx\Gin@mhrepos\@empty\tikzinput[#1]{\MathHub{\mh@currentrepos/source/#2}}%
-\else\mhcurrentrepos\Gin@mhrepos\tikzinput[#1]{\MathHub{\Gin@mhrepos/source/#2}}\fi
-\def\Gin@mhrepos{}\mhcurrentrepos\mh@@repos}
+\else\setcurrentreposinfo\Gin@mhrepos\tikzinput[#1]{\MathHub{\Gin@mhrepos/source/#2}}\fi
+\def\Gin@mhrepos{}\setcurrentreposinfo\mh@@repos}
 \newcommand\cmhtikzinput[2][]{\begin{center}\mhtikzinput[#1]{#2}\end{center}}
 %</tikzinput>
 %    \end{macrocode}
@@ -967,7 +987,7 @@
 \edef\mh@@repos{\mh@currentrepos}%
 \ifx\lst@mhrepos\@empty\lstinputlisting[#1]{\MathHub{\mh@currentrepos/source/#2}}%
 \else\lstinputlisting[#1]{\MathHub{\lst@mhrepos/source/#2}}\fi
-\def\lst@mhrepos{}\mhcurrentrepos\mh@@repos}
+\def\lst@mhrepos{}\setcurrentreposinfo\mh@@repos}
 \newcommand\clstinputmhlisting[2][]{\begin{center}\lstinputmhlisting[#1]{#2}\end{center}}
 %</lst>
 %    \end{macrocode}
