@@ -791,35 +791,9 @@
 %    \end{macrocode}
 % \end{macro}
 %
-% \begin{macro}{module:id}
-%   For a module with |[id=|\meta{name}|]|, we have a macro |\module@defs@|\meta{name}
-%   that acts as a repository for semantic macros of the current module. I will be called
-%   by |\importmodule| to activate them. We will add the internal forms of the semantic
-%   macros whenever |\symdef| is invoked. To do this, we will need an unexpended form
-%   |\this@module| that expands to |\module@defs@|\meta{name}; we define it first and then
-%   initialize |\module@defs@|\meta{name} as empty. Then we do the same for qualified
-%   imports as well (if the |qualifiedimports| option was specified). Furthermore, we save
-%   the module name in the token register |\module@id|.
-%    \begin{macrocode}
-% replaced by \module@id
-%\define@key{module}{id}{%
-%  \edef\this@module{%
-%    \expandafter\noexpand\csname module@defs@#1\endcsname%
-%  }%
-%  \csgdef{module@defs@#1}{}%
-%  \ifmod@qualified%
-%    \edef\this@qualified@module{%
-%      \expandafter\noexpand\csname module@defs@#1\endcsname%
-%    }%
-%    \csgdef{module@defs@qualified@#1}{}%
-%  \fi%
-%  \def\mod@id{#1}%
-%}%
-%    \end{macrocode}
-% \end{macro}
 %
 % \begin{macro}{module@heading}
-%   Then we make a convenience macro for the module heading. This can be customized. 
+%   We make a convenience macro for the module heading. This can be customized. 
 %    \begin{macrocode}
 \ifdef{\thesection}{\newcounter{module}[section]}{\newcounter{module}}%
 \newrobustcmd\module@heading{%
@@ -856,16 +830,33 @@
 %
 % \begin{environment}{@module}
 %   A variant of the |module| environment that does not create printed representations (in
-%   particular no frames) 
+%   particular no frames).
+%
+%  
+%   For a module with uri \meta{uri}, we have a macro |\module@defs@|\meta{uri}
+%   that acts as a repository for semantic macros of the current module. I will be called
+%   by |\importmodule| to activate them. We will add the internal forms of the semantic
+%   macros whenever |\symdef| is invoked. To do this, we will need an unexpended form
+%   |\this@module| that expands to |\module@defs@|\meta{uri}; we define it first and then
+%   initialize |\module@defs@|\meta{uri} as empty. Then we do the same for qualified
+%   imports as well (if the |qualifiedimports| option was specified). Furthermore, we save
+%   the module name in the token register |\module@id|.\medskip
+%
+%   To compute the \meta{uri} of a module, |\set@default@ns| computes the namespace, if none is
+% provided as an optional argument, as follows:
+%
+% If the file of the module is |/some/path/file.tex| and we are not in a |MathHub| repository,
+% the namespace is |file:///some/path|.
+%
+% If the file of the module is |/some/path/in/mathhub/repo/sitory/source/sub/file.tex| and
+% |repo/sitory| is an archive in the |MathHub| root, and the |MANIFEST.MF| of |repo/sitory|
+% declares a namespace |http://some.namespace/foo|, then the namespace of the module is
+% |http://some.namespace/foo/sub|.
 %    \begin{macrocode}
 \newif\ifarchive@ns@empty@\archive@ns@empty@false
 \def\set@default@ns{
-%  \ifcsdef{mh@currentrepos}{%
-%  \parsemanifest{mathhub@archive@}\currfiledir%
-%  }{} <- slow, do somewhere else
   \edef\@module@ns@temp{\currfiledir}
   \if@iswindows@\edef\@module@ns@temp{\windows@to@path\@module@ns@temp}\fi
-  %\path@dropextension\@module@ns@temp{@module@ns@temp}
   \archive@ns@empty@false
   \unless\ifcsname mh@currentrepos\endcsname
     \archive@ns@empty@true
@@ -873,16 +864,11 @@
     \expandafter\ifx\csname currentrepos@ns@\mh@currentrepos\endcsname\@empty\archive@ns@empty@true\fi
   \fi
   \ifarchive@ns@empty@
-    %\asuri{@module@ns@temp}{file\@Colon\@Slash\@Slash\@module@ns@temp}
     \edef\@module@ns@temp{file\@Colon\@Slash\@Slash\@module@ns@temp}
-    %\@module@ns@temp{drop extension}
     \setkeys{module}{ns=\@module@ns@temp}
   \else
-    %\asuri{@module@filepath@temp}{file\@Colon\@Slash\@Slash\@module@ns@temp}
     \edef\@module@filepath@temppath{\@module@ns@temp}
-    %\asuri{@module@ns@temp}{\mathhub@archive@ns}
     \edef\@module@ns@tempuri{\csname currentrepos@ns@\mh@currentrepos\endcsname}
-    %\asuri{@module@archivedir}{file\@Colon\@Slash\@Slash\mathhub@archive@dir\@Slash source}
     \edef\@module@archivedirpath{\csname currentrepos@dir@\mh@currentrepos\endcsname\@Slash source}
     \edef\@module@archivedirpath{\expandafter\detokenize\expandafter{\@module@archivedirpath}}
     \IfBeginWith\@module@filepath@temppath\@module@archivedirpath{
@@ -893,7 +879,10 @@
     \setkeys{module}{ns=\@module@ns@tempuri}
   \fi
 }
-
+%    \end{macrocode}
+% If the module is not given an |id|, |\set@next@moduleid| computes one by 
+% enumeration, e.g. |module0|, |module1|, etc.
+%    \begin{macrocode}
 \def\set@next@moduleid{
   \unless\ifcsname namespace@\module@ns @unnamedmodules\endcsname
       \csgdef{namespace@\module@ns @unnamedmodules}{0}
@@ -903,7 +892,11 @@
   \module@temp@setidname
   \csxdef{namespace@\module@ns @unnamedmodules}{\the\numexpr\namespace@currnum+1}
 }
-
+%    \end{macrocode}
+% Finally, the |@module| environment does the actual work, i.e. setting metakeys, computing
+% namespace/id, defining |\this@module|, etc.
+%
+%    \begin{macrocode}
 \newenvironment{@module}[1][]{
   \metasetkeys{module}{#1}
   \ifx\module@ns\@empty\set@default@ns\fi
@@ -935,6 +928,13 @@
     }%
   \fi%
 }{}%
+%    \end{macrocode}
+% A module with URI \meta{uri} and id \meta{id} creates two macros |\|\meta{uri} and |\Module|\meta{id},
+% that ultimately expand to |\@invoke@module{|\meta{uri}|}|. Currently, the only functionality is
+% |\@invoke@module{|\meta{uri}|}\@URI|, which expands to the full uri of a module (i.e. via
+% |\Module|\meta{id}|\@URI|). In the future, this macro can be extended with additional functionality,
+% e.g. accessing symbols in a macro for overloaded (macro-)names.
+%    \begin{macrocode}
 
 \def\@URI{uri}
 
@@ -957,7 +957,6 @@
 %   directly afterwards to prohibit further activations.
 %    \begin{macrocode}
 \def\activate@defs#1{%
-  %\edef\activate@defs@uri{\csname moduleid@#1\endcsname\@URI}%
   \ifcsundef{module@\csname moduleid@#1\endcsname\@URI @activated}{\csname module@defs@\csname moduleid@#1\endcsname\@URI\endcsname}{}%
   \@namedef{module@\csname moduleid@#1\endcsname\@URI @activated}{true}%
 }%
