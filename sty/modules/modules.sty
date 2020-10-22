@@ -31,7 +31,7 @@
 \RequirePackage{xspace}
 \if@latexml\else\ifmod@show\RequirePackage{mdframed}\fi\fi
 \addmetakey*{module}{title}
-\addmetakey*{module}{id}
+\addmetakey*{module}{name}
 \addmetakey*{module}{creators}
 \addmetakey*{module}{contributors}
 \addmetakey*{module}{srccite}
@@ -89,7 +89,7 @@
       \csgdef{namespace@\module@ns @unnamedmodules}{0}
   \fi
   \edef\namespace@currnum{\csname namespace@\module@ns @unnamedmodules\endcsname}
-  \edef\module@temp@setidname{\noexpand\setkeys{module}{id=module\namespace@currnum}}
+  \edef\module@temp@setidname{\noexpand\setkeys{module}{name=module\namespace@currnum}}
   \module@temp@setidname
   \csxdef{namespace@\module@ns @unnamedmodules}{\the\numexpr\namespace@currnum+1}
 }
@@ -99,10 +99,10 @@
   \ifx\module@narr\@empty
     \setkeys{module}{narr=\module@ns}
   \fi
-  \ifcsname module@id\endcsname
-    \ifx\module@id\@empty\set@next@moduleid\fi
+  \ifcsname module@name\endcsname
+    \ifx\module@name\@empty\set@next@moduleid\fi
   \else\set@next@moduleid\fi
-  %\seturi[module@uri@]{\module@ns\@QuestionMark\module@id}
+  \let\module@id\module@name
   \edef\module@uri@uri{\module@ns\@QuestionMark\module@id} % faster, and at this point equivalent
   \csxdef{\module@uri@uri}{\noexpand\@invoke@module{\module@uri@uri}}
   \csxdef{moduleid@\module@id}{\noexpand\@invoke@module{\module@uri@uri}}
@@ -245,15 +245,25 @@ same name; this is dangerous -- not importing}%
 
 
 
-\def\symdecl#1{%
-  \ifcsname module@uri@uri\endcsname%
-    \seturi[symdef@uri@]{\module@uri@uri\@QuestionMark#1}%
-    \define@in@module\symdef@uri@uri{\noexpand\@invoke@symbol{\symdef@uri@uri}}%
-    \define@in@module{#1}{\noexpand\@invoke@symbol{\symdef@uri@uri}}%
-    \message{^^JNew symbol: \symdef@uri@uri}
-  \else%
-    % TODO?
-  \fi%
+\addmetakey{symdecl}{name}%
+
+\newcommand\symdecl[2][]{%
+  \ifcsdefined{module@uri@uri}{%
+    \metasetkeys{symdecl}{#1}%
+    \ifcsvoid{symdecl@name}{\edef\symdecl@name{#2}}{}%
+    \edef\symdef@uri{\module@uri@uri\@QuestionMark\symdecl@name}%
+    \ifcsvoid{\symdef@uri}{
+      \define@in@module\symdef@uri{\noexpand\@invoke@symbol{\symdef@uri}}%
+      \define@in@module{#2}{\noexpand\@invoke@symbol{\symdef@uri}}%
+    }{%
+      \PackageError{modules}{symbol \symdef@uri\ already defined}{%
+        You need to pick a fresh name for your symbol%
+      }%
+    }%
+  }{%
+    \PackageError{modules}{\detokenize{\symdecl} not in a module}{You need to be in a module%
+    in order to declare a new symbol}
+  }%
 }
 
 
@@ -263,10 +273,11 @@ same name; this is dangerous -- not importing}%
 }
 
 \newcommand\symbol@args[1][]{%
-  \@invoke@symbol@\@invoke@symbol@first{#1}
+  \ifmmode\@invoke@symbol@math\@invoke@symbol@first{#1}%
+  \else\@invoke@symbol@text\@invoke@symbol@first{#1}\fi%
 }
 
-\def\@invoke@symbol@#1#2{%
+\def\@invoke@symbol@math#1#2{%
   % #1: URI
   % #2: options
   % TODO \setnotation variants
@@ -292,6 +303,10 @@ same name; this is dangerous -- not importing}%
   \csname #1\@Fragment\notation@temp@fragment\endcsname%
 }
 
+\def\@invoke@symbol@text#1#2{%
+    % TODO
+}
+
 
 
 
@@ -306,6 +321,7 @@ same name; this is dangerous -- not importing}%
 }
 
 \def\notation@@[#1]#2[#3]#4{%
+  % TODO compute symbol name better
   \expandafter\expandafter\expandafter\notation@extract@uri\csname #2\endcsname\notation@end%
   \notation@parse@params{#1}{#3}
   \let\notation@curr@todo@args\notation@curr@args%
@@ -347,13 +363,12 @@ same name; this is dangerous -- not importing}%
       \def\notation@curr@precs{}%
     }%
     \ifx\notation@curr@argprec\@empty%
-      \def\notation@curr@argprec{0}%
+      \let\notation@curr@argprec\notation@curr@prec%
     \fi%
     \StrChar\notation@curr@todo@args1[\notation@argchar]%
     \StrGobbleLeft\notation@curr@todo@args1[\notation@curr@todo@args]%
     \expandafter\ifx\notation@argchar i%
       % normal argument
-      % TODO something better than empty \prefix for argument precedence
       \edef\notation@nextarg@temp{{\noexpand\notation@argprec{\notation@curr@argprec}{########1}}}%
       \expandafter\g@addto@macro@safe\expandafter\notation@curr@extargs%
         \expandafter{\notation@nextarg@temp}%
