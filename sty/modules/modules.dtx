@@ -290,12 +290,12 @@
 % \end{verbatim}
 % \vspace*{-3.5ex}\hrule\vspace*{1ex}
 % \begin{module}[name=xbool]
-%   \symdef[name=xor]{xorOp}{\oplus}
-%   \symvariant{xorOp}{uvee}{\underline{\vee}}
-%   \symdef{xor}[2]{#1\xorOp #2}
-%   \symvariant{xor}[2]{uvee}{#1\xorOp[uvee] #2}
+%   \symdef[name=xor,arity=0]{xor}{\oplus}
+%   \notation[arity=0,variant=uvee]{xor}{\underline{\vee}}
+%   \notation{xor}[2]{#1\xor[arity=0] #2}
+%   \notation[variant=uvee]{xor}[2]{#1\xor[arity=0,uvee] #2}
 %   Exclusive disjunction is commutative: $\xor{p}q=\xor{q}p$\\
-%   Some authors also write exclusive or with the $\xorOp[uvee]$ operator, 
+%   Some authors also write exclusive or with the $\xor[arity=0,uvee]$ operator, 
 %   then the formula above is $\xor[uvee]{p}q=\xor[uvee]{q}p$
 % \end{module}
 % \caption{Presentation Variants of a Semantic Macro}\label{fig:symvariant}
@@ -762,8 +762,7 @@
 %    \begin{macrocode}
 \RequirePackage{stex-base}
 \RequirePackage{sref}
-\RequirePackage{pathsuris}
-\RequirePackage{currfile}
+\RequirePackage{stex-currfile}
 \RequirePackage{standalone}
 \if@modules@mh@\RequirePackage{modules-mh}\fi
 \RequirePackage{xspace}
@@ -850,7 +849,8 @@
 %    \begin{macrocode}
 \newif\ifarchive@ns@empty@\archive@ns@empty@false
 \def\set@default@ns{
-  \edef\@module@ns@temp{\currfiledir}
+  \edef\@module@ns@temp{\stex@currpath}
+  \message{^^Jcurrfiledir: \stex@currpath^^J}
   \if@iswindows@\edef\@module@ns@temp{\windows@to@path\@module@ns@temp}\fi
   \archive@ns@empty@false
   \unless\ifcsname mh@currentrepos\endcsname
@@ -1119,41 +1119,10 @@ same name; this is dangerous -- not importing}%
 %    \end{macrocode}
 % \end{environment}
 % 
-% \begin{macro}{symdef:keys}
-%   The optional argument local specifies the scope of the function to be defined. If
-%   local is not present as an optional argument then |\symdef| assumes the scope of the
-%   function is global and it will include it in the pool of macros of the current
-%   module. Otherwise, if local is present then the function will be defined only locally
-%   and it will not be added to the current module (i.e. we cannot inherit a local
-%   function).  Note, the optional key local does not need a value: we write
-%   |\symdef[local]{somefunction}[0]{some expansion}|. The other keys are not used in the
-%   {\LaTeX} part. 
-%    \begin{macrocode}
-\newif\if@symdeflocal%
-\srefaddidkey{symdef}%
-\define@key{symdef}{local}[true]{\@symdeflocaltrue}%
-\define@key{symdef}{noverb}[all]{}%
-\define@key{symdef}{align}[WithTheSymbolOfTheSameName]{}%
-\define@key{symdef}{specializes}{}%
-\addmetakey*{symdef}{noalign}[true]
-\define@key{symdef}{primary}[true]{}%
-\define@key{symdef}{assocarg}{}%
-\define@key{symdef}{bvars}{}%
-\define@key{symdef}{bargs}{}%
-\addmetakey{symdef}{ns}%
-\addmetakey{symdef}{name}%
-\addmetakey*{symdef}{title}%
-\addmetakey*{symdef}{description}%
-\addmetakey{symdef}{subject}%
-\addmetakey*{symdef}{display}%
-%    \end{macrocode}
-% \end{macro}
 %
 % New stuff:
 %    \begin{macrocode}
 % ---------------------------------------------------------------
-
-\RequirePackage{presentation}
 
 % calls \edef\#1{#2} and adds the macro definition to \this@module
 \def\define@in@module#1#2{
@@ -1181,7 +1150,7 @@ same name; this is dangerous -- not importing}%
 \addmetakey{symdecl}{name}%
 
 \newcommand\symdecl[2][]{%
-  \ifcsdefined{module@uri@uri}{%
+  \ifcsdef{module@uri@uri}{%
     \metasetkeys{symdecl}{#1}%
     \ifcsvoid{symdecl@name}{\edef\symdecl@name{#2}}{}%
     \edef\symdef@uri{\module@uri@uri\@QuestionMark\symdecl@name}%
@@ -1189,7 +1158,7 @@ same name; this is dangerous -- not importing}%
       \define@in@module\symdef@uri{\noexpand\@invoke@symbol{\symdef@uri}}%
       \define@in@module{#2}{\noexpand\@invoke@symbol{\symdef@uri}}%
     }{%
-      \PackageError{modules}{symbol \symdef@uri\ already defined}{%
+      \PackageError{modules}{symbol already defined: \symdef@uri}{%
         You need to pick a fresh name for your symbol%
       }%
     }%
@@ -1210,8 +1179,9 @@ same name; this is dangerous -- not importing}%
 % takes care of the optional notation-option-argument, and either invokes \@invoke@symbol@math for
 % symbolic presentation or \@invoke@symbol@text for verbalization
 \newcommand\symbol@args[1][]{%
-  \ifmmode\@invoke@symbol@math\@invoke@symbol@first{#1}%
-  \else\@invoke@symbol@text\@invoke@symbol@first{#1}\fi%
+  \ifmmode\def\invoke@symbol@next{\@invoke@symbol@math\@invoke@symbol@first{#1}}%
+  \else\def\invoke@symbol@next{\@invoke@symbol@text\@invoke@symbol@first{#1}}\fi%
+  \invoke@symbol@next%
 }
 
 % finally gets called with both uri and notation-option,
@@ -1298,6 +1268,7 @@ same name; this is dangerous -- not importing}%
   }%
   % arguments
   \def\notation@curr@extargs{}
+  \def\notation@nextarg@index{1}%
   \notation@do@args%
 }
 
@@ -1321,7 +1292,8 @@ same name; this is dangerous -- not importing}%
     \StrGobbleLeft\notation@curr@todo@args1[\notation@curr@todo@args]%
     \expandafter\ifx\notation@argchar i%
       % normal argument
-      \edef\notation@nextarg@temp{{\noexpand\notation@argprec{\notation@curr@argprec}{########1}}}%
+      \edef\notation@nextarg@temp{{\noexpand\notation@argprec{\notation@curr@argprec}{########\notation@nextarg@index}}}%
+      \edef\notation@nextarg@index{\the\numexpr\notation@nextarg@index+1 }
       \expandafter\g@addto@macro@safe\expandafter\notation@curr@extargs%
         \expandafter{\notation@nextarg@temp}%
       \expandafter\expandafter\expandafter\notation@do@args%
@@ -1334,6 +1306,7 @@ same name; this is dangerous -- not importing}%
 
 \def\notation@parse@assocarg#1{%
   \edef\notation@nextarg@temp{{\noexpand\notation@argprec{\notation@curr@argprec}{\noexpand\notation@assoc{\unexpanded{#1}}{########1}}}}%{{\noexpand\assoc[p=\notation@curr@argprec]{\unexpanded{#1}}{########1}}}%
+  \edef\notation@nextarg@index{\the\numexpr\notation@nextarg@index+1 }%
   \expandafter\g@addto@macro@safe\expandafter\notation@curr@extargs%
   \expandafter{\notation@nextarg@temp}%
   \notation@do@args%
@@ -1518,6 +1491,39 @@ same name; this is dangerous -- not importing}%
 % ---------------------------------------------------------------
 %    \end{macrocode}
 %
+% \begin{macro}{symdef:keys}
+%   The optional argument local specifies the scope of the function to be defined. If
+%   local is not present as an optional argument then |\symdef| assumes the scope of the
+%   function is global and it will include it in the pool of macros of the current
+%   module. Otherwise, if local is present then the function will be defined only locally
+%   and it will not be added to the current module (i.e. we cannot inherit a local
+%   function).  Note, the optional key local does not need a value: we write
+%   |\symdef[local]{somefunction}[0]{some expansion}|. The other keys are not used in the
+%   {\LaTeX} part. 
+%    \begin{macrocode}
+\newif\if@symdeflocal%
+\srefaddidkey{symdef}%
+\define@key{symdef}{local}[true]{\@symdeflocaltrue}%
+\define@key{symdef}{noverb}[all]{}%
+\define@key{symdef}{align}[WithTheSymbolOfTheSameName]{}%
+\define@key{symdef}{specializes}{}%
+\addmetakey*{symdef}{noalign}[true]
+\define@key{symdef}{primary}[true]{}%
+\define@key{symdef}{assocarg}{}%
+\define@key{symdef}{bvars}{}%
+\define@key{symdef}{bargs}{}%
+\addmetakey{symdef}{lang}%
+\addmetakey{symdef}{arity}%
+\addmetakey{symdef}{variant}%
+\addmetakey{symdef}{ns}%
+\addmetakey{symdef}{name}%
+\addmetakey*{symdef}{title}%
+\addmetakey*{symdef}{description}%
+\addmetakey{symdef}{subject}%
+\addmetakey*{symdef}{display}%
+%    \end{macrocode}
+% \end{macro}
+%
 % \ednote{MK@MK: we need to document the binder keys above.}
 % \begin{macro}{\symdef}
 %    The the |\symdef|, and |\@symdef| macros just handle optional arguments.
@@ -1548,80 +1554,11 @@ same name; this is dangerous -- not importing}%
 %    now comes the real meat: the |\@@symdef| macro does two things, it adds the macro
 %    definition to the macro definition pool of the current module and also provides it.
 %    \begin{macrocode}
-\def\@@symdef[#1]#2[#3]#4{%
-%    \end{macrocode}
-% We use a switch to keep track of the local optional argument. We initialize the switch
-% to false and set all the keys that have been provided as arguments: |name|, |local|.
-%    \begin{macrocode}
-  \@symdeflocalfalse%
+\def\@@symdef[#1]#2[#3]{%
   \metasetkeys{symdef}{#1}%
-  \usemodule@maybesetcodes%
-%    \end{macrocode}
-% First, using |\mod@newcommand| we initialize the intermediate macro
-% |\module@|\meta{sym}|@pres@|, the one that can be extended with |\symvariant|
-%    \begin{macrocode}
-  \expandafter\mod@newcommand\csname modules@#2@pres@\endcsname[#3]{#4}%
-%    \end{macrocode}
-% and then we define the actual semantic macro, which when invoked with an optional
-% argument \meta{opt} calls |\modules@|\meta{sym}|@pres@|\meta{opt} provided by the
-% |\symvariant| macro.
-%    \begin{macrocode}
-  \expandafter\mod@newcommand\csname #2\endcsname[1][]%
-  {\csname modules@#2@pres@##1\endcsname}%
-%    \end{macrocode}
-% Finally, we prepare the internal macro to be used in the |\symref| call.
-%    \begin{macrocode}
-\expandafter\@mod@nc\csname mod@symref@#2\expandafter\endcsname\expandafter%
-{\expandafter\mod@termref\expandafter{\module@uri@uri}{#2}{##1}}%
-%    \end{macrocode}
-% We check if the switch for the local scope is set: if it is we are done, since this
-% function has a local scope. Similarly, if we are not inside a module, which we could
-% export from.  
-%    \begin{macrocode}
-  \if@symdeflocal%
-  \else%
-    \ifcsundef{module@id}{}{%
-%    \end{macrocode}
-% Otherwise, we add three functions to the module's pool of defined macros using
-% |\g@addto@macro|. We first add the definition of the intermediate function
-% |\modules@|\meta{sym}|@pres@|.
-%    \begin{macrocode}
-      \expandafter\g@addto@macro@safe\this@module%
-      {\expandafter\mod@newcommand\csname modules@#2@pres@\endcsname[#3]{#4}}%
-%    \end{macrocode}
-% Then we add add the definition of |\|\meta{sym}  which calls the intermediate
-% function and handles the optional argument.
-%    \begin{macrocode}
-      \expandafter\g@addto@macro@safe\this@module%
-      {\expandafter\mod@newcommand\csname #2\endcsname[1][]%
-      {\csname modules@#2@pres@##1\endcsname}}%
-%    \end{macrocode}
-% We also add |\mod@symref@|\meta{sym} macro to the macro pool so that the |\symref| macro
-% can pick it up.
-%    \begin{macrocode}
-        \expandafter\expandafter\expandafter\g@addto@macro@safe\expandafter\this@module\expandafter%
-        {\expandafter\@mod@nc\csname mod@symref@#2\expandafter\endcsname\expandafter%
-        {\expandafter\mod@termref\expandafter{\module@uri@uri}{#2}{##1}}}%
-%    \end{macrocode}
-% Finally, using |\g@addto@macro| we add the two functions to the qualified version of the
-% module if the |qualifiedimports| option was set.
-%    \begin{macrocode}
-      \ifmod@qualified%
-        \expandafter\g@addto@macro@safe\this@qualified@module%
-        {\expandafter\mod@newcommand\csname modules@#2@pres@qualified\endcsname[#3]{#4}}%
-        \expandafter\g@addto@macro@safe\this@qualified@module%
-        {\expandafter\def\csname#2@qualified\endcsname{\csname modules@#2@pres@qualified\endcsname}}%
-      \fi%
-    }% mod@qualified
-\fi% symdeflocal
-%    \end{macrocode}
-% So now we only need to show the data in the symdef, if the options allow. 
-%    \begin{macrocode}
-  \ifmod@show%
-    \ifx\symdef@display\st@flow\else{\noindent\stDMemph{\symdef@type} #2:}\fi%
-    \ifx\symdef@title\@empty~\else~(\stDMemph{\symdef@title})\par\fi%
-  \fi%
-  \ignorespacesandpars%
+  \edef\symdef@tmp@optpars{\ifcsvoid{symdef@name}{[]}{[name=\symdef@name]}}%
+  \expandafter\symdecl\symdef@tmp@optpars{#2}%
+  \notation[#1]{#2}[#3]%
 }% mod@show
 \def\symdef@type{Symbol}%
 \providecommand{\stDMemph}[1]{\textbf{#1}}
@@ -1989,7 +1926,7 @@ same name; this is dangerous -- not importing}%
       \hfuzz=10000pt\relax%
       \vbadness=100000\relax%
       \vfuzz=10000pt\relax%
-      \input{#1.tex}%
+      \stexinput{#1.tex}%
       \reset@usemodule@catcodes%
       }%
       \usemodule@maybesetcodes
@@ -2143,9 +2080,9 @@ same name; this is dangerous -- not importing}%
   \ifx\@testchar\@Slash%
     \edef\mod@path{#1}%
     \edef\mod@path{\expandafter\detokenize\expandafter{\mod@path}}%
-    \input{#1}%
+    \stexinput{#1}%
   \else%
-    \@cpath{#1}\input{\@CanPath.tex}%
+    \@cpath{#1}\stexinput{\@CanPath.tex}%
   \fi%
   \inputref@postskip%
 }%
@@ -2156,7 +2093,7 @@ same name; this is dangerous -- not importing}%
 % 
 % \begin{macro}{\requirepackage}
 %    \begin{macrocode}
-\def\requirepackage#1#2{\makeatletter\input{#1.sty}\makeatother}%
+\def\requirepackage#1#2{\makeatletter\stexinput{#1.sty}\makeatother}%
 %    \end{macrocode}
 % \end{macro}
 % 
@@ -2254,7 +2191,7 @@ same name; this is dangerous -- not importing}%
 %   not in there.
 %    \begin{macrocode}
 \newrobustcmd\reqmodules[2]{%
-  \ifinlist{#1}{\@register}{}{\listadd\@register{#1}\input{#1.#2}}%
+  \ifinlist{#1}{\@register}{}{\listadd\@register{#1}\stexinput{#1.#2}}%
 }%
 %    \end{macrocode}
 % \end{macro}

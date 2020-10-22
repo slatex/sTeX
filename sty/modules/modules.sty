@@ -24,8 +24,7 @@
 \ProcessOptions
 \RequirePackage{stex-base}
 \RequirePackage{sref}
-\RequirePackage{pathsuris}
-\RequirePackage{currfile}
+\RequirePackage{stex-currfile}
 \RequirePackage{standalone}
 \if@modules@mh@\RequirePackage{modules-mh}\fi
 \RequirePackage{xspace}
@@ -60,7 +59,8 @@
 \ifmod@show\surroundwithmdframed{module@om@common}\fi%
 \newif\ifarchive@ns@empty@\archive@ns@empty@false
 \def\set@default@ns{
-  \edef\@module@ns@temp{\currfiledir}
+  \edef\@module@ns@temp{\stex@currpath}
+  \message{^^Jcurrfiledir: \stex@currpath^^J}
   \if@iswindows@\edef\@module@ns@temp{\windows@to@path\@module@ns@temp}\fi
   \archive@ns@empty@false
   \unless\ifcsname mh@currentrepos\endcsname
@@ -207,25 +207,6 @@ same name; this is dangerous -- not importing}%
   \ifx\conceptdef@display\st@flow\else{\stDMemph{\conceptdef@type} #2:}\fi%
   \ifx\conceptdef@title\@empty~\else~(\stDMemph{\conceptdef@title})\par\fi%
 }%
-\newif\if@symdeflocal%
-\srefaddidkey{symdef}%
-\define@key{symdef}{local}[true]{\@symdeflocaltrue}%
-\define@key{symdef}{noverb}[all]{}%
-\define@key{symdef}{align}[WithTheSymbolOfTheSameName]{}%
-\define@key{symdef}{specializes}{}%
-\addmetakey*{symdef}{noalign}[true]
-\define@key{symdef}{primary}[true]{}%
-\define@key{symdef}{assocarg}{}%
-\define@key{symdef}{bvars}{}%
-\define@key{symdef}{bargs}{}%
-\addmetakey{symdef}{ns}%
-\addmetakey{symdef}{name}%
-\addmetakey*{symdef}{title}%
-\addmetakey*{symdef}{description}%
-\addmetakey{symdef}{subject}%
-\addmetakey*{symdef}{display}%
-
-\RequirePackage{presentation}
 
 \def\define@in@module#1#2{
   \expandafter\edef\csname #1\endcsname{#2}
@@ -248,7 +229,7 @@ same name; this is dangerous -- not importing}%
 \addmetakey{symdecl}{name}%
 
 \newcommand\symdecl[2][]{%
-  \ifcsdefined{module@uri@uri}{%
+  \ifcsdef{module@uri@uri}{%
     \metasetkeys{symdecl}{#1}%
     \ifcsvoid{symdecl@name}{\edef\symdecl@name{#2}}{}%
     \edef\symdef@uri{\module@uri@uri\@QuestionMark\symdecl@name}%
@@ -256,7 +237,7 @@ same name; this is dangerous -- not importing}%
       \define@in@module\symdef@uri{\noexpand\@invoke@symbol{\symdef@uri}}%
       \define@in@module{#2}{\noexpand\@invoke@symbol{\symdef@uri}}%
     }{%
-      \PackageError{modules}{symbol \symdef@uri\ already defined}{%
+      \PackageError{modules}{symbol already defined: \symdef@uri}{%
         You need to pick a fresh name for your symbol%
       }%
     }%
@@ -273,8 +254,9 @@ same name; this is dangerous -- not importing}%
 }
 
 \newcommand\symbol@args[1][]{%
-  \ifmmode\@invoke@symbol@math\@invoke@symbol@first{#1}%
-  \else\@invoke@symbol@text\@invoke@symbol@first{#1}\fi%
+  \ifmmode\def\invoke@symbol@next{\@invoke@symbol@math\@invoke@symbol@first{#1}}%
+  \else\def\invoke@symbol@next{\@invoke@symbol@text\@invoke@symbol@first{#1}}\fi%
+  \invoke@symbol@next%
 }
 
 \def\@invoke@symbol@math#1#2{%
@@ -347,6 +329,7 @@ same name; this is dangerous -- not importing}%
   }%
   % arguments
   \def\notation@curr@extargs{}
+  \def\notation@nextarg@index{1}%
   \notation@do@args%
 }
 
@@ -369,7 +352,8 @@ same name; this is dangerous -- not importing}%
     \StrGobbleLeft\notation@curr@todo@args1[\notation@curr@todo@args]%
     \expandafter\ifx\notation@argchar i%
       % normal argument
-      \edef\notation@nextarg@temp{{\noexpand\notation@argprec{\notation@curr@argprec}{########1}}}%
+      \edef\notation@nextarg@temp{{\noexpand\notation@argprec{\notation@curr@argprec}{########\notation@nextarg@index}}}%
+      \edef\notation@nextarg@index{\the\numexpr\notation@nextarg@index+1 }
       \expandafter\g@addto@macro@safe\expandafter\notation@curr@extargs%
         \expandafter{\notation@nextarg@temp}%
       \expandafter\expandafter\expandafter\notation@do@args%
@@ -382,6 +366,7 @@ same name; this is dangerous -- not importing}%
 
 \def\notation@parse@assocarg#1{%
   \edef\notation@nextarg@temp{{\noexpand\notation@argprec{\notation@curr@argprec}{\noexpand\notation@assoc{\unexpanded{#1}}{########1}}}}%{{\noexpand\assoc[p=\notation@curr@argprec]{\unexpanded{#1}}{########1}}}%
+  \edef\notation@nextarg@index{\the\numexpr\notation@nextarg@index+1 }%
   \expandafter\g@addto@macro@safe\expandafter\notation@curr@extargs%
   \expandafter{\notation@nextarg@temp}%
   \notation@do@args%
@@ -553,45 +538,37 @@ same name; this is dangerous -- not importing}%
   {\notation@downprec=#1\relax#2}%
 }
 
+\newif\if@symdeflocal%
+\srefaddidkey{symdef}%
+\define@key{symdef}{local}[true]{\@symdeflocaltrue}%
+\define@key{symdef}{noverb}[all]{}%
+\define@key{symdef}{align}[WithTheSymbolOfTheSameName]{}%
+\define@key{symdef}{specializes}{}%
+\addmetakey*{symdef}{noalign}[true]
+\define@key{symdef}{primary}[true]{}%
+\define@key{symdef}{assocarg}{}%
+\define@key{symdef}{bvars}{}%
+\define@key{symdef}{bargs}{}%
+\addmetakey{symdef}{lang}%
+\addmetakey{symdef}{arity}%
+\addmetakey{symdef}{variant}%
+\addmetakey{symdef}{ns}%
+\addmetakey{symdef}{name}%
+\addmetakey*{symdef}{title}%
+\addmetakey*{symdef}{description}%
+\addmetakey{symdef}{subject}%
+\addmetakey*{symdef}{display}%
 \def\symdef{\@ifnextchar[{\@symdef}{\@symdef[]}}%
 \def\@symdef[#1]#2{\@ifnextchar[{\@@symdef[#1]{#2}}{\@@symdef[#1]{#2}[0]}}%
 \def\@mod@nc#1{\mod@newcommand{#1}[1]}%
 \def\ignorespacesandpars{\begingroup\catcode13=10\@ifnextchar\relax{\endgroup}{\endgroup}}
 \def\ignorespacesandparsafterend#1\ignorespaces\fi{#1\fi\ignorespacesandpars}
 \def\ignorespacesandpars{\ifhmode\unskip\fi\@ifnextchar\par{\expandafter\ignorespacesandpars\@gobble}{}}
-\def\@@symdef[#1]#2[#3]#4{%
-  \@symdeflocalfalse%
+\def\@@symdef[#1]#2[#3]{%
   \metasetkeys{symdef}{#1}%
-  \usemodule@maybesetcodes%
-  \expandafter\mod@newcommand\csname modules@#2@pres@\endcsname[#3]{#4}%
-  \expandafter\mod@newcommand\csname #2\endcsname[1][]%
-  {\csname modules@#2@pres@##1\endcsname}%
-\expandafter\@mod@nc\csname mod@symref@#2\expandafter\endcsname\expandafter%
-{\expandafter\mod@termref\expandafter{\module@uri@uri}{#2}{##1}}%
-  \if@symdeflocal%
-  \else%
-    \ifcsundef{module@id}{}{%
-      \expandafter\g@addto@macro@safe\this@module%
-      {\expandafter\mod@newcommand\csname modules@#2@pres@\endcsname[#3]{#4}}%
-      \expandafter\g@addto@macro@safe\this@module%
-      {\expandafter\mod@newcommand\csname #2\endcsname[1][]%
-      {\csname modules@#2@pres@##1\endcsname}}%
-        \expandafter\expandafter\expandafter\g@addto@macro@safe\expandafter\this@module\expandafter%
-        {\expandafter\@mod@nc\csname mod@symref@#2\expandafter\endcsname\expandafter%
-        {\expandafter\mod@termref\expandafter{\module@uri@uri}{#2}{##1}}}%
-      \ifmod@qualified%
-        \expandafter\g@addto@macro@safe\this@qualified@module%
-        {\expandafter\mod@newcommand\csname modules@#2@pres@qualified\endcsname[#3]{#4}}%
-        \expandafter\g@addto@macro@safe\this@qualified@module%
-        {\expandafter\def\csname#2@qualified\endcsname{\csname modules@#2@pres@qualified\endcsname}}%
-      \fi%
-    }% mod@qualified
-\fi% symdeflocal
-  \ifmod@show%
-    \ifx\symdef@display\st@flow\else{\noindent\stDMemph{\symdef@type} #2:}\fi%
-    \ifx\symdef@title\@empty~\else~(\stDMemph{\symdef@title})\par\fi%
-  \fi%
-  \ignorespacesandpars%
+  \edef\symdef@tmp@optpars{\ifcsvoid{symdef@name}{[]}{[name=\symdef@name]}}%
+  \expandafter\symdecl\symdef@tmp@optpars{#2}%
+  \notation[#1]{#2}[#3]%
 }% mod@show
 \def\symdef@type{Symbol}%
 \providecommand{\stDMemph}[1]{\textbf{#1}}
@@ -765,7 +742,7 @@ same name; this is dangerous -- not importing}%
       \hfuzz=10000pt\relax%
       \vbadness=100000\relax%
       \vfuzz=10000pt\relax%
-      \input{#1.tex}%
+      \stexinput{#1.tex}%
       \reset@usemodule@catcodes%
       }%
       \usemodule@maybesetcodes
@@ -847,13 +824,13 @@ same name; this is dangerous -- not importing}%
   \ifx\@testchar\@Slash%
     \edef\mod@path{#1}%
     \edef\mod@path{\expandafter\detokenize\expandafter{\mod@path}}%
-    \input{#1}%
+    \stexinput{#1}%
   \else%
-    \@cpath{#1}\input{\@CanPath.tex}%
+    \@cpath{#1}\stexinput{\@CanPath.tex}%
   \fi%
   \inputref@postskip%
 }%
-\def\requirepackage#1#2{\makeatletter\input{#1.sty}\makeatother}%
+\def\requirepackage#1#2{\makeatletter\stexinput{#1.sty}\makeatother}%
 \newcommand\namespace[2][]{\ignorespacesandpars}
 \newrobustcmd\sinput[1]{%
   \PackageError{modules}%
@@ -878,7 +855,7 @@ same name; this is dangerous -- not importing}%
 }%
 \def\notationdef[#1]#2#3{}
 \newrobustcmd\reqmodules[2]{%
-  \ifinlist{#1}{\@register}{}{\listadd\@register{#1}\input{#1.#2}}%
+  \ifinlist{#1}{\@register}{}{\listadd\@register{#1}\stexinput{#1.#2}}%
 }%
 \newcounter{@pl}
 \DeclareListParser*{\forpathlist}{/}
