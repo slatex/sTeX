@@ -1,0 +1,186 @@
+\NeedsTeXFormat{LaTeX2e}[1999/12/01]
+\ProvidesPackage{stex-currfile}[%
+    2020/10/22
+    v1.0
+    Simplified version of the currfile package that does not depend on .fls files]
+\RequirePackage{pathsuris}
+
+% windows paths
+
+\catcode`\.=0
+.catcode`.\=12
+.let.@BackSlash\
+.catcode`.\=0
+\catcode`\.=12
+
+\newif\if@windowstopath@inpath@
+\def\windows@to@path#1{
+    \@windowstopath@inpath@false
+    \def\windows@temp{}
+    \edef\windows@path{#1}
+    \ifx\windows@path\@empty\else
+        \expandafter\windows@path@loop\windows@path\windows@path@end
+    \fi
+    \let#1\windows@temp
+}
+\def\windows@path@loop#1#2\windows@path@end{
+    \def\windows@temp@b{#2}
+    \ifx\windows@temp@b\@empty
+        \def\windows@continue{}
+    \else
+        \def\windows@continue{\windows@path@loop#2\windows@path@end}
+    \fi
+    \if@windowstopath@inpath@
+        \ifx#1\@BackSlash
+            \edef\windows@temp{\windows@temp\@Slash}
+        \else
+            \edef\windows@temp{\windows@temp#1}
+        \fi
+    \else
+        \ifx#1:
+            \edef\windows@temp{\@Slash\windows@temp}
+            \@windowstopath@inpath@true
+        \else
+            \edef\windows@temp{\windows@temp#1}
+        \fi
+    \fi
+    \windows@continue
+}
+
+\def\path@to@windows#1{
+    \@windowstopath@inpath@false
+    \def\windows@temp{}
+    \edef\windows@path{#1}
+    \edef\windows@path{\expandafter\@gobble\windows@path}
+    \ifx\windows@path\@empty\else
+        \expandafter\path@windows@loop\windows@path\windows@path@end
+    \fi
+    \let#1\windows@temp
+}
+\def\path@windows@loop#1#2\windows@path@end{
+    \def\windows@temp@b{#2}
+    \ifx\windows@temp@b\@empty
+        \def\windows@continue{}
+    \else
+        \def\windows@continue{\path@windows@loop#2\windows@path@end}
+    \fi
+    \if@windowstopath@inpath@
+        \ifx#1/
+            \edef\windows@temp{\windows@temp\@BackSlash}
+        \else
+            \edef\windows@temp{\windows@temp#1}
+        \fi
+    \else
+        \ifx#1/
+            \edef\windows@temp{\windows@temp:\@BackSlash}
+            \@windowstopath@inpath@true
+        \else
+            \edef\windows@temp{\windows@temp#1}
+        \fi
+    \fi
+    \windows@continue
+}
+
+% filename/path manipulation
+
+\def\path@filename#1#2{
+    \edef\filename@oldpath{#1}
+    \StrCount\filename@oldpath\@Slash[\filename@lastslash]
+    \ifnum\filename@lastslash>0
+        \StrBehind[\filename@lastslash]\filename@oldpath\@Slash[\filename@oldpath]
+        \csedef{#2}{\filename@oldpath}
+    \else
+        \csedef{#2}{\filename@oldpath}
+    \fi
+}
+
+
+\def\@Space{ }
+\def\trimstring#1{
+    \edef\pathsuris@trim@temp{#1}
+    \IfBeginWith\pathsuris@trim@temp\@Space{
+        \StrGobbleLeft\pathsuris@trim@temp1[#1]
+        \trimstring{#1}
+    }{
+        \IfEndWith\pathsuris@trim@temp\@Space{
+            \StrGobbleRight\pathsuris@trim@temp1[#1]
+            \trimstring{#1}
+        }{
+            \edef#1{\pathsuris@trim@temp}
+        }
+    }
+}
+
+\def\path@dropextension#1#2{
+    \path@filename{#1}{dropextension@temp}
+    \StrCount\dropextension@temp\@Dot[\dropextension@lastdot]
+    \ifnum\dropextension@lastdot>0
+        \StrBehind[\dropextension@lastdot]\dropextension@temp\@Dot[\dropextension@ext]
+        \StrLen\dropextension@ext[\dropextension@lastdot]
+        \StrGobbleRight{#1}{\the\numexpr\dropextension@lastdot+1\@Space}[\dropextension@temp]
+        \trimstring\dropextension@temp
+        \csedef{#2}{\dropextension@temp}
+    \else
+        \csedef{#2}{#1}
+    \fi
+}
+
+% kpsewhich
+
+\newif\if@iswindows@\@iswindows@false
+\IfFileExists{nul:}{\IfFileExists{/dev/null}{}{\@iswindows@true}}{}
+
+\def\kpsewhich#1#2{\begingroup%
+  \def\@Space{ }%
+  \edef\kpsewhich@cmd{"|kpsewhich #2"}%
+  \everyeof{\noexpand}%
+  \catcode`\\=12%
+  \edef#1{\@@input\kpsewhich@cmd\@Space}%
+  \trimstring#1%
+  \if@iswindows@\windows@to@path#1\fi%
+  \xdef#1{\expandafter\detokenize\expandafter{#1}}%
+\endgroup}
+
+% main directory
+
+\edef\oldpercentcatcode{\the\catcode`\%}
+\catcode`\%=12
+\let\percent%
+\catcode`\%=\oldpercentcatcode
+
+\edef\pwd@cmd{\if@iswindows@ -expand-var \percent CD\percent\else -var-value PWD\fi}
+\kpsewhich\stex@maindir\pwd@cmd
+\edef\stex@mainfile{\stex@maindir\@Slash\jobname}
+\edef\stex@mainfile{\expandafter\detokenize\expandafter{\stex@mainfile}}
+
+% input hooks
+
+\def\stex@currfile@stack{}
+
+\def\stex@currfile@push#1{%
+  \edef\stex@currfile@stack{\stex@currfile\ifx\stex@currfile@stack\@empty\else,\stex@currfile@stack\fi}
+  \kpsewhich\stex@currfile{#1}%
+  \path@filename\stex@currfile\stex@currfilename%
+  \StrLen\stex@currfilename[\stex@currfile@tmp]%
+  \StrGobbleRight\stex@currfile{\the\numexpr\stex@currfile@tmp+1 }[\stex@currpath]%
+}
+\def\stex@currfile@pop{%
+  \ifx\stex@currfile@stack\@empty%
+    \let\stex@currfile\stex@mainfile%
+    \let\stex@currpath\stex@maindir%
+    \let\stex@currfilename\jobname%
+  \else%
+    \StrCut\stex@currfile@stack,\stex@currfile\stex@currfile@stack%
+    \path@filename\stex@currfile\stex@currfilename%
+    \StrLen\stex@currfilename[\stex@currfile@tmp]%
+    \StrGobbleRight\stex@currfile{\the\numexpr\stex@currfile@tmp+1 }[\stex@currpath]%
+  \fi%
+}
+
+\def\stexinput#1{\stex@currfile@push{#1}\input{#1}\stex@currfile@pop}
+
+\stex@currfile@pop
+
+\endinput
+%%
+%% End of file `stex-currfile.sty'.
