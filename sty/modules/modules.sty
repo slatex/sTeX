@@ -224,6 +224,320 @@ same name; this is dangerous -- not importing}%
 \addmetakey*{symdef}{description}%
 \addmetakey{symdef}{subject}%
 \addmetakey*{symdef}{display}%
+
+\RequirePackage{presentation}
+
+\def\define@in@module#1#2{
+  \expandafter\edef\csname #1\endcsname{#2}
+  \edef\define@in@module@temp{%
+    \def\expandafter\noexpand\csname#1\endcsname%
+    {#2}%
+  }%
+  \if@symdeflocal\else%
+  \expandafter\expandafter\expandafter%
+      \g@addto@macro@safe\expandafter\this@module\expandafter{\define@in@module@temp}%
+  \fi%
+}
+
+\catcode`\&=12
+\def\@Ampersand{&}
+\catcode`\&=4
+
+
+
+\def\symdecl#1{%
+  \ifcsname module@uri@uri\endcsname%
+    \seturi[symdef@uri@]{\module@uri@uri\@QuestionMark#1}%
+    \define@in@module\symdef@uri@uri{\noexpand\@invoke@symbol{\symdef@uri@uri}}%
+    \define@in@module{#1}{\noexpand\@invoke@symbol{\symdef@uri@uri}}%
+    \message{^^JNew symbol: \symdef@uri@uri}
+  \else%
+    % TODO?
+  \fi%
+}
+
+
+\def\@invoke@symbol#1{%
+  \def\@invoke@symbol@first{#1}
+  \symbol@args%
+}
+
+\newcommand\symbol@args[1][]{%
+  \@invoke@symbol@\@invoke@symbol@first{#1}
+}
+
+\def\@invoke@symbol@#1#2{%
+  % #1: URI
+  % #2: options
+  % TODO \setnotation variants
+  \notation@parse@params{#2}{}%
+  \def\notation@temp@fragment{}%
+  \ifx\notation@curr@arity\@empty\else%
+    \edef\notation@temp@fragment{arity=\notation@curr@arity}%
+  \fi%
+  \ifx\notation@curr@lang\@empty\else%
+    \ifx\notation@temp@fragment\@empty%
+      \edef\notation@temp@fragment{lang=\notation@curr@lang}%
+    \else%
+      \edef\notation@temp@fragment{\notation@temp@fragment\@Ampersand lang=\notation@curr@lang}%
+    \fi%
+  \fi%
+  \ifx\notation@curr@variant\@empty\else%
+    \ifx\notation@temp@fragment\@empty%
+      \edef\notation@temp@fragment{variant=\notation@curr@variant}%
+    \else%
+      \edef\notation@temp@fragment{\notation@temp@fragment\@Ampersand variant=\notation@curr@variant}%
+    \fi%
+  \fi%
+  \csname #1\@Fragment\notation@temp@fragment\endcsname%
+}
+
+
+
+
+\mod@newcommand\notation[2][]{%
+  \edef\notation@first{#1}%
+  \edef\notation@second{#2}%
+  \notation@%
+}
+
+\newcommand\notation@[2][0]{%
+  \notation@@[\notation@first]\notation@second[#1]{#2}%
+}
+
+\def\notation@@[#1]#2[#3]#4{%
+  \expandafter\expandafter\expandafter\notation@extract@uri\csname #2\endcsname\notation@end%
+  \notation@parse@params{#1}{#3}
+  \let\notation@curr@todo@args\notation@curr@args%
+  \def\notation@temp@notation{}%
+  \StrLen\notation@curr@args[\notation@temp@arity]%
+  \expandafter\renewcommand\expandafter\notation@temp@notation%
+    \expandafter[\notation@temp@arity]{#4}%
+  % precedence
+  \IfSubStr\notation@curr@precs;{%
+    \StrCut\notation@curr@precs;\notation@curr@prec\notation@curr@precs%
+    \ifx\notation@curr@prec\@empty\def\notation@curr@prec{0}\fi%
+  }{%
+    \ifx\notation@curr@precs\@empty%
+      \ifnum\notation@temp@arity=0\relax%
+        \edef\notation@curr@prec{\infprec}%
+      \else%
+        \def\notation@curr@prec{0}%
+      \fi%
+    \else%
+      \edef\notation@curr@prec{\notation@curr@precs}%
+      \def\notation@curr@precs{}%
+    \fi%
+  }%
+  % arguments
+  \def\notation@curr@extargs{}
+  \notation@do@args%
+}
+
+\def\notation@do@args{%
+  \def\notation@nextarg@temp{}%
+  \ifx\notation@curr@todo@args\@empty%
+    \notation@after%
+  \else%
+    % argument precedence
+    \IfSubStr\notation@curr@precs{x}{%
+      \StrCut\notation@curr@precs{x}\notation@curr@argprec\notation@curr@precs%
+    }{%
+      \edef\notation@curr@argprec{\notation@curr@precs}%
+      \def\notation@curr@precs{}%
+    }%
+    \ifx\notation@curr@argprec\@empty%
+      \def\notation@curr@argprec{0}%
+    \fi%
+    \StrChar\notation@curr@todo@args1[\notation@argchar]%
+    \StrGobbleLeft\notation@curr@todo@args1[\notation@curr@todo@args]%
+    \expandafter\ifx\notation@argchar i%
+      % normal argument
+      % TODO something better than empty \prefix for argument precedence
+      \edef\notation@nextarg@temp{{\noexpand\notation@argprec{\notation@curr@argprec}{########1}}}%
+      \expandafter\g@addto@macro@safe\expandafter\notation@curr@extargs%
+        \expandafter{\notation@nextarg@temp}%
+      \expandafter\expandafter\expandafter\notation@do@args%
+    \else%
+      % associative argument
+      \expandafter\expandafter\expandafter\notation@parse@assocarg%
+    \fi%
+  \fi%
+}
+
+\def\notation@parse@assocarg#1{%
+  \edef\notation@nextarg@temp{{\noexpand\notation@argprec{\notation@curr@argprec}{\noexpand\notation@assoc{\unexpanded{#1}}{########1}}}}%{{\noexpand\assoc[p=\notation@curr@argprec]{\unexpanded{#1}}{########1}}}%
+  \expandafter\g@addto@macro@safe\expandafter\notation@curr@extargs%
+  \expandafter{\notation@nextarg@temp}%
+  \notation@do@args%
+}
+
+\def\notation@after{
+  \let\ex\expandafter%
+  \ex\ex\ex\def\ex\ex\ex\notation@temp@notation\ex\ex\ex%
+    {\ex\notation@temp@notation\notation@curr@extargs}%
+  \edef\notation@temp@notation{\noexpand\notation@symprec{\notation@curr@prec}{\ex\unexpanded\ex{\notation@temp@notation}}}%
+  \def\notation@temp@fragment{}%
+  \ifx\notation@curr@arity\@empty\else%
+    \edef\notation@temp@fragment{arity=\notation@curr@arity}
+  \fi%
+  \ifx\notation@curr@lang\@empty\else%
+    \ifx\notation@temp@fragment\@empty%
+      \edef\notation@temp@fragment{lang=\notation@curr@lang}%
+    \else%
+      \edef\notation@temp@fragment{\notation@temp@fragment\@Ampersand lang=\notation@curr@lang}%
+    \fi%
+  \fi%
+  \ifx\notation@curr@variant\@empty\else%
+    \ifx\notation@temp@fragment\@empty%
+      \edef\notation@temp@fragment{variant=\notation@curr@variant}%
+    \else%
+      \edef\notation@temp@fragment{\notation@temp@fragment\@Ampersand variant=\notation@curr@variant}%
+    \fi%
+  \fi%
+  \edef\notation@csname{\notation@uri\@Fragment\notation@temp@fragment}%
+  \ex\ex\ex\ex\ex\ex\ex\newcommand\ex\ex\ex\csname\ex\ex\ex\notation@csname%
+    \ex\ex\ex\endcsname\ex\ex\ex[\ex\notation@temp@arity\ex]%
+    \ex{\notation@temp@notation}%
+  \message{^^Jnew notation: >>\notation@csname<<^^J   \meaning\notation@temp@notation}
+  \edef\symdecl@temps{%
+    \noexpand\newcommand\ex\noexpand\csname\notation@csname\endcsname[\notation@temp@arity]%
+  }%
+  \ex\ex\ex\g@addto@macro@safe\ex\this@module\ex{\symdecl@temps}%
+  \ex\ex\ex\g@addto@macro@safe\ex\this@module\ex{\ex{\notation@temp@notation}}%
+}
+
+\def\notation@extract@uri#1#2\notation@end{%
+  \ifx\@invoke@symbol#1%
+    \edef\notation@uri{#2}%
+  \else%
+    \expandafter\notation@extract@uri#1#2\notation@end%
+  \fi%
+  %
+}
+
+\def\notation@parse@params#1#2{%
+  \def\notation@curr@precs{}%
+  \def\notation@curr@args{}%
+  \def\notation@curr@variant{}%
+  \def\notation@curr@arity{}%
+  \def\notation@curr@provided@arity{#2}
+  \def\notation@curr@lang{}%
+  \def\notation@options@temp{#1}
+  \notation@parse@params@%
+  \ifx\notation@curr@args\@empty%
+    \ifx\notation@curr@provided@arity\@empty%
+      \notation@num@to@ia\notation@curr@arity%
+    \else%
+      \notation@num@to@ia\notation@curr@provided@arity%
+    \fi%
+  \fi%
+}
+\def\notation@parse@params@{%
+  \IfSubStr\notation@options@temp,{%
+    \StrCut\notation@options@temp,\notation@option@temp\notation@options@temp%
+    \notation@parse@param%
+    \notation@parse@params@%
+  }{\ifx\notation@options@temp\@empty\else%
+    \let\notation@option@temp\notation@options@temp%
+    \notation@parse@param%
+  \fi}%
+}
+
+\def\notation@parse@param{%
+  \trimstring\notation@option@temp%
+  \ifx\notation@option@temp\@empty\else%
+    \IfSubStr\notation@option@temp={%
+      \StrCut\notation@option@temp=\notation@key\notation@value%
+      \trimstring\notation@key%
+      \trimstring\notation@value%
+      \IfStrEq\notation@key{prec}{%
+        \edef\notation@curr@precs{\notation@value}%
+      }{%
+      \IfStrEq\notation@key{args}{%
+        \edef\notation@curr@args{\notation@value}%
+      }{%
+      \IfStrEq\notation@key{lang}{%
+        \edef\notation@curr@lang{\notation@value}%
+      }{%
+      \IfStrEq\notation@key{variant}{%
+        \edef\notation@curr@variant{\notation@value}%
+      }{%
+      \IfStrEq\notation@key{arity}{%
+        \edef\notation@curr@arity{\notation@value}%
+      }{%
+      }}}}}%
+    }{%
+        \edef\notation@curr@variant{\notation@option@temp}%
+    }%
+  \fi%
+}
+
+\def\notation@num@to@ia#1{%
+  \IfInteger{#1}{
+    \notation@num@to@ia@#1%
+  }{%
+    %
+  }%
+}
+\def\notation@num@to@ia@#1{%
+  \ifnum#1>0%
+    \edef\notation@curr@args{\notation@curr@args i}%
+    \expandafter\notation@num@to@ia@\expandafter{\the\numexpr#1-1\@Space}%
+  \fi%
+}
+
+
+\def\notation@assoc#1#2{% function, argv
+  \let\@tmpop=\relax% do not print the function the first time round
+  \@for\@I:=#2\do{\@tmpop% print the function
+    % write the i-th argument with locally updated precedence
+    {\@I}%
+    \def\@tmpop{#1}%
+  }%
+}%
+
+\def\notation@lparen{(}
+\def\notation@rparen{)}
+\def\infprec{1000000}
+\def\neginfprec{-\infprec}
+
+\newcount\notation@downprec
+\notation@downprec=\neginfprec
+
+\def\dobrackets#1{%
+  \mathchoice{\left\notation@lparen{\notation@resetbrackets#1}\right\notation@rparen}%
+    {\notation@lparen{\notation@resetbrackets#1}\notation@rparen}%
+    {\notation@lparen{\notation@resetbrackets#1}\notation@rparen}%
+    {\notation@lparen{\notation@resetbrackets#1}\notation@rparen}%
+}
+
+\def\withbrackets#1#2#3{%
+  {\edef\notation@lparen{#1}%
+  \edef\notation@rparen{#2}%
+  #3
+  }%
+}
+
+\def\notation@resetbrackets{%
+  \def\notation@lparen{(}%
+  \def\notation@rparen{)}%
+}
+
+\def\notation@symprec#1#2{%
+  \ifnum#1>\notation@downprec\relax%
+    \notation@resetbrackets#2%
+  \else%
+    \ifnum\notation@downprec=\infprec\relax%
+      \notation@resetbrackets#2%
+    \else\dobrackets{#2}\fi%
+  \fi%
+}
+
+\def\notation@argprec#1#2{%
+  {\notation@downprec=#1\relax#2}%
+}
+
 \def\symdef{\@ifnextchar[{\@symdef}{\@symdef[]}}%
 \def\@symdef[#1]#2{\@ifnextchar[{\@@symdef[#1]{#2}}{\@@symdef[#1]{#2}[0]}}%
 \def\@mod@nc#1{\mod@newcommand{#1}[1]}%
