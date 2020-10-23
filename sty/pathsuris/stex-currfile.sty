@@ -160,24 +160,39 @@
 \def\stex@currfile@push#1{%
   \edef\stex@currfile@stack{\stex@currfile\ifx\stex@currfile@stack\@empty\else,\stex@currfile@stack\fi}
   \kpsewhich\stex@currfile{#1}%
-  \path@filename\stex@currfile\stex@currfilename%
+  \IfBeginWith\stex@currfile\@Slash{}{%
+    \@cpath{\stex@maindir\@Slash\stex@currfile}%
+    \let\stex@currfile\@CanPath%
+  }%
+  \path@filename\stex@currfile{stex@currfilename}%
   \StrLen\stex@currfilename[\stex@currfile@tmp]%
   \StrGobbleRight\stex@currfile{\the\numexpr\stex@currfile@tmp+1 }[\stex@currpath]%
+  \global\let\stex@currfile\stex@currfile%
+  \global\let\stex@currpath\stex@currpath%
+  \global\let\stex@currfilename\stex@currfilename%
 }
 \def\stex@currfile@pop{%
   \ifx\stex@currfile@stack\@empty%
-    \let\stex@currfile\stex@mainfile%
-    \let\stex@currpath\stex@maindir%
-    \let\stex@currfilename\jobname%
+    \global\let\stex@currfile\stex@mainfile%
+    \global\let\stex@currpath\stex@maindir%
+    \global\let\stex@currfilename\jobname%
   \else%
     \StrCut\stex@currfile@stack,\stex@currfile\stex@currfile@stack%
     \path@filename\stex@currfile\stex@currfilename%
     \StrLen\stex@currfilename[\stex@currfile@tmp]%
     \StrGobbleRight\stex@currfile{\the\numexpr\stex@currfile@tmp+1 }[\stex@currpath]%
+    \global\let\stex@currfile\stex@currfile%
+    \global\let\stex@currpath\stex@currpath%
+    \global\let\stex@currfilename\stex@currfilename%
   \fi%
 }
 
-\def\stexinput#1{\stex@currfile@push{#1}\input{#1}\stex@currfile@pop}
+\def\stexinput#1{\stex@currfile@push{#1}%
+    \IfFileExists\stex@currfile{\input{\stex@currfile}}{%
+        \PackageError{stex-currfile}{File does not exist (#1): \stex@currfile}{}%
+    }%
+    \stex@currfile@pop%
+}
 
 \stex@currfile@pop
 

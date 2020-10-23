@@ -60,7 +60,6 @@
 \newif\ifarchive@ns@empty@\archive@ns@empty@false
 \def\set@default@ns{
   \edef\@module@ns@temp{\stex@currpath}
-  \message{^^Jcurrfiledir: \stex@currpath^^J}
   \if@iswindows@\edef\@module@ns@temp{\windows@to@path\@module@ns@temp}\fi
   \archive@ns@empty@false
   \unless\ifcsname mh@currentrepos\endcsname
@@ -137,9 +136,15 @@
 }
 
 \def\activate@defs#1{%
-  \ifcsundef{module@\csname moduleid@#1\endcsname\@URI @activated}%
-    {\csname module@defs@\csname moduleid@#1\endcsname\@URI\endcsname}{}%
-  \@namedef{module@\csname moduleid@#1\endcsname\@URI @activated}{true}%
+  \ifcsundef{moduleid@#1}{
+    \PackageError{modules}{No module with name #1 loaded}{Probably missing an
+      \detokenize{\importmodule} (or variant) somewhere?
+    }
+  }{%
+    \ifcsundef{module@\csname moduleid@#1\endcsname\@URI @activated}%
+      {\csname module@defs@\csname moduleid@#1\endcsname\@URI\endcsname}{}%
+    \@namedef{module@\csname moduleid@#1\endcsname\@URI @activated}{true}%
+  }%
 }%
 \def\g@addto@macro@safe#1#2{\ifx#1\relax\def#1{}\fi\g@addto@macro#1{#2}}
 \def\export@defs#1{\@ifundefined{module@id}{}{%
@@ -237,7 +242,8 @@ same name; this is dangerous -- not importing}%
       \define@in@module\symdef@uri{\noexpand\@invoke@symbol{\symdef@uri}}%
       \define@in@module{#2}{\noexpand\@invoke@symbol{\symdef@uri}}%
     }{%
-      \PackageError{modules}{symbol already defined: \symdef@uri}{%
+    % not compatible with circular dependencies, e.g. test/omdoc/07-modules/smstesta.tex
+      \PackageWarning{modules}{symbol already defined: \symdef@uri}{%
         You need to pick a fresh name for your symbol%
       }%
     }%
@@ -245,6 +251,7 @@ same name; this is dangerous -- not importing}%
     \PackageError{modules}{\detokenize{\symdecl} not in a module}{You need to be in a module%
     in order to declare a new symbol}
   }%
+  \if@insymdef@\else\usemodule@maybesetcodes\fi
 }
 
 
@@ -396,15 +403,21 @@ same name; this is dangerous -- not importing}%
     \fi%
   \fi%
   \edef\notation@csname{\notation@uri\@Fragment\notation@temp@fragment}%
-  \ex\ex\ex\ex\ex\ex\ex\newcommand\ex\ex\ex\csname\ex\ex\ex\notation@csname%
-    \ex\ex\ex\endcsname\ex\ex\ex[\ex\notation@temp@arity\ex]%
-    \ex{\notation@temp@notation}%
-  \message{^^Jnew notation: >>\notation@csname<<^^J   \meaning\notation@temp@notation}
-  \edef\symdecl@temps{%
-    \noexpand\newcommand\ex\noexpand\csname\notation@csname\endcsname[\notation@temp@arity]%
+  \ifcsvoid{\notation@csname}{%
+    \ex\ex\ex\ex\ex\ex\ex\newcommand\ex\ex\ex\csname\ex\ex\ex\notation@csname%
+      \ex\ex\ex\endcsname\ex\ex\ex[\ex\notation@temp@arity\ex]%
+      \ex{\notation@temp@notation}%
+    \edef\symdecl@temps{%
+      \noexpand\newcommand\ex\noexpand\csname\notation@csname\endcsname[\notation@temp@arity]%
+    }%
+    \ex\ex\ex\g@addto@macro@safe\ex\this@module\ex{\symdecl@temps}%
+    \ex\ex\ex\g@addto@macro@safe\ex\this@module\ex{\ex{\notation@temp@notation}}%
+  }{%
+    \PackageWarning{modules}{notation already defined: \notation@csname}{%
+      Choose a different set of notation options (variant,lang,arity)%
+    }%
   }%
-  \ex\ex\ex\g@addto@macro@safe\ex\this@module\ex{\symdecl@temps}%
-  \ex\ex\ex\g@addto@macro@safe\ex\this@module\ex{\ex{\notation@temp@notation}}%
+  \usemodule@maybesetcodes%
 }
 
 \def\notation@extract@uri#1#2\notation@end{%
@@ -564,10 +577,13 @@ same name; this is dangerous -- not importing}%
 \def\ignorespacesandpars{\begingroup\catcode13=10\@ifnextchar\relax{\endgroup}{\endgroup}}
 \def\ignorespacesandparsafterend#1\ignorespaces\fi{#1\fi\ignorespacesandpars}
 \def\ignorespacesandpars{\ifhmode\unskip\fi\@ifnextchar\par{\expandafter\ignorespacesandpars\@gobble}{}}
+\newif\if@insymdef@\@insymdef@false
 \def\@@symdef[#1]#2[#3]{%
+  \@insymdef@true
   \metasetkeys{symdef}{#1}%
   \edef\symdef@tmp@optpars{\ifcsvoid{symdef@name}{[]}{[name=\symdef@name]}}%
   \expandafter\symdecl\symdef@tmp@optpars{#2}%
+  \@insymdef@false
   \notation[#1]{#2}[#3]%
 }% mod@show
 \def\symdef@type{Symbol}%
@@ -688,6 +704,8 @@ same name; this is dangerous -- not importing}%
 \usemodule@allow{symii}
 \usemodule@allow{symiii}
 \usemodule@allow{symiv}
+\usemodule@allow{notation}
+\usemodule@allow{symdecl}
 \catcode`\.=0
 .catcode`.\=13
 .def.@active@slash{\}
