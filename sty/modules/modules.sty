@@ -103,11 +103,14 @@
   \ifcsvoid{module@name}{\set@next@moduleid}{}
   \let\module@id\module@name
   \edef\module@uri@uri{\module@ns\@QuestionMark\module@id} % faster, and at this point equivalent
+  \csgdef{module@names@\module@uri@uri}{}
+  \csgdef{module@imports@\module@uri@uri}{}
   \csxdef{\module@uri@uri}{\noexpand\@invoke@module{\module@uri@uri}}
   \csxdef{moduleid@\module@id}{\noexpand\@invoke@module{\module@uri@uri}}
   \csxdef{Module\module@id}{\noexpand\@invoke@module{\module@uri@uri}}
   \edef\this@module{%
-    \expandafter\noexpand\csname module@defs@\module@uri@uri\endcsname%
+    \module@uri@uri%
+    %\expandafter\noexpand\csname module@defs@\module@uri@uri\endcsname%
   }%
   \csxdef{module@defs@\module@uri@uri}{%
     \expandafter\def\expandafter\noexpand\csname Module\module@id\endcsname%
@@ -149,8 +152,10 @@
 \def\g@addto@macro@safe#1#2{\ifx#1\relax\def#1{}\fi\g@addto@macro#1{#2}}
 \def\export@defs#1{\@ifundefined{module@id}{}{%
 \ifcsvoid{this@module}{}{%
-  \expandafter\expandafter\expandafter\g@addto@macro@safe%
-  \expandafter\this@module\expandafter{\activate@defs{#1}}}}%
+  \expandafter\g@addto@macro@safe%
+  \csname module@defs@\this@module\expandafter\endcsname%
+    \expandafter{\activate@defs{#1}}%
+}}%
 }%
 \newif\if@importing\@importingfalse
 \newcommand\update@used@modules[1]{%
@@ -189,6 +194,18 @@ The imported path "\@load" is probably a different module with the\MessageBreak
 same name; this is dangerous -- not importing}%
 {Check whether the Module name is correct}}}%
 \fi}%
+\ifcsvoid{this@module}{}{%
+  \ifcsvoid{module@imports@\this@module}{
+    \csxdef{module@imports@\this@module}{%
+      \csname Module#2\endcsname\@URI%
+    }%
+  }{%
+    \csxdef{module@imports@\this@module}{%
+      \csname Module#2\endcsname\@URI,%
+      \csname module@imports@\this@module\endcsname%
+    }%
+  }%
+}%
 \activate@defs{#2}% activate the module
 \edef\@export{#3}\def\@@export{export}%prepare comparison
 \ifx\@export\@@export\export@defs{#2}\fi% export the module
@@ -224,8 +241,8 @@ same name; this is dangerous -- not importing}%
     {#2}%
   }%
   \if@symdeflocal\else%
-  \expandafter\expandafter\expandafter%
-      \g@addto@macro@safe\expandafter\this@module\expandafter{\define@in@module@temp}%
+    \expandafter\g@addto@macro@safe\csname module@defs@\this@module%
+    \expandafter\endcsname\expandafter{\define@in@module@temp}%
   \fi%
 }
 
@@ -238,11 +255,17 @@ same name; this is dangerous -- not importing}%
 \addmetakey{symdecl}{name}%
 
 \newcommand\symdecl[2][]{%
-  \ifcsdef{module@uri@uri}{%
+  \ifcsdef{this@module}{%
     \metasetkeys{symdecl}{#1}%
     \ifcsvoid{symdecl@name}{\edef\symdecl@name{#2}}{}%
-    \edef\symdef@uri{\module@uri@uri\@QuestionMark\symdecl@name}%
+    \edef\symdef@uri{\this@module\@QuestionMark\symdecl@name}%
     \ifcsvoid{\symdef@uri}{
+      \ifcsvoid{module@names@\this@module}{%
+        \csxdef{module@names@\this@module}{\symdecl@name}%
+      }{%
+        \csxdef{module@names@\this@module}{\symdecl@name,%
+          \csname module@names@\this@module\endcsname}%
+      }%
       \define@in@module\symdef@uri{\noexpand\@invoke@symbol{\symdef@uri}}%
       \define@in@module{#2}{\noexpand\@invoke@symbol{\symdef@uri}}%
     }{%
@@ -301,6 +324,61 @@ same name; this is dangerous -- not importing}%
 }
 
 
+\def\modules@getURIfromName#1{%
+  % TODO check whether #1 is a URI
+  \def\notation@uri{}%
+  \def\modules@getURI@name{#1}%
+  \ifcsvoid{this@module}{}{%
+    \expandafter\modules@getURIfromModule\expandafter{\this@module}%
+    \ifx\notation@uri\@empty%
+      \edef\modules@getURI@modules{\csname module@imports@\this@module\endcsname}%
+      \expandafter\@for\expandafter\@I\expandafter:\expandafter=\modules@getURI@modules\do{%
+        \ifx\notation@uri\@empty%
+          \expandafter\modules@getURIfromModule\expandafter{\@I}%
+        \fi%
+      }%
+    \fi%
+    \ifx\notation@uri\@empty%
+      \def\notation@extract@uri@currcs{}%
+      \notation@extract@uri{#1}%
+    \fi%
+    \ifx\notation@uri\@empty%
+      \PackageError{modules}{No symbol with name, URI or macroname #1 found!}{}
+    \fi%
+  }%
+}
+
+\def\modules@getURIfromModule#1{%
+  \edef\modules@getURI@names{\csname module@names@#1\endcsname}%
+  \expandafter\@for\expandafter\@I\expandafter:\expandafter=%
+  \modules@getURI@names\do{%
+    \ifx\notation@uri\@empty%
+      \ifx\@I\modules@getURI@name%
+        \edef\notation@uri{#1\@QuestionMark\@I}%
+      \fi%
+    \fi%
+  }%
+}
+
+\def\notation@extract@uri#1{%
+  \ifcsvoid{#1}{}{%
+    \expandafter\let\expandafter\notation@extract@uri@nextcs\csname#1\endcsname%
+    \ifx\notation@extract@uri@nextcs\notation@extract@uri@currcs\else%
+      \let\notation@extract@uri@currcs\notation@extract@uri@nextcs%
+      \expandafter\notation@extract@uriII\notation@extract@uri@nextcs\notation@end%
+    \fi%
+  }%
+}
+\def\notation@extract@uriII#1#2\notation@end{%
+  \ifx\@invoke@symbol#1%
+    \edef\notation@uri{#2}%
+  \else%
+    \expandafter\def\expandafter\notation@extract@uri@nextcs\expandafter{#1#2}%
+    \notation@extract@uriII{notation@extract@uri@nextcs}%
+  \fi%
+  %
+}
+
 
 
 \mod@newcommand\notation[2][]{%
@@ -314,8 +392,7 @@ same name; this is dangerous -- not importing}%
 }
 
 \def\notation@@[#1]#2[#3]#4{%
-  % TODO compute symbol name better
-  \expandafter\expandafter\expandafter\notation@extract@uri\csname #2\endcsname\notation@end%
+  \modules@getURIfromName{#2}%
   \notation@parse@params{#1}{#3}
   \let\notation@curr@todo@args\notation@curr@args%
   \def\notation@temp@notation{}%
@@ -414,23 +491,14 @@ same name; this is dangerous -- not importing}%
     \edef\symdecl@temps{%
       \noexpand\newcommand\ex\noexpand\csname\notation@csname\endcsname[\notation@temp@arity]%
     }%
-    \ex\ex\ex\g@addto@macro@safe\ex\this@module\ex{\symdecl@temps}%
-    \ex\ex\ex\g@addto@macro@safe\ex\this@module\ex{\ex{\notation@temp@notation}}%
+    \ex\g@addto@macro@safe\csname module@defs@\this@module\ex\endcsname\ex{\symdecl@temps}%
+    \ex\g@addto@macro@safe\csname module@defs@\this@module\ex\endcsname\ex{\ex{\notation@temp@notation}}%
   }{%
     \PackageWarning{modules}{notation already defined: \notation@csname}{%
       Choose a different set of notation options (variant,lang,arity)%
     }%
   }%
   \usemodule@maybesetcodes%
-}
-
-\def\notation@extract@uri#1#2\notation@end{%
-  \ifx\@invoke@symbol#1%
-    \edef\notation@uri{#2}%
-  \else%
-    \expandafter\notation@extract@uri#1#2\notation@end%
-  \fi%
-  %
 }
 
 \def\notation@parse@params#1#2{%
@@ -652,8 +720,8 @@ same name; this is dangerous -- not importing}%
   \ifx\termdef@local\mod@true%
   \else%
     \ifcsundef{module@id}{}{%
-    \expandafter\g@addto@macro@safe\this@module%
-      {\expandafter\mod@newcommand\csname#2\endcsname[0]{#3\xspace}}%
+    \expandafter\g@addto@macro@safe\csname module@defs@\this@module\expandafter\endcsname%
+      \expandafter{\expandafter\mod@newcommand\csname#2\endcsname[0]{#3\xspace}}%
     }%
   \fi%
 }%
