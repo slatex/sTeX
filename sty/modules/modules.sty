@@ -24,11 +24,11 @@
 \ProcessOptions
 \RequirePackage{stex-base}
 \RequirePackage{sref}
-\RequirePackage{stex-currfile}
 \RequirePackage{standalone}
 \if@modules@mh@\RequirePackage{modules-mh}\fi
 \RequirePackage{xspace}
 \if@latexml\else\ifmod@show\RequirePackage{mdframed}\fi\fi
+\RequirePackage{stex-currfile}
 \addmetakey*{module}{title}
 \addmetakey*{module}{name}
 \addmetakey*{module}{id} % TODO: deprecate properly
@@ -372,11 +372,14 @@ same name; this is dangerous -- not importing}%
   }%
 }
 \long\def\notation@extract@uriII#1#2\notation@end{%
+  \def\notation@extract@check@temp{#2}
   \ifx\@invoke@symbol#1%
     \edef\notation@uri{#2}%
   \else%
-    \expandafter\def\expandafter\notation@extract@uri@nextcs\expandafter{#1#2}%
-    \notation@extract@uriII{notation@extract@uri@nextcs}%
+    \ifx\notation@extract@check@temp\@empty\else%
+      \expandafter\def\expandafter\notation@extract@uri@nextcs\expandafter{#1{#2}}%
+      \notation@extract@uri{notation@extract@uri@nextcs}%
+    \fi%
   \fi%
   %
 }
@@ -579,7 +582,7 @@ same name; this is dangerous -- not importing}%
   \let\@tmpop=\relax% do not print the function the first time round
   \@for\@I:=#2\do{\@tmpop% print the function
     % write the i-th argument with locally updated precedence
-    {\@I}%
+    \@I%
     \def\@tmpop{#1}%
   }%
 }%
@@ -592,18 +595,25 @@ same name; this is dangerous -- not importing}%
 \newcount\notation@downprec
 \notation@downprec=\neginfprec
 
-\def\dobrackets#1{%
-  \mathchoice{\left\notation@lparen{\notation@resetbrackets#1}\right\notation@rparen}%
-    {\notation@lparen{\notation@resetbrackets#1}\notation@rparen}%
-    {\notation@lparen{\notation@resetbrackets#1}\notation@rparen}%
-    {\notation@lparen{\notation@resetbrackets#1}\notation@rparen}%
+\def\dobrackets#1{% avoiding groups at all costs to ensure \parray still works!
+  \def\notation@innertmp{#1}%
+  \expandafter\expandafter%\expandafter\left
+  \expandafter%
+  \notation@lparen%
+  \expandafter\notation@resetbrackets\expandafter\notation@innertmp%
+  %\expandafter\right
+  \notation@rparen%
+  %\mathchoice{\left\notation@lparen{\notation@resetbrackets#1}\right\notation@rparen}%
+  %  {\notation@lparen{\notation@resetbrackets#1}\notation@rparen}%
+  %  {\notation@lparen{\notation@resetbrackets#1}\notation@rparen}%
+  %  {\notation@lparen{\notation@resetbrackets#1}\notation@rparen}%
 }
 
 \def\withbrackets#1#2#3{%
-  {\edef\notation@lparen{#1}%
+  \edef\notation@lparen{#1}%
   \edef\notation@rparen{#2}%
-  #3
-  }%
+  #3%
+  \notation@resetbrackets%
 }
 
 \def\notation@resetbrackets{%
@@ -617,12 +627,21 @@ same name; this is dangerous -- not importing}%
   \else%
     \ifnum\notation@downprec=\infprec\relax%
       \notation@resetbrackets#2%
-    \else\dobrackets{#2}\fi%
-  \fi%
+    \else
+      \if@inparray@
+        \notation@resetbrackets#2
+      \else\dobrackets{#2}\fi%
+  \fi\fi%
 }
 
+\newif\if@inparray@\@inparray@false
+
 \def\notation@argprec#1#2{%
-  {\notation@downprec=#1\relax#2}%
+  \def\notation@innertmp{#2}
+  \edef\notation@downprec@temp{\number#1}%
+  \notation@downprec=\expandafter\notation@downprec@temp%
+  \expandafter\relax\expandafter\notation@innertmp%
+  \expandafter\notation@downprec\expandafter=\number\notation@downprec\relax%
 }
 
 \newif\if@symdeflocal%
@@ -637,6 +656,7 @@ same name; this is dangerous -- not importing}%
 \define@key{symdef}{bvars}{}%
 \define@key{symdef}{bargs}{}%
 \addmetakey{symdef}{lang}%
+\addmetakey{symdef}{prec}%
 \addmetakey{symdef}{arity}%
 \addmetakey{symdef}{variant}%
 \addmetakey{symdef}{ns}%
