@@ -893,6 +893,7 @@
 % namespace/id, defining |\this@module|, etc.
 %
 %    \begin{macrocode}
+\newif\if@inmhrepos\@inmhreposfalse
 \newenvironment{@module}[1][]{
   \metasetkeys{module}{#1}
   \ifx\module@ns\@empty\set@default@ns\fi
@@ -902,17 +903,18 @@
   \ifcsname module@id\endcsname
     \ifx\module@id\@empty\set@next@moduleid\fi
   \else\set@next@moduleid\fi
-  %\seturi[module@uri@]{\module@ns\@QuestionMark\module@id}
   \edef\module@uri@uri{\module@ns\@QuestionMark\module@id} % faster, and at this point equivalent
   \csxdef{\module@uri@uri}{\noexpand\@invoke@module{\module@uri@uri}}
-  \csxdef{moduleid@\module@id}{\noexpand\@invoke@module{\module@uri@uri}}
-  \csxdef{Module\module@id}{\noexpand\@invoke@module{\module@uri@uri}}
+  \expandafter\global\expandafter\let\csname Module\module@id\expandafter\endcsname\csname\module@uri@uri\endcsname
   \edef\this@module{%
     \expandafter\noexpand\csname module@defs@\module@uri@uri\endcsname%
   }%
-  \csxdef{module@defs@\module@uri@uri}{%
-    \expandafter\def\expandafter\noexpand\csname Module\module@id\endcsname%
-      {\noexpand\@invoke@module{\module@uri@uri}}%
+  \csdef{module@defs@\module@uri@uri}{}%
+  \ifcsvoid{mh@currentrepos}{}{%
+    \@inmhrepostrue%
+    \addto@thismodulex{\expandafter\edef\expandafter\noexpand\csname mh@old@repos@\module@uri@uri\endcsname%
+      {\noexpand\mh@currentrepos}}%
+    \addto@thismodulex{\noexpand\setcurrentreposinfo{\mh@currentrepos}}%
   }%
   \ifmod@qualified%
     \edef\this@qualified@module{%
@@ -923,7 +925,11 @@
       {\noexpand\@invoke@module{\module@uri@uri}}%
     }%
   \fi%
-}{}%
+}{%
+\if@inmhrepos%
+\@inmhreposfalse%
+\addto@thismodulex{\noexpand\setcurrentreposinfo{\expandafter\noexpand\csname mh@old@repos@\module@uri@uri\endcsname}}%
+\fi}%
 %    \end{macrocode}
 % A module with URI \meta{uri} and id \meta{id} creates two macros |\|\meta{uri} and |\Module|\meta{id},
 % that ultimately expand to |\@invoke@module{|\meta{uri}|}|. Currently, the only functionality is
@@ -953,14 +959,14 @@
 %   directly afterwards to prohibit further activations.
 %    \begin{macrocode}
 \def\activate@defs#1{%
-  \ifcsundef{moduleid@#1}{
+  \ifcsundef{Module#1}{
     \PackageError{modules}{No module with name #1 loaded}{Probably missing an
       \detokenize{\importmodule} (or variant) somewhere?
     }
   }{%
-    \ifcsundef{module@\csname moduleid@#1\endcsname\@URI @activated}%
-      {\csname module@defs@\csname moduleid@#1\endcsname\@URI\endcsname}{}%
-    \@namedef{module@\csname moduleid@#1\endcsname\@URI @activated}{true}%
+    \ifcsundef{module@\csname Module#1\endcsname\@URI @activated}%
+      {\csname module@defs@\csname Module#1\endcsname\@URI\endcsname}{}%
+    \@namedef{module@\csname Module#1\endcsname\@URI @activated}{true}%
   }%
 }%
 %    \end{macrocode}
@@ -975,9 +981,21 @@
 % then |\active@defs|, then |\g@addto@macro|. 
 %    \begin{macrocode}
 \def\g@addto@macro@safe#1#2{\ifx#1\relax\def#1{}\fi\g@addto@macro#1{#2}}
+\def\addto@thismodule#1{%
+  \@ifundefined{module@id}{}{%
+    \expandafter\g@addto@macro@safe\this@module{#1}%
+  }%
+}
+\def\addto@thismodulex#1{%
+\@ifundefined{module@id}{}{%
+  \edef\addto@thismodule@exp{#1}%
+  \expandafter\expandafter\expandafter\g@addto@macro@safe%
+  \expandafter\this@module\expandafter{\addto@thismodule@exp}%
+}%
+}
 \def\export@defs#1{\@ifundefined{module@id}{}{%
-\expandafter\expandafter\expandafter\g@addto@macro@safe%
-\expandafter\this@module\expandafter{\activate@defs{#1}}}}%
+\addto@thismodule{\activate@defs{#1}}%
+}}%
 %    \end{macrocode}
 % \end{macro}
 %
@@ -1039,22 +1057,30 @@
 %    \begin{macrocode}
 \newcommand\@importmodule[3][]{%
 {\@importingtrue% to shut up macros while in the group opened here
-\edef\@load{#1}%
-\edef\@load{\expandafter\detokenize\expandafter{\@load}}%
-\ifx\@load\@empty\relax\else%
-\ifcsundef{module@#2@path}{\requiremodules{#1}}%
-{\edef\@path{\csname module@#2@path\endcsname}%
-\IfStrEq\@load\@path{\relax}% if the known path is the same as the requested one do nothing
-{\PackageError{modules}% else signal an error
-{Module Name Clash\MessageBreak
-A module with name #2 was already loaded under the path "\@path"\MessageBreak
-The imported path "\@load" is probably a different module with the\MessageBreak
-same name; this is dangerous -- not importing}%
-{Check whether the Module name is correct}}}%
-\fi}%
-\activate@defs{#2}% activate the module
+  \edef\@load{#1}%
+  \edef\@load{\expandafter\detokenize\expandafter{\@load}}%
+  \ifx\@load\@empty\relax\else%
+    \if@smsmode\else\ifcsundef{module@#2@path}{\requiremodules{#1}}%
+    {%
+      \edef\@path{\csname module@#2@path\endcsname}%
+      \IfStrEq\@load\@path{\relax}% if the known path is the same as the requested one do nothing
+      {\PackageError{modules}% else signal an error
+        {Module Name Clash\MessageBreak
+          A module with name #2 was already loaded under the path "\@path"\MessageBreak
+          The imported path "\@load" is probably a different module with the\MessageBreak
+          same name; this is dangerous -- not importing}%
+        {Check whether the Module name is correct}%
+      }%
+    }%
+  \fi\fi%
+  \global\let\@importmodule@load\@load
+}%
 \edef\@export{#3}\def\@@export{export}%prepare comparison
-\ifx\@export\@@export\export@defs{#2}\fi% export the module
+%\ifx\@export\@@export\export@defs{#2}\fi% export the module
+\ifx\@export\@@export\addto@thismodulex{%
+  \noexpand\@importmodule[\@importmodule@load]{#2}{noexport}%
+}\fi%
+\if@smsmode\else\activate@defs{#2}\fi% activate the module
 }%
 %    \end{macrocode}
 % \end{macro}
