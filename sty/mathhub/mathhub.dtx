@@ -354,6 +354,9 @@
 %    \begin{macrocode}
 \def\modules@@first#1/#2;{#1}
 \newcommand\libinput[1]{%
+\ifcsvoid{mh@currentrepos}{%
+  \PackageError{mathhub}{current MathHub repository not found}{}}%
+  {}
 \edef\@mh@group{\expandafter\modules@@first\mh@currentrepos;}
 \let\orig@inffile\mh@inffile\let\orig@libfile\mh@libfile
 \def\mh@inffile{\MathHub{\@mh@group/meta-inf/lib/#1}}
@@ -404,7 +407,9 @@
 
 \kpsewhich\mathhub@path{--var-value MATHHUB}
 \if@iswindows@\windows@to@path\mathhub@path\fi
-\ifx\mathhub@path\@empty\else\defpath{MathHub}{\mathhub@path}\fi
+\ifx\mathhub@path\@empty%
+  \PackageError{mathhub}{MATHHUB system variable not found or wrongly set}
+\else\defpath{MathHub}{\mathhub@path}\fi
 
 %    \end{macrocode}
 %\begin{macro}{\findmanifest}
@@ -600,25 +605,28 @@
 \addmetakey{importmhmodule}{dir}%
 \addmetakey[false]{importmhmodule}{conservative}[true]%
 \newcommand\importmhmodule[2][]{%
-\usemodule@maybesetcodes
-\metasetkeys{importmhmodule}{#1}%
-\ifx\importmhmodule@dir\@empty%
-\edef\@path{\importmhmodule@path}%
-\else\edef\@path{\importmhmodule@dir/#2}\fi%
-\ifx\@path\@empty% if module name is not set
-\importmodule[id=\importmhmodule@id]{#2}%
-\else%
-\edef\mh@@repos{\mh@currentrepos}% remember so that we can reset it. 
-\ifx\importmhmodule@mhrepos\@empty% if in the same repos
-\relax% no need to change mh@currentrepos, i.e, current directory.
-\else%
-\setcurrentreposinfo{\importmhmodule@mhrepos}% change it. 
-\fi%
-\importmodule[load=\MathHub{\mh@currentrepos/source/\@path},
+  \usemodule@maybesetcodes
+  \metasetkeys{importmhmodule}{#1}%
+  \ifx\importmhmodule@dir\@empty%
+    \edef\@path{\importmhmodule@path}%
+  \else\edef\@path{\importmhmodule@dir/#2}\fi%
+  \ifx\@path\@empty% if module name is not set
+    \importmodule[id=\importmhmodule@id]{#2}%
+  \else%
+    \edef\mh@@repos{\mh@currentrepos}% remember so that we can reset it. 
+    \ifx\importmhmodule@mhrepos\@empty% if in the same repos
+      \relax% no need to change mh@currentrepos, i.e, current directory.
+    \else%
+      \setcurrentreposinfo{\importmhmodule@mhrepos}% change it. 
+      \addto@thismodulex{\noexpand\setcurrentreposinfo{\importmhmodule@mhrepos}}%
+    \fi%
+    \importmodule[load=\MathHub{\mh@currentrepos/source/\@path},
                          id=\importmhmodule@id]{#2}%
-\setcurrentreposinfo{\mh@@repos}% after importing, reset to old value
-\fi%
-\ignorespacesandpars}
+    \setcurrentreposinfo{\mh@@repos}% after importing, reset to old value
+    \addto@thismodulex{\noexpand\setcurrentreposinfo{\mh@@repos}}%
+  \fi%
+  \ignorespacesandpars%
+}
 %    \end{macrocode}
 % \end{macro}
 % and now the analogs
