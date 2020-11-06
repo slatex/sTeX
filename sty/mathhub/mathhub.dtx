@@ -358,9 +358,13 @@
   \PackageError{mathhub}{current MathHub repository not found}{}}%
   {}
 \edef\@mh@group{\expandafter\modules@@first\mh@currentrepos;}
-\let\orig@inffile\mh@inffile\let\orig@libfile\mh@libfile
-\def\mh@inffile{\MathHub{\@mh@group/meta-inf/lib/#1}}
+\let\orig@inffile\mh@inffile\let\orig@libfile\mh@libfile%
+\def\mh@inffile{\MathHub{\@mh@group/meta-inf/lib/#1}}%
 \def\mh@libfile{\MathHub{\mh@currentrepos/lib/#1}}%
+\if@iswindows@%
+  \path@to@windows\mh@inffile%
+  \path@to@windows\mh@libfile%
+\fi%
 \IfFileExists\mh@inffile{\input\mh@inffile}{}%
 \IfFileExists\mh@inffile{}{\IfFileExists\mh@libfile{}{%
   {\PackageError{mathhub}
@@ -381,6 +385,10 @@
 \let\orig@inffile\mh@inffile\let\orig@libfile\mh@libfile
 \edef\mh@inffile{\MathHub{\@mh@group/meta-inf/lib/#2}}
 \edef\mh@libfile{\MathHub{\mh@currentrepos/lib/#2}}%
+\if@iswindows@%
+  \path@to@windows\mh@inffile%
+  \path@to@windows\mh@libfile%
+\fi%
 \IfFileExists{\mh@inffile.sty}{\usepackage[#1]{\mh@inffile}}{}%
 \IfFileExists {\mh@inffile.sty}{}{\IfFileExists{\mh@libfile.sty}{}{%
   {\PackageError{mathhub}
@@ -408,7 +416,9 @@
 \kpsewhich\mathhub@path{--var-value MATHHUB}
 \if@iswindows@\windows@to@path\mathhub@path\fi
 \ifx\mathhub@path\@empty%
-  \PackageError{mathhub}{MATHHUB system variable not found or wrongly set}{}
+\PackageError{mathhub}
+  {MATHHUB system variable not found or wrongly set}
+  {use export MATHHUB="<path>", where <path> points your MathHub direcctory}
 \else\defpath{MathHub}{\mathhub@path}\fi
 \message{^^JMATHHUB:>>\meaning\mathhub@path<<^^J}
 
@@ -427,6 +437,7 @@
   \else
     \edef\@findmanifest@path{\@CanPath/MANIFEST.MF}
     \if@iswindows@\path@to@windows\@findmanifest@path\fi
+    %\message{^^JHere: \@findmanifest@path^^J}
     \IfFileExists{\@findmanifest@path}{
       %\message{MANIFEST.MF found at \@findmanifest@path}
       \edef\manifest@mf{\@findmanifest@path}
@@ -636,17 +647,17 @@
 \newcommand\usemhmodule[2][]{%
 \metasetkeys{importmhmodule}{#1}%
 \ifx\importmhmodule@dir\@empty%
-\edef\@path{\importmhmodule@path}%
+  \edef\@path{\importmhmodule@path}%
 \else\edef\@path{\importmhmodule@dir/#2}\fi%
 \ifx\@path\@empty%
-\usemodule[id=\importmhmodule@id]{#2}%
+  \usemodule[id=\importmhmodule@id]{#2}%
 \else%
-\edef\mh@@repos{\mh@currentrepos}%
-\ifx\importmhmodule@mhrepos\@empty%
-\else\setcurrentreposinfo{\importmhmodule@mhrepos}\fi%
-\usemodule[load=\MathHub{\mh@currentrepos/source/\@path},
+  \edef\mh@@repos{\mh@currentrepos}%
+  \ifx\importmhmodule@mhrepos\@empty%
+  \else\setcurrentreposinfo{\importmhmodule@mhrepos}\fi%
+  \usemodule[load=\MathHub{\mh@currentrepos/source/\@path},%
                         id=\importmhmodule@id]{#2}%
-\setcurrentreposinfo\mh@@repos%
+  \setcurrentreposinfo\mh@@repos%
 \fi%
 \ignorespacesandpars}
 %    \end{macrocode}
@@ -687,8 +698,10 @@
 \define@key{Gin}{mhrepos}{\def\Gin@mhrepos{#1}}
 \newcommand\mhgraphics[2][]{\setkeys{Gin}{#1}%
 \edef\mh@@repos{\mh@currentrepos}%
-\ifx\Gin@mhrepos\@empty\includegraphics[#1]{\MathHub{\mh@currentrepos/source/#2}}%
-\else\includegraphics[#1]{\MathHub{\Gin@mhrepos/source/#2}}\fi
+\ifx\Gin@mhrepos\@empty\edef\temp@path{\MathHub{\mh@currentrepos/source/#2}}%\includegraphics[#1]{\MathHub{\mh@currentrepos/source/#2}}%
+\else\edef\temp@path{\MathHub{\Gin@mhrepos/source/#2}}\fi%\includegraphics[#1]{\MathHub{\Gin@mhrepos/source/#2}}\fi
+\if@iswindows@\path@to@windows\temp@path\fi
+\includegraphics[#1]{\temp@path}
 \def\Gin@mhrepos{}\setcurrentreposinfo\mh@@repos}
 \newcommand\cmhgraphics[2][]{\begin{center}\mhgraphics[#1]{#2}\end{center}}
 %    \end{macrocode}
@@ -892,10 +905,12 @@
   \setkeys{Gin}{#1}%
   \edef\mh@@repos{\mh@currentrepos}%
   \ifx\Gin@mhrepos\@empty%
-    \frameimage[#1]{\MathHub{\mh@currentrepos/source/#2}}%
+    \edef\temp@path{\MathHub{\mh@currentrepos/source/#2}}%
   \else%
-    \frameimage[#1]{\MathHub{\Gin@mhrepos/source/#2}}%
+    \edef\temp@path{\MathHub{\Gin@mhrepos/source/#2}}%
   \fi%
+  \if@iswindows@\path@to@windows\temp@path\fi%
+  \frameimage[#1]{\temp@path}%
 }%
 %    \end{macrocode}
 % \end{macro}
@@ -927,7 +942,9 @@
 \newcommand\includemhproblem[2][]{\metasetkeys{inclprob}{#1}%
 \edef\mh@@repos{\mh@currentrepos}%
 \ifx\inclprob@mhrepos\@empty\else\setcurrentreposinfo\inclprob@mhrepos\fi%
-\input{\MathHub{\mh@currentrepos/source/#2}}%
+\edef\temp@path{\MathHub{\mh@currentrepos/source/#2}}
+\if@iswindows@\path@to@windows\temp@path\fi
+\input{\temp@path}%
 \setcurrentreposinfo\mh@@repos\clear@inclprob@keys}
 %</problem>
 %    \end{macrocode}
@@ -950,8 +967,10 @@
 \newcommand\inputmhassignment[2][]{\metasetkeys{inclassig}{#1}%
 \edef\mh@@repos{\mh@currentrepos}%
 \ifx\inclassig@mhrepos\@empty\else\setcurrentreposinfo\inclassig@mhrepos\fi%
-\inputassignment[#1]{\MathHub{\mh@currentrepos/source/#2}}%
-\setcurrentreposinfo\mh@@repos\clear@inclassig@keys}
+\edef\temp@path{\MathHub{\mh@currentrepos/source/#2}}%
+\if@iswindows@\path@to@windows\temp@path\fi%
+\inputassignment[#1]{\temp@path}%
+\setcurrentreposinfo\mh@@repos\clear@inclassig@keys}%
 \newcommand\includemhassignment[2][]{\newpage\inputmhassignment[#1]{#2}}
 %</hwexam>
 %    \end{macrocode}
@@ -970,8 +989,10 @@
 \define@key{Gin}{mhrepos}{\def\Gin@mhrepos{#1}}
 \newcommand\mhtikzinput[2][]{\def\Gin@mhrepos{}\setkeys{Gin}{#1}%
 \edef\mh@@repos{\mh@currentrepos}%
-\ifx\Gin@mhrepos\@empty\tikzinput[#1]{\MathHub{\mh@currentrepos/source/#2}}%
-\else\setcurrentreposinfo\Gin@mhrepos\tikzinput[#1]{\MathHub{\Gin@mhrepos/source/#2}}\fi
+\ifx\Gin@mhrepos\@empty\edef\temp@path{\MathHub{\mh@currentrepos/source/#2}}%
+\else\setcurrentreposinfo\Gin@mhrepos\edef\temp@path{\MathHub{\Gin@mhrepos/source/#2}}\fi%
+\if@iswindows@\path@to@windows\temp@path\fi%
+\tikzinput[#1]{\temp@path}
 \def\Gin@mhrepos{}\setcurrentreposinfo\mh@@repos}
 \newcommand\cmhtikzinput[2][]{\begin{center}\mhtikzinput[#1]{#2}\end{center}}
 %</tikzinput>
@@ -991,8 +1012,10 @@
 \define@key{lst}{mhrepos}{\def\lst@mhrepos{#1}}
 \newcommand\lstinputmhlisting[2][]{\def\lst@mhrepos{}\setkeys{lst}{#1}%
 \edef\mh@@repos{\mh@currentrepos}%
-\ifx\lst@mhrepos\@empty\lstinputlisting[#1]{\MathHub{\mh@currentrepos/source/#2}}%
-\else\lstinputlisting[#1]{\MathHub{\lst@mhrepos/source/#2}}\fi
+\ifx\lst@mhrepos\@empty\edef\temp@path{\MathHub{\mh@currentrepos/source/#2}}%
+\else\edef\temp@path{\MathHub{\lst@mhrepos/source/#2}}\fi%
+\if@iswindows@\path@to@windows\temp@path\fi%
+\lstinputlisting[#1]{\temp@path}
 \def\lst@mhrepos{}\setcurrentreposinfo\mh@@repos}
 \newcommand\clstinputmhlisting[2][]{\begin{center}\lstinputmhlisting[#1]{#2}\end{center}}
 %</lst>
