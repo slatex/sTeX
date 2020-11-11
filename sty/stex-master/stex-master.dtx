@@ -1,0 +1,2054 @@
+% \iffalse meta-comment
+% An Infrastructure for Semantic Macros and Module Scoping
+% Copyright (c) 2019 Michael Kohlhase, all rights reserved
+%               this file is released under the
+%               LaTeX Project Public License (LPPL)
+%
+% The original of this file is in the public repository at 
+% http://github.com/sLaTeX/sTeX/
+% \fi
+%  
+% \iffalse
+%<package>\NeedsTeXFormat{LaTeX2e}[1999/12/01]
+%<package>\ProvidesPackage{stex-master}[2020/11/10 v2.0 Semantic Markup]
+%
+%<*driver>
+\documentclass{ltxdoc}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[showmods]{stex-master}
+\usepackage{url,array,float,textcomp}
+\usepackage[show]{ed}
+\usepackage[hyperref=auto,style=alphabetic]{biblatex}
+\addbibresource{kwarcpubs.bib}
+\addbibresource{extpubs.bib}
+\addbibresource{kwarccrossrefs.bib}
+\addbibresource{extcrossrefs.bib}
+\usepackage{listings}
+\usepackage{amsfonts}
+\usepackage{ctangit}
+\usepackage{xspace}
+\usepackage{hyperref}
+\makeindex
+\floatstyle{boxed}
+\newfloat{exfig}{thp}{lop}
+\floatname{exfig}{Example}
+\def\githubissue#1{\cite{sTeX:github:on}, \hyperlink{https://github.com/sLaTeX/sTeX/issues/#1}{issue #1}}
+\def\defemph#1{\textbf{#1}}
+\begin{document}
+\RecordChanges
+\DocInput{stex-master.dtx}
+\end{document} 
+%</driver>
+% \fi
+% 
+% \iffalse\CheckSum{802}\fi
+% 
+% \GetFileInfo{stex-master.sty}
+% 
+% \MakeShortVerb{\|}
+%\def\scsys#1{{{\sc #1}}\index{#1@{\sc #1}}\xspace}
+% \def\xml{\scsys{Xml}}
+% \def\mathml{\scsys{MathML}}
+% \def\omdoc{\scsys{OMDoc}}
+% \def\openmath{\scsys{OpenMath}}
+% \def\latexml{\scsys{LaTeXML}}
+% \def\perl{\scsys{Perl}}
+% \def\cmathml{Content-{\sc MathML}\index{Content {\sc MathML}}\index{MathML@{\sc MathML}!content}}
+% \def\activemath{\scsys{ActiveMath}}
+% \def\twin#1#2{\index{#1!#2}\index{#2!#1}}
+% \def\twintoo#1#2{{#1 #2}\twin{#1}{#2}}
+% \def\atwin#1#2#3{\index{#1!#2!#3}\index{#3!#2 (#1)}}
+% \def\atwintoo#1#2#3{{#1 #2 #3}\atwin{#1}{#2}{#3}}
+% \def\cT{\mathcal{T}}\def\cD{\mathcal{D}}
+% \title{{\texttt{stex-master.sty}}: {\stex2.0}\thanks{Version {\fileversion} (last revised
+% {\filedate})}}
+% \author{Michael Kohlhase, Dennis M\"uller\\
+%    FAU Erlangen-N\"urnberg\\
+%    \url{http://kwarc.info/}}
+% \maketitle
+% 
+% \makeatletter\def\test{\begingroup\makeatletter\@test}
+% \long\def\@test#1{\textcolor{blue}{\textbf{Test:}\\#1}\endgroup}\makeatother
+%
+% \begin{abstract}
+%    TODO
+% \end{abstract}
+%
+% \newpage\setcounter{tocdepth}{2}\tableofcontents\newpage
+%
+% \section{Introduction}\label{sec:intro}
+% TODO
+% \section{Implementation}\label{sec:impl}
+%    \begin{macrocode}
+%<*package>
+% TODO
+\newif\if@modules@html@\@modules@html@true
+\DeclareOption{omdocmode}{\@modules@html@false}
+% Modules:
+\newif\ifmod@show\mod@showfalse
+\DeclareOption{showmods}{\mod@showtrue}
+% sref:
+\newif\ifextrefs\extrefsfalse
+\DeclareOption{extrefs}{\extrefstrue}
+%
+\ProcessOptions
+%    \end{macrocode}
+%
+%    \begin{macrocode}
+\RequirePackage{standalone}
+\RequirePackage{xspace}
+\RequirePackage{metakeys}
+%    \end{macrocode}
+%
+% \subsection{sTeX base}
+% The \sTeX logo:
+%    \begin{macrocode}
+\protected\def\stex{%
+  \@ifundefined{texorpdfstring}%
+  {\let\texorpdfstring\@firstoftwo}%
+  {}%
+  \texorpdfstring{\raisebox{-.5ex}S\kern-.5ex\TeX}{sTeX}\xspace%
+}
+\def\sTeX{\stex}
+%    \end{macrocode}
+%
+% and a conditional for LaTeXML:
+%    \begin{macrocode}
+\newif\if@latexml\@latexmlfalse
+%    \end{macrocode}
+%
+%
+% \subsection{Paths and URIs}\label{sec:impl:pathsuris}
+%
+%    \begin{macrocode}
+\RequirePackage{xstring}
+\RequirePackage{etoolbox}
+%    \end{macrocode}
+%
+% \begin{macro}{\defpath}
+%  |\defpath[optional argument]{macro name}{base path}| defines a new macro which can take another path to formal one integrated path. For example, |\MathHub| in every |localpaths.tex| is defined as:
+% \begin{center}
+% |\defpath{MathHub}{/path/to/localmh/MathHub}|
+% \end{center}
+% then we can use |\MathHub| to form other paths, for example, 
+% \begin{center}
+% |\MathHub{source/smglom/sets}|
+% \end{center}
+%  will generate |/path/to/localmh/MathHub/source/smglom/sets|.
+%    \begin{macrocode}
+\newrobustcmd\defpath[3][]{%
+  \expandafter\newcommand\csname #2\endcsname[1]{#3/##1}%
+}%
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsubsection{Path Canonicalization}\label{sec:impl:cpath}
+% 
+% We define two macros for changing the category codes of common
+% characters in URIs, in particular \#.
+%    \begin{macrocode}
+\def\pathsuris@setcatcodes{%
+    \edef\pathsuris@oldcatcode@hash{\the\catcode`\#}%
+    \catcode`\#=12\relax%
+    \edef\pathsuris@oldcatcode@slash{\the\catcode`\/}%
+    \catcode`\/=12\relax%
+    \edef\pathsuris@oldcatcode@colon{\the\catcode`\:}%
+    \catcode`\:=12\relax%
+    \edef\pathsuris@oldcatcode@qm{\the\catcode`\?}%
+    \catcode`\?=12\relax%
+}
+\def\pathsuris@resetcatcodes{%
+    \catcode`\#\pathsuris@oldcatcode@hash\relax%
+    \catcode`\/\pathsuris@oldcatcode@slash\relax%
+    \catcode`\:\pathsuris@oldcatcode@colon\relax%
+    \catcode`\?\pathsuris@oldcatcode@qm\relax%
+}
+%    \end{macrocode}
+%
+% We define some macros for later comparison.
+%    \begin{macrocode}
+\def\@ToTop{..}
+\def\@Slash{/}
+\def\@Colon{:}
+\def\@Space{ }
+\def\@QuestionMark{?}
+\def\@Dot{.}
+\catcode`\&=12
+\def\@Ampersand{&}
+\catcode`\&=4
+\pathsuris@setcatcodes
+\def\@Fragment{#}
+\pathsuris@resetcatcodes
+\catcode`\.=0
+.catcode`.\=12
+.let.@BackSlash\
+.catcode`.\=0
+\catcode`\.=12
+\edef\old@percent@catcode{\the\catcode`\%}
+\catcode`\%=12
+\let\@Percent%
+\catcode`\%=\old@percent@catcode
+%    \end{macrocode}
+%
+% \begin{macro}{\@cpath}
+% Canonicalizes (file) paths:
+%    \begin{macrocode}
+\def\@cpath#1{%
+    \edef\pathsuris@cpath@temp{#1}%
+    \def\@CanPath{}%
+    \IfBeginWith\pathsuris@cpath@temp\@Slash{%
+      \@cpath@loop%
+      \edef\@CanPath{\@Slash\@CanPath}%
+    }{%
+        \IfBeginWith\pathsuris@cpath@temp{\@Dot\@Slash}{%
+            \StrGobbleLeft\pathsuris@cpath@temp2[\pathsuris@cpath@temp]%
+            \@cpath@loop%
+        }{%
+            \ifx\pathsuris@cpath@temp\@Dot\else%
+            \@cpath@loop\fi%
+        }%
+    }%
+    \IfEndWith\@CanPath\@Slash{%
+      \ifx\@CanPath\@Slash\else%
+        \StrGobbleRight\@CanPath1[\@CanPath]%
+      \fi%
+    }{}%
+}
+
+\def\@cpath@loop{%
+    \IfSubStr\pathsuris@cpath@temp\@Slash{%
+        \StrCut\pathsuris@cpath@temp\@Slash\pathsuris@cpath@temp@a\pathsuris@cpath@temp%
+        \ifx\pathsuris@cpath@temp@a\@ToTop%
+            \ifx\@CanPath\@empty%
+                \edef\@CanPath{\@ToTop}%
+            \else%
+                \edef\@CanPath{\@CanPath\@Slash\@ToTop}%
+            \fi%
+            \@cpath@loop%
+        \else%
+        \ifx\pathsuris@cpath@temp@a\@Dot%
+            \@cpath@loop%
+        \else%
+        \IfBeginWith\pathsuris@cpath@temp\@ToTop{%
+            \StrBehind{\pathsuris@cpath@temp}{\@ToTop}[\pathsuris@cpath@temp]%
+            \IfBeginWith\pathsuris@cpath@temp\@Slash{%
+                \edef\pathsuris@cpath@temp{\@CanPath\pathsuris@cpath@temp}%
+            }{%
+                \ifx\@CanPath\@empty\else%
+                    \edef\pathsuris@cpath@temp{\@CanPath\@Slash\pathsuris@cpath@temp}
+                \fi%
+            }%
+            \def\@CanPath{}%
+            \@cpath@loop%
+        }{%
+            \ifx\@CanPath\@empty%
+                \edef\@CanPath{\pathsuris@cpath@temp@a}%
+            \else%
+                \edef\@CanPath{\@CanPath\@Slash\pathsuris@cpath@temp@a}%
+            \fi%
+            \@cpath@loop
+        }%
+        \fi\fi%
+    }{
+        \ifx\@CanPath\@empty%
+            \edef\@CanPath{\pathsuris@cpath@temp}%
+        \else%
+            \edef\@CanPath{\@CanPath\@Slash\pathsuris@cpath@temp}%
+        \fi%
+    }%
+}
+%    \end{macrocode}
+% \test{
+% \begin{center}
+% \begin{tabular}{|l|l|l|}\hline
+%   path & canonicalized path & expected\\\hline
+%   aaa & \cpath{aaa} & aaa \\
+%   ../../aaa & \cpath{../../aaa} &  ../../aaa\\
+%   aaa/bbb & \cpath{aaa/bbb} & aaa/bbb \\
+%   aaa/.. & \cpath{aaa/..} &\\
+%   ../../aaa/bbb & \cpath{../../aaa/bbb} & ../../aaa/bbb\\
+%   ../aaa/../bbb & \cpath{../aaa/../bbb} & ../bbb \\
+%   ../aaa/bbb & \cpath{../aaa/bbb} &  ../aaa/bbb\\
+%   aaa/bbb/../ddd & \cpath{aaa/bbb/../ddd} & aaa/ddd\\
+%   aaa/bbb/./ddd & \cpath{aaa/bbb/./ddd} & aaa/bbb/ddd\\
+%   ./ & \cpath{./} & \\
+%   aaa/bbb/../.. & \cpath{aaa/bbb/../..} & \\\hline
+% \end{tabular}
+% \end{center}
+% }
+%
+% \end{macro}
+%
+% \begin{macro}{\cpath}
+% Implement |\cpath| to print the canonicalized path.
+%    \begin{macrocode}
+\newcommand\cpath[1]{%
+    \@cpath{#1}%
+    \@CanPath%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\path@filename}
+%
+%    \begin{macrocode}
+\def\path@filename#1#2{%
+    \edef\filename@oldpath{#1}%
+    \StrCount\filename@oldpath\@Slash[\filename@lastslash]%
+    \ifnum\filename@lastslash>0%
+        \StrBehind[\filename@lastslash]\filename@oldpath\@Slash[\filename@oldpath]%
+        \edef#2{\filename@oldpath}%
+    \else%
+        \edef#2{\filename@oldpath}%
+    \fi%
+}
+%    \end{macrocode}
+% \test{
+%  \edef\testpath{/foo/bar/baz.tex}
+% \path@filename\testpath\testfilename
+% Path: \testpath\\
+% Filename: \testfilename\\
+% }
+% \end{macro}
+%
+% \subsubsection{Windows}
+%
+% First, a conditional that tells us whether we have to use windows
+% or unix file paths:
+%    \begin{macrocode}
+\newif\if@iswindows@\@iswindows@false
+\IfFileExists{nul:}{\IfFileExists{/dev/null}{}{\@iswindows@true}}{}
+%    \end{macrocode}
+% \test{We are on windows: \if@iswindows@ yes\else no\fi.}
+%
+% \begin{macro}{\windows@to@path}
+% Converts a windows-style file path to a unix-style file path:
+%    \begin{macrocode}
+\newif\if@windowstopath@inpath@
+\def\windows@to@path#1{
+    \@windowstopath@inpath@false
+    \def\windows@temp{}
+    \edef\windows@path{#1}
+    \ifx\windows@path\@empty\else
+        \expandafter\windows@path@loop\windows@path\windows@path@end
+    \fi
+    \let#1\windows@temp
+}
+\def\windows@path@loop#1#2\windows@path@end{
+    \def\windows@temp@b{#2}
+    \ifx\windows@temp@b\@empty
+        \def\windows@continue{}
+    \else
+        \def\windows@continue{\windows@path@loop#2\windows@path@end}
+    \fi
+    \if@windowstopath@inpath@
+        \ifx#1\@BackSlash
+            \edef\windows@temp{\windows@temp\@Slash}
+        \else
+            \edef\windows@temp{\windows@temp#1}
+        \fi
+    \else
+        \ifx#1:
+            \edef\windows@temp{\@Slash\windows@temp}
+            \@windowstopath@inpath@true
+        \else
+            \edef\windows@temp{\windows@temp#1}
+        \fi
+    \fi
+    \windows@continue
+}
+%    \end{macrocode}
+% \makeatletter
+% \test{\edef\testpath{\detokenize{C:\foo\bar.baz}}
+% Input: \testpath\\
+% \windows@to@path\testpath
+% Output: \testpath}
+% \makeatother
+% \end{macro}
+%
+% \begin{macro}{\path@to@windows}
+% Converts a unix-style file path to a windows-style file path:
+%    \begin{macrocode}
+\def\path@to@windows#1{
+    \@windowstopath@inpath@false
+    \def\windows@temp{}
+    \edef\windows@path{#1}
+    \edef\windows@path{\expandafter\@gobble\windows@path}
+    \ifx\windows@path\@empty\else
+        \expandafter\path@windows@loop\windows@path\windows@path@end
+    \fi
+    \let#1\windows@temp
+}
+\def\path@windows@loop#1#2\windows@path@end{
+    \def\windows@temp@b{#2}
+    \ifx\windows@temp@b\@empty
+        \def\windows@continue{}
+    \else
+        \def\windows@continue{\path@windows@loop#2\windows@path@end}
+    \fi
+    \if@windowstopath@inpath@
+        \ifx#1/
+            \edef\windows@temp{\windows@temp\@BackSlash}
+        \else
+            \edef\windows@temp{\windows@temp#1}
+        \fi
+    \else
+        \ifx#1/
+            \edef\windows@temp{\windows@temp:\@BackSlash}
+            \@windowstopath@inpath@true
+        \else
+            \edef\windows@temp{\windows@temp#1}
+        \fi
+    \fi
+    \windows@continue
+}
+%    \end{macrocode}
+% \test{\def\testpath{/C/foo/bar.baz}
+% Input: \testpath\\
+% \path@to@windows\testpath
+% Output: \testpath}
+% \end{macro}
+%
+% \subsubsection{Auxiliary methods}
+%
+% \begin{macro}{\trimstring}
+% Removes initial and trailing spaces from a string:
+%    \begin{macrocode}
+\def\trimstring#1{%
+    \edef\pathsuris@trim@temp{#1}%
+    \IfBeginWith\pathsuris@trim@temp\@Space{%
+        \StrGobbleLeft\pathsuris@trim@temp1[#1]%
+        \trimstring{#1}%
+    }{%
+        \IfEndWith\pathsuris@trim@temp\@Space{%
+            \StrGobbleRight\pathsuris@trim@temp1[#1]%
+            \trimstring{#1}%
+        }{%
+            \edef#1{\pathsuris@trim@temp}%
+        }%
+    }%
+}
+%    \end{macrocode}
+% \test{\edef\tempcs{     bla    blubb   }\trimstring\tempcs
+% \texttt{>>\tempcs<<}}
+% \end{macro}
+%
+% \begin{macro}{\kpsewhich}
+% Calls \texttt{kpsewhich} to get e.g. system variables:
+%    \begin{macrocode}
+\def\kpsewhich#1#2{\begingroup%
+  \edef\kpsewhich@cmd{"|kpsewhich #2"}%
+  \everyeof{\noexpand}%
+  \catcode`\\=12%
+  \edef#1{\@@input\kpsewhich@cmd\@Space}%
+  \trimstring#1%
+  \if@iswindows@\windows@to@path#1\fi%
+  \xdef#1{\expandafter\detokenize\expandafter{#1}}%
+\endgroup}
+%    \end{macrocode}
+% \test{\kpsewhich\tempcs{etoolbox.sty} \tempcs}
+% \end{macro}
+%
+% \subsubsection{\protect\sTeX input hooks}
+% We determine the \texttt{PWD} of the current main document:
+%    \begin{macrocode}
+\edef\pwd@cmd{\if@iswindows@ -expand-var \percent CD\percent\else -var-value PWD\fi}
+\kpsewhich\stex@maindir\pwd@cmd
+\edef\stex@mainfile{\stex@maindir\@Slash\jobname}
+\edef\stex@mainfile{\expandafter\detokenize\expandafter{\stex@mainfile}}
+%    \end{macrocode}
+% \test{\stex@maindir}
+%
+% We keep a stack of \string\input ed files:
+%    \begin{macrocode}
+\def\stex@currfile@stack{}
+
+\def\stex@currfile@push#1{%
+    \edef\stex@temppath{#1}%
+    \edef\stex@temppath{\expandafter\detokenize\expandafter{\stex@temppath}}%
+  \edef\stex@currfile@stack{\stex@currfile\ifx\stex@currfile@stack\@empty\else,\stex@currfile@stack\fi}
+  \IfBeginWith\stex@temppath\@Slash{\@cpath{\stex@temppath}}{%
+    \@cpath{\stex@maindir\@Slash#1}%
+  }
+  \let\stex@currfile\@CanPath%
+  \path@filename\stex@currfile\stex@currfilename%
+  \StrLen\stex@currfilename[\stex@currfile@tmp]%
+  \StrGobbleRight\stex@currfile{\the\numexpr\stex@currfile@tmp+1 }[\stex@currpath]%
+  \global\let\stex@currfile\stex@currfile%
+  \global\let\stex@currpath\stex@currpath%
+  \global\let\stex@currfilename\stex@currfilename%
+}
+\def\stex@currfile@pop{%
+  \ifx\stex@currfile@stack\@empty%
+    \global\let\stex@currfile\stex@mainfile%
+    \global\let\stex@currpath\stex@maindir%
+    \global\let\stex@currfilename\jobname%
+  \else%
+    \StrCut\stex@currfile@stack,\stex@currfile\stex@currfile@stack%
+    \path@filename\stex@currfile\stex@currfilename%
+    \StrLen\stex@currfilename[\stex@currfile@tmp]%
+    \StrGobbleRight\stex@currfile{\the\numexpr\stex@currfile@tmp+1 }[\stex@currpath]%
+    \global\let\stex@currfile\stex@currfile%
+    \global\let\stex@currpath\stex@currpath%
+    \global\let\stex@currfilename\stex@currfilename%
+  \fi%
+}
+%    \end{macrocode}
+%
+% \begin{macro}{\stexinput}
+% Inputs a file by (if necessary) converting its path to a windows path
+% first, and adding the file path to the input stack above:
+%    \begin{macrocode}
+\def\stexinput#1{
+    \edef\temp@path{#1}
+    \if@iswindows@\path@to@windows\temp@path\fi%
+    \stex@currfile@push\temp@path%
+    \IfFileExists\stex@currfile{\input{\stex@currfile}}{%
+        \PackageError{stex-currfile}{File does not exist (#1): \stex@currfile}{}%
+    }%
+    \stex@currfile@pop%
+}
+\stex@currfile@pop
+%    \end{macrocode}
+% \newwrite\testfile\immediate\openout\testfile=testfile.tex
+% \immediate\write\testfile{A test file: \string\stex@currfile}
+% \immediate\closeout\testfile
+% \test{This file: \stex@currfile\\
+% \stexinput{testfile.tex}}
+% \end{macro}
+%
+% \subsubsection{MathHub repositories}
+% We read the |MATHHUB| system variable and set |\MathHub| accordingly:
+%    \begin{macrocode} 
+\kpsewhich\mathhub@path{--var-value MATHHUB}
+\if@iswindows@\windows@to@path\mathhub@path\fi
+\ifx\mathhub@path\@empty%
+  \PackageWarning{stex}{MATHHUB system variable not found or wrongly set}{}
+  \defpath{MathHub}{}
+\else\defpath{MathHub}\mathhub@path\fi
+%    \end{macrocode}
+% \test{\mathhub@path}
+%
+%\begin{macro}{\findmanifest}
+% |\findmanifest{|\meta{path}|}| searches for a file |MANIFEST.MF| up and over \meta{path} in
+% the file system tree.
+%
+%    \begin{macrocode}
+\def\findmanifest#1{
+  \@cpath{#1}
+  \ifx\@CanPath\@Slash
+    \def\manifest@mf{}
+  \else\ifx\@CanPath\@empty
+      \def\manifest@mf{}
+  \else
+    \edef\@findmanifest@path{\@CanPath/MANIFEST.MF}
+    \if@iswindows@\path@to@windows\@findmanifest@path\fi
+    \IfFileExists{\@findmanifest@path}{
+      %\message{MANIFEST.MF found at \@findmanifest@path}
+      \edef\manifest@mf{\@findmanifest@path}
+      \xdef\temp@archive@dir{\expandafter\detokenize\expandafter{\@CanPath}}
+    }{
+    \edef\@findmanifest@path{\@CanPath/META-INF/MANIFEST.MF}
+    \if@iswindows@\path@to@windows\@findmanifest@path\fi
+    \IfFileExists{\@findmanifest@path}{
+      %\message{MANIFEST.MF found at \@findmanifest@path}
+      \edef\manifest@mf{\@findmanifest@path}
+      \xdef\temp@archive@dir{\expandafter\detokenize\expandafter{\@CanPath}}
+    }{
+    \edef\@findmanifest@path{\@CanPath/meta-inf/MANIFEST.MF}
+    \if@iswindows@\path@to@windows\@findmanifest@path\fi
+    \IfFileExists{\@findmanifest@path}{
+      %\message{MANIFEST.MF found at \@findmanifest@path}
+      \edef\manifest@mf{\@findmanifest@path}
+      \xdef\temp@archive@dir{\expandafter\detokenize\expandafter{\@CanPath}}
+    }{
+      \findmanifest{\@CanPath/..}
+    }}}
+  \fi\fi
+}
+%    \end{macrocode}
+% \test{\findmanifest{\MathHub{smglom/mv/source}}\manifest@mf}
+%\end{macro}
+%
+% the next macro is a helper function for parsing |MANIFEST.MF|
+%
+%    \begin{macrocode}
+\def\split@manifest@key{
+  \IfSubStr{\manifest@line}{\@Colon}{
+      \StrBefore{\manifest@line}{\@Colon}[\manifest@key]
+      \StrBehind{\manifest@line}{\@Colon}[\manifest@line]
+      \trimstring\manifest@line
+      \trimstring\manifest@key
+  }{
+      \def\manifest@key{}
+  }
+}
+%    \end{macrocode}
+%
+% the next helper function iterates over lines in |MANIFEST.MF|
+%
+%    \begin{macrocode}
+\def\parse@manifest@loop{
+  \ifeof\@manifest
+  \else
+    \read\@manifest to \manifest@line\relax
+    \edef\manifest@line{\expandafter\detokenize\expandafter{\manifest@line}}
+    \split@manifest@key
+    % id
+    \IfStrEq\manifest@key{\detokenize{id}}{
+        \xdef\manifest@mf@id{\manifest@line}
+    }{
+    % narration-base
+    \IfStrEq\manifest@key{\detokenize{narration-base}}{
+        \xdef\manifest@mf@narr{\manifest@line}
+    }{
+    % namespace
+    \IfStrEq\manifest@key{\detokenize{source-base}}{
+        \xdef\manifest@mf@ns{\manifest@line}
+    }{
+    \IfStrEq\manifest@key{\detokenize{ns}}{
+        \xdef\manifest@mf@ns{\manifest@line}
+    }{
+    % dependencies
+    \IfStrEq\manifest@key{\detokenize{dependencies}}{
+        \xdef\manifest@mf@deps{\manifest@line}
+    }{
+    }}}}}
+    \parse@manifest@loop
+  \fi
+}
+%    \end{macrocode}
+%\begin{macro}{\parsemanifest}
+% |\parsemanifest{|\meta{macroname}|}{|\meta{path}|}| finds |MANIFEST.MF| via |\findmanifest{|\meta{path}|}|,
+% and parses the file, storing the individual fields (|id|, |narr|, |ns| and |dependencies|) in
+% \meta{macroname}|id|, \meta{macroname}|narr|, etc.
+%    \begin{macrocode}
+\newread\@manifest
+\def\parsemanifest#1#2{%
+  \gdef\temp@archive@dir{}%
+  \findmanifest{#2}%
+  \begingroup%
+    \gdef\manifest@mf@id{}%
+    \gdef\manifest@mf@narr{}%
+    \gdef\manifest@mf@ns{}%
+    \gdef\manifest@mf@deps{}%
+    \openin\@manifest\manifest@mf%
+    \parse@manifest@loop%
+    \closein\@manifest%
+  \endgroup%
+  \if@iswindows@\windows@to@path\manifest@mf\fi%
+  \cslet{#1id}\manifest@mf@id%
+  \cslet{#1narr}\manifest@mf@narr%
+  \cslet{#1ns}\manifest@mf@ns%
+  \cslet{#1deps}\manifest@mf@deps%
+  \ifcsvoid{manifest@mf@id}{}{%
+    \cslet{#1dir}\temp@archive@dir%
+  }%
+}
+%    \end{macrocode}
+% \immediate\openout\testfile=FOO/MANIFEST.MF
+% \immediate\write\testfile{id: FOO/BAR}
+% \immediate\write\testfile{ns: http://mathhub.info/FOO/BAR}
+% \immediate\closeout\testfile
+% \test{\parsemanifest{test@}{./FOO}
+% id: \test@id\\ns: \test@ns\\dir: \test@dir
+% }
+%\end{macro}
+%\begin{macro}{\setcurrentreposinfo}
+% |\setcurrentreposinfo{|\meta{id}|}| sets the current repository to \meta{id}, checks if the
+% |MANIFEST.MF| of this repository has already been read, and if not, find it, parses it and stores
+% the values in |\currentrepos@|\meta{key}|@|\meta{id} for later retrieval.
+%    \begin{macrocode}
+\def\setcurrentreposinfo#1{%
+  \ifcsdef{mathhub@dir@#1}{%
+    \@inmhrepostrue
+    \edef\mh@currentrepos{#1}%
+    \expandafter\let\expandafter\currentrepos@dir\csname mathhub@dir@#1\endcsname%
+    \expandafter\let\expandafter\currentrepos@narr\csname mathhub@narr@#1\endcsname%
+    \expandafter\let\expandafter\currentrepos@ns\csname mathhub@ns@#1\endcsname%
+    \expandafter\let\expandafter\currentrepos@deps\csname mathhub@deps@#1\endcsname%
+  }{%
+    \parsemanifest{currentrepos@}{\MathHub{#1}}%
+    \@setcurrentreposinfo%
+    \ifcsvoid{currentrepos@dir}{\PackageError{stex}{No archive with %
+      name #1 found!}{make sure that #1 is directly in your MATHHUB folder %
+      and contains a MANIFEST.MF, either directly in #1 or in a meta-inf %
+      subfolder.}}{\@inmhrepostrue}%
+  }%
+}
+
+\def\@setcurrentreposinfo{%
+  \edef\mh@currentrepos{\currentrepos@id}%
+  \ifcsvoid{currentrepos@dir}{}{%
+    \csxdef{mathhub@dir@\currentrepos@id}{\currentrepos@dir}%
+    \csxdef{mathhub@narr@\currentrepos@id}{\currentrepos@narr}%
+    \csxdef{mathhub@ns@\currentrepos@id}{\currentrepos@ns}%
+    \csxdef{mathhub@deps@\currentrepos@id}{\currentrepos@deps}%
+  }
+}
+%    \end{macrocode}
+%\end{macro}
+% Finally -- and that is the ultimate goal of all of the above, we set the current repos.  
+%    \begin{macrocode}
+\newif\if@inmhrepos\@inmhreposfalse
+\ifcsvoid{stex@maindir}{}{
+\parsemanifest{currentrepos@}\stex@maindir
+\@setcurrentreposinfo
+\ifcsvoid{currentrepos@dir}{\PackageWarning{stex}{Not currently in a MathHub repository}{}}{%
+  \message{Current repository: \mh@currentrepos}
+}
+}
+%    \end{macrocode}
+%
+% \subsection{Modules}
+%
+%    \begin{macrocode}
+\if@latexml\else\ifmod@show\RequirePackage{mdframed}\fi\fi
+%    \end{macrocode}
+%
+% Aux:
+%
+%    \begin{macrocode}
+\def\ignorespacesandpars{\begingroup\catcode13=10\@ifnextchar\relax{\endgroup}{\endgroup}}
+%    \end{macrocode}
+% and more adapted from \url{http://tex.stackexchange.com/questions/179016/ignore-spaces-and-pars-after-an-environment}
+%    \begin{macrocode}
+\def\ignorespacesandparsafterend#1\ignorespaces\fi{#1\fi\ignorespacesandpars}
+\def\ignorespacesandpars{\ifhmode\unskip\fi\@ifnextchar\par{\expandafter\ignorespacesandpars\@gobble}{}}
+%    \end{macrocode}
+%
+% Options for the |module|-environment:
+%
+%    \begin{macrocode}
+\addmetakey*{module}{title}
+\addmetakey*{module}{name}
+\addmetakey*{module}{creators}
+\addmetakey*{module}{contributors}
+\addmetakey*{module}{srccite}
+\addmetakey*{module}{ns}
+\addmetakey*{module}{narr}
+%    \end{macrocode}
+%
+% \begin{macro}{module@heading}
+%   We make a convenience macro for the module heading. This can be customized. 
+%    \begin{macrocode}
+\ifdef{\thesection}{\newcounter{module}[section]}{\newcounter{module}}%
+\newrobustcmd\module@heading{%
+  \stepcounter{module}%
+  \ifmod@show%
+  \noindent{\textbf{Module} \thesection.\themodule [\module@name]}%
+  \sref@label@id{Module \thesection.\themodule [\module@name]}%
+    \ifx\module@title\@empty :\quad\else\quad(\module@title)\hfill\\\fi%
+  \fi%
+}%
+%    \end{macrocode}
+% \test{
+% \begin{module}[name=Test]
+%    Foo
+% \end{module}
+% }
+% \makeatletter\mod@showfalse\makeatother
+%
+% \end{macro}
+%
+% \begin{environment}{module}
+%   Finally, we define the begin module command for the module environment. Much of the
+%   work has already been done in the keyval bindings, so this is quite simple.
+%    \begin{macrocode}
+\newenvironment{module}[1][]{%
+  \begin{@module}[#1]%
+  \module@heading% make the headings
+  \ignorespacesandpars\parsemodule@maybesetcodes}{%
+  \end{@module}%
+  \ignorespacesafterend%
+}%
+\ifmod@show\surroundwithmdframed{module@om@common}\fi%
+%    \end{macrocode}
+% \end{environment}
+%
+% Some auxiliary methods:
+%    \begin{macrocode}
+\def\g@addto@macro@safe#1#2{\ifx#1\relax\def#1{}\fi\g@addto@macro#1{#2}}
+\def\addto@thismodule#1{%
+  \@ifundefined{this@module}{}{%
+    \expandafter\g@addto@macro@safe\this@module{#1}%
+  }%
+}
+\def\addto@thismodulex#1{%
+\@ifundefined{this@module}{}{%
+  \edef\addto@thismodule@exp{#1}%
+  \expandafter\expandafter\expandafter\g@addto@macro@safe%
+  \expandafter\this@module\expandafter{\addto@thismodule@exp}%
+}}
+%    \end{macrocode}
+%
+% \begin{environment}{@module}
+%   A variant of the |module| environment that does not create printed representations (in
+%   particular no frames).\medskip
+%
+%   To compute the \meta{uri} of a module, |\set@default@ns| computes the namespace, if
+%   none is provided as an optional argument, as follows:
+%
+%   If the file of the module is |/some/path/file.tex| and we are not in a |MathHub|
+%   repository, the namespace is |file:///some/path|.
+%
+%   If the file of the module is |/some/path/in/mathhub/repo/sitory/source/sub/file.tex|
+%   and |repo/sitory| is an archive in the |MathHub| root, and the |MANIFEST.MF| of
+%   |repo/sitory| declares a namespace |http://some.namespace/foo|, then the namespace of
+%   the module is |http://some.namespace/foo/sub|.
+%    \begin{macrocode}
+\newif\ifarchive@ns@empty@\archive@ns@empty@false
+\def\set@default@ns{%
+  \edef\@module@ns@temp{\stex@currpath}%
+  \if@iswindows@\windows@to@path\@module@ns@temp\fi%
+  \archive@ns@empty@false%
+  \ifcsvoid{mh@currentrepos}{\archive@ns@empty@true}%
+  {\expandafter\ifx\csname mathhub@ns@\mh@currentrepos\endcsname\@empty\archive@ns@empty@true\fi%
+  }%
+  \ifarchive@ns@empty@%
+    \edef\@module@ns@tempuri{file\@Colon\@Slash\@Slash\@module@ns@temp}%
+  \else%
+    \edef\@module@filepath@temppath{\@module@ns@temp}%
+    \edef\@module@ns@tempuri{\csname mathhub@ns@\mh@currentrepos\endcsname}%
+    \edef\@module@archivedirpath{\csname mathhub@dir@\mh@currentrepos\endcsname\@Slash source}%
+    \edef\@module@archivedirpath{\expandafter\detokenize\expandafter{\@module@archivedirpath}}%
+    \IfBeginWith\@module@filepath@temppath\@module@archivedirpath{%
+      \StrLen\@module@archivedirpath[\ns@temp@length]%
+      \StrGobbleLeft\@module@filepath@temppath\ns@temp@length[\@module@filepath@temprest]%
+      \edef\@module@ns@tempuri{\@module@ns@tempuri\@module@filepath@temprest}%
+    }{}%
+  \fi%
+  \IfEndWith\@module@ns@tempuri\@Slash{\StrGobbleRight\@module@ns@tempuri1[\@module@ns@tempuri]}{}%
+  \setkeys{module}{ns=\@module@ns@tempuri}%
+}
+%    \end{macrocode}
+% \test{\set@default@ns\module@ns}
+%
+% If the module is not given a |name|, |\set@next@moduleid| computes one by 
+% enumeration, e.g. |module0|, |module1|, etc.
+%
+%    \begin{macrocode}
+\def\set@next@moduleid{%
+  \unless\ifcsname namespace@\module@ns @unnamedmodules\endcsname%
+      \csgdef{namespace@\module@ns @unnamedmodules}{0}%
+  \fi%
+  \edef\namespace@currnum{\csname namespace@\module@ns @unnamedmodules\endcsname}%
+  \edef\module@temp@setidname{\noexpand\setkeys{module}{name=module\namespace@currnum}}%
+  \module@temp@setidname%
+  \csxdef{namespace@\module@ns @unnamedmodules}{\the\numexpr\namespace@currnum+1}%
+}
+%    \end{macrocode}
+% \test{\set@next@moduleid\module@name\\\set@next@moduleid\module@name}
+%
+% Finally, the |@module| environment does the actual work, i.e. setting metakeys, computing
+% namespace/id, defining |\this@module|, etc.
+% 
+%  
+%   For a module with name \meta{name} (|\module@name|) and uri \meta{uri} (|\module@uri|), this defines the following macros: 
+%   \begin{itemize}
+%      \item |\module@defs@|\meta{uri}
+%   that acts as a repository for semantic macros of the current module. It will be called
+%   by |\importmodule| to activate them. 
+%     \item We will add the internal forms of the semantic
+%   macros whenever |\symdef| is invoked. To do this, we will need an unexpended form
+%   |\this@module| that expands to |\module@defs@|\meta{uri}; we define it first and then
+%   initialize |\module@defs@|\meta{uri} as empty. 
+%      \item |\module@names@|\meta{uri} will store all symbol names declared in this module.
+%      \item |\module@imports@|\meta{uri} will store the URIs of all modules direclty included
+%         in this module
+%     \item |\|\meta{uri} that expands to |\invoke@module{|\meta{uri}|}| (see below).
+%     \item |\Module|\meta{name} that expands to |\|\meta{uri}.
+%   \end{itemize}
+%   If we are currently in a mathhub repository, this information will also
+%   be stored in |\module@defs@|\meta{uri}, so we can resolve includes properly when this
+%   module is activated.
+%
+%    \begin{macrocode}
+\newenvironment{@module}[1][]{%
+  \metasetkeys{module}{#1}%
+  \ifcsvoid{module@name}{\let\module@name\module@id}{}% % TODO deprecate
+  \ifx\module@ns\@empty\set@default@ns\fi%
+  \ifx\module@narr\@empty%
+    \setkeys{module}{narr=\module@ns}%
+  \fi%
+  \ifcsvoid{module@name}{\set@next@moduleid}{}%
+  \let\module@id\module@name% % TODO deprecate
+  \edef\module@uri{\module@ns\@QuestionMark\module@name}%
+  \csgdef{module@names@\module@uri}{}%
+  \csgdef{module@imports@\module@uri}{}%
+  \csxdef{\module@uri}{\noexpand\@invoke@module{\module@uri}}%
+  \expandafter\global\expandafter\let\csname Module\module@name\expandafter\endcsname\csname\module@uri\endcsname%
+  \edef\this@module{%
+    \expandafter\noexpand\csname module@defs@\module@uri\endcsname%
+  }%
+  \csdef{module@defs@\module@uri}{}%
+  \ifcsvoid{mh@currentrepos}{}{%
+    \@inmhrepostrue%
+    \addto@thismodulex{\expandafter\edef\expandafter\noexpand\csname mh@old@repos@\module@uri\endcsname%
+      {\noexpand\mh@currentrepos}}%
+    \addto@thismodulex{\noexpand\setcurrentreposinfo{\mh@currentrepos}}%
+  }%
+}{%
+  \if@inmhrepos%
+  \@inmhreposfalse%
+  \addto@thismodulex{\noexpand\setcurrentreposinfo{\expandafter\noexpand\csname mh@old@repos@\module@uri\endcsname}}%
+  \fi%
+}%
+%    \end{macrocode}
+% \test{
+%    \begin{module}[name=Foo]\\
+%      Name: \module@name\\
+%      URI: \module@uri\\
+%      this@module: \expandafter\meaning\csname module@defs@\module@uri\endcsname
+%    \end{module}
+%}
+%
+% \test{
+%  Faking a MathHub archive Foo/Bar with URI \texttt{\detokenize{http://foo.bar/baz}}:\\
+%  \edef\currentrepos@id{Foo/Bar}
+%  \edef\currentrepos@dir{.}
+%  \edef\currentrepos@ns{http://foo.bar/baz}
+%  \edef\currentrepos@narr{}
+%  \edef\currentrepos@deps{}
+%  \@setcurrentreposinfo
+%    \begin{module}[name=Foo2]\\
+%      Name: \module@name\\
+%      URI: \module@uri\\
+%      this@module: \expandafter\meaning\csname module@defs@\module@uri\endcsname
+%    \end{module}
+%}
+%
+% \test{
+%  Removing the |\MathHub| system variable first: \let\MathHub\@undefined\\
+%    \begin{module}[name=Foo]\\
+%      Name: \module@name\\
+%      URI: \module@uri\\
+%      this@module: \expandafter\meaning\csname module@defs@\module@uri\endcsname
+%    \end{module}
+%  Faking a MathHub archive Foo/Bar with URI \texttt{\detokenize{http://foo.bar/baz}}:\\
+%  \edef\currentrepos@id{Foo/Bar}
+%  \edef\currentrepos@dir{.}
+%  \edef\currentrepos@ns{http://foo.bar/baz}
+%  \edef\currentrepos@narr{}
+%  \edef\currentrepos@deps{}
+%  \@setcurrentreposinfo
+%    \begin{module}[name=Foo2]\\
+%      Name: \module@name\\
+%      URI: \module@uri\\
+%      this@module: \expandafter\meaning\csname module@defs@\module@uri\endcsname
+%    \end{module}
+%}
+%
+% A module with URI \meta{uri} and id \meta{id} creates two macros |\|\meta{uri} and |\Module|\meta{id},
+% that ultimately expand to |\@invoke@module{|\meta{uri}|}|. Currently, the only functionality is
+% |\@invoke@module{|\meta{uri}|}\@URI|, which expands to the full uri of a module (i.e. via
+% |\Module|\meta{id}|\@URI|). In the future, this macro can be extended with additional functionality,
+% e.g. accessing symbols in a macro for overloaded (macro-)names.
+%
+%    \begin{macrocode}
+\def\@URI{uri}
+\def\@invoke@module#1#2{%
+  \ifx\@URI#2%
+    #1%
+  \else%
+    % TODO something else
+    #2%
+  \fi%
+}
+%    \end{macrocode}
+% \end{environment}
+%
+% \subsection{Inheritance}
+%
+% \subsubsection{Selective Inclusion}
+%
+% The next great goal is to establish the |\requiremodules| macro, which reads an \sTeX
+% file and processes all the module signature information in them, but does not produce
+% any output. This is a tricky business, as we need to ``parse'' the modules and treat the
+% module signature macros specially (we refer to this as ``\defemph{sms mode}'', since it
+% is equivalent to what the -- now deprecated -- |sms| utility did).
+%
+% In the following we introduce a lot of auxiliary functionality before we can define
+% |\requiremodules|.
+%
+% \begin{macro}{\parsemodule@allow*}
+%   The first step is setting up a functionality for registering |\sTeX| macros and
+%   environments as part of a module signature. 
+%    \begin{macrocode}
+\newif\if@smsmode\@smsmodefalse
+\def\parsemodule@escapechar@allowed{true}
+\def\parsemodule@allow#1{
+  \expandafter\let\csname parsemodule@allowedmacro@#1\endcsname\parsemodule@escapechar@allowed
+}
+\def\parsemodule@allowenv#1{
+  \expandafter\let\csname parsemodule@allowedenv@#1\endcsname\parsemodule@escapechar@allowed
+}
+\def\parsemodule@escapechar@beginstring{begin}
+\def\parsemodule@escapechar@endstring{end}
+%    \end{macrocode}
+% \end{macro}
+% 
+% and now we use that to actually register all the \sTeX functionality as relevant for
+% |sms| mode. 
+%
+%    \begin{macrocode}
+\parsemodule@allow{symdef}
+\parsemodule@allow{abbrdef}
+\parsemodule@allow{importmodule}
+\parsemodule@allowenv{module}
+\parsemodule@allow{importmhmodule}
+\parsemodule@allow{gimport}
+\parsemodule@allowenv{modsig}
+\parsemodule@allowenv{mhmodsig}
+\parsemodule@allowenv{mhmodnl}
+\parsemodule@allowenv{modnl}
+\parsemodule@allow{symvariant}
+\parsemodule@allow{symi}
+\parsemodule@allow{symii}
+\parsemodule@allow{symiii}
+\parsemodule@allow{symiv}
+\parsemodule@allow{notation}
+\parsemodule@allow{symdecl}
+%\parsemodule@allow{defi}
+%\parsemodule@allow{defii}
+%\parsemodule@allow{defiii}
+%\parsemodule@allow{defiv}
+%\parsemodule@allow{adefi}
+%\parsemodule@allow{adefii}
+%\parsemodule@allow{adefiii}
+%\parsemodule@allow{adefiv}
+%\parsemodule@allow{defis}
+%\parsemodule@allow{defiis}
+%\parsemodule@allow{defiiis}
+%\parsemodule@allow{defivs}
+%\parsemodule@allow{Defi}
+%\parsemodule@allow{Defii}
+%\parsemodule@allow{Defiii}
+%\parsemodule@allow{Defiv}
+%\parsemodule@allow{Defis}
+%\parsemodule@allow{Defiis}
+%\parsemodule@allow{Defiiis}
+%\parsemodule@allow{Defivs}
+%    \end{macrocode}
+% 
+% To read external modules without producing output, |\requiremodules| redefines the \textbackslash-character
+% to be an \emph{active} character that, instead of executing a macro, checks whether a macro name
+% has been registered using |\parsemodule@allow| before selectively executing the corresponding macro or ignoring it. 
+% To produce the relevant code, we therefore
+% define a macro |\@active@slash| that produces a \textbackslash-character with category code 13 (\emph{active}),
+% as well as |\@open@brace| and |\@close@brace|, which produce open and closing braces with
+% category code 12 (\emph{other}).
+%
+%    \begin{macrocode}
+\catcode`\.=0
+.catcode`.\=13
+.def.@active@slash{\}
+.catcode`.<=1
+.catcode`.>=2
+.catcode`.{=12
+.catcode`.}=12
+.def.@open@brace<{>
+.def.@close@brace<}>
+.catcode`.\=0
+\catcode`\.=12
+\catcode`\{=1
+\catcode`\}=2
+\catcode`\<=12
+\catcode`\>=12
+%    \end{macrocode}
+%
+% The next two macros set and reset the category codes before/after |sms| mode.
+%
+% \begin{macro}{\set@parsemodule@catcodes}
+%    \begin{macrocode}
+  \def\set@parsemodule@catcodes{%
+      \global\catcode`\\=13%
+      \global\catcode`\#=12%
+      \global\catcode`\{=12%
+      \global\catcode`\}=12%
+      \global\catcode`\$=12%$
+      \global\catcode`\^=12%
+      \global\catcode`\_=12%
+      \global\catcode`\&=12%
+      \expandafter\let\@active@slash\parsemodule@escapechar%
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\reset@parsemodule@catcodes}
+%    \begin{macrocode}
+  \def\reset@parsemodule@catcodes{%
+      \global\catcode`\\=0%
+      \global\catcode`\#=6%
+      \global\catcode`\{=1%
+      \global\catcode`\}=2%
+      \global\catcode`\$=3%$
+      \global\catcode`\^=7%
+      \global\catcode`\_=8%
+      \global\catcode`\&=4%
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\parsemodule@maybesetcodes}
+%   Before a macro is executed in |sms|-mode, the category codes will be reset to normal,
+%   to ensure that all macro arguments are parsed correctly. Consequently, the macros
+%   need to set the category codes back to |sms| mode after having read all arguments iff
+%   the macro got executed in
+%   |sms| mode. |\parsemodule@maybesetcodes| takes care of that.
+%    \begin{macrocode}
+  \def\parsemodule@maybesetcodes{%
+    \if@smsmode\set@parsemodule@catcodes\fi%
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% 
+% \begin{macro}{\parsemodule@escapechar}
+% This macro gets called whenever a \textbackslash-character occurs in |sms| mode.
+% It is split into several macros that parse and store characters in
+% |\parsemodule@escape@currcs| until a character
+% with category code $\neq$ 11 occurs (i.e. the macro name is complete), check
+% whether the macro is allowed in |sms| mode, and then either ignore it or execute it
+% after setting category codes back to normal. Special care needs to be taken to make
+% sure that braces have the right category codes (1 and 2 for open and closing braces,
+% respectively) when delimiting macro arguments.
+%
+% Entry point:
+%    \begin{macrocode}
+
+\def\parsemodule@escapechar{%
+    \def\parsemodule@escape@currcs{}%
+    \parsemodule@escape@parse@nextchar@%
+}%
+%    \end{macrocode}
+% The next macro simply reads the next character and checks whether it has category code 11.
+% If so, it stores it in |\parsemodule@escape@currcs|. Otherwise, the macro name
+% is complete, it stores the last
+% character in |\parsemodule@last@char| and calls |\parsemodule@escapechar@checkcs|.
+%
+%    \begin{macrocode}
+\long\def\parsemodule@escape@parse@nextchar@#1{%
+    \ifcat a#1\relax%
+        \edef\parsemodule@escape@currcs{\parsemodule@escape@currcs#1}%
+        \let\parsemodule@do@next\parsemodule@escape@parse@nextchar@%
+    \else%
+      \def\parsemodule@last@char{#1}%
+      \def\parsemodule@do@next{\parsemodule@escapechar@checkcs}%
+    \fi%
+    \parsemodule@do@next%
+}
+%    \end{macrocode}
+%
+% The next macro checks whether the currently stored macroname is allowed in |sms| mode.
+% There are four cases that need to be considered: |\begin|, |\end|, allowed macros, and others.
+% In the first two cases, we reinsert |\parsemodule@last@char| and continue with |\parsemodule@escapechar@checkbeginenv|
+% or |\parsemodule@escapechar@checkendenv| respectively, to check whether the environment
+% being openend/closed is allowed in |sms| mode. In both cases, |\parsemodule@last@char|
+% is an open brace with category code 12. In the third case, we need to check whether
+% |\parsemodule@last@char| is an open brace, in which case we call |\parsemodule@converttoproperbraces|,
+% otherwise, we set category codes to normal and execute the macro.
+% In the fourth case, we just reinsert |\parsemodule@last@char| and continue.
+%    \begin{macrocode}
+\def\parsemodule@escapechar@checkcs{%
+    \ifx\parsemodule@escape@currcs\parsemodule@escapechar@beginstring%
+        \edef\parsemodule@do@next{\noexpand\parsemodule@escapechar@checkbeginenv\parsemodule@last@char}%
+    \else%
+        \ifx\parsemodule@escape@currcs\parsemodule@escapechar@endstring%
+          \edef\parsemodule@do@next{\noexpand\parsemodule@escapechar@checkendenv\parsemodule@last@char}%
+        \else%
+            \expandafter\ifx\csname parsemodule@allowedmacro@\parsemodule@escape@currcs\endcsname%
+                \parsemodule@escapechar@allowed%
+              \ifx\parsemodule@last@char\@open@brace%
+                \expandafter\let\expandafter\parsemodule@do@next@ii\csname\parsemodule@escape@currcs\endcsname%
+                \edef\parsemodule@do@next{\noexpand\parsemodule@converttoproperbraces\@open@brace}%
+              \else%
+                \reset@parsemodule@catcodes%
+                \edef\parsemodule@do@next{\expandafter\noexpand\csname\parsemodule@escape@currcs\endcsname\parsemodule@last@char}%
+              \fi%
+            \else\def\parsemodule@do@next{\relax\parsemodule@last@char}\fi%
+        \fi%
+    \fi%
+    \parsemodule@do@next%
+}
+%    \end{macrocode}
+% This macro simply takes an argument in braces (with category codes 12), reinserts it
+% with ``proper'' braces (category codes 1 and 2), sets category codes back to normal and calls |\parsemodule@do@next@ii|,
+% which has been |\let| as the macro to be executed.
+%
+%    \begin{macrocode}
+\expandafter\expandafter\expandafter\def%
+\expandafter\expandafter\expandafter\parsemodule@converttoproperbraces%
+\expandafter\@open@brace\expandafter#\expandafter1\@close@brace{%
+  \reset@parsemodule@catcodes%
+  \parsemodule@do@next@ii{#1}%
+}
+%    \end{macrocode}
+%
+% The next two macros apply in the |\begin| and |\end| cases. They check whether the
+% environment is allowed in |sms| mode, if so, open/close the environment, and otherwise
+% do nothing.
+%
+% Notably, |\parsemodule@escapechar@checkendenv| does not set category codes back to normal,
+% since |\end{environment}| never takes additional arguments that need to be parsed anyway.
+%
+%    \begin{macrocode}
+\expandafter\expandafter\expandafter\def%
+\expandafter\expandafter\expandafter\parsemodule@escapechar@checkbeginenv%
+\expandafter\@open@brace\expandafter#\expandafter1\@close@brace{%
+    \expandafter\ifx\csname parsemodule@allowedenv@#1\endcsname\parsemodule@escapechar@allowed%
+        \reset@parsemodule@catcodes%
+        \def\parsemodule@do@next{\begin{#1}}%
+    \else%
+        \def\parsemodule@do@next{#1}%
+    \fi%
+    \parsemodule@do@next%
+}
+\expandafter\expandafter\expandafter\def%
+\expandafter\expandafter\expandafter\parsemodule@escapechar@checkendenv%
+\expandafter\@open@brace\expandafter#\expandafter1\@close@brace{%
+    \expandafter\ifx\csname parsemodule@allowedenv@#1\endcsname\parsemodule@escapechar@allowed%
+        %\reset@parsemodule@catcodes%
+        \def\parsemodule@do@next{\end{#1}}%
+    \else%
+      \def\parsemodule@do@next{#1}%
+    \fi%
+    \parsemodule@do@next%
+}
+%    \end{macrocode}
+% \end{macro}
+% 
+% \begin{macro}{\@requiremodules}
+%   the internal version of |\requiremodules| for use in the |*.aux| file. We disable it
+%   at the end of the document, so that when the |aux| file is read again, nothing is
+%   loaded.
+%    \begin{macrocode}
+\newrobustcmd\@requiremodules[1]{%
+  \if@tempswa\requiremodules{#1}\fi%
+}%
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\requiremodules}
+%   This macro loads the module signatures in a file using the |\requiremodules@smsmode|
+%   above. We set the flag |\mod@showfalse| in the local group, so that the macros know
+%   now to pollute the  result.
+%    \begin{macrocode}
+  \newrobustcmd\requiremodules[1]{%
+    \mod@showfalse%
+    \edef\mod@path{#1}%
+    \edef\mod@path{\expandafter\detokenize\expandafter{\mod@path}}%
+    \requiremodules@smsmode{#1}%
+  }%
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\requiremodules@smsmode}
+%   this reads \sTeX modules by setting the category codes for |sms| mode,
+%   |\input|ting the required file and wrapping it in a |\vbox| that gets stored away
+%   and ignored, in order to not produce any output. It also sets |\hbadness|, |\hfuzz|
+%   and friends to values that suppress overfull and underfull hbox messages.
+%    \begin{macrocode}
+  \newbox\modules@import@tempbox
+  \def\requiremodules@smsmode#1{%
+    \setbox\modules@import@tempbox\vbox{%
+      \@smsmodetrue%
+      \set@parsemodule@catcodes%
+      \hbadness=100000\relax%
+      \hfuzz=10000pt\relax%
+      \vbadness=100000\relax%
+      \vfuzz=10000pt\relax%
+      \stexinput{#1.tex}%
+      \reset@parsemodule@catcodes%
+      }%
+      \parsemodule@maybesetcodes%
+  }
+%    \end{macrocode}
+% \immediate\openout\testfile=FOO/testmodule.tex
+% \immediate\write\testfile{\detokenize{\begin{module}[name=testmodule]}}
+% \immediate\write\testfile{  foo bar boo far}
+% \immediate\write\testfile{\detokenize{\end{module}}}
+% \immediate\closeout\testfile
+% \test{\parsemanifest{test@}{./FOO}
+% parsing |FOO/testmodule.tex|\\
+% \requiremodules@smsmode{FOO/testmodule}
+% \meaning\Moduletestmodule
+% }
+% \end{macro}
+%
+% \subsection{Symbols and Notations}
+%
+% \begin{macro}{\if@symdeflocal}
+% A flag whether a symbol declaration is local (i.e. does not get exported)
+% or not.
+%    \begin{macrocode}
+\newif\if@symdeflocal\@symdeflocalfalse
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\define@in@module}
+% calls |\edef\#1{#2}| and adds the macro definition to |\this@module|
+%    \begin{macrocode}
+\def\define@in@module#1#2{
+  \expandafter\edef\csname #1\endcsname{#2}%
+  \edef\define@in@module@temp{%
+    \def\expandafter\noexpand\csname#1\endcsname%
+    {#2}%
+  }%
+  \if@symdeflocal\else%
+    \expandafter\g@addto@macro@safe\csname module@defs@\module@uri%
+    \expandafter\endcsname\expandafter{\define@in@module@temp}%
+  \fi%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+%\begin{macro}{\symdecl}
+% |\symdecl[name=foo]{bar}| Declares a new symbol in the current module with URI 
+% \meta{module-uri}|?foo| and defines new macros
+% |\|\meta{uri} and |\bar|. If no optional name is given, |bar| is used as a name.
+%
+%    \begin{macrocode}
+\addmetakey{symdecl}{name}%
+
+\newcommand\symdecl[2][]{%
+  \ifcsdef{this@module}{%
+    \metasetkeys{symdecl}{#1}%
+    \ifcsvoid{symdecl@name}{\edef\symdecl@name{#2}}{}%
+    \edef\symdef@uri{\module@uri\@QuestionMark\symdecl@name}%
+    \ifcsvoid{\symdef@uri}{
+      \ifcsvoid{module@names@\module@uri}{%
+        \csxdef{module@names@\module@uri}{\symdecl@name}%
+      }{%
+        \csxdef{module@names@\module@uri}{\symdecl@name,%
+          \csname module@names@\module@uri\endcsname}%
+      }%
+      \define@in@module\symdef@uri{\noexpand\@invoke@symbol{\symdef@uri}}%
+      \define@in@module{#2}{\noexpand\@invoke@symbol{\symdef@uri}}%
+    }{%
+    % not compatible with circular dependencies, e.g. test/omdoc/07-modules/smstesta.tex
+      \PackageWarning{stex}{symbol already defined: \symdef@uri}{%
+        You need to pick a fresh name for your symbol%
+      }%
+      \define@in@module\symdef@uri{\noexpand\@invoke@symbol{\symdef@uri}}%
+      \define@in@module{#2}{\noexpand\@invoke@symbol{\symdef@uri}}%
+    }%
+  }{%
+    \PackageError{stex}{\detokenize{\symdecl} not in a module}{You need to be in a module%
+    in order to declare a new symbol}
+  }%
+  \if@insymdef@\else\parsemodule@maybesetcodes\fi%
+}
+%    \end{macrocode}
+% \test{
+%  \begin{module}[name=foo]
+%    \detokenize{\symdecl{bar}} \symdecl{bar}\\
+%    Yields: \meaning\bar
+%  \end{module}
+%}
+% \end{macro}
+%
+% \subsubsection{Notations}
+%
+% \begin{macro}{\modules@getURIfromName}
+% This macro searches for the full URI given a symbol name
+% and stores it in |\notation@uri|. Used by e.g. |\notation[...]{foo}{...}| to
+% figure out what symbol |foo| refers to:
+%    \begin{macrocode}
+\def\modules@getURIfromName#1{%
+  % TODO check whether #1 is a URI
+  \def\notation@uri{}%
+  \def\modules@getURI@name{#1}%
+  \ifcsvoid{this@module}{}{%
+    \expandafter\modules@getURIfromModule\expandafter{\module@uri}%
+    \ifx\notation@uri\@empty%
+      \edef\modules@getURI@modules{\csname module@imports@\module@uri\endcsname}%
+      \expandafter\@for\expandafter\@I\expandafter:\expandafter=\modules@getURI@modules\do{%
+        \ifx\notation@uri\@empty%
+          \expandafter\modules@getURIfromModule\expandafter{\@I}%
+        \fi%
+      }%
+    \fi%
+    \ifx\notation@uri\@empty%
+      \def\notation@extract@uri@currcs{}%
+      \notation@extracturifrommacro{#1}%
+    \fi%
+    \ifx\notation@uri\@empty%
+      \PackageError{modules}{No symbol with name, URI or macroname \detokenize{#1} found!}{}%
+    \fi%
+  }%
+}
+
+\def\modules@getURIfromModule#1{%
+  \edef\modules@getURI@names{\csname module@names@#1\endcsname}%
+  \expandafter\@for\expandafter\@I\expandafter:\expandafter=%
+  \modules@getURI@names\do{%
+    \ifx\notation@uri\@empty%
+      \ifx\@I\modules@getURI@name%
+        \edef\notation@uri{#1\@QuestionMark\@I}%
+      \fi%
+    \fi%
+  }%
+}
+
+% extracts the full URI from \foo or anything being \ifx-equal to \foo,
+% by expanding until we reach \@invoke@symbol{<uri>}
+\def\notation@extracturifrommacro#1{%
+  \ifcsvoid{#1}{}{%
+    \expandafter\let\expandafter\notation@extract@uri@nextcs\csname#1\endcsname%
+    \ifx\notation@extract@uri@nextcs\notation@extract@uri@currcs\else%
+      \let\notation@extract@uri@currcs\notation@extract@uri@nextcs%
+      \expandafter\notation@extract@uriII\notation@extract@uri@nextcs\notation@end%
+    \fi%
+  }%
+}
+\long\def\notation@extract@uriII#1#2\notation@end{%
+  \def\notation@extract@check@temp{#2}
+  \ifx\@invoke@symbol#1%
+    \edef\notation@uri{#2}%
+  \else%
+    \ifx\notation@extract@check@temp\@empty\else%
+      \expandafter\def\expandafter\notation@extract@uri@nextcs\expandafter{#1{#2}}%
+      \notation@extract@uri{notation@extract@uri@nextcs}%
+    \fi%
+  \fi%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\notation}
+%
+% Adds a new notation to a symbol |foo|, as in:
+% |\notation[lang=en,arity=0,variant=op]{foo}{...}|
+% |\notation[variant=bar]{foo}[2]{...}|
+% |\notation[args=aia,prec=500;50x49x51]{foo}{#1 bla #2 bla #3}{arg1}{arg3}|
+%
+% TODO with brackets, e.g.
+% |\notation[withbrackets={\langle,\rangle}]{foo}{...}|
+%
+%    \begin{macrocode}
+% parses the first two arguments:
+\providerobustcmd\notation[2][]{%
+  \edef\notation@first{#1}%
+  \edef\notation@second{#2}%
+  \notation@%
+}
+
+% parses the last two arguments
+\newcommand\notation@[2][0]{%
+  \edef\notation@donext{\noexpand\notation@@[\notation@first]%
+    {\notation@second}[#1]}%
+  \notation@donext{#2}%
+}
+
+% parses the notation arguments and wraps them in 
+% \notation@assoc and \notation@argprec for flexary arguments and precedences
+\def\notation@@[#1]#2[#3]#4{%
+  \modules@getURIfromName{#2}%
+  \notation@parse@params{#1}{#3}
+  \let\notation@curr@todo@args\notation@curr@args%
+  \def\notation@temp@notation{}%
+  \StrLen\notation@curr@args[\notation@temp@arity]%
+  \expandafter\renewcommand\expandafter\notation@temp@notation%
+    \expandafter[\notation@temp@arity]{#4}%
+  % precedence
+  \IfSubStr\notation@curr@precs;{%
+    \StrCut\notation@curr@precs;\notation@curr@prec\notation@curr@precs%
+    \ifx\notation@curr@prec\@empty\def\notation@curr@prec{0}\fi%
+  }{%
+    \ifx\notation@curr@precs\@empty%
+      \ifnum\notation@temp@arity=0\relax%
+        \edef\notation@curr@prec{\infprec}%
+      \else%
+        \def\notation@curr@prec{0}%
+      \fi%
+    \else%
+      \edef\notation@curr@prec{\notation@curr@precs}%
+      \def\notation@curr@precs{}%
+    \fi%
+  }%
+  % arguments
+  \def\notation@curr@extargs{}
+  \def\notation@nextarg@index{1}%
+  \notation@do@args%
+}
+
+% parses additional notation components for (associative) arguments
+\def\notation@do@args{%
+  \def\notation@nextarg@temp{}%
+  \ifx\notation@curr@todo@args\@empty%
+    \notation@after%
+  \else%
+    % argument precedence
+    \IfSubStr\notation@curr@precs{x}{%
+      \StrCut\notation@curr@precs{x}\notation@curr@argprec\notation@curr@precs%
+    }{%
+      \edef\notation@curr@argprec{\notation@curr@precs}%
+      \def\notation@curr@precs{}%
+    }%
+    \ifx\notation@curr@argprec\@empty%
+      \let\notation@curr@argprec\notation@curr@prec%
+    \fi%
+    \StrChar\notation@curr@todo@args1[\notation@argchar]%
+    \StrGobbleLeft\notation@curr@todo@args1[\notation@curr@todo@args]%
+    \expandafter\ifx\notation@argchar i%
+      % normal argument
+      \edef\notation@nextarg@temp{{\noexpand\notation@argprec{\notation@curr@argprec}{########\notation@nextarg@index}}}%
+      \edef\notation@nextarg@index{\the\numexpr\notation@nextarg@index+1 }
+      \expandafter\g@addto@macro@safe\expandafter\notation@curr@extargs%
+        \expandafter{\notation@nextarg@temp}%
+      \expandafter\expandafter\expandafter\notation@do@args%
+    \else%
+      % associative argument
+      \expandafter\expandafter\expandafter\notation@parse@assocarg%
+    \fi%
+  \fi%
+}
+
+\def\notation@parse@assocarg#1{%
+  \edef\notation@nextarg@temp{{\noexpand\notation@argprec{\notation@curr@argprec}{\noexpand\notation@assoc{\unexpanded{#1}}{########1}}}}%{{\noexpand\assoc[p=\notation@curr@argprec]{\unexpanded{#1}}{########1}}}%
+  \edef\notation@nextarg@index{\the\numexpr\notation@nextarg@index+1 }%
+  \expandafter\g@addto@macro@safe\expandafter\notation@curr@extargs%
+  \expandafter{\notation@nextarg@temp}%
+  \notation@do@args%
+}
+
+\protected\def\safe@newcommand#1{%
+  \ifdefined#1\expandafter\renewcommand\else\expandafter\newcommand\fi#1%
+}
+
+% finally creates the actual macros
+\def\notation@after{
+  \let\ex\expandafter%
+  \ex\ex\ex\def\ex\ex\ex\notation@temp@notation\ex\ex\ex%
+    {\ex\notation@temp@notation\notation@curr@extargs}%
+  \edef\notation@temp@notation{\noexpand\notation@symprec{\notation@curr@prec}{\ex\unexpanded\ex{\notation@temp@notation}}}%
+  \def\notation@temp@fragment{}%
+  \ifx\notation@curr@arity\@empty\else%
+    \edef\notation@temp@fragment{arity=\notation@curr@arity}
+  \fi%
+  \ifx\notation@curr@lang\@empty\else%
+    \ifx\notation@temp@fragment\@empty%
+      \edef\notation@temp@fragment{lang=\notation@curr@lang}%
+    \else%
+      \edef\notation@temp@fragment{\notation@temp@fragment\@Ampersand lang=\notation@curr@lang}%
+    \fi%
+  \fi%
+  \ifx\notation@curr@variant\@empty\else%
+    \ifx\notation@temp@fragment\@empty%
+      \edef\notation@temp@fragment{variant=\notation@curr@variant}%
+    \else%
+      \edef\notation@temp@fragment{\notation@temp@fragment\@Ampersand variant=\notation@curr@variant}%
+    \fi%
+  \fi%
+  \edef\notation@csname{\notation@uri\@Fragment\notation@temp@fragment}%
+  \ifcsvoid{\notation@csname}{%
+    \ex\ex\ex\ex\ex\ex\ex\newcommand\ex\ex\ex\csname\ex\ex\ex\notation@csname%
+      \ex\ex\ex\endcsname\ex\ex\ex[\ex\notation@temp@arity\ex]%
+      \ex{\notation@temp@notation}%
+    \edef\symdecl@temps{%
+      \noexpand\safe@newcommand\ex\noexpand\csname\notation@csname\endcsname[\notation@temp@arity]%
+    }%
+    \ex\g@addto@macro@safe\csname module@defs@\module@uri\ex\endcsname\ex{\symdecl@temps}%
+    \ex\g@addto@macro@safe\csname module@defs@\module@uri\ex\endcsname\ex{\ex{\notation@temp@notation}}%
+  }{%
+    \PackageWarning{modules}{notation already defined: \notation@csname}{%
+      Choose a different set of notation options (variant,lang,arity)%
+    }%
+  }%
+  \parsemodule@maybesetcodes%
+}
+
+% parses optional parameters
+\def\notation@parse@params#1#2{%
+  \def\notation@curr@precs{}%
+  \def\notation@curr@args{}%
+  \def\notation@curr@variant{}%
+  \def\notation@curr@arity{}%
+  \def\notation@curr@provided@arity{#2}
+  \def\notation@curr@lang{}%
+  \def\notation@options@temp{#1}
+  \notation@parse@params@%
+  \ifx\notation@curr@args\@empty%
+    \ifx\notation@curr@provided@arity\@empty%
+      \notation@num@to@ia\notation@curr@arity%
+    \else%
+      \notation@num@to@ia\notation@curr@provided@arity%
+    \fi%
+  \fi%
+}
+\def\notation@parse@params@{%
+  \IfSubStr\notation@options@temp,{%
+    \StrCut\notation@options@temp,\notation@option@temp\notation@options@temp%
+    \notation@parse@param%
+    \notation@parse@params@%
+  }{\ifx\notation@options@temp\@empty\else%
+    \let\notation@option@temp\notation@options@temp%
+    \notation@parse@param%
+  \fi}%
+}
+
+%parses an individual optional argument/key-value-pair
+\def\notation@parse@param{%
+  \trimstring\notation@option@temp%
+  \ifx\notation@option@temp\@empty\else%
+    \IfSubStr\notation@option@temp={%
+      \StrCut\notation@option@temp=\notation@key\notation@value%
+      \trimstring\notation@key%
+      \trimstring\notation@value%
+      \IfStrEq\notation@key{prec}{%
+        \edef\notation@curr@precs{\notation@value}%
+      }{%
+      \IfStrEq\notation@key{args}{%
+        \edef\notation@curr@args{\notation@value}%
+      }{%
+      \IfStrEq\notation@key{lang}{%
+        \edef\notation@curr@lang{\notation@value}%
+      }{%
+      \IfStrEq\notation@key{variant}{%
+        \edef\notation@curr@variant{\notation@value}%
+      }{%
+      \IfStrEq\notation@key{arity}{%
+        \edef\notation@curr@arity{\notation@value}%
+      }{%
+      }}}}}%
+    }{%
+        \edef\notation@curr@variant{\notation@option@temp}%
+    }%
+  \fi%  
+}
+
+% converts an integer to a string of 'i's, e.g. 3 => iii,
+% and stores the result in \notation@curr@args
+\def\notation@num@to@ia#1{%
+  \IfInteger{#1}{
+    \notation@num@to@ia@#1%
+  }{%
+    %
+  }%
+}
+\def\notation@num@to@ia@#1{%
+  \ifnum#1>0%
+    \edef\notation@curr@args{\notation@curr@args i}%
+    \expandafter\notation@num@to@ia@\expandafter{\the\numexpr#1-1\@Space}%
+  \fi%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% 
+% The following macros take care of precedences, parentheses/bracketing,
+% associative (flexary) arguments etc. in presentation:
+%    \begin{macrocode}
+\def\notation@assoc#1#2{% function, argv
+  \let\@tmpop=\relax% do not print the function the first time round
+  \@for\@I:=#2\do{\@tmpop% print the function
+    % write the i-th argument with locally updated precedence
+    \@I%
+    \def\@tmpop{#1}%
+  }%
+}%
+
+\def\notation@lparen{(}
+\def\notation@rparen{)}
+\def\infprec{1000000}
+\def\neginfprec{-\infprec}
+
+\newcount\notation@downprec
+\notation@downprec=\neginfprec
+
+% patching displaymode
+\newif\if@displaymode\@displaymodefalse
+\expandafter\everydisplay\expandafter{\the\everydisplay\@displaymodetrue}
+\let\old@displaystyle\displaystyle
+\def\displaystyle{\old@displaystyle\@displaymodetrue}
+
+\def\dobrackets#1{% avoiding groups at all costs to ensure \parray still works!
+  \def\notation@innertmp{#1}%
+  \let\ex\expandafter%
+  \if@displaymode%
+    \ex\ex\ex\left\ex\ex\ex\notation@lparen%
+    \ex\notation@resetbrackets\ex\notation@innertmp%
+    \ex\right\notation@rparen%
+  \else%
+    \ex\ex\ex\notation@lparen%
+    \ex\notation@resetbrackets\ex\notation@innertmp%
+    \notation@rparen%
+  \fi%
+}
+
+\def\withbrackets#1#2#3{%
+  \edef\notation@lparen{#1}%
+  \edef\notation@rparen{#2}%
+  #3%
+  \notation@resetbrackets%
+}
+
+\def\notation@resetbrackets{%
+  \def\notation@lparen{(}%
+  \def\notation@rparen{)}%
+}
+
+\def\notation@symprec#1#2{%
+  \ifnum#1>\notation@downprec\relax%
+    \notation@resetbrackets#2%
+  \else%
+    \ifnum\notation@downprec=\infprec\relax%
+      \notation@resetbrackets#2%
+    \else
+      \if@inparray@
+        \notation@resetbrackets#2
+      \else\dobrackets{#2}\fi%
+  \fi\fi%
+}
+
+\newif\if@inparray@\@inparray@false
+
+\def\notation@argprec#1#2{%
+  \def\notation@innertmp{#2}
+  \edef\notation@downprec@temp{\number#1}%
+  \notation@downprec=\expandafter\notation@downprec@temp%
+  \expandafter\relax\expandafter\notation@innertmp%
+  \expandafter\notation@downprec\expandafter=\number\notation@downprec\relax%
+}
+%    \end{macrocode}
+%
+% \begin{macro}{\@invoke@symbol}
+% after |\symdecl{foo}|, |\foo| expands to |\@invoke@symbol{<uri>}|:
+%    \begin{macrocode}
+\protected\def\@invoke@symbol#1{%
+  \def\@invoke@symbol@first{#1}%
+  \symbol@args% 
+}
+%    \end{macrocode}
+%
+% takes care of the optional notation-option-argument, and either invokes |\@invoke@symbol@math| for
+% symbolic presentation or |\@invoke@symbol@text| for verbalization (TODO)
+%    \begin{macrocode}
+\newcommand\symbol@args[1][]{%
+  \ifmmode\def\invoke@symbol@next{\@invoke@symbol@math\@invoke@symbol@first{#1}}%
+  \else\def\invoke@symbol@next{\@invoke@symbol@text\@invoke@symbol@first{#1}}\fi%
+  \invoke@symbol@next%
+}
+%    \end{macrocode}
+%
+% This finally gets called with both uri and notation-option,
+% convenient for e.g. a LaTeXML binding:
+%    \begin{macrocode}
+\def\@invoke@symbol@math#1#2{%
+  % #1: URI
+  % #2: options
+  % TODO \setnotation variants
+  \notation@parse@params{#2}{}%
+  \def\notation@temp@fragment{}%
+  \ifx\notation@curr@arity\@empty\else%
+    \edef\notation@temp@fragment{arity=\notation@curr@arity}%
+  \fi%
+  \ifx\notation@curr@lang\@empty\else%
+    \ifx\notation@temp@fragment\@empty%
+      \edef\notation@temp@fragment{lang=\notation@curr@lang}%
+    \else%
+      \edef\notation@temp@fragment{\notation@temp@fragment\@Ampersand lang=\notation@curr@lang}%
+    \fi%
+  \fi%
+  \ifx\notation@curr@variant\@empty\else%
+    \ifx\notation@temp@fragment\@empty%
+      \edef\notation@temp@fragment{variant=\notation@curr@variant}%
+    \else%
+      \edef\notation@temp@fragment{\notation@temp@fragment\@Ampersand variant=\notation@curr@variant}%
+    \fi%
+  \fi%
+  \csname #1\@Fragment\notation@temp@fragment\endcsname%
+}
+%    \end{macrocode}
+%
+% TODO:
+%    \begin{macrocode}
+\def\@invoke@symbol@text#1#2{%
+    % TODO
+}
+%    \end{macrocode}
+%
+% \end{macro}
+%
+% TODO: To set notational options (globally or locally) generically:
+%
+%    \begin{macrocode}
+\def\setstexlang#1{%
+  \def\stex@lang{#1}%
+}%
+\setstexlang{en}
+\def\setstexvariant#1#2{%
+  % TODO
+}
+\def\setstexvariants#1{%
+  \def\stex@variants{#1}%
+}
+%    \end{macrocode}
+%
+% \test{
+%\def\present#1{\texttt{>>\meaning#1<<}}
+%\def\mathhub@archive@ns{http\@Colon\@Slash\@Slash mathhub.info\@Slash test}
+%\def\mathhub@archive@id{Others\@Slash stextests}
+%\def\mathhub@archive@dir{\@Slash home\@Slash jazzpirate\@Slash work\@Slash LaTeX\@Slash Others\@Slash stextests}
+%\@setcurrentreposinfo
+%\begin{module}[name=FooBar]
+%    \detokenize{\symdecl{barbar}} \symdecl{barbar}\\
+%    \detokenize{\notation[arity=0]{barbar}{\psi}} \notation[arity=0]{barbar}{\psi}\\
+%    \detokenize{\notation[prec=50;\infprec]{barbar}[1]{\barbar[arity=0]\dobrackets{#1}}}
+%    \notation[prec=50;\infprec]{barbar}[1]{\barbar[arity=0]\dobrackets{#1}}\\
+%    \detokenize{\notation[arity=0,variant=cap]{barbar}{\Psi}}
+%    \notation[arity=0,variant=cap]{barbar}{\Psi}\\
+%    \detokenize{\notation[variant=cap]{barbar}[1]{\barbar[arity=0,variant=cap]\dobrackets{#1}}}
+%    \notation[variant=cap]{barbar}[1]{\barbar[arity=0,variant=cap]\dobrackets{#1}}\\\ \\
+%    \detokenize{$\barbar{A}$}: $\barbar{A}$\\
+%    \detokenize{$\barbar[variant=cap]{A}$}: $\barbar[variant=cap]{A}$\\\ \\
+%    \detokenize{\symdecl{plus}}\symdecl{plus}\\
+%    \detokenize{\symdecl{times}}\symdecl{times}\\
+%    \detokenize{\symdecl{vara}}\symdecl{vara}\\
+%    \detokenize{\symdecl{varb}}\symdecl{varb}\\
+%    \detokenize{\symdecl{varc}}\symdecl{varc}\\
+%    \detokenize{\symdecl{vard}}\symdecl{vard}\\
+%    \detokenize{\symdecl{vare}}\symdecl{vare}\\
+%    \detokenize{\notation{vara}{a}}\notation{vara}{a}\\
+%    \detokenize{\notation{varb}{b}}\notation{varb}{b}\\
+%    \detokenize{\notation{varc}{c}}\notation{varc}{c}\\
+%    \detokenize{\notation{vard}{d}}\notation{vard}{d}\\
+%    \detokenize{\notation{vare}{e}}\notation{vare}{e}\\
+%    \detokenize{\notation[prec=500;500,args=a]{plus}{\withbrackets\langle\rangle{#1}}{+}}
+%    \notation[prec=500;500,args=a]{plus}{\withbrackets\langle\rangle{#1}}{+}\\
+%    \detokenize{\notation[prec=600;600,args=a]{times}{#1}{\cdot}}
+%    \notation[prec=600;600,args=a]{times}{#1}{\cdot}\\\ \\
+%    \detokenize{
+%      $\times{\frac\vara\varb,\plus{\frac\vara{\frac\vara\varb},\times{\varc,\plus{\vard,\vare}}}}$}:\\
+%    $\times{\frac\vara\varb,\plus{\frac\vara{\frac\vara\varb},\times{\varc,\plus{\vard,\vare}}}}$\\\ \\
+%    \detokenize{
+%      \[\times{\frac\vara\varb,\plus{\frac\vara{\frac\vara\varb},\times{\varc,\plus{\vard,\vare}}}}\]}:\\
+%    \[\times{\frac\vara\varb,\plus{\frac\vara{\frac\vara\varb},\times{\varc,\plus{\vard,\vare}}}}\]
+%  \end{module}
+%}
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+% \subsection{sref}
+%
+% \begin{macro}{\@sref@def}
+%   This macro stores the value of its last argument in a custom macro for reference.
+%    \begin{macrocode}
+\newcommand\@sref@def[3]{\csgdef{sref@#1@#2}{#3}}
+%    \end{macrocode}
+% \end{macro}
+%
+% The next step is to set up a file to which the references are written, this is normally
+% the |.aux| file, but if the |extref| option is set, we have to use an |.ref| file. 
+%    \begin{macrocode}
+\ifextrefs%
+  \newwrite\refs@file%
+\else%
+  \def\refs@file{\@auxout}%
+\fi%
+%    \end{macrocode}
+%
+% \begin{macro}{\sref@def}
+%    This macro writes an |\@sref@def| command to the current aux file and also executes it. 
+%    \begin{macrocode}
+\newcommand\sref@def[3]{%
+  \protected@write\refs@file{}{\string\@sref@def{#1}{#2}{#3}}%
+}%
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\sref@label}
+%   The |\sref@label| macro writes a label definition to the auxfile. 
+%    \begin{macrocode}
+\newcommand\sref@label[2]{%
+  \sref@def{\ifcsundef{sref@part}{}{\sref@part @}#2}{page}{\thepage}%
+  \sref@def{\ifcsundef{sref@part}{}{\sref@part @}#2}{label}{#1}%
+}%
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\sreflabel}
+%   The |\sreflabel| macro is a semantic version of |\label|, it combines the categorization
+%   given in the first argument with {\LaTeX}'s |\@currentlabel|.
+%    \begin{macrocode}
+\newcommand\sreflabel[2]{\sref@label{#1 \@currentlabel}{#2}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\sref@label@id}
+%   The |\sref@label@id| writes a label definition for the current |\sref@id| if it is
+%   defined.
+%    \begin{macrocode}
+\def\sref@id{} % make sure that defined
+\newcommand\sref@label@id[1]{%
+  \ifx\sref@id\@empty%
+    \relax%
+  \else%
+    \sref@label{#1}{\sref@id}%
+  \fi%
+}%
+%    \end{macrocode}
+% \end{macro}
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+% \section{Things to deprecate}
+%
+% Module options:
+%    \begin{macrocode}
+\addmetakey*{module}{id} % TODO: deprecate properly
+\addmetakey*{module}{load}
+\addmetakey*{module}{path}
+\addmetakey*{module}{dir}
+\addmetakey*{module}{align}[WithTheModuleOfTheSameName]
+\addmetakey*{module}{noalign}[true]
+
+\newif\if@insymdef@\@insymdef@false
+%    \end{macrocode}
+% \begin{macro}{symdef:keys}
+%   The optional argument local specifies the scope of the function to be defined. If
+%   local is not present as an optional argument then |\symdef| assumes the scope of the
+%   function is global and it will include it in the pool of macros of the current
+%   module. Otherwise, if local is present then the function will be defined only locally
+%   and it will not be added to the current module (i.e. we cannot inherit a local
+%   function).  Note, the optional key local does not need a value: we write
+%   |\symdef[local]{somefunction}[0]{some expansion}|. The other keys are not used in the
+%   {\LaTeX} part. 
+%    \begin{macrocode}
+%\srefaddidkey{symdef}% what does this do?
+\define@key{symdef}{local}[true]{\@symdeflocaltrue}%
+\define@key{symdef}{noverb}[all]{}%
+\define@key{symdef}{align}[WithTheSymbolOfTheSameName]{}%
+\define@key{symdef}{specializes}{}%
+\addmetakey*{symdef}{noalign}[true]
+\define@key{symdef}{primary}[true]{}%
+\define@key{symdef}{assocarg}{}%
+\define@key{symdef}{bvars}{}%
+\define@key{symdef}{bargs}{}%
+\addmetakey{symdef}{lang}%
+\addmetakey{symdef}{prec}%
+\addmetakey{symdef}{arity}%
+\addmetakey{symdef}{variant}%
+\addmetakey{symdef}{ns}%
+\addmetakey{symdef}{args}%
+\addmetakey{symdef}{name}%
+\addmetakey*{symdef}{title}%
+\addmetakey*{symdef}{description}%
+\addmetakey{symdef}{subject}%
+\addmetakey*{symdef}{display}%
+%    \end{macrocode}
+% \end{macro}
+%
+% \ednote{MK@MK: we need to document the binder keys above.}
+% \begin{macro}{\symdef}
+%    The the |\symdef|, and |\@symdef| macros just handle optional arguments.
+%    \begin{macrocode}
+\def\symdef{\@ifnextchar[{\@symdef}{\@symdef[]}}%
+\def\@symdef[#1]#2{\@ifnextchar[{\@@symdef[#1]{#2}}{\@@symdef[#1]{#2}[0]}}%
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\@@symdef}
+%    now comes the real meat: the |\@@symdef| macro does two things, it adds the macro
+%    definition to the macro definition pool of the current module and also provides it.
+%    \begin{macrocode}
+\def\@@symdef[#1]#2[#3]{%
+  \@insymdef@true%
+  \metasetkeys{symdef}{#1}%
+  \edef\symdef@tmp@optpars{\ifcsvoid{symdef@name}{[]}{[name=\symdef@name]}}%
+  \expandafter\symdecl\symdef@tmp@optpars{#2}%
+  \@insymdef@false%
+  \notation[#1]{#2}[#3]%
+}% mod@show
+\def\symdef@type{Symbol}%
+\providecommand{\stDMemph}[1]{\textbf{#1}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\symvariant}
+%   |\symvariant{|\meta{sym}|}[|\meta{args}|]{|\meta{var}|}{|\meta{cseq}|}| just extends
+%   the internal macro |\modules@|\meta{sym}|@pres@| defined by
+%   |\symdef{|\meta{sym}|}[|\meta{args}|]{|\ldots|}| with a variant
+%   |\modules@|\meta{sym}|@pres@|\meta{var} which expands to \meta{cseq}. Recall that this
+%   is called by the macro |\|\meta{sym}|[|\meta{var}|]| induced by the
+%   |\symdef|.
+%    \begin{macrocode}
+\def\symvariant#1{%
+  \@ifnextchar[{\@symvariant{#1}}{\@symvariant{#1}[0]}%
+  }%
+\def\@symvariant#1[#2]#3#4{%
+  \notation[#3]{#1}[#2]{#4}%
+\ignorespacesandpars}%
+%    \end{macrocode}
+% \end{macro}
+%
+% \endinput
