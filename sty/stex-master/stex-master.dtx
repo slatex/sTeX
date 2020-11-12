@@ -500,14 +500,20 @@
 % Inputs a file by (if necessary) converting its path to a windows path
 % first, and adding the file path to the input stack above:
 %    \begin{macrocode}
-\def\stexinput#1{
-    \edef\temp@path{#1}
-    \if@iswindows@\path@to@windows\temp@path\fi%
-    \stex@currfile@push\temp@path%
-    \IfFileExists\stex@currfile{\input{\stex@currfile}}{%
-        \PackageError{stex-currfile}{File does not exist (#1): \stex@currfile}{}%
+\def\stexinput#1{%
+    \stexiffileexists{#1}{%
+      \stex@currfile@push\stex@temp@path%
+      \input{\stex@currfile}%
+      \stex@currfile@pop%
     }%
-    \stex@currfile@pop%
+    {%
+        \PackageError{stex}{File does not exist (#1): \stex@temp@path}{}%
+    }%
+}
+\def\stexiffileexists#1#2#3{%
+  \edef\stex@temp@path{#1}%
+  \if@iswindows@\path@to@windows\stex@temp@path\fi%
+  \IfFileExists\stex@temp@path{#2}{#3}%
 }
 \stex@currfile@pop
 %    \end{macrocode}
@@ -661,7 +667,15 @@
 % the values in |\currentrepos@|\meta{key}|@|\meta{id} for later retrieval.
 %    \begin{macrocode}
 \def\setcurrentreposinfo#1{%
-  \ifcsdef{mathhub@dir@#1}{%
+  \edef\mh@currentrepos{#1}%
+  \ifx\mh@currentrepos\@empty%
+    \edef\currentrepos@dir{\@Dot}%
+    \def\currentrepos@narr{}%
+    \def\currentrepos@ns{}%
+    \def\currentrepos@id{}%
+    \def\currentrepos@deps{}%
+  \else%
+  \ifcsdef{mathhub@dir@\mh@currentrepos}{%
     \@inmhrepostrue
     \edef\mh@currentrepos{#1}%
     \expandafter\let\expandafter\currentrepos@dir\csname mathhub@dir@#1\endcsname%
@@ -676,6 +690,7 @@
       and contains a MANIFEST.MF, either directly in #1 or in a meta-inf %
       subfolder.}}{\@inmhrepostrue}%
   }%
+  \fi%
 }
 
 \def\@setcurrentreposinfo{%
@@ -685,7 +700,7 @@
     \csxdef{mathhub@narr@\currentrepos@id}{\currentrepos@narr}%
     \csxdef{mathhub@ns@\currentrepos@id}{\currentrepos@ns}%
     \csxdef{mathhub@deps@\currentrepos@id}{\currentrepos@deps}%
-  }
+  }%
 }
 %    \end{macrocode}
 %\end{macro}
@@ -1277,6 +1292,194 @@
 % }
 % \end{macro}
 %
+% \subsubsection{importmodule}
+%
+% \begin{macro}{\importmodule}
+%    \begin{macrocode}
+\newif\if@importmodule@switchrepos\@importmodule@switchreposfalse
+%\srefaddidkey{importmodule}
+\addmetakey{importmodule}{mhrepos}
+\newcommand\importmodule[2][]{%
+  \@importmodule@switchreposfalse%
+  \metasetkeys{importmodule}{#1}%
+  \parsemodule@maybesetcodes%
+  \ifcsvoid{importmodule@mhrepos}{%
+    \ifcsvoid{currentrepos@dir}{%
+      \let\importmodule@dir\stex@maindir%
+    }{%
+      \edef\importmodule@dir{\currentrepos@dir\@Slash source}%
+    }%
+  }{%
+    \@importmodule@switchrepostrue%
+    \expandafter\let\csname importmodule@oldrepos@#2\endcsname\mh@currentrepos%
+    \setcurrentreposinfo\importmodule@mhrepos%
+    \edef\importmodule@dir{\currentrepos@dir\@Slash source}%
+  }%
+  \StrCut{#2}\@QuestionMark\importmodule@subdir\importmodule@modulename%
+  \ifx\importmodule@modulename\@empty%
+    \let\importmodule@modulename\importmodule@subdir%
+    \let\importmodule@subdir\@empty%
+  \else%
+    \ifx\importmodule@subdir\@empty\else%
+      \edef\importmodule@dir{\importmodule@dir\@Slash\importmodule@subdir}%
+    \fi%
+  \fi%
+  \@importmodule[\importmodule@dir]\importmodule@modulename{export}%
+  \if@importmodule@switchrepos%
+    \expandafter\setcurrentreposinfo\csname importmodule@oldrepos@#2\endcsname%
+  \fi%
+  \ignorespacesandpars%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\@importmodule} 
+%   |\@importmodule[|\meta{filepath}|]{|\meta{mod}|}{|\meta{export?}|}|
+%   loads \meta{filepath}|.tex| and activates the module \meta{mod}. If \meta{export?} is
+%   |export|, then it also re-exports the |\symdef|s from \meta{mod}.
+%
+%   First |\@load| will store the base file name with full path, then check if
+%   |\module@|\meta{mod}|@path| is defined. If this macro is defined, a module of this
+%   name has already been loaded, so we check whether the paths coincide, if they do, all
+%   is fine and we do nothing otherwise we give a suitable error. If this macro is
+%   undefined we load the path by |\requiremodules|.
+%    \begin{macrocode}
+\newcommand\@importmodule[3][]{%
+{%
+  \edef\@load{#1}%
+  \edef\@importmodule@name{#2}
+  \if@smsmode\else\ifcsvoid{Module\@importmodule@name}{%
+    \stexiffileexists\@load{\requiremodules\@load}{%
+      \requiremodules{\@load\@Slash\@importmodule@name}%
+    }%
+  }{}\fi%
+  \ifx\@load\@empty\else%
+    {% TODO
+%      \edef\@path{\csname module@#2@path\endcsname}%
+%      \IfStrEq\@load\@path{\relax}% if the known path is the same as the requested one do nothing
+%      {\PackageError{stex}% else signal an error
+%        {Module Name Clash\MessageBreak%
+%          A module with name #2 was already loaded under the path "\@path"\MessageBreak%
+%          The imported path "\@load" is probably a different module with the\MessageBreak%
+%          same name; this is dangerous -- not importing}%
+%        {Check whether the Module name is correct}%
+%      }%
+    }%
+  \fi%
+  \global\let\@importmodule@load\@load%
+}%
+\edef\@export{#3}\def\@@export{export}%prepare comparison
+%\ifx\@export\@@export\export@defs{#2}\fi% export the module
+\ifx\@export\@@export\addto@thismodulex{%
+  \noexpand\@importmodule[\@importmodule@load]{#2}{noexport}%
+}%
+\if@smsmode\else
+\ifcsvoid{this@module}{}{%
+  \ifcsvoid{module@imports@\module@uri@uri}{
+    \csxdef{module@imports@\module@uri@uri}{%
+      \csname Module#2\endcsname\@URI%
+    }%
+  }{%
+    \csxdef{module@imports@\module@uri@uri}{%
+      \csname Module#2\endcsname\@URI,%
+      \csname module@imports@\module@uri@uri\endcsname%
+    }%
+  }%
+}%
+\fi\fi%
+\if@smsmode\else\activate@defs{#2}\fi% activate the module
+}%
+%    \end{macrocode}
+%
+% \immediate\openout\testfile=testmoduleimporta.tex
+% \immediate\write\testfile{\detokenize{\begin{module}[name=testmoduleimporta]}}
+% \immediate\write\testfile{  foo bar boo far}
+% \immediate\write\testfile{\detokenize{\symdecl{foo}}}
+% \immediate\write\testfile{\detokenize{\end{module}}}
+% \immediate\closeout\testfile
+% \test{
+%  \detokenize{\importmodule{testmoduleimporta}}:
+%    \importmodule{testmoduleimporta}\\
+% \meaning\Moduletestmoduleimporta\\
+% \meaning\foo
+% }
+% \immediate\openout\testfile=testmoduleimportb.tex
+% \immediate\write\testfile{\detokenize{\begin{module}[name=importb]}}
+% \immediate\write\testfile{  foo bar boo far}
+% \immediate\write\testfile{\detokenize{\symdecl{bar}}}
+% \immediate\write\testfile{\detokenize{\end{module}}}
+% \immediate\closeout\testfile\\
+% \test{
+%    \detokenize{\importmodule{testmoduleimportb?importb}}:
+%    \importmodule{testmoduleimportb?importb}\\
+% \meaning\Moduleimportb\\
+% \meaning\bar
+% }\\
+% \test{
+%    \importmodule[mhrepos=smglom/algebra]{band}
+%    \meaning\Moduleband\\
+%    \meaning\Moduleidempotent\\
+%    \meaning\notequal\\
+%    \meaning\gimport
+% }
+%
+% \end{macro}
+%
+% \begin{macro}{\activate@defs}
+%   To activate the |\symdef|s from a given module \meta{mod}, we call the macro
+%   |\module@defs@|\meta{mod}. But to make sure that every module is activated only once,
+%   we only activate if the macro |\module@defs@|\meta{mod} is undefined, and define it
+%   directly afterwards to prohibit further activations.
+%    \begin{macrocode}
+\def\activate@defs#1{%
+  \ifcsundef{Module#1}{
+    \PackageError{stex}{No module with name #1 loaded}{Probably missing an
+      \detokenize{\importmodule} (or variant) somewhere?
+    }
+  }{%
+    \ifcsundef{module@\csname Module#1\endcsname\@URI @activated}%
+      {\csname module@defs@\csname Module#1\endcsname\@URI\endcsname}{}%
+    \@namedef{module@\csname Module#1\endcsname\@URI @activated}{true}%
+  }%
+}%
+%    \end{macrocode}
+% \end{macro}
+% 
+% \begin{macro}{\usemodule} 
+%   |\usemodule| acts like |\importmodule|, except that it does not re-export the semantic
+%   macros in the modules it loads. 
+%    \begin{macrocode}
+\newcommand\usemodule[2][]{%
+\metasetkeys{importmodule}{#1}%
+\update@used@modules{#2}%
+\ifx\importmodule@dir\@empty%
+\@importmodule[\importmodule@load]{#2}{noexport}%
+\else\@importmodule[\importmodule@dir/#2]{#2}{noexport}\fi%
+\ignorespacesandpars}
+%    \end{macrocode}
+% \end{macro}
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
 % \subsection{Symbols and Notations}
 %
 % \begin{macro}{\if@symdeflocal}
@@ -1375,7 +1578,7 @@
       \notation@extracturifrommacro{#1}%
     \fi%
     \ifx\notation@uri\@empty%
-      \PackageError{modules}{No symbol with name, URI or macroname \detokenize{#1} found!}{}%
+      \PackageError{stex}{No symbol with name, URI or macroname \detokenize{#1} found!}{}%
     \fi%
   }%
 }
@@ -1553,7 +1756,7 @@
     \ex\g@addto@macro@safe\csname module@defs@\module@uri\ex\endcsname\ex{\symdecl@temps}%
     \ex\g@addto@macro@safe\csname module@defs@\module@uri\ex\endcsname\ex{\ex{\notation@temp@notation}}%
   }{%
-    \PackageWarning{modules}{notation already defined: \notation@csname}{%
+    \PackageWarning{stex}{notation already defined: \notation@csname}{%
       Choose a different set of notation options (variant,lang,arity)%
     }%
   }%
@@ -1927,11 +2130,128 @@
 %    \end{macrocode}
 % \end{macro}
 %
+% \subsection{smultiling}
 %
+% \begin{environment}{modsig}
+%   The |modsig| environment is just a layer over the |module| environment. We also
+%   redefine macros that may occur in module signatures so that they do not create
+%   markup. Finally, we set the flag |\mod@|\meta{mod}|@multiling| to |true|.
+%    \begin{macrocode}
+\newenvironment{modsig}[2][]{\def\@test{#1}%
+\ifx\@test\@empty\begin{module}[name=#2]\else\begin{module}[name=#2,#1]\fi%
+\expandafter\gdef\csname mod@#2@multiling\endcsname{true}%
+\ignorespacesandpars}
+{\end{module}\ignorespacesandparsafterend}
+%    \end{macrocode}
+% \end{environment}
 %
+% \begin{macro}{\@sym*}
+%   has a starred form for primary symbols. The key/value interface has no effect on the
+%   {\LaTeX} side. We read the to check whether only allowed ones are used.
+%    \begin{macrocode}
+\newif\if@importing\@importingfalse
+\define@key{symi}{noverb}[all]{}%
+\define@key{symi}{align}[WithTheSymbolOfTheSameName]{}%
+\define@key{symi}{specializes}{}%
+\define@key{symi}{gfc}{}%
+\define@key{symi}{noalign}[true]{}%
+\newcommand\symi{\@ifstar\@symi@star\@symi}
+\newcommand\@symi[2][]{\metasetkeys{symi}{#1}%
+  \parsemodule@maybesetcodes\if@importing\else\par\noindent Symbol: \textsf{#2}\fi\ignorespacesandpars}
+\newcommand\@symi@star[2][]{\metasetkeys{symi}{#1}%
+  \parsemodule@maybesetcodes\if@importing\else\par\noindent Primary Symbol: \textsf{#2}\fi\ignorespacesandpars}
+\newcommand\symii{\@ifstar\@symii@star\@symii}
+\newcommand\@symii[3][]{\metasetkeys{symi}{#1}%
+  \parsemodule@maybesetcodes\if@importing\else\par\noindent Symbol: \textsf{#2-#3}\fi\ignorespacesandpars}
+\newcommand\@symii@star[3][]{\metasetkeys{symi}{#1}%
+  \parsemodule@maybesetcodes\if@importing\else\par\noindent Primary Symbol: \textsf{#2-#3}\fi\ignorespacesandpars}
+\newcommand\symiii{\@ifstar\@symiii@star\@symiii}
+\newcommand\@symiii[4][]{\metasetkeys{symi}{#1}%
+  \parsemodule@maybesetcodes\if@importing\else\par\noindent Symbol: \textsf{#2-#3-#4}\fi\ignorespacesandpars}
+\newcommand\@symiii@star[4][]{\metasetkeys{symi}{#1}%
+  \parsemodule@maybesetcodes\if@importing\else\par\noindent Primary Symbol: \textsf{#2-#3-#4}\fi\ignorespacesandpars}
+\newcommand\symiv{\@ifstar\@symiv@star\@symiv}
+\newcommand\@symiv[5][]{\metasetkeys{symi}{#1}%
+  \parsemodule@maybesetcodes\if@importing\else\par\noindent Symbol: \textsf{#2-#3-#4-#5}\fi\ignorespacesandpars}
+\newcommand\@symiv@star[5][]{\metasetkeys{symi}{#1}%
+  \parsemodule@maybesetcodes\if@importing\else\par\noindent Primary Symbol: \textsf{#2-#3-#4-#5}\fi\ignorespacesandpars}
+%    \end{macrocode}
+% \end{macro}
 %
+% \subsection{smglom}
 %
+% \begin{macro}{\gimport}
+% Just a shortcut, we have a starred and unstarred version, the first one is conservative.
+% For example, if we execute:\newline
+% \begin{center}
+% |\gimport[smglom/numberfields]{naturalnumbers}|\newline
+% \end{center}
+% First we are redirected to |\@gimport@nostar|, we store the
+% |smglom/numberfields|\meta{the repo's path} in |\@test|, then store
+% |\mh@currentrepos|\meta{current directory} in |\mh@repos|. If no repo's path is offered,
+% that means the module to import is under the same directory, so we let |mhrepos=\mh@repos|
+% and pass bunch of parameters to |\importmhmodule|, which is defined in |module.sty|. If
+% there's a repo's path, then we let |mhrepos=|\meta{the repo's path}. Finally we use
+% |\mhcurrentrepos|(defined in |module.sty|) to change the |\mh@currentrepos|.
+%    \begin{macrocode}
+\def\gimport{\@ifstar\@gimport@star\@gimport@nostar}%
+\newrobustcmd\@gimport@star[2][]{\def\@test{#1}%
+\edef\mh@@repos{\mh@currentrepos}%
+\ifx\@test\@empty%
+\importmhmodule[conservative,mhrepos=\mh@@repos,path=#2]{#2}%
+\else\importmhmodule[conservative,mhrepos=#1,path=#2]{#2}\fi%
+\setcurrentreposinfo{\mh@@repos}%
+\ignorespacesandpars\parsemodule@maybesetcodes}
+\newrobustcmd\@gimport@nostar[2][]{\def\@test{#1}%
+\edef\mh@@repos{\mh@currentrepos}%
+\ifx\@test\@empty%
+\importmhmodule[mhrepos=\mh@@repos,path=#2]{#2}%
+\else\importmhmodule[mhrepos=#1,path=#2]{#2}\fi%
+\setcurrentreposinfo{\mh@@repos}%
+\ignorespacesandpars\parsemodule@maybesetcodes}
+%    \end{macrocode}
+% \end{macro}
 %
+% \subsection{mathhub}
+%
+% \begin{macro}{\importmhmodule}
+%   The |\importmhmodule[|\meta{key=value list}|]{module}| saves the current value of
+%   |\mh@currentrepos| in a local macro |\mh@@repos|, resets |\mh@currentrepos| to the new
+%   value if one is given in the optional argument, and after importing resets
+%   |\mh@currentrepos| to the old value in |\mh@@repos|. We do all the |\ifx| comparison
+%   with an |\expandafter|, since the values may be passed on from other key
+%   bindings. Parameters will be passed to |\importmodule|.
+%    \begin{macrocode}
+%\srefaddidkey{importmhmodule}%
+\addmetakey{importmhmodule}{mhrepos}%
+\addmetakey{importmhmodule}{path}%
+\addmetakey{importmhmodule}{ext}% why does this exist?
+\addmetakey{importmhmodule}{dir}%
+\addmetakey[false]{importmhmodule}{conservative}[true]%
+\newcommand\importmhmodule[2][]{%
+  \parsemodule@maybesetcodes
+  \metasetkeys{importmhmodule}{#1}%
+  \ifx\importmhmodule@dir\@empty%
+    \edef\@path{\importmhmodule@path}%
+  \else\edef\@path{\importmhmodule@dir/#2}\fi%
+  \ifx\@path\@empty% if module name is not set
+    \@importmodule[]{#2}{export}%
+  \else%
+    \edef\mh@@repos{\mh@currentrepos}% remember so that we can reset it.
+    \ifx\importmhmodule@mhrepos\@empty% if in the same repos
+      \relax% no need to change mh@currentrepos, i.e, current directory.
+    \else%
+      \setcurrentreposinfo\importmhmodule@mhrepos% change it. 
+      \addto@thismodulex{\noexpand\setcurrentreposinfo{\importmhmodule@mhrepos}}%
+    \fi%
+    \@importmodule[\MathHub{\mh@currentrepos/source/\@path}]{#2}{export}%
+    \setcurrentreposinfo\mh@@repos% after importing, reset to old value
+    \addto@thismodulex{\noexpand\setcurrentreposinfo{\mh@@repos}}%
+  \fi%
+  \ignorespacesandpars%
+}
+%    \end{macrocode}
+% \end{macro}
 %
 %
 %
@@ -2006,6 +2326,7 @@
 \addmetakey*{symdef}{description}%
 \addmetakey{symdef}{subject}%
 \addmetakey*{symdef}{display}%
+\addmetakey*{symdef}{gfc}%
 %    \end{macrocode}
 % \end{macro}
 %
@@ -2048,6 +2369,14 @@
 \def\@symvariant#1[#2]#3#4{%
   \notation[#3]{#1}[#2]{#4}%
 \ignorespacesandpars}%
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\abbrdef}
+%   The |\abbrdef| macro is a variant of |\symdef| that does the same on the {\LaTeX}
+%   level.
+%    \begin{macrocode}
+\let\abbrdef\symdef%
 %    \end{macrocode}
 % \end{macro}
 %
