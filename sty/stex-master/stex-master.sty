@@ -699,7 +699,8 @@
   }
 \newif\if@importmodule@switchrepos\@importmodule@switchreposfalse
 \addmetakey{importmodule}{mhrepos}
-\newcommand\importmodule[2][]{%
+\newcommand\importmodule[2][]{\@@importmodule[#1]{#2}{export}}
+\newcommand\@@importmodule[3][]{%
   \@importmodule@switchreposfalse%
   \metasetkeys{importmodule}{#1}%
   \parsemodule@maybesetcodes%
@@ -724,7 +725,7 @@
       \edef\importmodule@dir{\importmodule@dir\@Slash\importmodule@subdir}%
     \fi%
   \fi%
-  \@importmodule[\importmodule@dir]\importmodule@modulename{export}%
+  \@importmodule[\importmodule@dir]\importmodule@modulename{#3}%
   \if@importmodule@switchrepos%
     \expandafter\setcurrentreposinfo\csname importmodule@oldrepos@#2\endcsname%
   \fi%
@@ -751,14 +752,14 @@
 }%
 \if@smsmode\else
 \ifcsvoid{this@module}{}{%
-  \ifcsvoid{module@imports@\module@uri@uri}{
-    \csxdef{module@imports@\module@uri@uri}{%
+  \ifcsvoid{module@imports@\module@uri}{
+    \csxdef{module@imports@\module@uri}{%
       \csname Module#2\endcsname\@URI%
     }%
   }{%
-    \csxdef{module@imports@\module@uri@uri}{%
+    \csxdef{module@imports@\module@uri}{%
       \csname Module#2\endcsname\@URI,%
-      \csname module@imports@\module@uri@uri\endcsname%
+      \csname module@imports@\module@uri\endcsname%
     }%
   }%
 }%
@@ -776,13 +777,7 @@
     \@namedef{module@\csname Module#1\endcsname\@URI @activated}{true}%
   }%
 }%
-\newcommand\usemodule[2][]{%
-\metasetkeys{importmodule}{#1}%
-\update@used@modules{#2}%
-\ifx\importmodule@dir\@empty%
-\@importmodule[\importmodule@load]{#2}{noexport}%
-\else\@importmodule[\importmodule@dir/#2]{#2}{noexport}\fi%
-\ignorespacesandpars}
+\newcommand\usemodule[2][]{\@@importmodule[#1]{#2}{noexport}}
 \newif\if@symdeflocal\@symdeflocalfalse
 \def\define@in@module#1#2{
   \expandafter\edef\csname #1\endcsname{#2}%
@@ -1221,32 +1216,6 @@
 \expandafter\gdef\csname mod@#2@multiling\endcsname{true}%
 \ignorespacesandpars}
 {\end{module}\ignorespacesandparsafterend}
-\newif\if@importing\@importingfalse
-\define@key{symi}{noverb}[all]{}%
-\define@key{symi}{align}[WithTheSymbolOfTheSameName]{}%
-\define@key{symi}{specializes}{}%
-\define@key{symi}{gfc}{}%
-\define@key{symi}{noalign}[true]{}%
-\newcommand\symi{\@ifstar\@symi@star\@symi}
-\newcommand\@symi[2][]{\metasetkeys{symi}{#1}%
-  \parsemodule@maybesetcodes\if@importing\else\par\noindent Symbol: \textsf{#2}\fi\ignorespacesandpars}
-\newcommand\@symi@star[2][]{\metasetkeys{symi}{#1}%
-  \parsemodule@maybesetcodes\if@importing\else\par\noindent Primary Symbol: \textsf{#2}\fi\ignorespacesandpars}
-\newcommand\symii{\@ifstar\@symii@star\@symii}
-\newcommand\@symii[3][]{\metasetkeys{symi}{#1}%
-  \parsemodule@maybesetcodes\if@importing\else\par\noindent Symbol: \textsf{#2-#3}\fi\ignorespacesandpars}
-\newcommand\@symii@star[3][]{\metasetkeys{symi}{#1}%
-  \parsemodule@maybesetcodes\if@importing\else\par\noindent Primary Symbol: \textsf{#2-#3}\fi\ignorespacesandpars}
-\newcommand\symiii{\@ifstar\@symiii@star\@symiii}
-\newcommand\@symiii[4][]{\metasetkeys{symi}{#1}%
-  \parsemodule@maybesetcodes\if@importing\else\par\noindent Symbol: \textsf{#2-#3-#4}\fi\ignorespacesandpars}
-\newcommand\@symiii@star[4][]{\metasetkeys{symi}{#1}%
-  \parsemodule@maybesetcodes\if@importing\else\par\noindent Primary Symbol: \textsf{#2-#3-#4}\fi\ignorespacesandpars}
-\newcommand\symiv{\@ifstar\@symiv@star\@symiv}
-\newcommand\@symiv[5][]{\metasetkeys{symi}{#1}%
-  \parsemodule@maybesetcodes\if@importing\else\par\noindent Symbol: \textsf{#2-#3-#4-#5}\fi\ignorespacesandpars}
-\newcommand\@symiv@star[5][]{\metasetkeys{symi}{#1}%
-  \parsemodule@maybesetcodes\if@importing\else\par\noindent Primary Symbol: \textsf{#2-#3-#4-#5}\fi\ignorespacesandpars}
 \def\gimport{\@ifstar\@gimport@star\@gimport@nostar}%
 \newrobustcmd\@gimport@star[2][]{\def\@test{#1}%
 \edef\mh@@repos{\mh@currentrepos}%
@@ -1262,33 +1231,6 @@
 \else\importmhmodule[mhrepos=#1,path=#2]{#2}\fi%
 \setcurrentreposinfo{\mh@@repos}%
 \ignorespacesandpars\parsemodule@maybesetcodes}
-\addmetakey{importmhmodule}{mhrepos}%
-\addmetakey{importmhmodule}{path}%
-\addmetakey{importmhmodule}{ext}% why does this exist?
-\addmetakey{importmhmodule}{dir}%
-\addmetakey[false]{importmhmodule}{conservative}[true]%
-\newcommand\importmhmodule[2][]{%
-  \parsemodule@maybesetcodes
-  \metasetkeys{importmhmodule}{#1}%
-  \ifx\importmhmodule@dir\@empty%
-    \edef\@path{\importmhmodule@path}%
-  \else\edef\@path{\importmhmodule@dir/#2}\fi%
-  \ifx\@path\@empty% if module name is not set
-    \@importmodule[]{#2}{export}%
-  \else%
-    \edef\mh@@repos{\mh@currentrepos}% remember so that we can reset it.
-    \ifx\importmhmodule@mhrepos\@empty% if in the same repos
-      \relax% no need to change mh@currentrepos, i.e, current directory.
-    \else%
-      \setcurrentreposinfo\importmhmodule@mhrepos% change it.
-      \addto@thismodulex{\noexpand\setcurrentreposinfo{\importmhmodule@mhrepos}}%
-    \fi%
-    \@importmodule[\MathHub{\mh@currentrepos/source/\@path}]{#2}{export}%
-    \setcurrentreposinfo\mh@@repos% after importing, reset to old value
-    \addto@thismodulex{\noexpand\setcurrentreposinfo{\mh@@repos}}%
-  \fi%
-  \ignorespacesandpars%
-}
 \addmetakey*{module}{id} % TODO: deprecate properly
 \addmetakey*{module}{load}
 \addmetakey*{module}{path}
@@ -1337,6 +1279,59 @@
   \notation[#3]{#1}[#2]{#4}%
 \ignorespacesandpars}%
 \let\abbrdef\symdef%
+\newif\if@importing\@importingfalse
+\define@key{symi}{noverb}[all]{}%
+\define@key{symi}{align}[WithTheSymbolOfTheSameName]{}%
+\define@key{symi}{specializes}{}%
+\define@key{symi}{gfc}{}%
+\define@key{symi}{noalign}[true]{}%
+\newcommand\symi{\@ifstar\@symi@star\@symi}
+\newcommand\@symi[2][]{\metasetkeys{symi}{#1}%
+  \parsemodule@maybesetcodes\if@importing\else\par\noindent Symbol: \textsf{#2}\fi\ignorespacesandpars}
+\newcommand\@symi@star[2][]{\metasetkeys{symi}{#1}%
+  \parsemodule@maybesetcodes\if@importing\else\par\noindent Primary Symbol: \textsf{#2}\fi\ignorespacesandpars}
+\newcommand\symii{\@ifstar\@symii@star\@symii}
+\newcommand\@symii[3][]{\metasetkeys{symi}{#1}%
+  \parsemodule@maybesetcodes\if@importing\else\par\noindent Symbol: \textsf{#2-#3}\fi\ignorespacesandpars}
+\newcommand\@symii@star[3][]{\metasetkeys{symi}{#1}%
+  \parsemodule@maybesetcodes\if@importing\else\par\noindent Primary Symbol: \textsf{#2-#3}\fi\ignorespacesandpars}
+\newcommand\symiii{\@ifstar\@symiii@star\@symiii}
+\newcommand\@symiii[4][]{\metasetkeys{symi}{#1}%
+  \parsemodule@maybesetcodes\if@importing\else\par\noindent Symbol: \textsf{#2-#3-#4}\fi\ignorespacesandpars}
+\newcommand\@symiii@star[4][]{\metasetkeys{symi}{#1}%
+  \parsemodule@maybesetcodes\if@importing\else\par\noindent Primary Symbol: \textsf{#2-#3-#4}\fi\ignorespacesandpars}
+\newcommand\symiv{\@ifstar\@symiv@star\@symiv}
+\newcommand\@symiv[5][]{\metasetkeys{symi}{#1}%
+  \parsemodule@maybesetcodes\if@importing\else\par\noindent Symbol: \textsf{#2-#3-#4-#5}\fi\ignorespacesandpars}
+\newcommand\@symiv@star[5][]{\metasetkeys{symi}{#1}%
+  \parsemodule@maybesetcodes\if@importing\else\par\noindent Primary Symbol: \textsf{#2-#3-#4-#5}\fi\ignorespacesandpars}
+\addmetakey{importmhmodule}{mhrepos}%
+\addmetakey{importmhmodule}{path}%
+\addmetakey{importmhmodule}{ext}% why does this exist?
+\addmetakey{importmhmodule}{dir}%
+\addmetakey[false]{importmhmodule}{conservative}[true]%
+\newcommand\importmhmodule[2][]{%
+  \parsemodule@maybesetcodes
+  \metasetkeys{importmhmodule}{#1}%
+  \ifx\importmhmodule@dir\@empty%
+    \edef\@path{\importmhmodule@path}%
+  \else\edef\@path{\importmhmodule@dir/#2}\fi%
+  \ifx\@path\@empty% if module name is not set
+    \@importmodule[]{#2}{export}%
+  \else%
+    \edef\mh@@repos{\mh@currentrepos}% remember so that we can reset it.
+    \ifx\importmhmodule@mhrepos\@empty% if in the same repos
+      \relax% no need to change mh@currentrepos, i.e, current directory.
+    \else%
+      \setcurrentreposinfo\importmhmodule@mhrepos% change it.
+      \addto@thismodulex{\noexpand\setcurrentreposinfo{\importmhmodule@mhrepos}}%
+    \fi%
+    \@importmodule[\MathHub{\mh@currentrepos/source/\@path}]{#2}{export}%
+    \setcurrentreposinfo\mh@@repos% after importing, reset to old value
+    \addto@thismodulex{\noexpand\setcurrentreposinfo{\mh@@repos}}%
+  \fi%
+  \ignorespacesandpars%
+}
 \endinput
 %%
 %% End of file `stex-master.sty'.
