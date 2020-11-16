@@ -24,7 +24,7 @@
 \addbibresource{extpubs.bib}
 \addbibresource{kwarccrossrefs.bib}
 \addbibresource{extcrossrefs.bib}
-\usepackage{listings}
+\usepackage{listings,amssymb}
 \usepackage{amsfonts}
 \usepackage{ctangit}
 \usepackage{xspace}
@@ -79,6 +79,24 @@
 %
 % \section{Introduction}\label{sec:intro}
 % TODO
+%
+% \section{User commands}
+%
+% \begin{itemize}
+%   \item[\checkmark] |\sTeX|
+%   \item[\checkmark] |module|
+%   \item[\checkmark] |\importmodule|
+%   \item[\checkmark] |\usemodule|
+%   \item[\checkmark] |\symdecl|
+%   \item[\checkmark] |\notation|
+%   \item[\checkmark] |\inputref|
+%   \item[?]          |\libinput|
+%   \item[$\times$]   verbalizations
+%   \item[$\times$]   |\defi|
+%   \item[$\times$]   |\tref|
+%   \item[$\times$]   |omgroup|/|omtext|
+% \end{itemize}
+%
 % \section{Implementation}\label{sec:impl}
 %    \begin{macrocode}
 %<*package>
@@ -1294,16 +1312,12 @@
 %
 % \subsubsection{importmodule}
 %
-% \begin{macro}{\importmodule}
+% \begin{macro}{\importmodule@bookkeeping}
 %    \begin{macrocode}
 \newif\if@importmodule@switchrepos\@importmodule@switchreposfalse
-%\srefaddidkey{importmodule}
-\addmetakey{importmodule}{mhrepos}
-\newcommand\importmodule[2][]{\@@importmodule[#1]{#2}{export}}
-\newcommand\@@importmodule[3][]{%
+\def\importmodule@bookkeeping#1#2#3{%
   \@importmodule@switchreposfalse%
   \metasetkeys{importmodule}{#1}%
-  \parsemodule@maybesetcodes%
   \ifcsvoid{importmodule@mhrepos}{%
     \ifcsvoid{currentrepos@dir}{%
       \let\importmodule@dir\stex@maindir%
@@ -1325,11 +1339,24 @@
       \edef\importmodule@dir{\importmodule@dir\@Slash\importmodule@subdir}%
     \fi%
   \fi%
-  \@importmodule[\importmodule@dir]\importmodule@modulename{#3}%
+  \begingroup#3\endgroup%
   \if@importmodule@switchrepos%
     \expandafter\setcurrentreposinfo\csname importmodule@oldrepos@#2\endcsname%
   \fi%
   \ignorespacesandpars%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\importmodule}
+%    \begin{macrocode}
+%\srefaddidkey{importmodule}
+\addmetakey{importmodule}{mhrepos}
+\newcommand\importmodule[2][]{\@@importmodule[#1]{#2}{export}}
+\newcommand\@@importmodule[3][]{%
+  \importmodule@bookkeeping{#1}{#2}{%
+    \@importmodule[\importmodule@dir]\importmodule@modulename{#3}%
+  }%
 }
 %    \end{macrocode}
 % \end{macro}
@@ -1468,6 +1495,31 @@
 %  \end{module}
 %}
 %
+% \end{macro}
+%
+%
+% \begin{macro}{\inputref@*skip}
+% hooks for spacing customization, they are empty by default. 
+%    \begin{macrocode}
+\def\inputref@preskip{}
+\def\inputref@postskip{}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\inputref}
+%   |\inputref{|\meta{path to the current file without extension}|}| supports both
+%   absolute path and relative path, meanwhile, records the path and the extension (not
+%   for relative path).
+%    \begin{macrocode}
+\newrobustcmd\inputref[2][]{%
+  \importmodule@bookkeeping{#1}{#2}{%
+    %\inputreftrue
+    \inputref@preskip%
+    \stexinput{\importmodule@dir\@Slash\importmodule@modulename.tex}%
+    \inputref@postskip%
+  }%
+}%
+%    \end{macrocode}
 % \end{macro}
 %
 % \subsection{Symbols and Notations}
@@ -1929,6 +1981,9 @@
 % This finally gets called with both uri and notation-option,
 % convenient for e.g. a LaTeXML binding:
 %    \begin{macrocode}
+\def\@invoke@symbol@math@#1#2{%
+  \csname #1\@Fragment#2\endcsname%
+}
 \def\@invoke@symbol@math#1#2{%
   % #1: URI
   % #2: options
@@ -1952,7 +2007,7 @@
       \edef\notation@temp@fragment{\notation@temp@fragment\@Ampersand variant=\notation@curr@variant}%
     \fi%
   \fi%
-  \csname #1\@Fragment\notation@temp@fragment\endcsname%
+  \@invoke@symbol@math@{#1}\notation@temp@fragment%
 }
 %    \end{macrocode}
 %
@@ -2061,6 +2116,85 @@
 %
 % \subsection{sref}
 %
+% We find out whether the |hyperref| package is loaded, since we may want to use it for
+% cross-references, for which we set up some internal macros that gracefully degrade if
+% |hyperref| is not loaded. 
+% 
+% \begin{macro}{\sref@*@ifh}
+%    \begin{macrocode}
+\newif\ifhref\hreffalse%
+\AtBeginDocument{%
+  \@ifpackageloaded{hyperref}{%
+    \hreftrue%
+  }{%
+    \hreffalse%
+  }%
+}%
+\newcommand\sref@href@ifh[2]{%
+  \ifhref%
+    \href{#1}{#2}%
+  \else%
+    #2%
+  \fi%
+}%
+\newcommand\sref@hlink@ifh[2]{%
+  \ifhref%
+    \hyperlink{#1}{#2}%
+  \else%
+    #2%
+  \fi%
+}%
+\newcommand\sref@target@ifh[2]{%
+  \ifhref%
+    \hypertarget{#1}{#2}%
+  \else%
+    #2%
+  \fi%
+}%
+%    \end{macrocode}
+% \end{macro}
+% 
+% Then we provide some macros for \sTeX-specific crossreferencing 
+%
+% \begin{macro}{\sref@target}
+%   The next macro uses this and makes an target from the current |sref@id| declared by
+%   a |id| key.
+%    \begin{macrocode}
+\def\sref@target{%
+  \ifx\sref@id\@empty%
+    \relax%
+  \else%
+    \edef\@target{sref@\ifcsundef{sref@part}{}{\sref@part @}\sref@id @target}%
+    \sref@target@ifh\@target{}%
+  \fi%
+}%
+%    \end{macrocode}
+% \end{macro}
+%
+%
+% \begin{macro}{\srefaddidkey}
+%   |\srefaddidkey[|\meta{keyval}|]{|\meta{group}|}| extends the metadata keys of the
+%   group \meta{group} with an |id| key. In the optional key/value pairs in \meta{keyval}
+%   the |prefix| key can be used to specify a prefix. Note that the |id| key defined by
+%   |\srefaddidkey[|\meta{keyval}|]{|\meta{group}|}| not only defines |\sref@id|, which is
+%   used for referencing by the |sref| package, but also |\|\meta{group}|@id|, which is
+%   used for showing metadata via the |showmeta| option of the |metakeys| package.
+%    \begin{macrocode}
+\addmetakey{srefaddidkey}{prefix}
+\newcommand\srefaddidkey[2][]{%
+  \metasetkeys{srefaddidkey}{#1}%
+  \@metakeys@ext@clear@keys{#2}{sref@id}{}% id cannot have a default
+  \metakeys@ext@clear@keys{#2}{id}{}%
+  \metakeys@ext@showkeys{#2}{id}%
+  \define@key{#2}{id}{%
+    \edef\sref@id{\srefaddidkey@prefix ##1}%
+    %\expandafter\edef\csname #2@id\endcsname{\srefaddidkey@prefix ##1}%
+    \csedef{#2@id}{\srefaddidkey@prefix ##1}%
+  }%
+}%
+%    \end{macrocode}
+% \end{macro}
+%
 % \begin{macro}{\@sref@def}
 %   This macro stores the value of its last argument in a custom macro for reference.
 %    \begin{macrocode}
@@ -2120,6 +2254,23 @@
 %    \end{macrocode}
 % \end{macro}
 %
+% \begin{macro}{\sref@label@id@arg}
+%   The |\sref@label@id@arg| writes a label definition for the second argument if it is
+%   defined.
+%    \begin{macrocode}
+\newcommand\sref@label@id@arg[2]{%
+  \def\@@id{#2}
+  \ifx\@@id\@empty%
+    \relax%
+  \else%
+    \sref@label{#1}{\@@id}%
+  \fi%
+}%
+%    \end{macrocode}
+% \end{macro}
+%
+%
+%
 % \subsection{smultiling}
 %
 % \begin{environment}{modsig}
@@ -2169,6 +2320,525 @@
 \ignorespacesandpars\parsemodule@maybesetcodes}
 %    \end{macrocode}
 % \end{macro}
+%
+% \subsection{mathhub}
+%
+% \begin{macro}{\libinput}
+%   the |\libinput| macro inputs from the |lib| directory of the MathHub repository and
+%   then the |meta-inf/lib| repository of the group, if they exist. Since in practice
+%   nested libinputs may occur, we make sure that we stash the old values of |\mh@inffile|
+%   and |\mh@libfile| and restore them at the end.
+%    \begin{macrocode}
+\def\modules@@first#1/#2;{#1}
+\newcommand\libinput[1]{%
+\ifcsvoid{mh@currentrepos}{%
+  \PackageError{mathhub}{current MathHub repository not found}{}}%
+  {}
+\edef\@mh@group{\expandafter\modules@@first\mh@currentrepos;}
+\let\orig@inffile\mh@inffile\let\orig@libfile\mh@libfile
+\def\mh@inffile{\MathHub{\@mh@group/meta-inf/lib/#1}}
+\def\mh@libfile{\MathHub{\mh@currentrepos/lib/#1}}%
+\IfFileExists\mh@inffile{\stexinput\mh@inffile}{}%
+\IfFileExists\mh@inffile{}{\IfFileExists\mh@libfile{}{%
+  {\PackageError{mathhub}
+    {Library file missing; cannot input #1.tex\MessageBreak%
+    Both \mh@libfile.tex\MessageBreak and \mh@inffile.tex\MessageBreak%
+    do not exist}%
+  {Check whether the file name is correct}}}}
+\IfFileExists\mh@libfile{\stexinput\mh@libfile\relax}{}
+\let\mh@inffile\orig@inffile\let\mh@libfile\orig@libfile}
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsection{omdoc/omgroup}
+%
+%    \begin{macrocode}
+\newcount\section@level
+
+\section@level=2
+\ifdefstring{\omdoc@sty@class}{book}{\section@level=0}{}
+\ifdefstring{\omdoc@sty@class}{report}{\section@level=0}{}
+\ifdefstring{\omdoc@sty@topsect}{part}{\section@level=0}{}
+\ifdefstring{\omdoc@sty@topsect}{chapter}{\section@level=1}{}
+%    \end{macrocode}
+%
+% \begin{macro}{\omgroup@nonum}
+%   convenience macro: |\omgroup@nonum{|\meta{level}|}{|\meta{title}|}| makes an unnumbered
+%   sectioning with title \meta{title} at level \meta{level}.
+%    \begin{macrocode}
+\newcommand\omgroup@nonum[2]{%
+\ifx\hyper@anchor\@undefined\else\phantomsection\fi%
+\addcontentsline{toc}{#1}{#2}\@nameuse{#1}*{#2}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\omgroup@num}
+%   convenience macro: |\omgroup@nonum{|\meta{level}|}{|\meta{title}|}| makes numbered
+%   sectioning with title \meta{title} at level \meta{level}. We have to check the |short|
+%   key was given in the |omgroup| environment and -- if it is use it. But how to do that
+%   depends on whether the |rdfmeta| package has been loaded. In the end we call
+%   |\sref@label@id| to enable crossreferencing.
+%    \begin{macrocode}
+\newcommand\omgroup@num[2]{%
+\edef\@@ID{\sref@id}
+\ifx\omgroup@short\@empty% no short title
+\@nameuse{#1}{#2}%
+\else% we have a short title
+\@ifundefined{rdfmeta@sectioning}%
+  {\@nameuse{#1}[\omgroup@short]{#2}}%
+  {\@nameuse{rdfmeta@#1@old}[\omgroup@short]{#2}}%
+\fi%
+\sref@label@id@arg{\omdoc@sect@name~\@nameuse{the#1}}\@@ID}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{environment}{omgroup}
+%    \begin{macrocode}
+\def\@true{true}
+\def\@false{false}
+\srefaddidkey{omgroup}
+\addmetakey{omgroup}{date}
+\addmetakey{omgroup}{creators}
+\addmetakey{omgroup}{contributors}
+\addmetakey{omgroup}{srccite}
+\addmetakey{omgroup}{type}
+\addmetakey*{omgroup}{short}
+\addmetakey*{omgroup}{display}
+\addmetakey[false]{omgroup}{loadmodules}[true]
+%    \end{macrocode}
+% we define a switch for numbering lines and a hook for the beginning of groups: The
+% \DescribeMacro{\at@begin@omgroup}|\at@begin@omgroup| macro allows customization. It is
+% run at the beginning of the |omgroup|, i.e. after the section heading.
+%    \begin{macrocode}
+\newif\if@mainmatter\@mainmattertrue
+\newcommand\at@begin@omgroup[3][]{}
+%    \end{macrocode}
+%
+% Then we define a helper macro that takes care of the sectioning magic. It comes with its
+% own key/value interface for customization.
+%
+%    \begin{macrocode}
+\addmetakey{omdoc@sect}{name}
+\addmetakey[false]{omdoc@sect}{clear}[true]
+\addmetakey{omdoc@sect}{ref}
+\addmetakey[false]{omdoc@sect}{num}[true]
+\newcommand\omdoc@sectioning[3][]{\metasetkeys{omdoc@sect}{#1}%
+\ifx\omdoc@sect@clear\@true\cleardoublepage\fi%
+\if@mainmatter% numbering not overridden by frontmatter, etc.
+\ifx\omdoc@sect@num\@true\omgroup@num{#2}{#3}\else\omgroup@nonum{#2}{#3}\fi%
+\def\current@section@level{\omdoc@sect@name}%
+\else\omgroup@nonum{#2}{#3}%
+\fi}% if@mainmatter
+%    \end{macrocode}
+% and another one, if redefines the |\addtocontentsline| macro of {\LaTeX} to import the
+% respective macros. It takes as an argument a list of module names.
+%    \begin{macrocode}
+\newcommand\omgroup@redefine@addtocontents[1]{%
+%\edef\@@import{#1}%
+%\@for\@I:=\@@import\do{%
+%\edef\@path{\csname module@\@I  @path\endcsname}%
+%\@ifundefined{tf@toc}\relax%
+%     {\protected@write\tf@toc{}{\string\@requiremodules{\@path}}}}
+%\ifx\hyper@anchor\@undefined% hyperref.sty loaded?
+%\def\addcontentsline##1##2##3{%
+%\addtocontents{##1}{\protect\contentsline{##2}{\string\withusedmodules{#1}{##3}}{\thepage}}}
+%\else% hyperref.sty not loaded
+%\def\addcontentsline##1##2##3{%
+%\addtocontents{##1}{\protect\contentsline{##2}{\string\withusedmodules{#1}{##3}}{\thepage}{\@currentHref}}}%
+%\fi
+}% hypreref.sty loaded?
+%    \end{macrocode}
+% now the |omgroup| environment itself. This takes care of the table of contents via the
+% helper macro above and then selects the appropriate sectioning command from
+% |article.cls|. It also registeres the current level of omgroups in the |\omgroup@level|
+% counter. 
+%    \begin{macrocode}
+\newcount\omgroup@level 
+\newenvironment{omgroup}[2][]% keys, title
+{\metasetkeys{omgroup}{#1}\sref@target%
+\advance\omgroup@level by 1\relax%
+%    \end{macrocode}
+% If the |loadmodules| key is set on |\begin{omgroup}|, we redefine the |\addcontetsline|
+%   macro that determines how the sectioning commands below construct the entries for the
+%   table of contents.
+%    \begin{macrocode}
+\ifx\omgroup@loadmodules\@true%
+\omgroup@redefine@addtocontents{\@ifundefined{module@id}\used@modules%
+{\@ifundefined{module@\module@id @path}{\used@modules}\module@id}}\fi%
+%    \end{macrocode}
+% now we only need to construct the right sectioning depending on the value of
+% |\section@level|.
+%    \begin{macrocode}
+\advance\section@level by 1\relax%
+\ifcase\section@level%
+\or\omdoc@sectioning[name=\omdoc@part@kw,clear,num]{part}{#2}%
+\or\omdoc@sectioning[name=\omdoc@chapter@kw,clear,num]{chapter}{#2}%
+\or\omdoc@sectioning[name=\omdoc@section@kw,num]{section}{#2}%
+\or\omdoc@sectioning[name=\omdoc@subsection@kw,num]{subsection}{#2}%
+\or\omdoc@sectioning[name=\omdoc@subsubsection@kw,num]{subsubsection}{#2}%
+\or\omdoc@sectioning[name=\omdoc@paragraph@kw,ref=this \omdoc@paragraph@kw]{paragraph}{#2}%
+\or\omdoc@sectioning[name=\omdoc@subparagraph@kw,ref=this \omdoc@subparagraph@kw]{paragraph}{#2}%
+\fi% \ifcase
+\at@begin@omgroup[#1]\section@level{#2}}% for customization
+{\advance\section@level by -1\advance\omgroup@level by -1}
+%    \end{macrocode}
+% \end{environment}
+%
+% and finally, we localize the sections
+%    \begin{macrocode}
+\newcommand\omdoc@part@kw{Part}
+\newcommand\omdoc@chapter@kw{Chapter}
+\newcommand\omdoc@section@kw{Section}
+\newcommand\omdoc@subsection@kw{Subsection}
+\newcommand\omdoc@subsubsection@kw{Subsubsection}
+\newcommand\omdoc@paragraph@kw{paragraph}
+\newcommand\omdoc@subparagraph@kw{subparagraph}
+%    \end{macrocode}
+%
+% \begin{macro}{\setSGvar}
+%   set a global variable
+%    \begin{macrocode}
+\newcommand\setSGvar[1]{\@namedef{sTeX@Gvar@#1}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\useSGvar}
+%   use a global variable
+%    \begin{macrocode}
+\newrobustcmd\useSGvar[1]{%
+  \@ifundefined{sTeX@Gvar@#1}
+  {\PackageError{omdoc}
+    {The sTeX Global variable #1 is undefined}
+    {set it with \protect\setSGvar}}
+\@nameuse{sTeX@Gvar@#1}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{environment}{blindomgroup}
+% \begin{macrocode}
+\newcommand\at@begin@blindomgroup[1]{}
+\newenvironment{blindomgroup}
+{\advance\section@level by 1\at@begin@blindomgroup\setion@level}
+{\advance\section@level by -1}
+%    \end{macrocode}
+% \end{environment}
+%
+%
+% \subsection{omtext}
+%
+% \begin{omgroup}[id=sec:impl:mtxt]{Mathematical Text}
+%
+%   We define the actions that are undertaken, when the keys are encountered. The first
+%   set just records metadata; this is very simple via the |\addmetakey|
+%   infrastructure~\ctancite{Kohlhase:metakeys}. Note that we allow math in the |title|
+%   field, so we do not declare it to be |Semiverbatim| (indeed not at all, which allows
+%   it by default).
+%
+%    \begin{macrocode}
+\srefaddidkey{omtext}
+\addmetakey[]{omtext}{functions}
+\addmetakey*{omtext}{display}
+\addmetakey{omtext}{for}
+\addmetakey{omtext}{from}
+\addmetakey{omtext}{type}
+\addmetakey*{omtext}{title}
+\addmetakey*{omtext}{start}
+\addmetakey{omtext}{theory}
+\addmetakey{omtext}{continues}
+\addmetakey{omtext}{verbalizes}
+\addmetakey{omtext}{subject}
+%    \end{macrocode}
+%
+% \begin{macro}{\st@flow}
+% We define this macro, so that we can test whether the |display| key has the value |flow|
+%    \begin{macrocode}
+\def\st@flow{flow}
+%    \end{macrocode}
+% \end{macro}
+%
+% We define a switch that allows us to see whether we are inside an |omtext| environment
+% or a statement. It will be used to give better error messages for inline statements.
+%
+%    \begin{macrocode}
+\newif\if@in@omtext\@in@omtextfalse
+%    \end{macrocode}
+%
+% \begin{environment}{omtext}
+%   The |omtext| environment can have a title, which is used in a similar way. We redefine
+%   the |\lec| macro so the trailing |\par| does not get into the way. 
+%    \begin{macrocode}
+\def\omtext@pre@skip{\smallskip}
+\def\omtext@post@skip{}
+\newenvironment{omtext}[1][]{\@in@omtexttrue%
+  \bgroup\metasetkeys{omtext}{#1}\sref@label@id{this paragraph}%
+  \def\lec##1{\@lec{##1}}%
+  \omtext@pre@skip\par\noindent%
+  \ifx\omtext@title\@empty%
+    \ifx\omtext@start\@empty\else%
+      \ifx\omtext@display\st@flow\omtext@start\else\stDMemph{\omtext@start}\fi\enspace%
+    \fi% end omtext@start empty
+  \else\stDMemph{\omtext@title}:\enspace%
+    \ifx\omtext@start\@empty\else\omtext@start\enspace\fi%
+  \fi% end omtext@title empty
+  \ignorespacesandpars}
+{\egroup\omtext@post@skip\@in@omtextfalse\ignorespacesandpars}
+%    \end{macrocode}
+% \end{environment}
+% \end{omgroup}
+%
+% \begin{omgroup}[id=sec:impl:phrase]{Phrase-level Markup}
+% 
+% \begin{macro}{\phrase}
+%    For the moment, we do disregard the most of the keys
+%    \begin{macrocode}
+\srefaddidkey{phrase}
+\addmetakey{phrase}{style}
+\addmetakey{phrase}{class}
+\addmetakey{phrase}{index}
+\addmetakey{phrase}{verbalizes}
+\addmetakey{phrase}{type}
+\addmetakey{phrase}{only}
+\newcommand\phrase[2][]{\metasetkeys{phrase}{#1}%
+\ifx\prhase@only\@empty\only<\phrase@only>{#2}\else #2\fi}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\coref*}
+%    \begin{macrocode}
+\providecommand\textsubscript[1]{\ensuremath{_{#1}}}
+\newcommand\corefs[2]{#1\textsubscript{#2}}
+\newcommand\coreft[2]{#1\textsuperscript{#2}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\n*lex}
+%    \begin{macrocode}
+\newcommand\nlex[1]{\green{\sl{#1}}}
+\newcommand\nlcex[1]{*\green{\sl{#1}}}
+%    \end{macrocode}
+% \end{macro}
+% 
+% \begin{macro}{sinlinequote}
+%    \begin{macrocode}
+\def\@sinlinequote#1{``{\sl{#1}}''}
+\def\@@sinlinequote#1#2{\@sinlinequote{#2}~#1}
+\newcommand\sinlinequote[2][]
+{\def\@opt{#1}\ifx\@opt\@empty\@sinlinequote{#2}\else\@@sinlinequote\@opt{#2}\fi}
+%    \end{macrocode}
+% \end{macro}
+% \end{omgroup}
+%
+% \begin{omgroup}[id=sec:user:decl]{Declarations (under development)}
+% 
+%   The declaration macros are still under development (i.e. the macros) are still under
+%   development and may change at any time. Currently they are completely empty.
+% 
+% \begin{macrocode}
+\newcommand\vdec[2][]{#2}
+\newcommand\vrest[2][]{#2}
+\newcommand\vcond[2][]{#2}
+%    \end{macrocode}
+%
+% \begin{macro}{\strucdec}
+%   \ednote{document above}
+%    \begin{macrocode}
+\newcommand\strucdec[2][]{#2}
+%    \end{macrocode}
+% \end{macro}
+% 
+% \begin{macro}{\impdec}
+%   \ednote{document above}
+%    \begin{macrocode}
+\newcommand\impdec[2][]{#2}
+%    \end{macrocode}
+% \end{macro}
+% 
+% \end{omgroup}
+%
+% \begin{omgroup}[id=sec:impl:block]{Block-Level Markup}
+%
+% \begin{environment}{sblockquote}
+%    \begin{macrocode}
+\def\begin@sblockquote{\begin{quote}\sl}
+\def\end@sblockquote{\end{quote}}
+\def\begin@@sblockquote#1{\begin@sblockquote}
+\def\end@@sblockquote#1{\def\@@lec##1{\textrm{##1}}\@lec{#1}\end@sblockquote}
+\newenvironment{sblockquote}[1][]
+  {\def\@opt{#1}\ifx\@opt\@empty\begin@sblockquote\else\begin@@sblockquote\@opt\fi}
+  {\ifx\@opt\@empty\end@sblockquote\else\end@@sblockquote\@opt\fi}
+%    \end{macrocode}
+% \end{environment}
+%
+% \begin{environment}{sboxquote}
+%    \begin{macrocode}
+\newenvironment{sboxquote}[1][]
+{\def\@@src{#1}\begin{mdframed}[leftmargin=.5cm,rightmargin=.5cm]}
+{\@lec{\textrm\@@src}\end{mdframed}}
+%    \end{macrocode}
+% \end{environment}
+% 
+% The line end comment macro makes sure that it will not be forced on the next line unless
+% necessary.
+% \begin{macro}{\lec}
+%   The actual appearance of the line end comment is determined by the |\@@lec| macro,
+%   which can be customized in the document class. The basic one here is provided so that
+%   it is not missing.
+%    \begin{macrocode}
+\providecommand{\@@lec}[1]{(#1)}
+\def\@lec#1{\strut\hfil\strut\null\nobreak\hfill\@@lec{#1}}
+\def\lec#1{\@lec{#1}\par}
+%    \end{macrocode}
+% \end{macro}
+%
+% \end{omgroup}
+% 
+% \begin{omgroup}[id=sec:impl:index]{Index Markup}
+%
+% \begin{macro}{\omdoc@index*}
+%   These are the main internal indexing commands -- dividing them into four macros is awful,
+%   but I did not get list processing running. It makes sure that the modules necessary
+%   for interpreting the math in the index entries are loaded. If the |loadmodules| key is
+%   given, we import the module we are in otherwise all the currently imported modules. We
+%   do not have to require the module files, since the index is a the end of the
+%   document. If the |at| key is given, then we use that for sorting in the index.
+%    \begin{macrocode}
+\addmetakey{omdoc@index}{at}
+\addmetakey[false]{omdoc@index}{loadmodules}[true]
+\newcommand\omdoc@indexi[2][]{\ifindex%
+\metasetkeys{omdoc@index}{#1}%
+\@bsphack\begingroup\@sanitize%
+\protected@write\@indexfile{}{\string\indexentry%
+{\ifx\omdoc@index@at\@empty\else\omdoc@index@at @\fi%
+\ifx\omdoc@index@loadmodules\@true%
+\string\withusedmodules{\@ifundefined{module@id}\used@modules\module@id}{#2}%
+\else #2\fi% loadmodules
+}{\thepage}}%
+\endgroup\@esphack\fi}%ifindex
+\newcommand\omdoc@indexii[3][]{\ifindex%
+\metasetkeys{omdoc@index}{#1}%
+\@bsphack\begingroup\@sanitize%
+\protected@write\@indexfile{}{\string\indexentry%
+{\ifx\omdoc@index@at\@empty\else\omdoc@index@at @\fi%
+\ifx\omdoc@index@loadmodules\@true%
+\string\withusedmodules{\@ifundefined{module@id}\used@modules\module@id}{#2}!%
+\string\withusedmodules{\@ifundefined{module@id}\used@modules\module@id}{#3}%
+\else #2!#3\fi% loadmodules
+}{\thepage}}%
+\endgroup\@esphack\fi}%ifindex
+\newcommand\omdoc@indexiii[4][]{\ifindex%
+\metasetkeys{omdoc@index}{#1}%
+\@bsphack\begingroup\@sanitize%
+\protected@write\@indexfile{}{\string\indexentry%
+{\ifx\omdoc@index@at\@empty\else\omdoc@index@at @\fi%
+\ifx\omdoc@index@loadmodules\@true%
+\string\withusedmodules{\@ifundefined{module@id}\used@modules\module@id}{#2}!%
+\string\withusedmodules{\@ifundefined{module@id}\used@modules\module@id}{#3}!%
+\string\withusedmodules{\@ifundefined{module@id}\used@modules\module@id}{#4}%
+\else #2!#3!#4\fi% loadmodules
+}{\thepage}}%
+\endgroup\@esphack\fi}%ifindex
+\newcommand\omdoc@indexiv[5][]{\ifindex%
+\metasetkeys{omdoc@index}{#1}%
+\@bsphack\begingroup\@sanitize%
+\protected@write\@indexfile{}{\string\indexentry%
+{\ifx\omdoc@index@at\@empty\else\omdoc@index@at @\fi%
+\ifx\omdoc@index@loadmodules\@true%
+\string\withusedmodules{\@ifundefined{module@id}\used@modules\module@id}{#2}!%
+\string\withusedmodules{\@ifundefined{module@id}\used@modules\module@id}{#3}!%
+\string\withusedmodules{\@ifundefined{module@id}\used@modules\module@id}{#4}%
+\string\withusedmodules{\@ifundefined{module@id}\used@modules\module@id}{#5}%
+\else #2!#3!#4!#5\fi% loadmodules
+}{\thepage}}%
+\endgroup\@esphack\fi}%ifindex
+%    \end{macrocode}
+% \end{macro}
+% 
+% Now, we make two interface macros that make use of this: 
+%
+% \begin{macro}{\*indi*}
+%    \begin{macrocode}
+\newcommand\aindi[3][]{{#2}\omdoc@indexi[#1]{#3}}
+\newcommand\indi[2][]{{#2}\omdoc@indexi[#1]{#2}}
+\newcommand\indis[2][]{{#2}\omdoc@indexi[#1]{#2s}}
+\newcommand\Indi[2][]{{\captitalize{#2}}\omdoc@indexi[#1]{#2}}
+\newcommand\Indis[2][]{{\capitalize{#2}}\omdoc@indexi[#1]{#2s}}
+
+\newcommand\@indii[3][]{\omdoc@indexii[#1]{#2}{#3}\omdoc@indexii[#1]{#3}{#2}}
+\newcommand\aindii[4][]{#2\@indii[#1]{#3}{#4}}
+\newcommand\indii[3][]{{#2 #3}\@indii[#1]{#2}{#3}}
+\newcommand\indiis[3][]{{#2 #3s}\@indii[#1]{#2}{#3}}
+\newcommand\Indii[3][]{{\captitalize{#2 #3}}\@indii[#1]{#2}{#3}}
+\newcommand\Indiis[3][]{{\capitalize{#2 #3}}\@indii[#1]{#2}{#3}}
+
+\newcommand\@indiii[4][]{\omdoc@indexiii[#1]{#2}{#3}{#4}\omdoc@indexii[#1]{#3}{#2 (#4)}}
+\newcommand\aindiii[5][]{{#2}\@indiii[#1]{#3}{#4}{#5}}
+\newcommand\indiii[4][]{{#2 #3 #4}\@indiii[#1]{#2}{#3}{#4}}
+\newcommand\indiiis[4][]{{#2 #3 #4s}\@indiii[#1]{#2}{#3}{#4}}
+\newcommand\Indiii[4][]{\captitalize{#2 #3 #4}\@indiii[#1]{#2}{#3}{#4}}
+\newcommand\Indiiis[4][]{\capitalize{#2 #3 #4s}\@indiii[#1]{#2}{#3}{#4}}
+
+\newcommand\@indiv[5][]{\omdoc@indexiv[#1]{#2}{#3}{#4}{#5}}
+\newcommand\aindiv[6][]{#2\@indiv[#1]{#3}{#4}{#5}{#6}}
+\newcommand\indiv[5][]{{#2 #3 #4 #5}\@indiv[#1]{#2}{#3}{#4}{#5}}
+\newcommand\indivs[5][]{{#2 #3 #4 #5s}\@indiv[#1]{#2}{#3}{#4}{#5}}
+\newcommand\Indiv[5][]{\capitalize{#2 #3 #4 #5s}\@indiv[#1]{#2}{#3}{#4}{#5}}
+\newcommand\Indivs[5][]{\capitalize{#2 #3 #4 #5s}\@indiv[#1]{#2}{#3}{#4}{#5}}
+%    \end{macrocode}
+% \end{macro}
+% \end{omgroup}
+% 
+% \begin{omgroup}[id=sec:impl:misc]{Miscellaneous}
+%   Some shortcuts that use math symbols but are not mathematical at all; in particular,
+%   they should not be translated by {\latexml}.
+%    \begin{macrocode}
+\newcommand\hateq{\ensuremath{\widehat=}\xspace}
+\newcommand\hatequiv{\ensuremath{\widehat\equiv}\xspace}
+\@ifundefined{ergo}%
+{\newcommand\ergo{\ensuremath{\leadsto}\xspace}}%
+{\renewcommand\ergo{\ensuremath{\leadsto}\xspace}}%
+\newcommand{\reflect@squig}[2]{\reflectbox{$\m@th#1\rightsquigarrow$}}%
+\newcommand\ogre{\ensuremath{\mathrel{\mathpalette\reflect@squig\relax}}\xspace}%
+\newcommand\notergo{\ensuremath{\not\leadsto}}
+\newcommand\notogre{\ensuremath{\not\mathrel{\mathpalette\reflect@squig\relax}}\xspace}%
+%    \end{macrocode}
+%
+% \end{omgroup}
+%
+% \begin{omgroup}{Deprecated Functionality}\label{sec:deprecated}
+%
+% In this section we centralize old interfaces that are only partially supported any
+% more. 
+% \begin{macro}{\*def*}
+%    \begin{macrocode}
+\newcommand\indextoo[2][]{\indi[#1]{#2}%
+\PackageWarning{omtext}{\protect\indextoo\space is deprecated, use \protect\indi\space instead}}
+\newcommand\indexalt[2][]{\aindi[#1]{#2}%
+\PackageWarning{omtext}{\protect\indextoo\space is deprecated, use \protect\aindi\space instead}}
+\newcommand\twintoo[3][]{\indii[#1]{#2}{#3}%
+\PackageWarning{omtext}{\protect\twintoo\space is deprecated, use \protect\indii\space instead}}
+\newcommand\twinalt[3][]{\aindii[#1]{#2}{#3}%
+\PackageWarning{omtext}{\protect\twinalt\space is deprecated, use \protect\aindii\space instead}}
+\newcommand\atwintoo[4][]{\indiii[#1]{#2}{#3}{#4}%
+\PackageWarning{omtext}{\protect\atwintoo\space is deprecated, use \protect\indiii\space instead}}
+\newcommand\atwinalt[4][]{\aindii[#1]{#2}{#3}{#4}%
+\PackageWarning{omtext}{\protect\atwinalt\space is deprecated, use \protect\aindiii\space instead}}
+%</package>
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\my*graphics}
+%    \begin{macrocode}
+\newcommand\mygraphics[2][]{\includegraphics[#1]{#2}%
+  \PackageWarning{omtext}{\protect\mygraphics\space is deprecated, use \protect\includegraphics\space instead}}
+\newcommand\mycgraphics[2][]{\begin{center}\mygraphics[#1]{#2}\end{center}%
+  \PackageWarning{omtext}{\protect\mycgraphics\space is deprecated, use \protect\includegraphics\space instead}}
+\newcommand\mybgraphics[2][]{\fbox{\mygraphics[#1]{#2}}%
+  \PackageWarning{omtext}{\protect\mybgraphics\space is deprecated, use \protect\includegraphics\space instead}}
+\newcommand\mycbgraphics[2][]{\begin{center}\fbox{\mygraphics[#1]{#2}}\end{center}%
+  \PackageWarning{omtext}{\protect\mycbgraphics\space is deprecated, use \protect\includegraphics\space instead}}
+%    \end{macrocode}
+% \end{macro}
+% \end{omgroup}
 %
 %
 %
@@ -2367,6 +3037,49 @@
     \addto@thismodulex{\noexpand\setcurrentreposinfo{\mh@@repos}}%
   \fi%
   \ignorespacesandpars%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\usemhmodule}
+%    \begin{macrocode}
+\addmetakey{importmhmodule}{load}
+\addmetakey{importmhmodule}{id}
+\addmetakey{importmhmodule}{dir}
+\addmetakey{importmhmodule}{mhrepos}
+
+\addmetakey{importmodule}{load}
+\addmetakey{importmodule}{id}
+
+\newcommand\usemhmodule[2][]{%
+\metasetkeys{importmhmodule}{#1}%
+\ifx\importmhmodule@dir\@empty%
+\edef\@path{\importmhmodule@path}%
+\else\edef\@path{\importmhmodule@dir/#2}\fi%
+\ifx\@path\@empty%
+\usemodule[id=\importmhmodule@id]{#2}%
+\else%
+\edef\mh@@repos{\mh@currentrepos}%
+\ifx\importmhmodule@mhrepos\@empty%
+\else\setcurrentreposinfo{\importmhmodule@mhrepos}\fi%
+\usemodule{\@path\@QuestionMark#2}%
+%\usemodule[load=\MathHub{\mh@currentrepos/source/\@path},
+%                        id=\importmhmodule@id]{#2}%
+\setcurrentreposinfo\mh@@repos%
+\fi%
+\ignorespacesandpars}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\mhinputref}
+%    \begin{macrocode}
+\newcommand\mhinputref[2][]{%
+  \edef\mhinputref@first{#1}%
+  \ifx\mhinputref@first\@empty%
+    \inputref{#2}%
+  \else%
+    \inputref[mhrepos=\mhinputref@first]{#2}%
+  \fi%
 }
 %    \end{macrocode}
 % \end{macro}

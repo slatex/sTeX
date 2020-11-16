@@ -8,9 +8,7 @@
 %% 
 \NeedsTeXFormat{LaTeX2e}[1999/12/01]
 \ProvidesClass{mikoslides}[2020/10/17 v1.3 MiKo slides Class]
-\RequirePackage{stex-base}
-\RequirePackage{kvoptions}
-\RequirePackage{etoolbox}
+\RequirePackage{stex-master}
 \SetupKeyvalOptions{family=mks@cls,prefix=mks@cls@}
 \DeclareStringOption[article]{class}
 \AddToKeyvalOption*{class}{\PassOptionsToClass{class=\mks@cls@class}{omdoc}

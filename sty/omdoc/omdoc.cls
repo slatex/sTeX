@@ -8,8 +8,7 @@
 %% 
 \NeedsTeXFormat{LaTeX2e}[1999/12/01]
 \ProvidesClass{omdoc}[2020/10/19 v1.4 OMDoc Documents]
-\RequirePackage{etoolbox}
-\RequirePackage{kvoptions}
+\RequirePackage{stex-master}
 \SetupKeyvalOptions{family=omdoc@cls,prefix=omdoc@cls@}
 \DeclareStringOption[article]{class}
 \AddToKeyvalOption*{class}{\PassOptionsToPackage{class=\omdoc@cls@class}{omdoc}}
@@ -28,11 +27,9 @@
 \else\xappto\@omdoc@cls@docopt{,\CurrentOption}%
 \fi}%
 \PassOptionsToPackage{\CurrentOption}{omdoc}
-\PassOptionsToPackage{\CurrentOption}{stex}
 \ProcessKeyvalOptions{omdoc@cls}
 \LoadClass[\@omdoc@cls@docopt]{\omdoc@cls@class}
 \ifomdoc@cls@minimal\else%
-\RequirePackage{stex}
 \srefaddidkey{document}
 \newcommand\documentkeys[1]{\metasetkeys{document}{#1}}
 \let\orig@document=\document

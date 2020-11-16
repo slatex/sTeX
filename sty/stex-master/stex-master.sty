@@ -698,12 +698,9 @@
       \parsemodule@maybesetcodes%
   }
 \newif\if@importmodule@switchrepos\@importmodule@switchreposfalse
-\addmetakey{importmodule}{mhrepos}
-\newcommand\importmodule[2][]{\@@importmodule[#1]{#2}{export}}
-\newcommand\@@importmodule[3][]{%
+\def\importmodule@bookkeeping#1#2#3{%
   \@importmodule@switchreposfalse%
   \metasetkeys{importmodule}{#1}%
-  \parsemodule@maybesetcodes%
   \ifcsvoid{importmodule@mhrepos}{%
     \ifcsvoid{currentrepos@dir}{%
       \let\importmodule@dir\stex@maindir%
@@ -725,11 +722,18 @@
       \edef\importmodule@dir{\importmodule@dir\@Slash\importmodule@subdir}%
     \fi%
   \fi%
-  \@importmodule[\importmodule@dir]\importmodule@modulename{#3}%
+  \begingroup#3\endgroup%
   \if@importmodule@switchrepos%
     \expandafter\setcurrentreposinfo\csname importmodule@oldrepos@#2\endcsname%
   \fi%
   \ignorespacesandpars%
+}
+\addmetakey{importmodule}{mhrepos}
+\newcommand\importmodule[2][]{\@@importmodule[#1]{#2}{export}}
+\newcommand\@@importmodule[3][]{%
+  \importmodule@bookkeeping{#1}{#2}{%
+    \@importmodule[\importmodule@dir]\importmodule@modulename{#3}%
+  }%
 }
 \newcommand\@importmodule[3][]{%
 {%
@@ -778,6 +782,16 @@
   }%
 }%
 \newcommand\usemodule[2][]{\@@importmodule[#1]{#2}{noexport}}
+\def\inputref@preskip{}
+\def\inputref@postskip{}
+\newrobustcmd\inputref[2][]{%
+  \importmodule@bookkeeping{#1}{#2}{%
+    %\inputreftrue
+    \inputref@preskip%
+    \stexinput{\importmodule@dir\@Slash\importmodule@modulename.tex}%
+    \inputref@postskip%
+  }%
+}%
 \newif\if@symdeflocal\@symdeflocalfalse
 \def\define@in@module#1#2{
   \expandafter\edef\csname #1\endcsname{#2}%
@@ -1151,6 +1165,9 @@
   \else\def\invoke@symbol@next{\@invoke@symbol@text\@invoke@symbol@first{#1}}\fi%
   \invoke@symbol@next%
 }
+\def\@invoke@symbol@math@#1#2{%
+  \csname #1\@Fragment#2\endcsname%
+}
 \def\@invoke@symbol@math#1#2{%
   % #1: URI
   % #2: options
@@ -1174,7 +1191,7 @@
       \edef\notation@temp@fragment{\notation@temp@fragment\@Ampersand variant=\notation@curr@variant}%
     \fi%
   \fi%
-  \csname #1\@Fragment\notation@temp@fragment\endcsname%
+  \@invoke@symbol@math@{#1}\notation@temp@fragment%
 }
 \def\@invoke@symbol@text#1#2{%
     % TODO
@@ -1189,6 +1206,55 @@
 \def\setstexvariants#1{%
   \def\stex@variants{#1}%
 }
+\newif\ifhref\hreffalse%
+\AtBeginDocument{%
+  \@ifpackageloaded{hyperref}{%
+    \hreftrue%
+  }{%
+    \hreffalse%
+  }%
+}%
+\newcommand\sref@href@ifh[2]{%
+  \ifhref%
+    \href{#1}{#2}%
+  \else%
+    #2%
+  \fi%
+}%
+\newcommand\sref@hlink@ifh[2]{%
+  \ifhref%
+    \hyperlink{#1}{#2}%
+  \else%
+    #2%
+  \fi%
+}%
+\newcommand\sref@target@ifh[2]{%
+  \ifhref%
+    \hypertarget{#1}{#2}%
+  \else%
+    #2%
+  \fi%
+}%
+\def\sref@target{%
+  \ifx\sref@id\@empty%
+    \relax%
+  \else%
+    \edef\@target{sref@\ifcsundef{sref@part}{}{\sref@part @}\sref@id @target}%
+    \sref@target@ifh\@target{}%
+  \fi%
+}%
+\addmetakey{srefaddidkey}{prefix}
+\newcommand\srefaddidkey[2][]{%
+  \metasetkeys{srefaddidkey}{#1}%
+  \@metakeys@ext@clear@keys{#2}{sref@id}{}% id cannot have a default
+  \metakeys@ext@clear@keys{#2}{id}{}%
+  \metakeys@ext@showkeys{#2}{id}%
+  \define@key{#2}{id}{%
+    \edef\sref@id{\srefaddidkey@prefix ##1}%
+    %\expandafter\edef\csname #2@id\endcsname{\srefaddidkey@prefix ##1}%
+    \csedef{#2@id}{\srefaddidkey@prefix ##1}%
+  }%
+}%
 \newcommand\@sref@def[3]{\csgdef{sref@#1@#2}{#3}}
 \ifextrefs%
   \newwrite\refs@file%
@@ -1211,6 +1277,14 @@
     \sref@label{#1}{\sref@id}%
   \fi%
 }%
+\newcommand\sref@label@id@arg[2]{%
+  \def\@@id{#2}
+  \ifx\@@id\@empty%
+    \relax%
+  \else%
+    \sref@label{#1}{\@@id}%
+  \fi%
+}%
 \newenvironment{modsig}[2][]{\def\@test{#1}%
 \ifx\@test\@empty\begin{module}[name=#2]\else\begin{module}[name=#2,#1]\fi%
 \expandafter\gdef\csname mod@#2@multiling\endcsname{true}%
@@ -1231,6 +1305,275 @@
 \else\importmhmodule[mhrepos=#1,path=#2]{#2}\fi%
 \setcurrentreposinfo{\mh@@repos}%
 \ignorespacesandpars\parsemodule@maybesetcodes}
+\def\modules@@first#1/#2;{#1}
+\newcommand\libinput[1]{%
+\ifcsvoid{mh@currentrepos}{%
+  \PackageError{mathhub}{current MathHub repository not found}{}}%
+  {}
+\edef\@mh@group{\expandafter\modules@@first\mh@currentrepos;}
+\let\orig@inffile\mh@inffile\let\orig@libfile\mh@libfile
+\def\mh@inffile{\MathHub{\@mh@group/meta-inf/lib/#1}}
+\def\mh@libfile{\MathHub{\mh@currentrepos/lib/#1}}%
+\IfFileExists\mh@inffile{\stexinput\mh@inffile}{}%
+\IfFileExists\mh@inffile{}{\IfFileExists\mh@libfile{}{%
+  {\PackageError{mathhub}
+    {Library file missing; cannot input #1.tex\MessageBreak%
+    Both \mh@libfile.tex\MessageBreak and \mh@inffile.tex\MessageBreak%
+    do not exist}%
+  {Check whether the file name is correct}}}}
+\IfFileExists\mh@libfile{\stexinput\mh@libfile\relax}{}
+\let\mh@inffile\orig@inffile\let\mh@libfile\orig@libfile}
+\newcount\section@level
+
+\section@level=2
+\ifdefstring{\omdoc@sty@class}{book}{\section@level=0}{}
+\ifdefstring{\omdoc@sty@class}{report}{\section@level=0}{}
+\ifdefstring{\omdoc@sty@topsect}{part}{\section@level=0}{}
+\ifdefstring{\omdoc@sty@topsect}{chapter}{\section@level=1}{}
+\newcommand\omgroup@nonum[2]{%
+\ifx\hyper@anchor\@undefined\else\phantomsection\fi%
+\addcontentsline{toc}{#1}{#2}\@nameuse{#1}*{#2}}
+\newcommand\omgroup@num[2]{%
+\edef\@@ID{\sref@id}
+\ifx\omgroup@short\@empty% no short title
+\@nameuse{#1}{#2}%
+\else% we have a short title
+\@ifundefined{rdfmeta@sectioning}%
+  {\@nameuse{#1}[\omgroup@short]{#2}}%
+  {\@nameuse{rdfmeta@#1@old}[\omgroup@short]{#2}}%
+\fi%
+\sref@label@id@arg{\omdoc@sect@name~\@nameuse{the#1}}\@@ID}
+\def\@true{true}
+\def\@false{false}
+\srefaddidkey{omgroup}
+\addmetakey{omgroup}{date}
+\addmetakey{omgroup}{creators}
+\addmetakey{omgroup}{contributors}
+\addmetakey{omgroup}{srccite}
+\addmetakey{omgroup}{type}
+\addmetakey*{omgroup}{short}
+\addmetakey*{omgroup}{display}
+\addmetakey[false]{omgroup}{loadmodules}[true]
+\newif\if@mainmatter\@mainmattertrue
+\newcommand\at@begin@omgroup[3][]{}
+\addmetakey{omdoc@sect}{name}
+\addmetakey[false]{omdoc@sect}{clear}[true]
+\addmetakey{omdoc@sect}{ref}
+\addmetakey[false]{omdoc@sect}{num}[true]
+\newcommand\omdoc@sectioning[3][]{\metasetkeys{omdoc@sect}{#1}%
+\ifx\omdoc@sect@clear\@true\cleardoublepage\fi%
+\if@mainmatter% numbering not overridden by frontmatter, etc.
+\ifx\omdoc@sect@num\@true\omgroup@num{#2}{#3}\else\omgroup@nonum{#2}{#3}\fi%
+\def\current@section@level{\omdoc@sect@name}%
+\else\omgroup@nonum{#2}{#3}%
+\fi}% if@mainmatter
+\newcommand\omgroup@redefine@addtocontents[1]{%
+}% hypreref.sty loaded?
+\newcount\omgroup@level
+\newenvironment{omgroup}[2][]% keys, title
+{\metasetkeys{omgroup}{#1}\sref@target%
+\advance\omgroup@level by 1\relax%
+\ifx\omgroup@loadmodules\@true%
+\omgroup@redefine@addtocontents{\@ifundefined{module@id}\used@modules%
+{\@ifundefined{module@\module@id @path}{\used@modules}\module@id}}\fi%
+\advance\section@level by 1\relax%
+\ifcase\section@level%
+\or\omdoc@sectioning[name=\omdoc@part@kw,clear,num]{part}{#2}%
+\or\omdoc@sectioning[name=\omdoc@chapter@kw,clear,num]{chapter}{#2}%
+\or\omdoc@sectioning[name=\omdoc@section@kw,num]{section}{#2}%
+\or\omdoc@sectioning[name=\omdoc@subsection@kw,num]{subsection}{#2}%
+\or\omdoc@sectioning[name=\omdoc@subsubsection@kw,num]{subsubsection}{#2}%
+\or\omdoc@sectioning[name=\omdoc@paragraph@kw,ref=this \omdoc@paragraph@kw]{paragraph}{#2}%
+\or\omdoc@sectioning[name=\omdoc@subparagraph@kw,ref=this \omdoc@subparagraph@kw]{paragraph}{#2}%
+\fi% \ifcase
+\at@begin@omgroup[#1]\section@level{#2}}% for customization
+{\advance\section@level by -1\advance\omgroup@level by -1}
+\newcommand\omdoc@part@kw{Part}
+\newcommand\omdoc@chapter@kw{Chapter}
+\newcommand\omdoc@section@kw{Section}
+\newcommand\omdoc@subsection@kw{Subsection}
+\newcommand\omdoc@subsubsection@kw{Subsubsection}
+\newcommand\omdoc@paragraph@kw{paragraph}
+\newcommand\omdoc@subparagraph@kw{subparagraph}
+\newcommand\setSGvar[1]{\@namedef{sTeX@Gvar@#1}}
+\newrobustcmd\useSGvar[1]{%
+  \@ifundefined{sTeX@Gvar@#1}
+  {\PackageError{omdoc}
+    {The sTeX Global variable #1 is undefined}
+    {set it with \protect\setSGvar}}
+\@nameuse{sTeX@Gvar@#1}}
+\newcommand\at@begin@blindomgroup[1]{}
+\newenvironment{blindomgroup}
+{\advance\section@level by 1\at@begin@blindomgroup\setion@level}
+{\advance\section@level by -1}
+\srefaddidkey{omtext}
+\addmetakey[]{omtext}{functions}
+\addmetakey*{omtext}{display}
+\addmetakey{omtext}{for}
+\addmetakey{omtext}{from}
+\addmetakey{omtext}{type}
+\addmetakey*{omtext}{title}
+\addmetakey*{omtext}{start}
+\addmetakey{omtext}{theory}
+\addmetakey{omtext}{continues}
+\addmetakey{omtext}{verbalizes}
+\addmetakey{omtext}{subject}
+\def\st@flow{flow}
+\newif\if@in@omtext\@in@omtextfalse
+\def\omtext@pre@skip{\smallskip}
+\def\omtext@post@skip{}
+\newenvironment{omtext}[1][]{\@in@omtexttrue%
+  \bgroup\metasetkeys{omtext}{#1}\sref@label@id{this paragraph}%
+  \def\lec##1{\@lec{##1}}%
+  \omtext@pre@skip\par\noindent%
+  \ifx\omtext@title\@empty%
+    \ifx\omtext@start\@empty\else%
+      \ifx\omtext@display\st@flow\omtext@start\else\stDMemph{\omtext@start}\fi\enspace%
+    \fi% end omtext@start empty
+  \else\stDMemph{\omtext@title}:\enspace%
+    \ifx\omtext@start\@empty\else\omtext@start\enspace\fi%
+  \fi% end omtext@title empty
+  \ignorespacesandpars}
+{\egroup\omtext@post@skip\@in@omtextfalse\ignorespacesandpars}
+\srefaddidkey{phrase}
+\addmetakey{phrase}{style}
+\addmetakey{phrase}{class}
+\addmetakey{phrase}{index}
+\addmetakey{phrase}{verbalizes}
+\addmetakey{phrase}{type}
+\addmetakey{phrase}{only}
+\newcommand\phrase[2][]{\metasetkeys{phrase}{#1}%
+\ifx\prhase@only\@empty\only<\phrase@only>{#2}\else #2\fi}
+\providecommand\textsubscript[1]{\ensuremath{_{#1}}}
+\newcommand\corefs[2]{#1\textsubscript{#2}}
+\newcommand\coreft[2]{#1\textsuperscript{#2}}
+\newcommand\nlex[1]{\green{\sl{#1}}}
+\newcommand\nlcex[1]{*\green{\sl{#1}}}
+\def\@sinlinequote#1{``{\sl{#1}}''}
+\def\@@sinlinequote#1#2{\@sinlinequote{#2}~#1}
+\newcommand\sinlinequote[2][]
+{\def\@opt{#1}\ifx\@opt\@empty\@sinlinequote{#2}\else\@@sinlinequote\@opt{#2}\fi}
+\newcommand\vdec[2][]{#2}
+\newcommand\vrest[2][]{#2}
+\newcommand\vcond[2][]{#2}
+\newcommand\strucdec[2][]{#2}
+\newcommand\impdec[2][]{#2}
+\def\begin@sblockquote{\begin{quote}\sl}
+\def\end@sblockquote{\end{quote}}
+\def\begin@@sblockquote#1{\begin@sblockquote}
+\def\end@@sblockquote#1{\def\@@lec##1{\textrm{##1}}\@lec{#1}\end@sblockquote}
+\newenvironment{sblockquote}[1][]
+  {\def\@opt{#1}\ifx\@opt\@empty\begin@sblockquote\else\begin@@sblockquote\@opt\fi}
+  {\ifx\@opt\@empty\end@sblockquote\else\end@@sblockquote\@opt\fi}
+\newenvironment{sboxquote}[1][]
+{\def\@@src{#1}\begin{mdframed}[leftmargin=.5cm,rightmargin=.5cm]}
+{\@lec{\textrm\@@src}\end{mdframed}}
+\providecommand{\@@lec}[1]{(#1)}
+\def\@lec#1{\strut\hfil\strut\null\nobreak\hfill\@@lec{#1}}
+\def\lec#1{\@lec{#1}\par}
+\addmetakey{omdoc@index}{at}
+\addmetakey[false]{omdoc@index}{loadmodules}[true]
+\newcommand\omdoc@indexi[2][]{\ifindex%
+\metasetkeys{omdoc@index}{#1}%
+\@bsphack\begingroup\@sanitize%
+\protected@write\@indexfile{}{\string\indexentry%
+{\ifx\omdoc@index@at\@empty\else\omdoc@index@at @\fi%
+\ifx\omdoc@index@loadmodules\@true%
+\string\withusedmodules{\@ifundefined{module@id}\used@modules\module@id}{#2}%
+\else #2\fi% loadmodules
+}{\thepage}}%
+\endgroup\@esphack\fi}%ifindex
+\newcommand\omdoc@indexii[3][]{\ifindex%
+\metasetkeys{omdoc@index}{#1}%
+\@bsphack\begingroup\@sanitize%
+\protected@write\@indexfile{}{\string\indexentry%
+{\ifx\omdoc@index@at\@empty\else\omdoc@index@at @\fi%
+\ifx\omdoc@index@loadmodules\@true%
+\string\withusedmodules{\@ifundefined{module@id}\used@modules\module@id}{#2}!%
+\string\withusedmodules{\@ifundefined{module@id}\used@modules\module@id}{#3}%
+\else #2!#3\fi% loadmodules
+}{\thepage}}%
+\endgroup\@esphack\fi}%ifindex
+\newcommand\omdoc@indexiii[4][]{\ifindex%
+\metasetkeys{omdoc@index}{#1}%
+\@bsphack\begingroup\@sanitize%
+\protected@write\@indexfile{}{\string\indexentry%
+{\ifx\omdoc@index@at\@empty\else\omdoc@index@at @\fi%
+\ifx\omdoc@index@loadmodules\@true%
+\string\withusedmodules{\@ifundefined{module@id}\used@modules\module@id}{#2}!%
+\string\withusedmodules{\@ifundefined{module@id}\used@modules\module@id}{#3}!%
+\string\withusedmodules{\@ifundefined{module@id}\used@modules\module@id}{#4}%
+\else #2!#3!#4\fi% loadmodules
+}{\thepage}}%
+\endgroup\@esphack\fi}%ifindex
+\newcommand\omdoc@indexiv[5][]{\ifindex%
+\metasetkeys{omdoc@index}{#1}%
+\@bsphack\begingroup\@sanitize%
+\protected@write\@indexfile{}{\string\indexentry%
+{\ifx\omdoc@index@at\@empty\else\omdoc@index@at @\fi%
+\ifx\omdoc@index@loadmodules\@true%
+\string\withusedmodules{\@ifundefined{module@id}\used@modules\module@id}{#2}!%
+\string\withusedmodules{\@ifundefined{module@id}\used@modules\module@id}{#3}!%
+\string\withusedmodules{\@ifundefined{module@id}\used@modules\module@id}{#4}%
+\string\withusedmodules{\@ifundefined{module@id}\used@modules\module@id}{#5}%
+\else #2!#3!#4!#5\fi% loadmodules
+}{\thepage}}%
+\endgroup\@esphack\fi}%ifindex
+\newcommand\aindi[3][]{{#2}\omdoc@indexi[#1]{#3}}
+\newcommand\indi[2][]{{#2}\omdoc@indexi[#1]{#2}}
+\newcommand\indis[2][]{{#2}\omdoc@indexi[#1]{#2s}}
+\newcommand\Indi[2][]{{\captitalize{#2}}\omdoc@indexi[#1]{#2}}
+\newcommand\Indis[2][]{{\capitalize{#2}}\omdoc@indexi[#1]{#2s}}
+
+\newcommand\@indii[3][]{\omdoc@indexii[#1]{#2}{#3}\omdoc@indexii[#1]{#3}{#2}}
+\newcommand\aindii[4][]{#2\@indii[#1]{#3}{#4}}
+\newcommand\indii[3][]{{#2 #3}\@indii[#1]{#2}{#3}}
+\newcommand\indiis[3][]{{#2 #3s}\@indii[#1]{#2}{#3}}
+\newcommand\Indii[3][]{{\captitalize{#2 #3}}\@indii[#1]{#2}{#3}}
+\newcommand\Indiis[3][]{{\capitalize{#2 #3}}\@indii[#1]{#2}{#3}}
+
+\newcommand\@indiii[4][]{\omdoc@indexiii[#1]{#2}{#3}{#4}\omdoc@indexii[#1]{#3}{#2 (#4)}}
+\newcommand\aindiii[5][]{{#2}\@indiii[#1]{#3}{#4}{#5}}
+\newcommand\indiii[4][]{{#2 #3 #4}\@indiii[#1]{#2}{#3}{#4}}
+\newcommand\indiiis[4][]{{#2 #3 #4s}\@indiii[#1]{#2}{#3}{#4}}
+\newcommand\Indiii[4][]{\captitalize{#2 #3 #4}\@indiii[#1]{#2}{#3}{#4}}
+\newcommand\Indiiis[4][]{\capitalize{#2 #3 #4s}\@indiii[#1]{#2}{#3}{#4}}
+
+\newcommand\@indiv[5][]{\omdoc@indexiv[#1]{#2}{#3}{#4}{#5}}
+\newcommand\aindiv[6][]{#2\@indiv[#1]{#3}{#4}{#5}{#6}}
+\newcommand\indiv[5][]{{#2 #3 #4 #5}\@indiv[#1]{#2}{#3}{#4}{#5}}
+\newcommand\indivs[5][]{{#2 #3 #4 #5s}\@indiv[#1]{#2}{#3}{#4}{#5}}
+\newcommand\Indiv[5][]{\capitalize{#2 #3 #4 #5s}\@indiv[#1]{#2}{#3}{#4}{#5}}
+\newcommand\Indivs[5][]{\capitalize{#2 #3 #4 #5s}\@indiv[#1]{#2}{#3}{#4}{#5}}
+\newcommand\hateq{\ensuremath{\widehat=}\xspace}
+\newcommand\hatequiv{\ensuremath{\widehat\equiv}\xspace}
+\@ifundefined{ergo}%
+{\newcommand\ergo{\ensuremath{\leadsto}\xspace}}%
+{\renewcommand\ergo{\ensuremath{\leadsto}\xspace}}%
+\newcommand{\reflect@squig}[2]{\reflectbox{$\m@th#1\rightsquigarrow$}}%
+\newcommand\ogre{\ensuremath{\mathrel{\mathpalette\reflect@squig\relax}}\xspace}%
+\newcommand\notergo{\ensuremath{\not\leadsto}}
+\newcommand\notogre{\ensuremath{\not\mathrel{\mathpalette\reflect@squig\relax}}\xspace}%
+\newcommand\indextoo[2][]{\indi[#1]{#2}%
+\PackageWarning{omtext}{\protect\indextoo\space is deprecated, use \protect\indi\space instead}}
+\newcommand\indexalt[2][]{\aindi[#1]{#2}%
+\PackageWarning{omtext}{\protect\indextoo\space is deprecated, use \protect\aindi\space instead}}
+\newcommand\twintoo[3][]{\indii[#1]{#2}{#3}%
+\PackageWarning{omtext}{\protect\twintoo\space is deprecated, use \protect\indii\space instead}}
+\newcommand\twinalt[3][]{\aindii[#1]{#2}{#3}%
+\PackageWarning{omtext}{\protect\twinalt\space is deprecated, use \protect\aindii\space instead}}
+\newcommand\atwintoo[4][]{\indiii[#1]{#2}{#3}{#4}%
+\PackageWarning{omtext}{\protect\atwintoo\space is deprecated, use \protect\indiii\space instead}}
+\newcommand\atwinalt[4][]{\aindii[#1]{#2}{#3}{#4}%
+\PackageWarning{omtext}{\protect\atwinalt\space is deprecated, use \protect\aindiii\space instead}}
+\newcommand\mygraphics[2][]{\includegraphics[#1]{#2}%
+  \PackageWarning{omtext}{\protect\mygraphics\space is deprecated, use \protect\includegraphics\space instead}}
+\newcommand\mycgraphics[2][]{\begin{center}\mygraphics[#1]{#2}\end{center}%
+  \PackageWarning{omtext}{\protect\mycgraphics\space is deprecated, use \protect\includegraphics\space instead}}
+\newcommand\mybgraphics[2][]{\fbox{\mygraphics[#1]{#2}}%
+  \PackageWarning{omtext}{\protect\mybgraphics\space is deprecated, use \protect\includegraphics\space instead}}
+\newcommand\mycbgraphics[2][]{\begin{center}\fbox{\mygraphics[#1]{#2}}\end{center}%
+  \PackageWarning{omtext}{\protect\mycbgraphics\space is deprecated, use \protect\includegraphics\space instead}}
 \addmetakey*{module}{id} % TODO: deprecate properly
 \addmetakey*{module}{load}
 \addmetakey*{module}{path}
@@ -1331,6 +1674,37 @@
     \addto@thismodulex{\noexpand\setcurrentreposinfo{\mh@@repos}}%
   \fi%
   \ignorespacesandpars%
+}
+\addmetakey{importmhmodule}{load}
+\addmetakey{importmhmodule}{id}
+\addmetakey{importmhmodule}{dir}
+\addmetakey{importmhmodule}{mhrepos}
+
+\addmetakey{importmodule}{load}
+\addmetakey{importmodule}{id}
+
+\newcommand\usemhmodule[2][]{%
+\metasetkeys{importmhmodule}{#1}%
+\ifx\importmhmodule@dir\@empty%
+\edef\@path{\importmhmodule@path}%
+\else\edef\@path{\importmhmodule@dir/#2}\fi%
+\ifx\@path\@empty%
+\usemodule[id=\importmhmodule@id]{#2}%
+\else%
+\edef\mh@@repos{\mh@currentrepos}%
+\ifx\importmhmodule@mhrepos\@empty%
+\else\setcurrentreposinfo{\importmhmodule@mhrepos}\fi%
+\usemodule{\@path\@QuestionMark#2}%
+\setcurrentreposinfo\mh@@repos%
+\fi%
+\ignorespacesandpars}
+\newcommand\mhinputref[2][]{%
+  \edef\mhinputref@first{#1}%
+  \ifx\mhinputref@first\@empty%
+    \inputref{#2}%
+  \else%
+    \inputref[mhrepos=\mhinputref@first]{#2}%
+  \fi%
 }
 \endinput
 %%
