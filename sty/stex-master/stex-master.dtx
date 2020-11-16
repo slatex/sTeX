@@ -1602,27 +1602,45 @@
 % figure out what symbol |foo| refers to:
 %    \begin{macrocode}
 \def\modules@getURIfromName#1{%
-  % TODO check whether #1 is a URI
   \def\notation@uri{}%
-  \def\modules@getURI@name{#1}%
-  \ifcsvoid{this@module}{}{%
-    \expandafter\modules@getURIfromModule\expandafter{\module@uri}%
-    \ifx\notation@uri\@empty%
-      \edef\modules@getURI@modules{\csname module@imports@\module@uri\endcsname}%
-      \expandafter\@for\expandafter\@I\expandafter:\expandafter=\modules@getURI@modules\do{%
-        \ifx\notation@uri\@empty%
-          \expandafter\modules@getURIfromModule\expandafter{\@I}%
-        \fi%
-      }%
-    \fi%
-    \ifx\notation@uri\@empty%
-      \def\notation@extract@uri@currcs{}%
-      \notation@extracturifrommacro{#1}%
-    \fi%
-    \ifx\notation@uri\@empty%
-      \PackageError{stex}{No symbol with name, URI or macroname \detokenize{#1} found!}{}%
-    \fi%
+  \edef\modules@getURI@name{#1}%
+  \if@isuri\modules@getURI@name{%
+    \let\notation@uri\isuri@uri%
+  }{%
+    \ifcsvoid{this@module}{}{%
+      \expandafter\modules@getURIfromModule\expandafter{\module@uri}%
+      \ifx\notation@uri\@empty%
+        \edef\modules@getURI@modules{\csname module@imports@\module@uri\endcsname}%
+        \expandafter\@for\expandafter\@I\expandafter:\expandafter=\modules@getURI@modules\do{%
+          \ifx\notation@uri\@empty%
+            \expandafter\modules@getURIfromModule\expandafter{\@I}%
+          \fi%
+        }%
+      \fi%
+      \ifx\notation@uri\@empty%
+        \def\notation@extract@uri@currcs{}%
+        \notation@extracturifrommacro{#1}%
+      \fi%
+      \ifx\notation@uri\@empty%
+        \PackageError{stex}{No symbol with name, URI or macroname \detokenize{#1} found!}{}%
+      \fi%
+    }%
   }%
+}
+
+\def\if@isuri#1#2#3{%
+  \StrCount{#1}\@QuestionMark[\isuri@number]%
+  \ifnum\isuri@number=1 %
+    \StrCut{#1}\@QuestionMark\@isuri@mod\@isuri@name%
+    \ifcsvoid{Module\@isuri@mod}{#3}{%
+      \edef\isuri@uri{\csname Module\@isuri@mod\endcsname\@URI\@QuestionMark\@isuri@name}%
+      #2%
+    }%
+  \else%
+    \ifnum\isuri@number=2 %
+      \edef\isuri@uri{#1}#2\else#3%
+    \fi%
+  \fi%
 }
 
 \def\modules@getURIfromModule#1{%
@@ -2076,6 +2094,66 @@
 %    \[\times{\frac\vara\varb,\plus{\frac\vara{\frac\vara\varb},\times{\varc,\plus{\vard,\vare}}}}\]
 %  \end{module}
 %}
+%
+% \subsection{Term References}
+%
+% \begin{macro}{\ifhref}
+%    \begin{macrocode}
+\newif\ifhref\hreffalse%
+\AtBeginDocument{%
+  \@ifpackageloaded{hyperref}{%
+    \hreftrue%
+  }{%
+    \hreffalse%
+  }%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\termref@maketarget}
+% This macro creates a hypertarget |sref@|\meta{symbol URI}|@target| and
+% defines |\sref@|\meta{symbol URI}|#1| to create a hyperlink
+% to here on the text |#1|.
+%    \begin{macrocode}
+\def\termref@maketarget#1#2{%
+  % #1: symbol URI
+  % #2: text
+  \ifhref%
+    \hypertarget{sref@#1@target}{#2}%
+  \fi%
+  \expandafter\edef\csname sref@#1\endcsname##1{%
+    \ifhref\noexpand\hyperlink{sref@#1@target}{##1}\fi%
+  }%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\@termref}
+%    \begin{macrocode}
+\def\@termref#1#2{%
+  % #1: symbol URI
+  % #2: text
+  \ifcvoid{#1}{%
+    \StrCut{#1}\@QuestionMark\termref@mod\termref@name%
+    \ifcsvoid{\termref@mod}{%
+      \PackageError{stex}{Term reference: Module with URI \termref@mod\ not found}{}%
+    }{%
+      \PackageError{stex}{Term reference: Module \termref@mod\ exists, but %
+        contains no symbol with name \termref@name.%
+      }{}%
+    }%
+  }{%
+    \ifcsvoid{sref@#1}{%
+      % TODO: No reference point exists!
+    }{%
+      \csname sref@#1\endcsname{#2}%
+    }%
+  }%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+%
 %
 %
 %
