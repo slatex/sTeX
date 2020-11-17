@@ -1556,11 +1556,45 @@
 %
 %    \begin{macrocode}
 \addmetakey{symdecl}{name}%
+\addmetakey{symdecl}{verbalization}%
+
+% constructs a symbol name and a verbalization by splitting at exclamation
+% points - e.g. \symdecl{symmetric!group} leads to name=symmetric-group
+% and verbalization "symmetric group".
+\def\symdecl@constructname#1{%
+  \def\symdecl@name{}%
+  \def\symdecl@verb{}%
+  \edef\symdecl@tempname{#1}%
+  \symdecl@constructname@loop%
+}
+
+\def\symdecl@constructname@loop{%
+  \ifx\symdecl@tempname\@empty\else%
+    \StrCut\symdecl@tempname!\symdecl@tempfirst\symdecl@tempname%
+    \ifx\symdecl@name\@empty%
+      \let\symdecl@name\symdecl@tempfirst%
+      \let\symdecl@verbalization\symdecl@tempfirst%
+      \symdecl@constructname@loop%
+    \else%
+      \edef\symdecl@name{\symdecl@name-\symdecl@tempfirst}%
+      \edef\symdecl@verbalization{\symdecl@verbalization\@Space\symdecl@tempfirst}%
+      \symdecl@constructname@loop%
+    \fi%
+  \fi%
+}
 
 \newcommand\symdecl[2][]{%
   \ifcsdef{this@module}{%
     \metasetkeys{symdecl}{#1}%
-    \ifcsvoid{symdecl@name}{\edef\symdecl@name{#2}}{}%
+    \ifcsvoid{symdecl@name}{%
+      \ifcsvoid{symdecl@verbalization}{%
+        \symdecl@constructname{#2}%
+      }{%
+        \edef\symdecl@name{#2}%
+      }%
+    }{%
+      \ifcsvoid{symdecl@verbalization}{\edef\symdecl@verbalization{#2}}{}%
+    }%
     \edef\symdef@uri{\module@uri\@QuestionMark\symdecl@name}%
     \ifcsvoid{\symdef@uri}{
       \ifcsvoid{module@names@\module@uri}{%
@@ -1569,16 +1603,15 @@
         \csxdef{module@names@\module@uri}{\symdecl@name,%
           \csname module@names@\module@uri\endcsname}%
       }%
-      \define@in@module\symdef@uri{\noexpand\@invoke@symbol{\symdef@uri}}%
-      \define@in@module{#2}{\noexpand\@invoke@symbol{\symdef@uri}}%
     }{%
     % not compatible with circular dependencies, e.g. test/omdoc/07-modules/smstesta.tex
       \PackageWarning{stex}{symbol already defined: \symdef@uri}{%
         You need to pick a fresh name for your symbol%
       }%
-      \define@in@module\symdef@uri{\noexpand\@invoke@symbol{\symdef@uri}}%
-      \define@in@module{#2}{\noexpand\@invoke@symbol{\symdef@uri}}%
     }%
+    \define@in@module\symdef@uri{\noexpand\@invoke@symbol{\symdef@uri}}%
+    \define@in@module{#2}{\noexpand\@invoke@symbol{\symdef@uri}}%
+    \global\expandafter\let\csname\symdef@uri\@Fragment verb\endcsname\symdecl@verbalization%
   }{%
     \PackageError{stex}{\detokenize{\symdecl} not in a module}{You need to be in a module%
     in order to declare a new symbol}
@@ -1990,23 +2023,7 @@
 % symbolic presentation or |\@invoke@symbol@text| for verbalization (TODO)
 %    \begin{macrocode}
 \newcommand\symbol@args[1][]{%
-  \ifmmode\def\invoke@symbol@next{\@invoke@symbol@math\@invoke@symbol@first{#1}}%
-  \else\def\invoke@symbol@next{\@invoke@symbol@text\@invoke@symbol@first{#1}}\fi%
-  \invoke@symbol@next%
-}
-%    \end{macrocode}
-%
-% This finally gets called with both uri and notation-option,
-% convenient for e.g. a LaTeXML binding:
-%    \begin{macrocode}
-\def\@invoke@symbol@math@#1#2{%
-  \csname #1\@Fragment#2\endcsname%
-}
-\def\@invoke@symbol@math#1#2{%
-  % #1: URI
-  % #2: options
-  % TODO \setnotation variants
-  \notation@parse@params{#2}{}%
+  \notation@parse@params{#1}{}%
   \def\notation@temp@fragment{}%
   \ifx\notation@curr@arity\@empty\else%
     \edef\notation@temp@fragment{arity=\notation@curr@arity}%
@@ -2025,14 +2042,25 @@
       \edef\notation@temp@fragment{\notation@temp@fragment\@Ampersand variant=\notation@curr@variant}%
     \fi%
   \fi%
-  \@invoke@symbol@math@{#1}\notation@temp@fragment%
+  %
+  \ifmmode\def\invoke@symbol@next{\@invoke@symbol@math\@invoke@symbol@first\notation@temp@fragment}%
+  \else\def\invoke@symbol@next{\@invoke@symbol@text\@invoke@symbol@first\notation@temp@fragment}\fi%
+  \invoke@symbol@next%
+}
+%    \end{macrocode}
+%
+% This finally gets called with both uri and notation-option,
+% convenient for e.g. a LaTeXML binding:
+%    \begin{macrocode}
+\def\@invoke@symbol@math#1#2{%
+  \csname #1\@Fragment#2\endcsname%
 }
 %    \end{macrocode}
 %
 % TODO:
 %    \begin{macrocode}
 \def\@invoke@symbol@text#1#2{%
-    % TODO
+    \csname #1\@Fragment verb\ifx#2\@empty\else#2\fi\endcsname%
 }
 %    \end{macrocode}
 %
@@ -2092,6 +2120,8 @@
 %    \detokenize{
 %      \[\times{\frac\vara\varb,\plus{\frac\vara{\frac\vara\varb},\times{\varc,\plus{\vard,\vare}}}}\]}:\\
 %    \[\times{\frac\vara\varb,\plus{\frac\vara{\frac\vara\varb},\times{\varc,\plus{\vard,\vare}}}}\]
+%    \symdecl{foo!bar}
+%    \csname foo!bar\endcsname
 %  \end{module}
 %}
 %
