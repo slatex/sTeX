@@ -570,6 +570,7 @@
 \parsemodule@allow{symiii}
 \parsemodule@allow{symiv}
 \parsemodule@allow{notation}
+\parsemodule@allow{verbalization}
 \parsemodule@allow{symdecl}
 \catcode`\.=0
 .catcode`.\=13
@@ -857,7 +858,7 @@
     }%
     \define@in@module\symdef@uri{\noexpand\@invoke@symbol{\symdef@uri}}%
     \define@in@module{#2}{\noexpand\@invoke@symbol{\symdef@uri}}%
-    \global\expandafter\let\csname\symdef@uri\@Fragment verb\endcsname\symdecl@verbalization%
+    \global\expandafter\let\csname\symdef@uri\@Fragment verb\@Fragment\endcsname\symdecl@verbalization%
   }{%
     \PackageError{stex}{\detokenize{\symdecl} not in a module}{You need to be in a module%
     in order to declare a new symbol}
@@ -938,10 +939,16 @@
     \fi%
   \fi%
 }
+\newif\if@inverbalization\@inverbalizationfalse
 \providerobustcmd\notation[2][]{%
   \edef\notation@first{#1}%
   \edef\notation@second{#2}%
   \notation@%
+}
+
+\providerobustcmd\verbalization{%
+  \@inverbalizationtrue%
+  \notation%
 }
 
 \newcommand\notation@[2][0]{%
@@ -1046,6 +1053,12 @@
       \edef\notation@temp@fragment{\notation@temp@fragment\@Ampersand variant=\notation@curr@variant}%
     \fi%
   \fi%
+  \if@inverbalization\@inverbalizationfalse\verbalization@final%
+  \else\notation@final\fi%
+  \parsemodule@maybesetcodes%
+}
+
+\def\notation@final{%
   \edef\notation@csname{\notation@uri\@Fragment\notation@temp@fragment}%
   \ifcsvoid{\notation@csname}{%
     \ex\ex\ex\ex\ex\ex\ex\newcommand\ex\ex\ex\csname\ex\ex\ex\notation@csname%
@@ -1061,7 +1074,24 @@
       Choose a different set of notation options (variant,lang,arity)%
     }%
   }%
-  \parsemodule@maybesetcodes%
+}
+
+\def\verbalization@final{%
+  \edef\notation@csname{\notation@uri\@Fragment verb\@Fragment\notation@temp@fragment}%
+  \ifcsvoid{\notation@csname}{%
+    \ex\ex\ex\ex\ex\ex\ex\newcommand\ex\ex\ex\csname\ex\ex\ex\notation@csname%
+      \ex\ex\ex\endcsname\ex\ex\ex[\ex\notation@temp@arity\ex]%
+      \ex{\notation@temp@notation}%
+    \edef\symdecl@temps{%
+      \noexpand\safe@newcommand\ex\noexpand\csname\notation@csname\endcsname[\notation@temp@arity]%
+    }%
+    \ex\g@addto@macro@safe\csname module@defs@\module@uri\ex\endcsname\ex{\symdecl@temps}%
+    \ex\g@addto@macro@safe\csname module@defs@\module@uri\ex\endcsname\ex{\ex{\notation@temp@notation}}%
+  }{%
+    \PackageWarning{stex}{verbalization already defined: \notation@csname}{%
+      Choose a different set of verbalization options (variant,lang,arity)%
+    }%
+  }%
 }
 
 \def\notation@parse@params#1#2{%
@@ -1237,7 +1267,7 @@
   \csname #1\@Fragment#2\endcsname%
 }
 \def\@invoke@symbol@text#1#2{%
-    \csname #1\@Fragment verb\ifx#2\@empty\else#2\fi\endcsname%
+    \csname #1\@Fragment verb\@Fragment#2\endcsname%
 }
 \def\setstexlang#1{%
   \def\stex@lang{#1}%
