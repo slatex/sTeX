@@ -723,7 +723,7 @@
       \edef\importmodule@dir{\importmodule@dir\@Slash\importmodule@subdir}%
     \fi%
   \fi%
-  \begingroup#3\endgroup%
+  #3%
   \if@importmodule@switchrepos%
     \expandafter\setcurrentreposinfo\csname importmodule@oldrepos@#2\endcsname%
   \fi%
@@ -771,6 +771,27 @@
 \fi\fi%
 \if@smsmode\else\activate@defs{#2}\fi% activate the module
 }%
+\AtBeginDocument{%
+  \set@default@ns%
+  \ifx\module@narr\@empty\setkeys{module}{narr=\module@ns}\fi%
+  \let\module@name\jobname%
+  \let\module@id\module@name % TODO deprecate
+  \edef\module@uri{\module@ns\@QuestionMark\module@name}%
+  \csgdef{module@names@\module@uri}{}%
+  \csgdef{module@imports@\module@uri}{}%
+  \csxdef{\module@uri}{\noexpand\@invoke@module{\module@uri}}%
+  \expandafter\global\expandafter\let\csname Module\module@name\expandafter\endcsname\csname\module@uri\endcsname%
+  \edef\this@module{%
+    \expandafter\noexpand\csname module@defs@\module@uri\endcsname%
+  }%
+  \csdef{module@defs@\module@uri}{}%
+  \ifcsvoid{mh@currentrepos}{}{%
+    \@inmhrepostrue%
+    \addto@thismodulex{\expandafter\edef\expandafter\noexpand\csname mh@old@repos@\module@uri\endcsname%
+      {\noexpand\mh@currentrepos}}%
+    \addto@thismodulex{\noexpand\setcurrentreposinfo{\mh@currentrepos}}%
+  }%
+}
 \def\activate@defs#1{%
   \ifcsundef{Module#1}{
     \PackageError{stex}{No module with name #1 loaded}{Probably missing an
@@ -1267,7 +1288,7 @@
   \csname #1\@Fragment#2\endcsname%
 }
 \def\@invoke@symbol@text#1#2{%
-    \csname #1\@Fragment verb\@Fragment#2\endcsname%
+    \@termref{#1}{\csname #1\@Fragment verb\@Fragment#2\endcsname}%
 }
 \def\setstexlang#1{%
   \def\stex@lang{#1}%
@@ -1300,8 +1321,8 @@
 \def\@termref#1#2{%
   % #1: symbol URI
   % #2: text
-  \ifcvoid{#1}{%
-    \StrCut{#1}\@QuestionMark\termref@mod\termref@name%
+  \ifcsvoid{#1}{%
+    \StrCut[2]{#1}\@QuestionMark\termref@mod\termref@name%
     \ifcsvoid{\termref@mod}{%
       \PackageError{stex}{Term reference: Module with URI \termref@mod\ not found}{}%
     }{%
@@ -1311,11 +1332,15 @@
     }%
   }{%
     \ifcsvoid{sref@#1}{%
-      % TODO: No reference point exists!
+      #2% TODO: No reference point exists!
     }{%
       \csname sref@#1\endcsname{#2}%
     }%
   }%
+}
+\def\tref#1{%
+  \modules@getURIfromName{#1}%
+  \expandafter\@termref\expandafter{\notation@uri}{\csname\notation@uri\@Fragment verb\@Fragment\endcsname}%
 }
 \newif\ifhref\hreffalse%
 \AtBeginDocument{%
