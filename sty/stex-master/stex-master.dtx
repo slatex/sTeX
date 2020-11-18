@@ -1044,26 +1044,29 @@
 \parsemodule@allow{notation}
 \parsemodule@allow{verbalization}
 \parsemodule@allow{symdecl}
-%\parsemodule@allow{defi}
-%\parsemodule@allow{defii}
-%\parsemodule@allow{defiii}
-%\parsemodule@allow{defiv}
-%\parsemodule@allow{adefi}
-%\parsemodule@allow{adefii}
-%\parsemodule@allow{adefiii}
-%\parsemodule@allow{adefiv}
-%\parsemodule@allow{defis}
-%\parsemodule@allow{defiis}
-%\parsemodule@allow{defiiis}
-%\parsemodule@allow{defivs}
-%\parsemodule@allow{Defi}
-%\parsemodule@allow{Defii}
-%\parsemodule@allow{Defiii}
-%\parsemodule@allow{Defiv}
-%\parsemodule@allow{Defis}
-%\parsemodule@allow{Defiis}
-%\parsemodule@allow{Defiiis}
-%\parsemodule@allow{Defivs}
+
+% to deprecate:
+
+\parsemodule@allow{defi}
+\parsemodule@allow{defii}
+\parsemodule@allow{defiii}
+\parsemodule@allow{defiv}
+\parsemodule@allow{adefi}
+\parsemodule@allow{adefii}
+\parsemodule@allow{adefiii}
+\parsemodule@allow{adefiv}
+\parsemodule@allow{defis}
+\parsemodule@allow{defiis}
+\parsemodule@allow{defiiis}
+\parsemodule@allow{defivs}
+\parsemodule@allow{Defi}
+\parsemodule@allow{Defii}
+\parsemodule@allow{Defiii}
+\parsemodule@allow{Defiv}
+\parsemodule@allow{Defis}
+\parsemodule@allow{Defiis}
+\parsemodule@allow{Defiiis}
+\parsemodule@allow{Defivs}
 %    \end{macrocode}
 % 
 % To read external modules without producing output, |\requiremodules| redefines the \textbackslash-character
@@ -1622,8 +1625,8 @@
     }{%
       \ifcsvoid{symdecl@verbalization}{\edef\symdecl@verbalization{#2}}{}%
     }%
-    \edef\symdef@uri{\module@uri\@QuestionMark\symdecl@name}%
-    \ifcsvoid{\symdef@uri}{
+    \edef\symdecl@uri{\module@uri\@QuestionMark\symdecl@name}%
+    \ifcsvoid{\symdecl@uri}{
       \ifcsvoid{module@names@\module@uri}{%
         \csxdef{module@names@\module@uri}{\symdecl@name}%
       }{%
@@ -1632,13 +1635,13 @@
       }%
     }{%
     % not compatible with circular dependencies, e.g. test/omdoc/07-modules/smstesta.tex
-      \PackageWarning{stex}{symbol already defined: \symdef@uri}{%
+      \PackageWarning{stex}{symbol already defined: \symdecl@uri}{%
         You need to pick a fresh name for your symbol%
       }%
     }%
-    \define@in@module\symdef@uri{\noexpand\@invoke@symbol{\symdef@uri}}%
-    \define@in@module{#2}{\noexpand\@invoke@symbol{\symdef@uri}}%
-    \global\expandafter\let\csname\symdef@uri\@Fragment verb\@Fragment\endcsname\symdecl@verbalization%
+    \define@in@module\symdecl@uri{\noexpand\@invoke@symbol{\symdecl@uri}}%
+    \define@in@module{#2}{\noexpand\@invoke@symbol{\symdecl@uri}}%
+    \global\expandafter\let\csname\symdecl@uri\@Fragment verb\@Fragment\endcsname\symdecl@verbalization%
   }{%
     \PackageError{stex}{\detokenize{\symdecl} not in a module}{You need to be in a module%
     in order to declare a new symbol}
@@ -2245,12 +2248,46 @@
 %
 % \begin{macro}{\tref}
 %    \begin{macrocode}
+
+\def\@capitalize#1{\uppercase{#1}}%
+\newrobustcmd\capitalize[1]{\expandafter\@capitalize #1}%
+
 \def\tref#1{%
   \modules@getURIfromName{#1}%
   \expandafter\@termref\expandafter{\notation@uri}{\csname\notation@uri\@Fragment verb\@Fragment\endcsname}%
 }
+\def\Tref#1{%
+  \modules@getURIfromName{#1}%
+  \expandafter\@termref\expandafter{\notation@uri}{\expandafter\capitalize\csname\notation@uri\@Fragment verb\@Fragment\endcsname}%
+}
 %    \end{macrocode}
 % \test{\importmodule{FooBar}\tref{finitegroup}}
+% \end{macro}
+%
+% \begin{macro}{\defi}
+%    \begin{macrocode}
+\def\@definiendum#1#2{%
+  \defemph{\termref@maketarget{#1}{#2}}%
+  \parsemodule@maybesetcodes%
+}
+
+\def\defi#1{%
+  \symdecl{#1}%
+  \@definiendum\symdecl@uri\symdecl@verbalization%
+}
+\def\Defi#1{%
+  \symdecl{#1}%
+  \@definiendum\symdecl@uri{\capitalize\symdecl@verbalization}%
+}
+\def\defis#1{%
+  \symdecl{#1}%
+  \@definiendum\symdecl@uri{\symdecl@verbalization s}%
+}
+\def\Defis#1{%
+  \symdecl{#1}%
+  \@definiendum\symdecl@uri{\capitalize\symdecl@verbalization s}%
+}
+%    \end{macrocode}
 % \end{macro}
 %
 %
@@ -2702,7 +2739,7 @@
 %
 % \subsection{omtext}
 %
-% \begin{omgroup}[id=sec:impl:mtxt]{Mathematical Text}
+% \subsubsection{Mathematical Text}
 %
 %   We define the actions that are undertaken, when the keys are encountered. The first
 %   set just records metadata; this is very simple via the |\addmetakey|
@@ -2760,9 +2797,8 @@
 {\egroup\omtext@post@skip\@in@omtextfalse\ignorespacesandpars}
 %    \end{macrocode}
 % \end{environment}
-% \end{omgroup}
 %
-% \begin{omgroup}[id=sec:impl:phrase]{Phrase-level Markup}
+% \subsubsection{Phrase-level Markup}
 % 
 % \begin{macro}{\phrase}
 %    For the moment, we do disregard the most of the keys
@@ -2802,9 +2838,8 @@
 {\def\@opt{#1}\ifx\@opt\@empty\@sinlinequote{#2}\else\@@sinlinequote\@opt{#2}\fi}
 %    \end{macrocode}
 % \end{macro}
-% \end{omgroup}
 %
-% \begin{omgroup}[id=sec:user:decl]{Declarations (under development)}
+% \subsubsection{Declarations (under development)}
 % 
 %   The declaration macros are still under development (i.e. the macros) are still under
 %   development and may change at any time. Currently they are completely empty.
@@ -2828,10 +2863,8 @@
 \newcommand\impdec[2][]{#2}
 %    \end{macrocode}
 % \end{macro}
-% 
-% \end{omgroup}
 %
-% \begin{omgroup}[id=sec:impl:block]{Block-Level Markup}
+% \subsubsection{Block-Level Markup}
 %
 % \begin{environment}{sblockquote}
 %    \begin{macrocode}
@@ -2865,10 +2898,8 @@
 \def\lec#1{\@lec{#1}\par}
 %    \end{macrocode}
 % \end{macro}
-%
-% \end{omgroup}
 % 
-% \begin{omgroup}[id=sec:impl:index]{Index Markup}
+% \subsubsection{Index Markup}
 %
 % \begin{macro}{\omdoc@index*}
 %   These are the main internal indexing commands -- dividing them into four macros is awful,
@@ -2961,9 +2992,8 @@
 \newcommand\Indivs[5][]{\capitalize{#2 #3 #4 #5s}\@indiv[#1]{#2}{#3}{#4}{#5}}
 %    \end{macrocode}
 % \end{macro}
-% \end{omgroup}
 % 
-% \begin{omgroup}[id=sec:impl:misc]{Miscellaneous}
+% \subsubsection{Miscellaneous}
 %   Some shortcuts that use math symbols but are not mathematical at all; in particular,
 %   they should not be translated by {\latexml}.
 %    \begin{macrocode}
@@ -2978,9 +3008,8 @@
 \newcommand\notogre{\ensuremath{\not\mathrel{\mathpalette\reflect@squig\relax}}\xspace}%
 %    \end{macrocode}
 %
-% \end{omgroup}
 %
-% \begin{omgroup}{Deprecated Functionality}\label{sec:deprecated}
+% \subsubsection{Deprecated Functionality}\label{sec:deprecated}
 %
 % In this section we centralize old interfaces that are only partially supported any
 % more. 
@@ -3014,7 +3043,6 @@
   \PackageWarning{omtext}{\protect\mycbgraphics\space is deprecated, use \protect\includegraphics\space instead}}
 %    \end{macrocode}
 % \end{macro}
-% \end{omgroup}
 %
 %
 %
@@ -3257,6 +3285,35 @@
     \inputref[mhrepos=\mhinputref@first]{#2}%
   \fi%
 }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\trefi*}
+%    \begin{macrocode}
+\newcommand\trefi[2][]{%
+  \edef\trefi@mod{#1}%
+  \ifx\trefi@mod\@empty\tref{#2}\else\tref{#1\@QuestionMark#2}\fi%
+}
+\newcommand\trefii[3][]{%
+  \edef\trefi@mod{#1}%
+  \ifx\trefi@mod\@empty\tref{#2-#3}\else\tref{#1\@QuestionMark#2-#3}\fi%
+}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\defi*}
+%    \begin{macrocode}
+\def\defii#1#2{\defi{#1!#2}}
+\def\Defii#1#2{\Defi{#1!#2}}
+\def\defiis#1#2{\defis{#1!#2}}
+\def\Defiis#1#2{\Defis{#1!#2}}
+\def\defiii#1#2#3{\defi{#1!#2!#3}}
+\def\Defiii#1#2#3{\Defi{#1!#2!#3}}
+\def\defiiis#1#2#3{\defis{#1!#2!#3}}
+\def\Defiiis#1#2#3{\Defis{#1!#2!#3}}
+\def\defiv#1#2#3#4{\defi{#1!#2!#3!#4}}
+\def\Defiv#1#2#3#4{\Defi{#1!#2!#3!#4}}
+\def\defivs#1#2#3#4{\defis{#1!#2!#3!#4}}
+\def\Defivs#1#2#3#4{\Defis{#1!#2!#3!#4}}
 %    \end{macrocode}
 % \end{macro}
 %
