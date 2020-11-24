@@ -1593,7 +1593,7 @@
 % and verbalization "symmetric group".
 \def\symdecl@constructname#1{%
   \def\symdecl@name{}%
-  \def\symdecl@verb{}%
+  \def\symdecl@verbalization{}%
   \edef\symdecl@tempname{#1}%
   \symdecl@constructname@loop%
 }
@@ -2252,28 +2252,57 @@
 \def\@capitalize#1{\uppercase{#1}}%
 \newrobustcmd\capitalize[1]{\expandafter\@capitalize #1}%
 
-\def\tref#1{%
+\newcommand\tref[2][]{%
+  \edef\tref@name{#1}%
+  \ifx\tref@name\@empty
+    \symdecl@constructname{#2}%
+    \edef\tref@name{\symdecl@name}%
+  \else%
+    \edef\symdecl@verbalization{#2}%
+  \fi%
+  \expandafter\modules@getURIfromName\expandafter{\tref@name}%
+  \expandafter\@termref\expandafter{\notation@uri}{\symdecl@verbalization}%
+}
+\def\trefs#1{%
   \modules@getURIfromName{#1}%
-  \expandafter\@termref\expandafter{\notation@uri}{\csname\notation@uri\@Fragment verb\@Fragment\endcsname}%
+  \expandafter\@termref\expandafter{\notation@uri}{\csname\notation@uri\@Fragment verb\@Fragment\endcsname s}%
 }
 \def\Tref#1{%
   \modules@getURIfromName{#1}%
   \expandafter\@termref\expandafter{\notation@uri}{\expandafter\capitalize\csname\notation@uri\@Fragment verb\@Fragment\endcsname}%
 }
+\def\Trefs#1{%
+  \modules@getURIfromName{#1}%
+  \expandafter\@termref\expandafter{\notation@uri}{\expandafter\capitalize\csname\notation@uri\@Fragment verb\@Fragment\endcsname s}%
+}
 %    \end{macrocode}
-% \test{\importmodule{FooBar}\tref{finitegroup}}
+% \test{\importmodule{FooBar}
+%   \tref{foo!bar}\\
+%   \tref{foo-bar}\\
+%   \tref[finitegroup]{finite group}}
 % \end{macro}
 %
 % \begin{macro}{\defi}
 %    \begin{macrocode}
+\addmetakey{defi}{name}
 \def\@definiendum#1#2{%
   \defemph{\termref@maketarget{#1}{#2}}%
   \parsemodule@maybesetcodes%
 }
 
-\def\defi#1{%
-  \symdecl{#1}%
-  \@definiendum\symdecl@uri\symdecl@verbalization%
+\newcommand\defi[2][]{%
+  \metasetkeys{defi}{#1}%
+  \ifx\defi@name\@empty%
+    \symdecl@constructname{#2}%
+    \let\defi@name\symdecl@name%
+    \let\defi@verbalization\symdecl@verbalization%
+  \else%
+    \edef\defi@verbalization{#2}%
+  \fi%
+  \ifcsvoid{\module@uri\@QuestionMark\defi@name}{%
+    \symdecl\defi@name%
+  }{\edef\symdecl@uri{\module@uri\@QuestionMark\defi@name}}%
+  \@definiendum\symdecl@uri\defi@verbalization%
 }
 \def\Defi#1{%
   \symdecl{#1}%
@@ -2288,6 +2317,7 @@
   \@definiendum\symdecl@uri{\capitalize\symdecl@verbalization s}%
 }
 %    \end{macrocode}
+% \test{\defi[name=simplegroup]{a simple group}\\\defi{simple!group}}
 % \end{macro}
 %
 %
