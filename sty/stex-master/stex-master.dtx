@@ -160,6 +160,7 @@
 \newrobustcmd\defpath[3][]{%
   \expandafter\newcommand\csname #2\endcsname[1]{#3/##1}%
 }%
+\let\namespace\defpath
 %    \end{macrocode}
 % \end{macro}
 %
@@ -893,7 +894,8 @@
 %      \item |\module@imports@|\meta{uri} will store the URIs of all modules direclty included
 %         in this module
 %     \item |\|\meta{uri} that expands to |\invoke@module{|\meta{uri}|}| (see below).
-%     \item |\Module|\meta{name} that expands to |\|\meta{uri}.
+%     \item |\stex@module@|\meta{name} that expands to |\|\meta{uri}, if unambiguous, otherwise
+%        to |ambiguous|.
 %   \end{itemize}
 %   If we are currently in a mathhub repository, this information will also
 %   be stored in |\module@defs@|\meta{uri}, so we can resolve includes properly when this
@@ -913,7 +915,11 @@
   \csgdef{module@names@\module@uri}{}%
   \csgdef{module@imports@\module@uri}{}%
   \csxdef{\module@uri}{\noexpand\@invoke@module{\module@uri}}%
-  \expandafter\global\expandafter\let\csname Module\module@name\expandafter\endcsname\csname\module@uri\endcsname%
+  \ifcsvoid{stex@module@\module@name}{
+    \expandafter\global\expandafter\let\csname stex@module@\module@name\expandafter\endcsname\csname\module@uri\endcsname%
+  }{
+    \expandafter\edef\csname stex@module@\module@name\endcsname{\detokenize{ambiguous}}
+  }
   \edef\this@module{%
     \expandafter\noexpand\csname module@defs@\module@uri\endcsname%
   }%
@@ -975,10 +981,10 @@
 %    \end{module}
 %}
 %
-% A module with URI \meta{uri} and id \meta{id} creates two macros |\|\meta{uri} and |\Module|\meta{id},
+% A module with URI \meta{uri} and id \meta{id} creates two macros |\|\meta{uri} and |\stex@module@|\meta{id},
 % that ultimately expand to |\@invoke@module{|\meta{uri}|}|. Currently, the only functionality is
 % |\@invoke@module{|\meta{uri}|}\@URI|, which expands to the full uri of a module (i.e. via
-% |\Module|\meta{id}|\@URI|). In the future, this macro can be extended with additional functionality,
+% |\stex@module@|\meta{id}|\@URI|). In the future, this macro can be extended with additional functionality,
 % e.g. accessing symbols in a macro for overloaded (macro-)names.
 %
 %    \begin{macrocode}
@@ -1312,7 +1318,7 @@
 % \test{\parsemanifest{test@}{./FOO}
 % parsing |FOO/testmodule.tex|\\
 % \requiremodules@smsmode{FOO/testmodule}
-% \meaning\Moduletestmodule
+% \meaning\stex@module@testmodule
 % }
 % \end{macro}
 %
@@ -1382,7 +1388,7 @@
 {%
   \edef\@load{#1}%
   \edef\@importmodule@name{#2}
-  \if@smsmode\else\ifcsvoid{Module\@importmodule@name}{%
+  \if@smsmode\else\ifcsvoid{stex@module@\@importmodule@name}{% TODO check this
     \stexiffileexists\@load{\requiremodules\@load}{%
       \requiremodules{\@load\@Slash\@importmodule@name}%
     }%
@@ -1411,11 +1417,11 @@
 \ifcsvoid{this@module}{}{%
   \ifcsvoid{module@imports@\module@uri}{
     \csxdef{module@imports@\module@uri}{%
-      \csname Module#2\endcsname\@URI%
+      \csname stex@module@#2\endcsname\@URI% TODO check this
     }%
   }{%
     \csxdef{module@imports@\module@uri}{%
-      \csname Module#2\endcsname\@URI,%
+      \csname stex@module@#2\endcsname\@URI,% TODO check this
       \csname module@imports@\module@uri\endcsname%
     }%
   }%
@@ -1434,7 +1440,7 @@
 % \test{
 %  \detokenize{\importmodule{testmoduleimporta}}:
 %    \importmodule{testmoduleimporta}\\
-% \meaning\Moduletestmoduleimporta\\
+% \meaning\stex@module@testmoduleimporta\\
 % \meaning\foo
 % }
 % \immediate\openout\testfile=testmoduleimportb.tex
@@ -1446,13 +1452,13 @@
 % \test{
 %    \detokenize{\importmodule{testmoduleimportb?importb}}:
 %    \importmodule{testmoduleimportb?importb}\\
-% \meaning\Moduleimportb\\
+% \meaning\stex@module@importb\\
 % \meaning\bar
 % }\\
 % \test{
 %    \importmodule[mhrepos=smglom/algebra]{band}
-%    \meaning\Moduleband\\
-%    \meaning\Moduleidempotent\\
+%    \meaning\stex@module@band\\
+%    \meaning\stex@module@idempotent\\
 %    \meaning\notequal\\
 %    \meaning\gimport
 % }
@@ -1471,7 +1477,7 @@
   \csgdef{module@names@\module@uri}{}%
   \csgdef{module@imports@\module@uri}{}%
   \csxdef{\module@uri}{\noexpand\@invoke@module{\module@uri}}%
-  \expandafter\global\expandafter\let\csname Module\module@name\expandafter\endcsname\csname\module@uri\endcsname%
+  \expandafter\global\expandafter\let\csname stex@module@\module@name\expandafter\endcsname\csname\module@uri\endcsname%
   \edef\this@module{%
     \expandafter\noexpand\csname module@defs@\module@uri\endcsname%
   }%
@@ -1492,14 +1498,14 @@
 %   directly afterwards to prohibit further activations.
 %    \begin{macrocode}
 \def\activate@defs#1{%
-  \ifcsundef{Module#1}{
+  \ifcsundef{stex@module@#1}{ % TODO check this
     \PackageError{stex}{No module with name #1 loaded}{Probably missing an
       \detokenize{\importmodule} (or variant) somewhere?
     }
   }{%
-    \ifcsundef{module@\csname Module#1\endcsname\@URI @activated}%
-      {\csname module@defs@\csname Module#1\endcsname\@URI\endcsname}{}%
-    \@namedef{module@\csname Module#1\endcsname\@URI @activated}{true}%
+    \ifcsundef{module@\csname stex@module@#1\endcsname\@URI @activated}%
+      {\csname module@defs@\csname stex@module@#1\endcsname\@URI\endcsname}{}%
+    \@namedef{module@\csname stex@module@#1\endcsname\@URI @activated}{true}%
   }%
 }%
 %    \end{macrocode}
@@ -1628,6 +1634,20 @@
       \ifcsvoid{symdecl@verbalization}{\edef\symdecl@verbalization{#2}}{}%
     }%
     \edef\symdecl@uri{\module@uri\@QuestionMark\symdecl@name}%
+    \ifcsvoid{stex@symbol@\symdecl@name}{
+      \expandafter\edef\csname stex@symbol@\symdecl@name\endcsname{\symdecl@uri}
+    }{
+      \expandafter\def\csname stex@symbol@\symdecl@name\endcsname{\detokenize{ambiguous}}
+    }
+    \edef\symdecl@symbolmacro{
+      \noexpand\ifcsvoid{stex@symbol@\symdecl@name}{
+        \expandafter\edef\expandafter\noexpand\csname stex@symbol@\symdecl@name\endcsname{\symdecl@uri}
+      }{
+        \expandafter\def\expandafter\noexpand\csname stex@symbol@\symdecl@name\endcsname{\detokenize{ambiguous}}
+      }
+    }
+    \expandafter\g@addto@macro@safe\csname module@defs@\module@uri%
+    \expandafter\endcsname\expandafter{\symdecl@symbolmacro}%
     \ifcsvoid{\symdecl@uri}{
       \ifcsvoid{module@names@\module@uri}{%
         \csxdef{module@names@\module@uri}{\symdecl@name}%
@@ -1666,81 +1686,58 @@
 % and stores it in |\notation@uri|. Used by e.g. |\notation[...]{foo}{...}| to
 % figure out what symbol |foo| refers to:
 %    \begin{macrocode}
+\edef\stex@ambiguous{\detokenize{ambiguous}}
+\edef\stex@macrostring{\detokenize{macro:->\@invoke@symbol}}
 \def\modules@getURIfromName#1{%
   \def\notation@uri{}%
   \edef\modules@getURI@name{#1}%
-  \if@isuri\modules@getURI@name{%
-    \let\notation@uri\isuri@uri%
-  }{%
-    \ifcsvoid{this@module}{}{%
-      \expandafter\modules@getURIfromModule\expandafter{\module@uri}%
-      \ifx\notation@uri\@empty%
-        \edef\modules@getURI@modules{\csname module@imports@\module@uri\endcsname}%
-        \expandafter\@for\expandafter\@I\expandafter:\expandafter=\modules@getURI@modules\do{%
-          \ifx\notation@uri\@empty%
-            \expandafter\modules@getURIfromModule\expandafter{\@I}%
-          \fi%
-        }%
-      \fi%
-      \ifx\notation@uri\@empty%
-        \def\notation@extract@uri@currcs{}%
-        \notation@extracturifrommacro{#1}%
-      \fi%
-      \ifx\notation@uri\@empty%
-        \PackageError{stex}{No symbol with name, URI or macroname \detokenize{#1} found!}{}%
-      \fi%
-    }%
-  }%
-}
-
-\def\if@isuri#1#2#3{%
-  \StrCount{#1}\@QuestionMark[\isuri@number]%
-  \ifnum\isuri@number=1 %
-    \StrCut{#1}\@QuestionMark\@isuri@mod\@isuri@name%
-    \ifcsvoid{Module\@isuri@mod}{#3}{%
-      \edef\isuri@uri{\csname Module\@isuri@mod\endcsname\@URI\@QuestionMark\@isuri@name}%
-      #2%
-    }%
-  \else%
-    \ifnum\isuri@number=2 %
-      \edef\isuri@uri{#1}#2\else#3%
-    \fi%
-  \fi%
-}
-
-\def\modules@getURIfromModule#1{%
-  \edef\modules@getURI@names{\csname module@names@#1\endcsname}%
-  \expandafter\@for\expandafter\@I\expandafter:\expandafter=%
-  \modules@getURI@names\do{%
-    \ifx\notation@uri\@empty%
-      \ifx\@I\modules@getURI@name%
-        \edef\notation@uri{#1\@QuestionMark\@I}%
-      \fi%
-    \fi%
-  }%
-}
-
-% extracts the full URI from \foo or anything being \ifx-equal to \foo,
-% by expanding until we reach \@invoke@symbol{<uri>}
-\def\notation@extracturifrommacro#1{%
-  \ifcsvoid{#1}{}{%
-    \expandafter\let\expandafter\notation@extract@uri@nextcs\csname#1\endcsname%
-    \ifx\notation@extract@uri@nextcs\notation@extract@uri@currcs\else%
-      \let\notation@extract@uri@currcs\notation@extract@uri@nextcs%
-      \expandafter\notation@extract@uriII\notation@extract@uri@nextcs\notation@end%
-    \fi%
-  }%
-}
-\long\def\notation@extract@uriII#1#2\notation@end{%
-  \def\notation@extract@check@temp{#2}
-  \ifx\@invoke@symbol#1%
-    \edef\notation@uri{#2}%
-  \else%
-    \ifx\notation@extract@check@temp\@empty\else%
-      \expandafter\def\expandafter\notation@extract@uri@nextcs\expandafter{#1{#2}}%
-      \notation@extracturifrommacro{notation@extract@uri@nextcs}%
-    \fi%
-  \fi%
+  \ifcsvoid{\modules@getURI@name}{
+    \edef\modules@temp@meaning{}
+  }{
+    \edef\modules@temp@meaning{\expandafter\meaning\csname\modules@getURI@name\endcsname}
+  }
+  \IfBeginWith\modules@temp@meaning\stex@macrostring{
+    % is a \@invoke@symbol macro
+    \StrPosition\modules@temp@meaning\@close@brace[\stex@tempnum]
+    \StrMid\modules@temp@meaning{26}{\the\numexpr\stex@tempnum-1\@Space}[\notation@uri]
+  }{
+    % Check whether full URI or module?symbol or just name
+    \StrCount\modules@getURI@name\@QuestionMark[\isuri@number]
+    \ifnum\isuri@number=2
+      \edef\notation@uri{\modules@getURI@name}
+    \else
+      \ifnum\isuri@number=1
+        % module?name
+        \StrCut\modules@getURI@name\@QuestionMark\isuri@mod\isuri@name
+        \ifcsvoid{stex@module@\isuri@mod}{
+          \PackageError{stex}{No module with name \isuri@mod\@Space loaded}{}
+        }{
+          \expandafter\ifx\csname stex@module@\isuri@mod\endcsname\stex@ambiguous
+            \PackageError{stex}{Module name \isuri@mod\@Space is ambiguous}{}
+          \else
+            \edef\notation@uri{\csname stex@module@\isuri@mod\endcsname\@URI\@QuestionMark\isuri@name}
+          \fi
+        }
+      \else
+        %name
+        \ifcsvoid{stex@symbol@\modules@getURI@name}{
+          \PackageError{stex}{No symbol with name \modules@getURI@name\@Space known}{}
+        }{
+         \ifcsvoid{\module@uri\@QuestionMark\modules@getURI@name}{
+           \expandafter\ifx\csname stex@symbol@\modules@getURI@name\endcsname\stex@ambiguous
+             % Symbol name ambiguous and not in current module
+             \PackageError{stex}{Symbol name, URI or macroname \detokenize{#1} found!}{}%
+           \else
+             % Symbol not in current module, but unambiguous
+             \edef\notation@uri{\csname stex@symbol@\modules@getURI@name\endcsname}
+           \fi
+          }{ % Symbol in current module
+            \edef\notation@uri{\module@uri\@QuestionMark\modules@getURI@name}
+          }
+        }
+      \fi
+    \fi
+  }
 }
 %    \end{macrocode}
 % \end{macro}
