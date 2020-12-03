@@ -9,12 +9,11 @@
 \NeedsTeXFormat{LaTeX2e}[1999/12/01]
 \ProvidesClass{smglom}[2019/03/20 v0.2 Semantic Multilingual Glossary for Math]
 \DeclareOption*{\PassOptionsToClass{\CurrentOption}{omdoc}
-                           \PassOptionsToPackage{\CurrentOption}{stex}
-                           \PassOptionsToPackage{\CurrentOption}{smglom}}
+ %                          \PassOptionsToPackage{\CurrentOption}{stex}
+ %                          \PassOptionsToPackage{\CurrentOption}{smglom}}
+}
 \ProcessOptions
 \LoadClass{omdoc}
-\RequirePackage{smglom}
-\RequirePackage{stex}
 \RequirePackage{amstext}
 \RequirePackage{amsfonts}
 \endinput
