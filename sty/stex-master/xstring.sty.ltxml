@@ -1,0 +1,169 @@
+use LaTeXML::Package;
+use strict;
+use warnings;
+
+DefMacro('\IfBeginWith OptionalMatch:* {}{}{}{}', sub {
+    my ($gullet,$star,$stratks,$strbtks,$tcase,$fcase)=@_;
+    my $stra = ToString(Expand($stratks));
+    my $strb = ToString(Expand($strbtks));
+
+    if(substr($stra,0,length($strb)) eq $strb) {
+        return $tcase;
+    } else {
+        return $fcase;
+    }
+});
+
+DefMacro('\IfEndWith OptionalMatch:* {}{}{}{}', sub {
+    my ($gullet,$star,$stratks,$strbtks,$tcase,$fcase)=@_;
+    my $stra = ToString(Expand($stratks));
+    my $strb = ToString(Expand($strbtks));
+
+#    print("\nEndWith Input: \"".$stra."\" and \"".$strb."\" ");
+
+    if(substr($stra,length($stra)-length($strb)) eq $strb) {
+#        print("true\n");
+        return $tcase;
+    } else {
+#        print("false\n");
+        return $fcase;
+    }
+});
+
+DefMacro('\IfSubStr OptionalMatch:* {}{}{}{}', sub {
+    my ($gullet,$star,$stratks,$strbtks,$tcase,$fcase)=@_;
+    my $stra = ToString(Expand($stratks));
+    my $strb = ToString(Expand($strbtks));
+
+    if(index($stra,$strb) != -1) {
+        return $tcase;
+    } else {
+        return $fcase;
+    }
+});
+
+DefMacro('\IfStrEq OptionalMatch:* {}{}{}{}', sub {
+    my ($gullet,$star,$stratks,$strbtks,$tcase,$fcase)=@_;
+    my $stra = ToString(Expand($stratks));
+    my $strb = ToString(Expand($strbtks));
+
+    if($stra eq $strb) {
+        return $tcase;
+    } else {
+        return $fcase;
+    }
+});
+
+DefMacro('\StrBefore OptionalMatch:* []{}{}[]', sub{
+    my ($gullet,$star,$num,$stratks,$strbtks,$macro)=@_;
+    my $stra = ToString(Expand($stratks));
+    my $strb = ToString(Expand($strbtks));
+
+    if(defined $num) {$num = ToString(Expand($num))-1;} else {$num = 0;}
+
+    my $first = join $strb,(split(quotemeta($strb),$stra))[0..$num];
+
+    if($first eq $stra) {$first = "";}
+
+#   print("\nStrBefore Input: \"".$stra."\" and \"".$strb."\" - ".ToString($macro)."\nOutput: \"".$first."\"\n");
+
+    if(defined $macro) {
+        (T_CS('\def'),$macro,T_BEGIN,Explode($first),T_END);
+    } else {Explode($first);}
+});
+
+DefMacro('\StrBehind OptionalMatch:* []{}{}[]', sub{
+    my ($gullet,$star,$num,$stratks,$strbtks,$macro)=@_;
+    my $stra = ToString(Expand($stratks));
+    my $strb = ToString(Expand($strbtks));
+
+    if(defined $num) {$num = ToString(Expand($num))-1;} else {$num = 0;}
+
+    #print STDERR "\nStrBehind num: ".$num."\n";
+
+    my $first = join $strb,(split(quotemeta($strb),$stra))[0..$num];
+    my $last = substr($stra,length($first)+length($strb));
+
+   #print STDERR "\nStrBehind Input: \"".$stra."\" and \"".$strb."\" - ".ToString($macro)."\nOutput: \"".$last."\"\n";
+
+    if(defined $macro) {
+        (T_CS('\def'),$macro,T_BEGIN,Explode($last),T_END);
+    } else {Explode($last);}
+});
+
+
+DefMacro('\StrCut OptionalMatch:* []{}{}{}{}', sub {
+    my ($gullet,$star,$num,$stratks,$strbtks,$macroa,$macrob)=@_;
+    my $stra = ToString(Expand($stratks));
+    my $strb = ToString(Expand($strbtks));
+
+
+    if(defined $num) {$num = ToString(Expand($num))-1;} else {$num = 0;}
+
+    my $first = join $strb,(split(quotemeta($strb),$stra))[0..$num];
+
+    my $last = "";
+
+    if ($first eq $stra) {} else {
+        $last = substr($stra,length($first)+length($strb));
+    }
+
+
+   # print("\nStrCut Input: \"".$stra."\" and \"".$strb."\" - ".ToString($macroa)." ".ToString($macrob)."\nOutput: \"".$first."\" and \"".$last."\"\n");
+
+    (
+        T_CS('\def'),$macroa,T_BEGIN,Explode($first),T_END,
+        T_CS('\def'),$macrob,T_BEGIN,Explode($last),T_END,
+    );
+
+});
+
+DefMacro('\StrGobbleLeft {}{}[]', sub {
+    my ($gullet,$stratks,$num,$macro)=@_;
+    my $stra = ToString(Expand($stratks));
+    $num = ToString(Expand($num));
+
+    if ($num >= length($stra)) {$stra="";} else
+        {$stra = substr($stra,$num);}
+
+    if(defined $macro) {
+        (T_CS('\def'),$macro,T_BEGIN,Explode($stra),T_END);
+    } else {Explode($stra);}
+});
+
+DefMacro('\StrGobbleRight {}{}[]', sub {
+    my ($gullet,$stratks,$num,$macro)=@_;
+    my $stra = ToString(Expand($stratks));
+    $num = ToString(Expand($num));
+
+    $stra = substr($stra,0,length($stra)-$num);
+
+    if(defined $macro) {
+        (T_CS('\def'),$macro,T_BEGIN,Explode($stra),T_END);
+    } else {Explode($stra);}
+});
+
+DefMacro('\StrCount {}{}[]', sub {
+    my ($gullet,$stratks,$strbtks,$macro)=@_;
+    my $stra = ToString(Expand($stratks));
+    my $strb = ToString(Expand($strbtks));
+
+    my $count = () = $stra =~ /$strb/g;
+
+   #print STDERR "\nStrCount Input: \"".$stra."\" and \"".$strb."\" - ".ToString($macro)."\nOutput: ".$count;
+
+    if(defined $macro) {
+        (T_CS('\def'),$macro,T_BEGIN,Explode($count),T_END);
+    } else {Explode($count);}
+});
+
+DefMacro('\StrLen {}[]', sub {
+    my ($gullet,$strtks,$macro)=@_;
+    my $stra = ToString(Expand($strtks));
+
+   #print STDERR "\nStrCount Input: \"".$stra."\" and \"".$strb."\" - ".ToString($macro)."\nOutput: ".$count;
+
+    if(defined $macro) {
+        (T_CS('\def'),$macro,T_BEGIN,Explode(length($stra)),T_END);
+    } else {Explode(length($stra));}
+});
