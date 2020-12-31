@@ -54,6 +54,50 @@ DefMacro('\IfStrEq OptionalMatch:* {}{}{}{}', sub {
     }
 });
 
+sub is_integer {
+    defined $_[0] && $_[0] =~ /^[+-]?\d+$/;
+}
+
+sub is_float {
+    defined $_[0] && $_[0] =~ /^[+-]?(?!\.(?!\d)|$)\d*(?:\.\d*)?$/;
+}
+
+DefMacro('\IfInteger {}{}{}', sub {
+    my ($gullet,$strtks,$tcase,$fcase)=@_;
+    my $stra = ToString(Expand($strtks));
+
+    if(is_integer($stra)) {
+        return $tcase;
+    } else {
+        return $fcase;
+    }
+});
+
+DefMacro('\IfDecimal {}{}{}', sub {
+    my ($gullet,$strtks,$tcase,$fcase)=@_;
+    my $stra = ToString(Expand($strtks));
+
+    if(is_float($stra)) {
+        my @ls = split(quotemeta('.'),$stra);
+        my $int = $ls[0];
+        my $dec = $ls[1];
+        my @reti = (T_CS('\def'),T_CS('\integerpart'),T_BEGIN,Explode($int),T_END);
+        my @retdec = (T_CS('\def'),T_CS('\decimalpart'),T_BEGIN,Explode($dec),T_END);
+        return (@reti,@retdec,$tcase);
+    } else {
+        if (is_integer($stra)) {
+            my @reta = (T_CS('\def'),T_CS('\@xs@afterdecimal'),T_BEGIN,Explode('X'),T_END);
+            my @retb = (T_CS('\def'),T_CS('\afterdecimal'),T_BEGIN,Explode('X'),T_END);
+            return (@reta,@retb,$fcase);
+        } else {
+            # TODO
+            my @reta = (T_CS('\def'),T_CS('\@xs@afterdecimal'),T_BEGIN,Explode(''),T_END);
+            my @retb = (T_CS('\def'),T_CS('\afterdecimal'),T_BEGIN,Explode(''),T_END);
+            return (@reta,@retb,$fcase);
+        };
+    }
+});
+
 DefMacro('\StrBefore OptionalMatch:* []{}{}[]', sub{
     my ($gullet,$star,$num,$stratks,$strbtks,$macro)=@_;
     my $stra = ToString(Expand($stratks));
@@ -143,6 +187,33 @@ DefMacro('\StrGobbleRight {}{}[]', sub {
     } else {Explode($stra);}
 });
 
+DefMacro('\StrMid{}{}{}[]', sub {
+    my ($gullet,$strtks,$numa,$numb,$macro)=@_;
+    my $stra = ToString(Expand($strtks));
+    $numa = ToString(Expand($numa))-1;
+    $numb = ToString(Expand($numb)) - $numa - 1;
+
+    my $strb = substr($stra,$numa,$numb);
+
+    # print STDERR "\nStrMid: \"".$stra."\": ".$numa." and ".$numb."\nReturn: ".$strb."\n";
+
+    if(defined $macro) {
+        (T_CS('\def'),$macro,T_BEGIN,Explode($strb),T_END);
+    } else {Explode($strb);}
+});
+
+DefMacro('\StrChar OptionalMatch:* {}{}[]', sub {
+    my ($gullet,$star,$strtks,$num,$macro)=@_;
+    my $stra = ToString(Expand($strtks));
+    $num = ToString(Expand($num)) - 1;
+
+    # print STDERR "\nStrChar: \"".$stra."\" and ".$num."\nReturn: ".substr($stra,$num,1)."\n";
+
+    if(defined $macro) {
+        (T_CS('\def'),$macro,T_BEGIN,Explode(substr($stra,$num,1)),T_END);
+    } else {Explode(substr($stra,$num,1));}
+});
+
 DefMacro('\StrCount {}{}[]', sub {
     my ($gullet,$stratks,$strbtks,$macro)=@_;
     my $stra = ToString(Expand($stratks));
@@ -166,4 +237,18 @@ DefMacro('\StrLen {}[]', sub {
     if(defined $macro) {
         (T_CS('\def'),$macro,T_BEGIN,Explode(length($stra)),T_END);
     } else {Explode(length($stra));}
+});
+
+DefMacro('\StrPosition []{}{}[]', sub {
+    my ($gullet,$num,$stratks,$strbtks,$macro)=@_;
+    my $stra = ToString(Expand($stratks));
+    my $strb = ToString(Expand($strbtks));
+    if (defined $num) {$num = ToString(Expand($num))-1;} else {$num = 0;}
+
+    my $first = join $strb,(split(quotemeta($strb),$stra))[0..$num];
+
+
+    if(defined $macro) {
+        (T_CS('\def'),$macro,T_BEGIN,Explode(length($stra)+1),T_END);
+    } else {Explode(length($stra)+1);}
 });
