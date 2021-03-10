@@ -1,0 +1,456 @@
+% \iffalse meta-comment
+% An Infrastructure for marking up Metadata in LaTeX documents
+% Copyright (c) 2019 Michael Kohlhase, all rights reserved
+%               this file is released under the
+%               LaTeX Project Public License (LPPL)
+% The original of this file is in the public repository at 
+% http://github.com/sLaTeX/sTeX/
+% \fi
+% 
+% \iffalse
+%<*package>
+\NeedsTeXFormat{LaTeX2e}[1999/12/01]
+\ProvidesPackage{stex-metakeys}[2021/03/09 v2.0 Framework for Metadata Keys]
+%</package>
+%<*driver>
+\documentclass{ltxdoc}
+\usepackage[utf8]{inputenc}
+\usepackage{url,array,float}
+\usepackage[show]{ed}
+\usepackage{ctangit}
+\usepackage[hyperref=auto,style=alphabetic]{biblatex}
+\addbibresource{kwarcpubs.bib}
+\addbibresource{extpubs.bib}
+\addbibresource{kwarccrossrefs.bib}
+\addbibresource{extcrossrefs.bib}
+\usepackage{hyperref}
+%\makeindex
+\floatstyle{boxed}
+\newfloat{exfig}{thp}{lop}
+\floatname{exfig}{Example}
+\def\githubissue#1{\cite{sTeX:github:on}, \hyperlink{https://github.com/sLaTeX/sTeX/issues/#1}{issue #1}}
+\usepackage[showmeta]{stex-metakeys,stex}
+\begin{document}
+\RecordChanges
+\DocInput{stex-metakeys.dtx}
+\end{document}
+%</driver>
+% \fi
+%
+%\iffalse\CheckSum{135}\fi
+%
+% \changes{v0.1}{2009/12/14}{First version}
+% \changes{v0.8}{2010/06/18}{This is almost done}
+% \changes{v0.9}{2010/09/02}{make sure that showkeys is always initialized}
+% 
+% \GetFileInfo{stex-metakeys.sty}
+% 
+% \MakeShortVerb{\|}
+% \def\scsys#1{{{\sc #1}}\index{#1@{\sc #1}}}
+% \def\latexml{\scsys{LaTeXML}}
+% \def\omdoc{OMDoc}
+% \def\omdocv#1{\omdoc{#1}}
+%
+% \title{{\texttt{stex-metakeys.sty}}: A generic framework for extensible Metadata in {\LaTeX}\thanks{Version {\fileversion} (last revised
+%        {\filedate})}}
+%    \author{Michael Kohlhase\\
+%            FAU Erlangen-N\"urnberg\\
+%            \url{http://kwarc.info/kohlhase}}
+% \maketitle
+% \begin{abstract}
+%   The |metakeys| package is part of the \sTeX collection, a version of {\TeX/\LaTeX} that
+%   allows to markup {\TeX/\LaTeX} documents semantically without leaving the document
+%   format, essentially turning {\TeX/\LaTeX} into a document format for mathematical
+%   knowledge management (MKM).
+%
+%   This package supplies the infrastructure for extending \sTeX macros with {\omdoc}
+%   metadata. This package is mainly intended for authors of \sTeX extension packages.
+% \end{abstract}
+%
+% \setcounter{tocdepth}{2}\tableofcontents\newpage
+%
+% \section{The User Interface}\label{sec:user}
+%
+% Many of the {\stex} macros and environments take an optional first argument which uses
+% key/value pairs to specify metadata relations of the marked up objects. The |metakeys|
+% package supplies the infrastructure managing these key/value pairs. It also forms the
+% basis for the |rdfmeta| package which allows to use these for flexible, user-extensible
+% metadata relations (see~\ctancite{Kohlhase:rdfmeta} for details).
+%
+% \subsection{Package Options}\label{sec:user:options}
+% 
+% The |metakeys| package takes a single option: \DescribeMacro{showmeta}|showmeta|. If
+% this is set, then the metadata keys defined by the |\addmetakey| are shown
+% (see~\ref{sec:user:showmeta})
+% 
+% \subsection{Adding Metadata Keys to Commands}\label{sec:user:keys}
+%
+% Key/value pairs in \stex are organized in \textbf{key groups}: every {\stex} macro and
+% environment that takes a key/value argument has an associated key group, and only keys
+% that are registered in this group can be utilized. The |metakeys| package supplies the
+% \DescribeMacro{\addmetakey}|\addmetakey| macro to add a new key to a key group: If
+% \meta{group} is the name of a key group \meta{key} is a metadata keyword name, then
+% \begin{quote}
+% |\addmetakey[|\meta{default}|]{|\meta{group}|}{|\meta{key}|}[|\meta{dval}|]|
+% \end{quote}
+% registers \meta{key} in the metadata group \meta{group}, with an optional values
+% \meta{default} and \meta{dval} for \meta{key}. \meta{default} is the default value for
+% \meta{key}, if it is not specified, and \meta{dval} is the value \meta{key} gets, if
+% \meta{key} is given without specifying a value. These two defaults are often used as
+% \begin{quote}
+% |\addmetakey[false]{|\meta{group}|}{|\meta{key}|}[true]|
+% \end{quote}
+% Then, the value of \meta{key} is |false| if \meta{key} is not given and |true|, if
+% \meta{key} is specified without value. This is often the best way if we want to use
+% \meta{key} as an indicator to have a feature of name \meta{key} (we can test that with
+% |\ifx\|\meta{group}|@|\meta{key}|\@true|, if we prepared the macro |\def\@true{true}|
+% earlier).
+% 
+% The keys registered for a metadata group can be used for defining macros with a
+% key/value arguments via the \DescribeMacro{\metasetkeys}|\metasetkeys| macro, see for
+% instance the the definition in Figure~\ref{fig:foo}. This macro is used exactly like the
+% |\setkeys| macro from the |keyval| package~\cite{Carlisle:tkp99}, but integrates custom
+% initialization and draft display functionality. This usage is mostly for package
+% designers. There is another: If a macro or environment cannot be extended by an optional
+% argument, e.g. because anther package already does so (e.g. the |document| environment
+% is extended -- by redefining it -- by various packages, which causes problems), the
+% |\metasetkeys| macro can be used directly. 
+%
+% The \DescribeMacro{\addmetalistkey}|\addmetalistkey| macro is a variant of |\addmetakey|
+% that adds a list-valued metadata key. The |\addmetalistkey{foo}{val}| in
+% Figure~\ref{fig:foo} would allows to use multiple occurrences of the |val| keys in the
+% metadata argument of |\foo|, the values of the |val| keys are collected as a
+% comma-separated list in the token register |\foo@vals|. Note that the |val| key can also
+% deal with comma-separated lists for convenience.
+%
+% With these definitions in a used package\footnote{\makeatletter Recall that the
+% \texttt{@} character is only allowed in packages, where comma-separated lists can be
+% iterated over e.g. by the \texttt{\textbackslash{@}for} macro.}  an invocation of
+% \begin{quote}
+% |\foo[type=bar,id=f4711,val=4,val=7,val={1,1}]|
+% \end{quote}
+% is formatted to
+% \begin{quote}
+% \addmetakey{foo}{id}\addmetakey{foo}{type}\addmetalistkey{foo}{val}\makeatletter
+% \newcommand\foo[1][]{\metasetkeys{foo}{#1} I have seen a \emph{foo} of type \texttt{\foo@type}
+% with identifier \texttt{\foo@id} and values
+% \let\@join=\relax\def\@thejoin{, and }
+% \@for\@I:=\foo@vals\do{\@join\@I\let\@join=\@thejoin}!}\makeatother 
+% \foo[type=bar,id=f4711,val=4,val=7,val=1,val=1]
+% \end{quote}
+% 
+% \begin{exfig}[ht]
+% \begin{verbatim}
+% \addmetakey{foo}{id}
+% \addmetakey{foo}{type}
+% \addmetakey[yes]{foo}{visible}
+% \addmetalistkey{foo}{val}
+% \def\@yes{yes}
+% \newcommand\foo[1][]{\metasetkeys{foo}{#1}
+% \ifx\foo@visible\@yes % testing for visibility
+% I have seen a \emph{foo} of type \texttt{\foo@type} with identifier 
+% \texttt\foo@id and values \texttt\foo@vals.
+% \let\@join=\relax\def\@thejoin{, and }
+% \@for\@I:=\foo@vals\do{\@join\@I\let\@join=\@thejoin}!
+% \fi}
+% \end{verbatim}
+% \vspace*{-2em}
+% \caption{Defining a macro with metadata}
+% \label{fig:foo}
+% \end{exfig}
+%
+% \subsection{Showing Metadata Keys/Values}\label{sec:user:showmeta}
+%
+% If the |showmeta| package option is set, the |metakeys| package sets an internal switch that
+% shows the values of all keys specified with the |\addmetakey| macro. The default behavior
+% is to write the key/value pairs into the margin as \meta{key}|:|\meta{value}. Package
+% designers can customize this behavior by redefining the |\metakeys@show@key| and
+% |\metakeys@show@keys| macro.
+%
+% \DescribeMacro{\metakeys@show@key}|\metakeys@show@key{|\meta{key}|}{|\meta{value}|}| shows the a
+% single key value pair, and
+% \DescribeMacro{\metakeys@show@keys}|\metakeys@show@keys{|\meta{group}|}{|\meta{keys}|}| shows the
+% a list of keys metadata, by default we disregard the \meta{group} and show \meta{keys}
+% in a marginpar.
+% 
+% For keys that should not be shown in this manner, the |\addmetakey| macro has a variant
+% \DescribeMacro{\addmetakey*}|\addmetakey*|. Its behavior is exactly the same, only that
+% it keeps the key from being shown by the |showmeta| option.
+%
+% Note that setting the |showmeta| option will enable metadata presentation on the whole
+% document. But sometimes we want to disable that, e.g. inside figures, where |\marginpar|
+% is not allowed. Therefore the |metakeys| package provides the
+% \DescribeMacro{\hidemetakeys}|\hidemetakeys| macro that reverses this. The
+% \DescribeMacro{\showmetakeys}|\showmetakeys| macro re-enables metadata presentation.
+%
+%
+% \section{Limitations}\label{sec:limitations}
+% 
+% In this section we document known limitations. If you want to help alleviate them,
+% please feel free to contact the package author. Some of them are currently discussed in
+% the \sTeX GitHub repository~\cite{sTeX:github:on}. 
+% \begin{enumerate}
+% \item none reported yet
+% \end{enumerate}
+% 
+% \StopEventually{\newpage\PrintChanges\printbibliography}
+% 
+% \section{The Implementation}\label{sec:impl}
+% 
+% \subsection{Package Options}\label{sec:impl:options}
+%
+% We declare some switches which will modify the behavior according to the package
+% options. Generally, an option |xxx| will just set the appropriate switches to true
+% (otherwise they stay false). First we have the general options
+%    \begin{macrocode}
+%<*package>
+\newif\ifmetakeys@showmeta\metakeys@showmetafalse
+\DeclareOption{showmeta}{\metakeys@showmetatrue}
+\DeclareOption*{}
+\ProcessOptions 
+%    \end{macrocode}
+% 
+% We build on the |keyval| package which we first need to load. For {\latexml}, we also
+% initialize the package inclusions.
+%    \begin{macrocode}
+%\RequirePackage{stex-base}
+\RequirePackage{keyval}[1997/11/10]
+\RequirePackage{etoolbox}
+%    \end{macrocode}
+%
+% \subsection{Adding Metadata Keys}\label{sec:impl:keys}
+%
+% \begin{macro}{\addmetakey}
+%   The |\addmetakey| macro looks at the next character and invokes helper macros accordingly.
+%    \begin{macrocode}
+\newcommand\addmetakey{\@ifstar\addmetakey@star\addmetakey@nostar}%
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\addmetakey@star}
+%   |\addmetakey@star| takes care of the starred form of |\addmetakey|. An invocation of
+%   |\addmetakey@star{|\meta{default}|}{|\meta{group}|}{|\meta{key}|}| macro first extends the
+%   |\metakeys@clear@|\meta{group}|@keys| macro then defines the key \meta{key} with the
+%   |\define@key| macro from the |keyval| package. This stores the key value given in the
+%   local macro |\|\meta{group}|@|\meta{key}.
+%    \begin{macrocode}
+\newcommand\addmetakey@star[3][]{%
+  \@ifnextchar[{%
+    \addmetakey@star@aux[#1]{#2}{#3}%
+  }{%
+    \addmetakey@star@aux[#1]{#2}{#3}[]%
+  }%
+}%
+\def\addmetakey@star@aux[#1]#2#3[#4]{%
+  \metakeys@ext@clear@keys{#2}{#3}{#1}%
+  \metakeys@initialize@showkeys{#2}%
+  \define@key{#2}{#3}[#4]{%
+    \csxdef{#2@#3}{##1}%
+  }%
+}%
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\addmetakey@nostar}
+%   |\addmetakey@nostar| takes care of the no-starred form of |\addmetakey| by first extending the
+%   |\metakeys@|\meta{group}|@showkeys| macro which contains those keys that should be
+%   shown and then calling |\addmetakey@star|.
+%    \begin{macrocode}
+\newcommand\addmetakey@nostar[3][]{%
+  \metakeys@ext@showkeys{#2}{#3}%
+  \addmetakey@star[#1]{#2}{#3}%
+}%
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\metasetkeys}
+% The |\metasetkeys{|\meta{group}|}| clears/presets the key of \meta{group} via
+% |\clear@|\meta{group}|@keys|, (if the |showmeta| option is set) shows them, and
+% then sets the keys via |keyval|s |\setkeys| command.
+%    \begin{macrocode}
+\newcommand\metasetkeys[2]{%
+  \@nameuse{clear@#1@keys}%
+  \setkeys{#1}{#2}%
+  \ifmetakeys@showmeta%
+    \edef\@@keys{\@nameuse{#1@showkeys}}%
+    \metakeys@show@keys{#1}{%
+      \@for\@I:=\@@keys\do{%
+        \metakeys@show@keyval{#1}{\@I}%
+      }%
+    }%
+  \fi%
+}%
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\metakeys@ext@clear@keys}
+%   |\metakeys@ext@clear@keys{|\meta{group}|}{|\meta{key}|}{|\meta{default}|}| extends (or
+%   sets up if this is the first |\addmetakey| for \meta{group}) the
+%   |\clear@|\meta{group}|@keys| macro to set the default value \meta{default} for
+%   \meta{key}. The |\clear@|\meta{group}|@keys| macro is used in the generic
+%   |\metasetkeys| macro below. The variant |\@metakeys@ext@clear@keys| is provided for
+%   use in the |sref| package.
+%    \begin{macrocode}
+\newrobustcmd\metakeys@ext@clear@keys[3]{%
+  \@metakeys@ext@clear@keys{#1}{#1@#2}{#3}%
+}%
+\newrobustcmd\@metakeys@ext@clear@keys[3]{%
+  \@ifundefined{clear@#1@keys}{%
+	\csgdef{clear@#1@keys}{\csgdef{#2}{#3}}%
+  }%
+  {\expandafter\gappto\csname clear@#1@keys\endcsname{\csgdef{#2}{#3}}}%
+}%
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\addmetalistkey}
+%    \begin{macrocode}
+\newrobustcmd\addmetalistkey{%
+  \@ifstar\addmetalistkey@star\addmetalistkey@nostar%
+}%
+\newrobustcmd\addmetalistkey@star[3][]{%
+  \metakeys@ext@clear@keys{#2}{#3}{#1}%
+  \metakeys@initialize@showkeys{#2}%
+  \csgdef{#2@#3s}{}%
+  \define@key{#2}{#3}[#1]{%
+    \ifcsempty{#2@#3s}{%
+      \csgdef{#2@#3s}{##1}%
+    }{%
+      \csxdef{#2@#3s}{\csuse{#2@#3s},##1}%
+    }%
+  }%
+}%
+\newrobustcmd\addmetalistkey@nostar[3][]{%
+  \metakeys@ext@showkeys{#2}{#3}%
+  \addmetalistkey@star[#1]{#2}{#3}%
+}%
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsection{Showing Metadata Keys/Values}\label{sec:impl:showmeta}
+%
+% \begin{macro}{\metakeys@initialize@showkeys}
+%   |\metakeys@initialize@showkeys{|\meta{group}|}| sets up the |\|\meta{group}|@showkeys|
+%   macro which is is used to store the keys to be shown of the metadata in in the generic
+%   |\setmetakeys| macro below.
+%    \begin{macrocode}
+\newrobustcmd\metakeys@initialize@showkeys[1]{%
+  \@ifundefined{#1@showkeys}{%
+    \csdef{#1@showkeys}{}%
+  }{}%
+}%
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\metakeys@ext@showkeys}
+%   |\metakeys@ext@showkeys{|\meta{group}|}{|\meta{key}|}| extends (or sets up) the
+%   |\|\meta{group}|@showkeys| macro which is is used to store the keys to be shown of the
+%   metadata in in the generic |\setmetakeys| macro below.
+%    \begin{macrocode}
+\newrobustcmd\metakeys@ext@showkeys[2]{%
+  \@ifundefined{#1@showkeys}{%
+    \csdef{#1@showkeys}{#2}%
+  }{%
+    \csedef{#1@showkeys}{\csuse{#1@showkeys},#2}%
+  }%
+}%
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\metakeys@show@key}
+%   |\metakeys@show@key{|\meta{key}|}{|\meta{value}|}| shows the a single key value pair, as a
+%   default we just write \meta{key}|:|\meta{value}.
+%    \begin{macrocode}
+\newrobustcmd\@metakeys@show@key[2]{\metakeys@show@key{#2}{#1}}%
+\newrobustcmd\metakeys@show@key[2]{%
+  \edef\@test{#2}%
+  \ifx\@test\@empty\else #1:#2\quad\fi%
+}%
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\metakeys@show@keys}
+%   |\metakeys@show@keys{|\meta{group}|}{|\meta{keys}|}| shows the metadata, by default we
+%   disregard the \meta{group} and show \meta{keys} in a marginpar. 
+%    \begin{macrocode}
+\newrobustcmd\metakeys@show@keys[2]{\marginpar{{\scriptsize #2}}}%
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\metakeys@show@keyval}
+%   |\metakeys@show@keyval{|\meta{group}|}|{|\meta{key}|} shows the key/value pair of a given key \meta{key}.
+%    \begin{macrocode}
+\newrobustcmd\metakeys@show@keyval[2]{%
+  \expandafter\@metakeys@show@key\csname #1@#2\endcsname{#2}%
+}%
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\showmetakeys}
+%    \begin{macrocode}
+\newrobustcmd\showmetakeys{\metakeys@showmetatrue}%
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\hidemetakeys}
+%    \begin{macrocode}
+\newrobustcmd\hidemetakeys{\metakeys@showmetafalse}%
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsection{Using better defaults than empty}
+% 
+% \begin{macro}{\addmetakeynew}
+%   |\addmetakeynew| is an experimental version of |\addmetakey| which gives
+%   |\omd@unspecified| as an optional argument, so that it is used as the default value
+%   here and then test for it in |\omfidus|. But unfortunately, this does not work yet.
+%    \begin{macrocode}
+\newrobustcmd\addmetakeynew[3][]{%
+  \metakeys@ext@clear@keys{#2}{#3}{#1}%
+  \define@key{#2}{#3}{%
+    \csgdef{#2@#3}{##1}%
+  }%
+}%
+%    \end{macrocode}
+% \end{macro}
+%
+% 
+% \begin{macro}{\metakeys@unspecified}
+%   An internal macro for unspecified values. It is used to initialize keys.\ednote{MK:
+%   we could probably embed an package error or warning in here}
+%    \begin{macrocode}
+\newrobustcmd\metakeys@unspecified{an metakeys-defined key left unspecified}%
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\metakeysifus}
+%   This just tests for equality of the first arg with |\metakeys@unspecified|
+%    \begin{macrocode}
+\newrobustcmd\metakeysifus[4]{%
+  \message{testing #1@#2=\csname#1@#2\endcsname}%
+  \expandafter\ifx\csname #1@#2\endcsname\metakeys@unspecified{#3}\else{#4}\fi%
+}%
+%</package>
+%    \end{macrocode}
+% \end{macro}
+% \Finale
+\endinput
+% \iffalse
+%%% Local Variables: 
+%%% mode: doctex
+%%% TeX-master: t
+%%% End: 
+% \fi
+
+
+% LocalWords:  iffalse kohlhase Thu metakeys metakeys.dtx scsys sc sc latexml omdoc foo
+% LocalWords:  omdocv texttt fileversion maketitle setcounter tocdepth newpage filedate
+% LocalWords:  tableofcontents ednote showmeta NeedsTeXFormat stex rdfmeta ctancite dval
+% LocalWords:  makeatletter newcommand emph makeatother exfig vspace impl ltxml textbf
+% LocalWords:  printbibliography keyval expandafter gdef csname ifx tkp99 sref
+% LocalWords:  endcsname setkeys ifundefined omfidus metakeysifus addmetakey foo@vals
+% LocalWords:  doctex metasetkeys metasetkeys marginpar hidemetakeys textsf omd rangle
+% LocalWords:  hidemetakeys showmetakeys showmetakeys langle textsf langle addmetalistkey
+% LocalWords:  newif ifmetakeys showmetafalse showmetatrue ifstar showkeys addmetalistkey
+% LocalWords:  nameuse setmetakeys addmetakeynew textbackslash compactenum rangle xdef
+%  LocalWords:  addmetakey@nostar addmetalistkey@nostar scriptsize endinput

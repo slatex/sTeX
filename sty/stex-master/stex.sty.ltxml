@@ -1,0 +1,65 @@
+use LaTeXML::Package;
+use strict;
+use warnings;
+
+RawTeX('\newif\if@latexml\@latexmltrue');
+
+DefMacro('\@kpsewhich{}{}', sub {
+    my($gullet,$arga,$argb)=@_;
+    my $kpse = pathname_kpsewhich(ToString(Expand($argb)));
+
+    # check if $arga->getCatcode == CC_CS
+
+    (T_CS('\def'),$arga,T_BEGIN,Explode($kpse),T_END);
+    # TokenizeInternal('\def'.ToString($arga).'{'.$kpse.'}')->unlist;
+    },
+locked => 1);
+
+DefConstructor('\latexml@oms{}{}', 
+    '<ltx:XMApp class="stex:OMS #1">#2</ltx:XMApp>',
+locked => 1);
+
+DefConstructor('\latexml@oma{}{}', 
+    '<ltx:XMApp class="stex:OMA #1">#2</ltx:XMApp>',
+locked => 1);
+
+DefConstructor('\latexml@arg{}{}', 
+    '<ltx:XMApp class="stex:arg_#1">#2</ltx:XMApp>',
+locked => 1);
+
+DefConstructor('\latexml@oms@verb{}{}',
+  '<ltx:inline-block property="stex:OMS" resource="#1">#2</ltx:inline-block>',
+locked => 1);
+
+DefConstructor('\latexml@oma@verb{}{}',
+  '<ltx:inline-block property="stex:OMA" resource="#1">#2</ltx:inline-block>',
+locked => 1);
+
+DefConstructor('\latexml@arg@verb{}{}',
+  '<ltx:inline-block property="stex:arg" resource="#1">#2</ltx:inline-block>',
+locked => 1);
+
+DefEnvironment('{latexml@module}{}',
+  '<ltx:inline-block property="stex:theory" resource="#1">#body</ltx:inline-block>',
+locked => 1);
+
+sub scriptnode {
+  my ($str)=@_;
+  '<ltx:rawhtml><xhtml:script type="application/xml">'."\n".$str."\n".'</xhtml:script></ltx:rawhtml>'; 
+}
+
+DefConstructor('\latexml@import{}',
+  scriptnode('<xhtml:stex_import resource="#1"/>'),
+locked => 1);
+
+DefConstructor('\latexml@symdecl{}',
+  scriptnode('<xhtml:stex_symdecl resource="#1"/>'),
+locked => 1);
+
+DefConstructor('\latexml@notation{}{}{}{}{}',
+  '<ltx:inline-block property="stex:notation" resource="#1">'.scriptnode('<xhtml:fragment frag="#2" arity="#3" prec="#4"/>').'#5'.'</ltx:inline-block>',
+locked => 1);
+
+InputDefinitions('stex', type => 'sty', noltxml => 1);
+
+1;

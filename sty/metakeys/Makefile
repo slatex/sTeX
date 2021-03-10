@@ -1,10 +1,10 @@
 PREFIX = ..
-DTX.sty.base = metakeys
+DTX.sty.base = stex-metakeys
 DTX.cls.base = 
 TDSCOLL = stex# lowercase by CTAN rules
 CTANPREFIX = sty/
-PACKAGE = metakeys
-DTX = metakeys.dtx
+PACKAGE = stex-metakeys
+DTX = stex-metakeys.dtx
 include $(PREFIX)/make/Makefile.vars
 include $(PREFIX)/make/Makefile.in
 

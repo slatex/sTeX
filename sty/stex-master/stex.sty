@@ -1,0 +1,2128 @@
+%%
+%% This is file `stex.sty',
+%% generated with the docstrip utility.
+%%
+%% The original source files were:
+%%
+%% stex.dtx  (with options: `package')
+%% 
+\NeedsTeXFormat{LaTeX2e}[1999/12/01]
+\ProvidesPackage{stex}[2020/11/10 v2.0 Semantic Markup]
+\edef\old@newlinechar{\the\newlinechar}
+\newlinechar=-1
+\let\ex\expandafter
+\newif\if@stex@debugmode\@stex@debugmodefalse
+\DeclareOption{debug}{\@stex@debugmodetrue}
+\def\stex@debug#1{\if@stex@debugmode\message{^^J#1^^J}\fi}
+\newif\ifmod@show\mod@showfalse
+\DeclareOption{showmods}{\mod@showtrue}
+\newif\ifextrefs\extrefsfalse
+\DeclareOption{extrefs}{\extrefstrue}
+\ProcessOptions
+\ifcsname if@latexml\endcsname\else
+  \ex\newif\csname if@latexml\endcsname\@latexmlfalse
+\fi
+\RequirePackage{xspace}
+\RequirePackage{standalone}
+\RequirePackageWithOptions{stex-metakeys}
+\RequirePackage{xstring}
+\RequirePackage{etoolbox}
+\protected\def\stex{%
+  \@ifundefined{texorpdfstring}%
+  {\let\texorpdfstring\@firstoftwo}%
+  {}%
+  \texorpdfstring{\raisebox{-.5ex}S\kern-.5ex\TeX}{sTeX}\xspace%
+}
+\def\sTeX{\stex}
+\def\pathsuris@setcatcodes{%
+    \edef\pathsuris@oldcatcode@hash{\the\catcode`\#}%
+    \catcode`\#=12\relax%
+    \edef\pathsuris@oldcatcode@slash{\the\catcode`\/}%
+    \catcode`\/=12\relax%
+    \edef\pathsuris@oldcatcode@colon{\the\catcode`\:}%
+    \catcode`\:=12\relax%
+    \edef\pathsuris@oldcatcode@qm{\the\catcode`\?}%
+    \catcode`\?=12\relax%
+}
+\def\pathsuris@resetcatcodes{%
+    \catcode`\#\pathsuris@oldcatcode@hash\relax%
+    \catcode`\/\pathsuris@oldcatcode@slash\relax%
+    \catcode`\:\pathsuris@oldcatcode@colon\relax%
+    \catcode`\?\pathsuris@oldcatcode@qm\relax%
+}
+\def\namespace@read#1{%
+  \edef\namespace@read@path{#1}%
+  \edef\namespace@read@path{\ex\detokenize\ex{\namespace@read@path}}%
+  \namespace@continue%
+}
+\def\namespace@continue#1{%
+  \pathsuris@resetcatcodes%
+  \ex\edef\csname\namespace@macroname\endcsname##1{%
+    \namespace@read@path\@Slash##1%
+  }%
+}
+\protected\def\namespace#1{%
+  \def\namespace@macroname{#1}%
+  \pathsuris@setcatcodes%
+  \namespace@read%
+}
+\let\defpath\namespace
+\pathsuris@setcatcodes
+\def\@ToTop{..}
+\def\@Slash{/}
+\def\@Colon{:}
+\def\@Space{ }
+\def\@QuestionMark{?}
+\def\@Dot{.}
+\catcode`\&=12
+\def\@Ampersand{&}
+\catcode`\&=4
+\def\@Fragment{#}
+\pathsuris@resetcatcodes
+\catcode`\.=0
+.catcode`.\=12
+.let.@BackSlash\
+.catcode`.\=0
+\catcode`\.=12
+\edef\old@percent@catcode{\the\catcode`\%}
+\catcode`\%=12
+\let\@Percent%
+\catcode`\%=\old@percent@catcode
+\def\@cpath#1{%
+    \edef\pathsuris@cpath@temp{#1}%
+    \def\@cpath@path{}%
+    \IfBeginWith\pathsuris@cpath@temp\@Slash{%
+      \@cpath@loop%
+      \edef\@cpath@path{\@Slash\@cpath@path}%
+    }{%
+        \IfBeginWith\pathsuris@cpath@temp{\@Dot\@Slash}{%
+            \StrGobbleLeft\pathsuris@cpath@temp2[\pathsuris@cpath@temp]%
+            \@cpath@loop%
+        }{%
+            \ifx\pathsuris@cpath@temp\@Dot\else%
+            \@cpath@loop\fi%
+        }%
+    }%
+    \IfEndWith\@cpath@path\@Slash{%
+      \ifx\@cpath@path\@Slash\else%
+        \StrGobbleRight\@cpath@path1[\@cpath@path]%
+      \fi%
+    }{}%
+}
+
+\def\@cpath@loop{%
+    \IfSubStr\pathsuris@cpath@temp\@Slash{%
+        \StrCut\pathsuris@cpath@temp\@Slash%
+          \pathsuris@cpath@temp@a\pathsuris@cpath@temp%
+        \ifx\pathsuris@cpath@temp@a\@ToTop%
+            \ifx\@cpath@path\@empty%
+                \edef\@cpath@path{\@ToTop}%
+            \else%
+                \edef\@cpath@path{\@cpath@path\@Slash\@ToTop}%
+            \fi%
+            \@cpath@loop%
+        \else%
+        \ifx\pathsuris@cpath@temp@a\@Dot%
+            \@cpath@loop%
+        \else%
+        \IfBeginWith\pathsuris@cpath@temp\@ToTop{%
+            \StrBehind{\pathsuris@cpath@temp}{\@ToTop}%
+              [\pathsuris@cpath@temp]%
+            \IfBeginWith\pathsuris@cpath@temp\@Slash{%
+                \edef\pathsuris@cpath@temp%
+                  {\@cpath@path\pathsuris@cpath@temp}%
+            }{%
+                \ifx\@cpath@path\@empty\else%
+                    \edef\pathsuris@cpath@temp%
+                      {\@cpath@path\@Slash\pathsuris@cpath@temp}%
+                \fi%
+            }%
+            \def\@cpath@path{}%
+            \@cpath@loop%
+        }{%
+            \ifx\@cpath@path\@empty%
+                \edef\@cpath@path{\pathsuris@cpath@temp@a}%
+            \else%
+                \edef\@cpath@path%
+                  {\@cpath@path\@Slash\pathsuris@cpath@temp@a}%
+            \fi%
+            \@cpath@loop%
+        }%
+        \fi\fi%
+    }{%
+        \ifx\@cpath@path\@empty%
+            \edef\@cpath@path{\pathsuris@cpath@temp}%
+        \else%
+            \edef\@cpath@path{\@cpath@path\@Slash\pathsuris@cpath@temp}%
+        \fi%
+    }%
+}
+\newcommand\cpath@print[1]{%
+    \@cpath{#1}%
+    \@cpath@path%
+}
+\def\path@filename#1#2{%
+    \edef\filename@oldpath{#1}%
+    \StrCount\filename@oldpath\@Slash[\filename@lastslash]%
+    \ifnum\filename@lastslash>0%
+        \StrBehind[\filename@lastslash]\filename@oldpath%
+          \@Slash[\filename@oldpath]%
+        \edef#2{\filename@oldpath}%
+    \else%
+        \edef#2{\filename@oldpath}%
+    \fi%
+}
+\def\path@filename@noext#1#2{%
+    \path@filename{#1}{#2}%
+    \edef\filename@oldpath{#2}%
+    \StrCount\filename@oldpath\@Dot[\filename@lastdot]%
+    \ifnum\filename@lastdot>0%
+        \StrBefore[\filename@lastdot]\filename@oldpath%
+          \@Dot[\filename@oldpath]%
+        \edef#2{\filename@oldpath}%
+    \else%
+        \edef#2{\filename@oldpath}%
+    \fi%
+}
+\newif\if@iswindows@\@iswindows@false
+\IfFileExists{nul:}{\IfFileExists{/dev/null}{}{\@iswindows@true}}{}
+\newif\if@windowstopath@inpath@
+\def\windows@to@path#1{%
+    \@windowstopath@inpath@false%
+    \def\windows@temp{}%
+    \edef\windows@path{#1}%
+    \ifx\windows@path\@empty\else%
+        \ex\windows@path@loop\windows@path\windows@path@end%
+    \fi%
+    \let#1\windows@temp%
+}
+\def\windows@path@loop#1#2\windows@path@end{%
+    \def\windows@temp@b{#2}%
+    \ifx\windows@temp@b\@empty%
+        \def\windows@continue{}%
+    \else%
+        \def\windows@continue{\windows@path@loop#2\windows@path@end}%
+    \fi%
+    \if@windowstopath@inpath@%
+        \ifx#1\@BackSlash%
+            \edef\windows@temp{\windows@temp\@Slash}%
+        \else%
+            \edef\windows@temp{\windows@temp#1}%
+        \fi%
+    \else%
+        \ifx#1:%
+            \edef\windows@temp{\@Slash\windows@temp}%
+            \@windowstopath@inpath@true%
+        \else%
+            \edef\windows@temp{\windows@temp#1}%
+        \fi%
+    \fi%
+    \windows@continue%
+}
+\def\path@to@windows#1{%
+    \@windowstopath@inpath@false%
+    \def\windows@temp{}%
+    \edef\windows@path{#1}%
+    \edef\windows@path{\expandafter\@gobble\windows@path}%
+    \ifx\windows@path\@empty\else%
+        \expandafter\path@windows@loop\windows@path\windows@path@end%
+    \fi%
+    \let#1\windows@temp%
+}
+\def\path@windows@loop#1#2\windows@path@end{%
+    \def\windows@temp@b{#2}%
+    \ifx\windows@temp@b\@empty%
+        \def\windows@continue{}%
+    \else%
+        \def\windows@continue{\path@windows@loop#2\windows@path@end}%
+    \fi%
+    \if@windowstopath@inpath@%
+        \ifx#1/%
+            \edef\windows@temp{\windows@temp\@BackSlash}%
+        \else%
+            \edef\windows@temp{\windows@temp#1}%
+        \fi%
+    \else%
+        \ifx#1/%
+            \edef\windows@temp{\windows@temp:\@BackSlash}%
+            \@windowstopath@inpath@true%
+        \else%
+            \edef\windows@temp{\windows@temp#1}%
+        \fi%
+    \fi%
+    \windows@continue%
+}
+\def\path@trimstring#1{%
+    \edef\pathsuris@trim@temp{#1}%
+    \IfBeginWith\pathsuris@trim@temp\@Space{%
+        \StrGobbleLeft\pathsuris@trim@temp1[#1]%
+        \path@trimstring{#1}%
+    }{%
+        \IfEndWith\pathsuris@trim@temp\@Space{%
+            \StrGobbleRight\pathsuris@trim@temp1[#1]%
+            \path@trimstring{#1}%
+        }{%
+            \edef#1{\pathsuris@trim@temp}%
+        }%
+    }%
+}
+\def\@kpsewhich#1#2{\begingroup%
+  \edef\kpsewhich@cmd{"|kpsewhich #2"}%
+  \everyeof{\noexpand}%
+  \catcode`\\=12%
+  \edef#1{\@@input\kpsewhich@cmd\@Space}%
+  \path@trimstring#1%
+  \if@iswindows@\windows@to@path#1\fi%
+  \xdef#1{\ex\detokenize\expandafter{#1}}%
+\endgroup}
+\edef\pwd@cmd{\if@iswindows@ -expand-var \@Percent%
+  CD\@Percent\else -var-value PWD\fi}
+\@kpsewhich\stex@PWD\pwd@cmd
+\edef\stex@mainfile{\stex@PWD\@Slash\jobname}
+\edef\stex@mainfile{\ex\detokenize\ex{\stex@mainfile}}
+\def\stex@currfile@stack{}
+
+\def\stex@currfile@push#1{%
+    \edef\stex@temppath{#1}%
+    \edef\stex@temppath{\ex\detokenize\ex{\stex@temppath}}%
+  \edef\stex@currfile@stack{\stex@currfile%
+    \ifx\stex@currfile@stack\@empty\else,\stex@currfile@stack\fi}
+  \IfBeginWith\stex@temppath\@Slash{\@cpath{\stex@temppath}}{%
+    \@cpath{\stex@PWD\@Slash#1}%
+  }
+  \let\stex@currfile\@cpath@path%
+  \path@filename\stex@currfile\stex@currfilename%
+  \StrLen\stex@currfilename[\stex@currfile@tmp]%
+  \StrGobbleRight\stex@currfile{\the\numexpr%
+    \stex@currfile@tmp+1 }[\stex@currpath]%
+  \global\let\stex@currfile\stex@currfile%
+  \global\let\stex@currpath\stex@currpath%
+  \global\let\stex@currfilename\stex@currfilename%
+}
+\def\stex@currfile@pop{%
+  \ifx\stex@currfile@stack\@empty%
+    \global\let\stex@currfile\stex@mainfile%
+    \global\let\stex@currpath\stex@PWD%
+    \global\let\stex@currfilename\jobname%
+  \else%
+    \StrCut\stex@currfile@stack,\stex@currfile\stex@currfile@stack%
+    \path@filename\stex@currfile\stex@currfilename%
+    \StrLen\stex@currfilename[\stex@currfile@tmp]%
+    \StrGobbleRight\stex@currfile{\the\numexpr%
+      \stex@currfile@tmp+1 }[\stex@currpath]%
+    \global\let\stex@currfile\stex@currfile%
+    \global\let\stex@currpath\stex@currpath%
+    \global\let\stex@currfilename\stex@currfilename%
+  \fi%
+}
+\def\stexinput#1{%
+    \stex@iffileexists{#1}{%
+      \stex@currfile@push\stex@temp@path%
+      \input{\stex@currfile}%
+      \stex@currfile@pop%
+    }%
+    {%
+        \PackageError{stex}{File does not exist %
+          (#1): \stex@temp@path}{}%
+    }%
+}
+\def\stex@iffileexists#1#2#3{%
+  \edef\stex@temp@path{#1}%
+  \if@iswindows@\path@to@windows\stex@temp@path\fi%
+  \IfFileExists\stex@temp@path{#2}{#3}%
+}
+\stex@currfile@pop
+\@kpsewhich\mathhub@path{--var-value MATHHUB}
+\if@iswindows@\windows@to@path\mathhub@path\fi
+\ifx\mathhub@path\@empty
+  \PackageWarning{stex}{MATHHUB system variable not %
+    found or wrongly set}{}
+  \defpath{MathHub}{}
+\else\defpath{MathHub}\mathhub@path\fi
+\def\mathhub@findmanifest#1{%
+  \@cpath{#1}%
+  \ifx\@cpath@path\@Slash%
+    \def\manifest@mf{}%
+  \else\ifx\@cpath@path\@empty%
+      \def\manifest@mf{}%
+  \else%
+    \edef\@findmanifest@path{\@cpath@path/MANIFEST.MF}%
+    \if@iswindows@\path@to@windows\@findmanifest@path\fi%
+    \IfFileExists{\@findmanifest@path}{%
+      \edef\manifest@mf{\@findmanifest@path}%
+      \xdef\temp@archive@dir{\ex\detokenize\ex{\@cpath@path}}%
+    }{%
+    \edef\@findmanifest@path{\@cpath@path/META-INF/MANIFEST.MF}%
+    \if@iswindows@\path@to@windows\@findmanifest@path\fi%
+    \IfFileExists{\@findmanifest@path}{%
+      \edef\manifest@mf{\@findmanifest@path}%
+      \xdef\temp@archive@dir{\ex\detokenize\ex{\@cpath@path}}%
+    }{%
+    \edef\@findmanifest@path{\@cpath@path/meta-inf/MANIFEST.MF}%
+    \if@iswindows@\path@to@windows\@findmanifest@path\fi%
+    \IfFileExists{\@findmanifest@path}{%
+      \edef\manifest@mf{\@findmanifest@path}%
+      \xdef\temp@archive@dir{\ex\detokenize\ex{\@cpath@path}}%
+    }{%
+      \mathhub@findmanifest{\@cpath@path/..}%
+    }}}%
+  \fi\fi%
+}
+\def\split@manifest@key{%
+  \IfSubStr{\manifest@line}{\@Colon}{%
+      \StrBefore{\manifest@line}{\@Colon}[\manifest@key]%
+      \StrBehind{\manifest@line}{\@Colon}[\manifest@line]%
+      \path@trimstring\manifest@line%
+      \path@trimstring\manifest@key%
+  }{%
+      \def\manifest@key{}%
+  }%
+}
+\def\parse@manifest@loop{%
+  \ifeof\@manifest%
+  \else%
+    \read\@manifest to \manifest@line\relax%
+    \split@manifest@key%
+    % id
+    \IfStrEq\manifest@key{id}{%
+        \xdef\manifest@mf@id{\manifest@line}%
+    }{%
+    % narration-base
+    \IfStrEq\manifest@key{narration-base}{%
+        \xdef\manifest@mf@narr{\manifest@line}%
+    }{%
+    % namespace
+    \IfStrEq\manifest@key{source-base}{%
+        \xdef\manifest@mf@ns{\manifest@line}%
+    }{%
+    \IfStrEq\manifest@key{ns}{%
+        \xdef\manifest@mf@ns{\manifest@line}%
+    }{%
+    % dependencies
+    \IfStrEq\manifest@key{dependencies}{%
+        \xdef\manifest@mf@deps{\manifest@line}%
+    }{%
+    }}}}}%
+    \parse@manifest@loop%
+  \fi%
+}
+\newread\@manifest
+\def\mathhub@parsemanifest#1#2{%
+  \gdef\temp@archive@dir{}%
+  \mathhub@findmanifest{#2}%
+  \begingroup%
+    \newlinechar=-1%
+    \endlinechar=-1%
+    \gdef\manifest@mf@id{}%
+    \gdef\manifest@mf@narr{}%
+    \gdef\manifest@mf@ns{}%
+    \gdef\manifest@mf@deps{}%
+    \immediate\openin\@manifest=\manifest@mf\relax%
+    \parse@manifest@loop%
+    \immediate\closein\@manifest%
+  \endgroup%
+  \if@iswindows@\windows@to@path\manifest@mf\fi%
+  \cslet{#1id}\manifest@mf@id%
+  \cslet{#1narr}\manifest@mf@narr%
+  \cslet{#1ns}\manifest@mf@ns%
+  \cslet{#1deps}\manifest@mf@deps%
+  \ifcsvoid{manifest@mf@id}{}{%
+    \cslet{#1dir}\temp@archive@dir%
+  }%
+}
+\def\mathhub@setcurrentreposinfo#1{%
+  \edef\mh@currentrepos{#1}%
+  \ifx\mh@currentrepos\@empty%
+    \edef\currentrepos@dir{\@Dot}%
+    \def\currentrepos@narr{}%
+    \def\currentrepos@ns{}%
+    \def\currentrepos@id{}%
+    \def\currentrepos@deps{}%
+  \else%
+  \ifcsdef{mathhub@dir@\mh@currentrepos}{%
+    \@inmhrepostrue
+    \ex\let\ex\currentrepos@dir\csname mathhub@dir@#1\endcsname%
+    \ex\let\ex\currentrepos@narr\csname mathhub@narr@#1\endcsname%
+    \ex\let\ex\currentrepos@ns\csname mathhub@ns@#1\endcsname%
+    \ex\let\ex\currentrepos@deps\csname mathhub@deps@#1\endcsname%
+  }{%
+    \mathhub@parsemanifest{currentrepos@}{\MathHub{#1}}%
+    \@setcurrentreposinfo%
+    \ifcsvoid{currentrepos@dir}{\PackageError{stex}{No archive with %
+      name #1 found!}{make sure that #1 is directly in your MATHHUB folder %
+      and contains a MANIFEST.MF, either directly in #1 or in a meta-inf %
+      subfolder.}}{\@inmhrepostrue}%
+  }%
+  \fi%
+}
+
+\def\@setcurrentreposinfo{%
+  \edef\mh@currentrepos{\currentrepos@id}%
+  \ifcsvoid{currentrepos@dir}{}{%
+    \csxdef{mathhub@dir@\currentrepos@id}{\currentrepos@dir}%
+    \csxdef{mathhub@narr@\currentrepos@id}{\currentrepos@narr}%
+    \csxdef{mathhub@ns@\currentrepos@id}{\currentrepos@ns}%
+    \csxdef{mathhub@deps@\currentrepos@id}{\currentrepos@deps}%
+  }%
+}
+\newif\if@inmhrepos\@inmhreposfalse
+\ifcsvoid{stex@PWD}{}{
+\mathhub@parsemanifest{currentrepos@}\stex@PWD
+\@setcurrentreposinfo
+\ifcsvoid{currentrepos@dir}{\message{sTeX: Not currently in a MathHub repository}}{%
+  \message{Current sTeX repository: \mh@currentrepos}
+}
+}
+\ifmod@show\if@latexml\else\RequirePackage{mdframed}\fi\fi
+\addmetakey*{module}{title}
+\addmetakey*{module}{name}
+\addmetakey*{module}{creators}
+\addmetakey*{module}{contributors}
+\addmetakey*{module}{srccite}
+\addmetakey*{module}{ns}
+\addmetakey*{module}{narr}
+\ifdef{\thesection}{\newcounter{module}[section]}{\newcounter{module}}%
+\newrobustcmd\module@heading{%
+  \stepcounter{module}%
+  \ifmod@show%
+  \noindent{\textbf{Module} \thesection.\themodule [\module@name]}%
+  \sref@label@id{Module \thesection.\themodule [\module@name]}%
+    \ifx\module@title\@empty :\quad\else\quad(\module@title)\hfill\\\fi%
+  \fi%
+}%
+\newenvironment{module}[1][]{%
+  \begin{@module}[#1]%
+  \module@heading% make the headings
+  %\ignorespacesandpars
+  \parsemodule@maybesetcodes}{%
+  \end{@module}%
+  \ignorespacesafterend%
+}%
+\ifmod@show\surroundwithmdframed{module@om@common}\fi%
+\def\g@addto@macro@safe#1#2{\ifx#1\relax\def#1{}\fi\g@addto@macro#1{#2}}
+\def\addto@thismodule#1{%
+  \@ifundefined{this@module}{}{%
+    \expandafter\g@addto@macro@safe\this@module{#1}%
+  }%
+}
+\def\addto@thismodulex#1{%
+\@ifundefined{this@module}{}{%
+  \edef\addto@thismodule@exp{#1}%
+  \expandafter\expandafter\expandafter\g@addto@macro@safe%
+  \expandafter\this@module\expandafter{\addto@thismodule@exp}%
+}}
+\newif\ifarchive@ns@empty@\archive@ns@empty@false
+\def\set@default@ns{%
+  \edef\@module@ns@temp{\stex@currpath}%
+  \if@iswindows@\windows@to@path\@module@ns@temp\fi%
+  \archive@ns@empty@false%
+  \stex@debug{Generate new namespace^^J  Filepath: \@module@ns@temp}%
+  \ifcsvoid{mh@currentrepos}{\archive@ns@empty@true}%
+  {\ex\ifx\csname mathhub@ns@\mh@currentrepos\endcsname\@empty\archive@ns@empty@true\fi%
+  }%
+  \stex@debug{  \ifarchive@ns@empty@ Namespace empty\else Namespace not empty\fi}%
+  \ifarchive@ns@empty@%
+    \edef\@module@ns@tempuri{file\@Colon\@Slash\@Slash\@module@ns@temp}%
+  \else%
+    \edef\@module@filepath@temppath{\@module@ns@temp}%
+    \edef\@module@ns@tempuri{\csname mathhub@ns@\mh@currentrepos\endcsname}%
+    \edef\@module@archivedirpath{\csname mathhub@dir@\mh@currentrepos\endcsname\@Slash source}%
+    \edef\@module@archivedirpath{\ex\detokenize\ex{\@module@archivedirpath}}%
+    \IfBeginWith\@module@filepath@temppath\@module@archivedirpath{%
+      \StrLen\@module@archivedirpath[\ns@temp@length]%
+      \StrGobbleLeft\@module@filepath@temppath\ns@temp@length[\@module@filepath@temprest]%
+      \edef\@module@ns@tempuri{\@module@ns@tempuri\@module@filepath@temprest}%
+    }{}%
+  \fi%
+  \IfEndWith\@module@ns@tempuri\@Slash{\StrGobbleRight\@module@ns@tempuri1[\@module@ns@tempuri]}{}%
+  \setkeys{module}{ns=\@module@ns@tempuri}%
+}
+\def\set@next@moduleid{%
+  \path@filename@noext\stex@currfile\stex@next@moduleid@filename%
+  \edef\set@nextmoduleid@csname{namespace@\module@ns\@QuestionMark\stex@next@moduleid@filename @unnamedmodules}%
+  \unless\ifcsname\set@nextmoduleid@csname\endcsname%
+      \csgdef{\set@nextmoduleid@csname}{0}%
+  \fi%
+  \edef\namespace@currnum{\csname\set@nextmoduleid@csname\endcsname}%
+  \edef\module@temp@setidname{\noexpand\setkeys{module}{name=%
+    \stex@next@moduleid@filename\ex\unless\ex\ifnum\csname\set@nextmoduleid@csname\endcsname=0.\namespace@currnum\fi}}%
+  \module@temp@setidname%
+  \csxdef{\set@nextmoduleid@csname}{\the\numexpr\namespace@currnum+1}%
+}
+\newenvironment{@module}[1][]{%
+  \metasetkeys{module}{#1}%
+  \ifcsvoid{module@name}{\let\module@name\module@id}{}% % TODO deprecate
+  \ifcsvoid{module@name}{\set@next@moduleid}{}%
+  \let\module@id\module@name% % TODO deprecate
+  \ifcsvoid{currentmodule@uri}{%
+    \ifx\module@ns\@empty\set@default@ns\fi%
+    \ifx\module@narr\@empty%
+      \setkeys{module}{narr=\module@ns}%
+    \fi%
+  }{
+    \if@smsmode%
+      \ifx\module@ns\@empty\set@default@ns\fi%
+      \ifx\module@narr\@empty%
+        \setkeys{module}{narr=\module@ns}%
+      \fi%
+    \else%
+      % Nested Module:
+      \stex@debug{Nested module! Parent: \currentmodule@uri}%
+      \setkeys{module}{name=\currentmodule@name\@Slash\module@name}%
+      \let\module@id\module@name % TODO deprecate
+      \setkeys{module}{ns=\currentmodule@ns}%
+    \fi%
+  }%
+  \edef\module@uri{\module@ns\@QuestionMark\module@name}%
+  \csgdef{module@names@\module@uri}{}%
+  \csgdef{module@imports@\module@uri}{}%
+  \csxdef{\module@uri}{\noexpand\@invoke@module{\module@uri}}%
+  \ifcsvoid{stex@module@\module@name}{
+    \ex\global\ex\let\csname stex@module@\module@name\ex\endcsname\csname\module@uri\endcsname%
+  }{
+    \ex\edef\csname stex@module@\module@name\endcsname{\detokenize{ambiguous}}
+  }
+  \edef\this@module{%
+    \ex\noexpand\csname module@defs@\module@uri\endcsname%
+  }%
+  \ex\xdef\csname stex@lastmodule@\module@name\endcsname{\module@uri}%
+  \csdef{module@defs@\module@uri}{}%
+  \ifcsvoid{mh@currentrepos}{}{%
+    \@inmhrepostrue%
+    \addto@thismodulex{\ex\edef\ex\noexpand\csname mh@old@repos@\module@uri\endcsname%
+      {\noexpand\mh@currentrepos}}%
+    \addto@thismodulex{\noexpand\mathhub@setcurrentreposinfo{\mh@currentrepos}}%
+  }%
+  \let\currentmodule@name\module@name%
+  \let\currentmodule@ns\module@ns%
+  \let\currentmodule@uri\module@uri%
+  \stex@debug{^^JNew module: \module@uri^^J}%
+  \parsemodule@maybesetcodes%
+  \begin{latexml@module}{\module@uri}%
+}{%
+  \end{latexml@module}%
+  \if@inmhrepos%
+  \@inmhreposfalse%
+  \addto@thismodulex{\noexpand\mathhub@setcurrentreposinfo{\expandafter\noexpand\csname mh@old@repos@\module@uri\endcsname}}%
+  \fi%
+}%
+\newenvironment{latexml@module}[1]{}{}
+\def\@URI{uri} % TODO check this
+\def\@invoke@module#1#2{%
+  \ifx\@URI#2%
+    #1%
+  \else%
+    % TODO something else
+    #2%
+  \fi%
+}
+\newif\if@smsmode\@smsmodefalse
+\def\parsemodule@allow#1{%
+  \ex\def\csname parsemodule@allowedmacro@#1\ex\endcsname\ex{\csname#1\endcsname}%
+}
+\def\parsemodule@allowenv#1{%
+  \ex\def\csname parsemodule@allowedenv@#1\endcsname{#1}%
+}
+\def\parsemodule@replacemacro#1#2{%
+  \ex\def\csname parsemodule@allowedmacro@#1\ex\endcsname\ex{\csname#2\endcsname}%
+}
+\def\parsemodule@replaceenv#1#2{%
+  \ex\def\csname parsemodule@allowedenv@#1\endcsname{#2}%
+}
+\def\parsemodule@escapechar@beginstring{begin}
+\def\parsemodule@escapechar@endstring{end}
+\parsemodule@allow{symdef}
+\parsemodule@allow{abbrdef}
+\parsemodule@allow{importmodule}
+\parsemodule@allowenv{module}
+\parsemodule@allowenv{@module}
+\parsemodule@allow{importmhmodule}
+\parsemodule@allow{gimport}
+\parsemodule@allowenv{modsig}
+\parsemodule@allowenv{mhmodsig}
+\parsemodule@allowenv{mhmodnl}
+\parsemodule@allowenv{modnl}
+\parsemodule@allow{symvariant}
+\parsemodule@allow{symi}
+\parsemodule@allow{symii}
+\parsemodule@allow{symiii}
+\parsemodule@allow{symiv}
+\parsemodule@allow{notation}
+\parsemodule@allow{symdecl}
+
+
+\parsemodule@allow{defi}
+\parsemodule@allow{defii}
+\parsemodule@allow{defiii}
+\parsemodule@allow{defiv}
+\parsemodule@allow{adefi}
+\parsemodule@allow{adefii}
+\parsemodule@allow{adefiii}
+\parsemodule@allow{adefiv}
+\parsemodule@allow{defis}
+\parsemodule@allow{defiis}
+\parsemodule@allow{defiiis}
+\parsemodule@allow{defivs}
+\parsemodule@allow{Defi}
+\parsemodule@allow{Defii}
+\parsemodule@allow{Defiii}
+\parsemodule@allow{Defiv}
+\parsemodule@allow{Defis}
+\parsemodule@allow{Defiis}
+\parsemodule@allow{Defiiis}
+\parsemodule@allow{Defivs}
+\catcode`\.=0
+.catcode`.\=13
+.def.@active@slash{\}
+.catcode`.<=1
+.catcode`.>=2
+.catcode`.{=12
+.catcode`.}=12
+.def.@open@brace<{>
+.def.@close@brace<}>
+.catcode`.\=0
+\catcode`\.=12
+\catcode`\{=1
+\catcode`\}=2
+\catcode`\<=12
+\catcode`\>=12
+  \def\parsemodule@ignorepackageerrors{,inputenc,}
+  \let\parsemodule@old@PackageError\PackageError
+  \def\parsemodule@packageerror#1#2#3{%
+    \IfSubStr\parsemodule@ignorepackageerrors{,#1,}{}{%
+      \parsemodule@old@PackageError{#1}{#2}{#3}%
+    }%
+  }
+  \def\set@parsemodule@catcodes{%
+      \ifcat`\\=0%
+      \global\catcode`\\=13%
+      \global\catcode`\#=12%
+      \global\catcode`\{=12%
+      \global\catcode`\}=12%
+      \global\catcode`\$=12%$
+      \global\catcode`\^=12%
+      \global\catcode`\_=12%
+      \global\catcode`\&=12%
+      \ex\global\ex\let\@active@slash\parsemodule@escapechar%
+      \global\let\parsemodule@old@PackageError\PackageError%
+      \global\let\PackageError\parsemodule@packageerror%
+      \fi%
+  }
+  \def\reset@parsemodule@catcodes{%
+      \ifcat`\\=13%
+      \global\catcode`\\=0%
+      \global\catcode`\#=6%
+      \global\catcode`\{=1%
+      \global\catcode`\}=2%
+      \global\catcode`\$=3%$
+      \global\catcode`\^=7%
+      \global\catcode`\_=8%
+      \global\catcode`\&=4%
+      \global\let\PackageError\parsemodule@old@PackageError%
+      \fi%
+  }
+  \def\parsemodule@maybesetcodes{%
+    \if@smsmode\set@parsemodule@catcodes\fi%
+  }
+
+\def\parsemodule@escapechar{%
+    \def\parsemodule@escape@currcs{}%
+    \parsemodule@escape@parse@nextchar@%
+}%
+\long\def\parsemodule@escape@parse@nextchar@#1{%
+    \ifcat a#1\relax%
+        \edef\parsemodule@escape@currcs{\parsemodule@escape@currcs#1}%
+        \let\parsemodule@do@next\parsemodule@escape@parse@nextchar@%
+    \else%
+      \def\parsemodule@last@char{#1}%
+      \ifx\parsemodule@escape@currcs\@empty%
+        \def\parsemodule@do@next{}%
+      \else%
+        \def\parsemodule@do@next{\parsemodule@escapechar@checkcs}%
+      \fi%
+    \fi%
+    \parsemodule@do@next%
+}
+\def\parsemodule@escapechar@checkcs{%
+    \ifx\parsemodule@escape@currcs\parsemodule@escapechar@beginstring%
+        \edef\parsemodule@do@next{\noexpand\parsemodule@escapechar@checkbeginenv\parsemodule@last@char}%
+    \else%
+        \ifx\parsemodule@escape@currcs\parsemodule@escapechar@endstring%
+          \edef\parsemodule@do@next{\noexpand\parsemodule@escapechar@checkendenv\parsemodule@last@char}%
+        \else%
+            \ifcsvoid{parsemodule@allowedmacro@\parsemodule@escape@currcs}{%
+              \def\parsemodule@do@next{\relax\parsemodule@last@char}%
+            }{%
+              \ifx\parsemodule@last@char\@open@brace%
+                \ex\let\ex\parsemodule@do@next@ii\csname parsemodule@allowedmacro@\parsemodule@escape@currcs\endcsname%
+                \edef\parsemodule@do@next{\noexpand\parsemodule@converttoproperbraces\@open@brace}%
+              \else%
+                \reset@parsemodule@catcodes%
+                \edef\parsemodule@do@next{\ex\noexpand\csname parsemodule@allowedmacro@\parsemodule@escape@currcs\endcsname\parsemodule@last@char}%
+              \fi%
+            }%
+        \fi%
+    \fi%
+    \parsemodule@do@next%
+}
+\ex\ex\ex\def%
+\ex\ex\ex\parsemodule@converttoproperbraces%
+\ex\@open@brace\ex#\ex1\@close@brace{%
+  \reset@parsemodule@catcodes%
+  \parsemodule@do@next@ii{#1}%
+}
+\ex\ex\ex\def%
+\ex\ex\ex\parsemodule@escapechar@checkbeginenv%
+\ex\@open@brace\ex#\ex1\@close@brace{%
+    \ifcsvoid{parsemodule@allowedenv@#1}{%
+      \def\parsemodule@do@next{#1}%
+    }{%
+      \reset@parsemodule@catcodes%
+      \edef\parsemodule@envname{\csname parsemodule@allowedenv@#1\endcsname}%
+      \ex\def\ex\parsemodule@do@next\ex{%
+        \ex\begin\ex{\parsemodule@envname}%
+      }%
+    }%
+    \parsemodule@do@next%
+}
+\ex\ex\ex\def%
+\ex\ex\ex\parsemodule@escapechar@checkendenv%
+\ex\@open@brace\ex#\ex1\@close@brace{%
+  \ifcsvoid{parsemodule@allowedenv@#1}{%
+      \def\parsemodule@do@next{#1}%
+    }{%
+      \edef\parsemodule@envname{\csname parsemodule@allowedenv@#1\endcsname}%
+      \ex\def\ex\parsemodule@do@next\ex{%
+        \ex\end\ex{\parsemodule@envname}%
+      }%
+    }%
+    \parsemodule@do@next%
+}
+\newrobustcmd\@requiremodules[1]{%
+  \if@tempswa\requiremodules{#1}\fi%
+}%
+  \newrobustcmd\requiremodules[1]{%
+    \mod@showfalse%
+    \edef\mod@path{#1}%
+    \edef\mod@path{\expandafter\detokenize\expandafter{\mod@path}}%
+    \requiremodules@smsmode{#1}%
+  }%
+  \newbox\modules@import@tempbox
+  \def\requiremodules@smsmode#1{%
+    \setbox\modules@import@tempbox\vbox{%
+      \@smsmodetrue%
+      \set@parsemodule@catcodes%
+      \hbadness=100000\relax%
+      \hfuzz=10000pt\relax%
+      \vbadness=100000\relax%
+      \vfuzz=10000pt\relax%
+      \stexinput{#1.tex}%
+      \reset@parsemodule@catcodes%
+    }%
+    \parsemodule@maybesetcodes%
+  }
+\newif\if@importmodule@switchrepos\@importmodule@switchreposfalse
+\def\importmodule@bookkeeping#1#2#3{%
+  \@importmodule@switchreposfalse%
+  \stex@debug{Importmodule: #1^^J  #2^^J\detokenize{#3}}%
+  \metasetkeys{importmodule}{#1}%
+  \ifcsvoid{importmodule@mhrepos}{%
+    \ifcsvoid{currentrepos@dir}{%
+      \stex@debug{Importmodule: Set importmodule@dir to \stex@PWD}%
+      \let\importmodule@dir\stex@PWD%
+    }{%
+      \stex@debug{Importmodule: Set importmodule@dir to \currentrepos@dir\@Slash source}%
+      \edef\importmodule@dir{\currentrepos@dir\@Slash source}%
+    }%
+  }{%
+    \@importmodule@switchrepostrue%
+    \stex@debug{Importmodule: Repository switch to \importmodule@mhrepos}%
+    \stex@debug{Importmodule: Current repos: \mh@currentrepos}%
+    \ex\let\csname importmodule@oldrepos@#2\endcsname\mh@currentrepos%
+    \mathhub@setcurrentreposinfo\importmodule@mhrepos%
+    \stex@debug{Importmodule: New repos: \mh@currentrepos^^J  Namespace: \currentrepos@ns}%
+    \edef\importmodule@dir{\currentrepos@dir\@Slash source}%
+  }%
+  \StrCut{#2}\@QuestionMark\importmodule@subdir\importmodule@modulename%
+  \ifx\importmodule@modulename\@empty%
+    \let\importmodule@modulename\importmodule@subdir%
+    \let\importmodule@subdir\@empty%
+  \else%
+    \ifx\importmodule@subdir\@empty\else%
+      \edef\importmodule@dir{\importmodule@dir\@Slash\importmodule@subdir}%
+    \fi%
+  \fi%
+  #3%
+  \if@importmodule@switchrepos%
+    \ex\mathhub@setcurrentreposinfo\csname importmodule@oldrepos@#2\endcsname%
+    \stex@debug{Importmodule: switched back to: \mh@currentrepos}%
+  \fi%
+  %\ignorespacesandpars%
+}
+\addmetakey{importmodule}{mhrepos}
+\newcommand\importmodule[2][]{\@@importmodule[#1]{#2}{export}}
+\newcommand\@@importmodule[3][]{%
+  \importmodule@bookkeeping{#1}{#2}{%
+    \@importmodule[\importmodule@dir]\importmodule@modulename{#3}%
+  }%
+}
+\newcommand\@importmodule[3][]{%
+  {%
+    \edef\@load{#1}%
+    \edef\@importmodule@name{#2}%
+    \stex@debug{Loading #1}%
+    \if@smsmode\else\ifcsvoid{stex@module@\@importmodule@name}{% TODO check this
+      \stex@iffileexists\@load{
+        \stex@debug{Exists: #1}%
+        \requiremodules\@load}{%
+        \stex@debug{Does not exist: #1^^JTrying \@load\@Slash\@importmodule@name}%
+        \requiremodules{\@load\@Slash\@importmodule@name}%
+      }%
+    }{}\fi%
+    \ifx\@load\@empty\else%
+      {% TODO
+  %      \edef\@path{\csname module@#2@path\endcsname}%
+  %      \IfStrEq\@load\@path{\relax}% if the known path is the same as the requested one do nothing
+  %      {\PackageError{stex}% else signal an error
+  %        {Module Name Clash\MessageBreak%
+  %          A module with name #2 was already loaded under the path "\@path"\MessageBreak%
+  %          The imported path "\@load" is probably a different module with the\MessageBreak%
+  %          same name; this is dangerous -- not importing}%
+  %        {Check whether the Module name is correct}%
+  %      }%
+      }%
+    \fi%
+    \global\let\@importmodule@load\@load%
+  }%
+  \edef\@export{#3}\def\@@export{export}%prepare comparison
+  %\ifx\@export\@@export\export@defs{#2}\fi% export the module
+  \ifx\@export\@@export\addto@thismodulex{%
+    \noexpand\@importmodule[\@importmodule@load]{#2}{noexport}%
+  }%
+  \if@smsmode\else
+  \ifcsvoid{this@module}{}{%
+    \ifcsvoid{module@imports@\module@uri}{
+      \csxdef{module@imports@\module@uri}{%
+        \csname stex@module@#2\endcsname\@URI% TODO check this
+      }%
+    }{%
+      \csxdef{module@imports@\module@uri}{%
+        \csname stex@module@#2\endcsname\@URI,% TODO check this
+        \csname module@imports@\module@uri\endcsname%
+      }%
+    }%
+  }%
+  \fi\fi%
+  \if@smsmode\else%
+    \edef\activate@module@name{#2}%
+    \StrCount\activate@module@name\@Slash[\activate@module@lastslash]%
+    \ifnum\activate@module@lastslash>0%
+    \StrCut[\activate@module@lastslash]\activate@module@name\@Slash\activate@module@temp\activate@module@name%
+    \fi%
+    \ifcsvoid{stex@lastmodule@\activate@module@name}{%
+      \PackageError{stex}{No module with name \activate@module@name found}{}%
+    }{%
+      \ex\ex\ex\activate@defs\ex\ex\ex{\csname stex@lastmodule@\activate@module@name\endcsname}%
+    }%
+  \fi% activate the module
+}%
+\AtBeginDocument{%
+  \set@default@ns%
+  \ifx\module@narr\@empty\setkeys{module}{narr=\module@ns}\fi%
+  \let\module@name\jobname%
+  \let\module@id\module@name % TODO deprecate
+  \edef\module@uri{\module@ns\@QuestionMark\module@name}%
+  \csgdef{module@names@\module@uri}{}%
+  \csgdef{module@imports@\module@uri}{}%
+  \csxdef{\module@uri}{\noexpand\@invoke@module{\module@uri}}%
+  \expandafter\global\expandafter\let\csname stex@module@\module@name\expandafter\endcsname\csname\module@uri\endcsname%
+  \edef\this@module{%
+    \expandafter\noexpand\csname module@defs@\module@uri\endcsname%
+  }%
+  \csdef{module@defs@\module@uri}{}%
+  \ifcsvoid{mh@currentrepos}{}{%
+    \@inmhrepostrue%
+    \addto@thismodulex{\expandafter\edef\expandafter\noexpand\csname mh@old@repos@\module@uri\endcsname%
+      {\noexpand\mh@currentrepos}}%
+    \addto@thismodulex{\noexpand\mathhub@setcurrentreposinfo{\mh@currentrepos}}%
+  }%
+}
+\newif\if@inimport\@inimportfalse
+\def\latexml@import#1{\stex@debug{LaTeXML Import: #1}}%
+\def\activate@defs#1{%
+  \stex@debug{Activating import #1}%
+  \if@inimport\else%
+    \latexml@import{#1}%
+    \def\inimport@module{#1}%
+    \stex@debug{Entering import #1}%
+    \@inimporttrue%
+  \fi%
+  \edef\activate@defs@uri{#1}%
+  \ifcsundef{module@defs@\activate@defs@uri}{%
+    \PackageError{stex}{No module with URI \activate@defs@uri loaded}{Probably missing an
+      \detokenize{\importmodule} (or variant) somewhere?
+    }
+  }{%
+    \ifcsundef{module@\activate@defs@uri @activated}%
+      {\csname module@defs@\activate@defs@uri\endcsname}{}%
+    \@namedef{module@\activate@defs@uri @activated}{true}%
+  }%
+  \def\inimport@thismodule{#1}%
+  \stex@debug{End of import #1}%
+  \ifx\inimport@thismodule\inimport@module\@inimportfalse%
+    \stex@debug{Leaving import #1}%
+  \fi%
+}%
+\newcommand\usemodule[2][]{\@@importmodule[#1]{#2}{noexport}}
+\def\inputref@preskip{}
+\def\inputref@postskip{}
+\newrobustcmd\inputref[2][]{%
+  \importmodule@bookkeeping{#1}{#2}{%
+    %\inputreftrue
+    \inputref@preskip%
+    \stexinput{\importmodule@dir\@Slash\importmodule@modulename.tex}%
+    \inputref@postskip%
+  }%
+}%
+\newif\if@symdeflocal\@symdeflocalfalse
+\def\define@in@module#1#2{
+  \expandafter\edef\csname #1\endcsname{#2}%
+  \edef\define@in@module@temp{%
+    \def\expandafter\noexpand\csname#1\endcsname%
+    {#2}%
+  }%
+  \if@symdeflocal\else%
+    \expandafter\g@addto@macro@safe\csname module@defs@\module@uri%
+    \expandafter\endcsname\expandafter{\define@in@module@temp}%
+  \fi%
+}
+\addmetakey{symdecl}{name}%
+\addmetakey{symdecl}{type}%
+\addmetakey[false]{symdecl}{local}[true]%
+
+\newcommand\symdecl[2][]{%
+  \ifcsdef{this@module}{%
+    \metasetkeys{symdecl}{#1}%
+    \ifcsvoid{symdecl@name}{
+      \edef\symdecl@name{#2}%
+    }{}%
+    \edef\symdecl@uri{\module@uri\@QuestionMark\symdecl@name}%
+    \ifcsvoid{stex@symbol@\symdecl@name}{%
+      \expandafter\edef\csname stex@symbol@\symdecl@name\endcsname{\symdecl@uri}%
+    }{%
+      \expandafter\def\csname stex@symbol@\symdecl@name\endcsname{\detokenize{ambiguous}}%
+    }%
+    \edef\symdecl@symbolmacro{%
+      \noexpand\ifcsvoid{stex@symbol@\symdecl@name}{%
+        \expandafter\edef\expandafter\noexpand\csname stex@symbol@\symdecl@name\endcsname{\symdecl@uri}%
+      }{%
+        \expandafter\def\expandafter\noexpand\csname stex@symbol@\symdecl@name\endcsname{\detokenize{ambiguous}}%
+      }%
+    }%
+    \expandafter\g@addto@macro@safe\csname module@defs@\module@uri%
+    \expandafter\endcsname\expandafter{\symdecl@symbolmacro}%
+    \ifcsvoid{\symdecl@uri}{%
+      \ifcsvoid{module@names@\module@uri}{%
+        \csxdef{module@names@\module@uri}{\symdecl@name}%
+      }{%
+        \csxdef{module@names@\module@uri}{\symdecl@name,%
+          \csname module@names@\module@uri\endcsname}%
+      }%
+    }{%
+    % not compatible with circular dependencies, e.g. test/omdoc/07-modules/smstesta.tex
+      \PackageWarning{stex}{symbol already defined: \symdecl@uri}{%
+        You need to pick a fresh name for your symbol%
+      }%
+    }%
+    \define@in@module\symdecl@uri{\noexpand\@invoke@symbol{\symdecl@uri}}%
+    \define@in@module{#2}{\noexpand\@invoke@symbol{\symdecl@uri}}%
+  }{%
+    \PackageError{stex}{\detokenize{\symdecl} not in a module}{You need to be in a module%
+    in order to declare a new symbol}
+  }%
+  \if@inimport\else\latexml@symdecl\symdecl@uri\fi%
+  \if@insymdef@\else\parsemodule@maybesetcodes\fi%
+}
+\def\latexml@symdecl#1{}
+\edef\stex@ambiguous{\detokenize{ambiguous}}
+\edef\stex@macrostring{\detokenize{macro:->\@invoke@symbol}}
+\def\modules@getURIfromName#1{%
+  \def\notation@uri{}%
+  \edef\modules@getURI@name{#1}%
+  \ifcsvoid{\modules@getURI@name}{
+    \edef\modules@temp@meaning{}
+  }{
+    \edef\modules@temp@meaning{\expandafter\meaning\csname\modules@getURI@name\endcsname}
+  }
+  \IfBeginWith\modules@temp@meaning\stex@macrostring{
+    % is a \@invoke@symbol macro
+    \StrPosition\modules@temp@meaning\@close@brace[\stex@tempnum]
+    \StrMid\modules@temp@meaning{26}{\the\numexpr\stex@tempnum-1\@Space}[\notation@uri]
+  }{
+    % Check whether full URI or module?symbol or just name
+    \StrCount\modules@getURI@name\@QuestionMark[\isuri@number]
+    \ifnum\isuri@number=2
+      \edef\notation@uri{\modules@getURI@name}
+    \else
+      \ifnum\isuri@number=1
+        % module?name
+        \StrCut\modules@getURI@name\@QuestionMark\isuri@mod\isuri@name
+        \ifcsvoid{stex@module@\isuri@mod}{
+          \PackageError{stex}{No module with name \isuri@mod\@Space loaded}{}
+        }{
+          \expandafter\ifx\csname stex@module@\isuri@mod\endcsname\stex@ambiguous
+            \PackageError{stex}{Module name \isuri@mod\@Space is ambiguous}{}
+          \else
+            \edef\notation@uri{\csname stex@module@\isuri@mod\endcsname\@URI\@QuestionMark\isuri@name}
+          \fi
+        }
+      \else
+        %name
+        \ifcsvoid{stex@symbol@\modules@getURI@name}{
+          \PackageError{stex}{No symbol with name \modules@getURI@name\@Space known}{}
+        }{
+         \ifcsvoid{\module@uri\@QuestionMark\modules@getURI@name}{
+           \expandafter\ifx\csname stex@symbol@\modules@getURI@name\endcsname\stex@ambiguous
+             % Symbol name ambiguous and not in current module
+             \PackageError{stex}{Symbol name, URI or macroname \detokenize{#1} found!}{}%
+           \else
+             % Symbol not in current module, but unambiguous
+             \edef\notation@uri{\csname stex@symbol@\modules@getURI@name\endcsname}
+           \fi
+          }{ % Symbol in current module
+            \edef\notation@uri{\module@uri\@QuestionMark\modules@getURI@name}
+          }
+        }
+      \fi
+    \fi
+  }
+}
+\newif\if@innotation\@innotationfalse
+\providerobustcmd\notation[2][]{%
+  \edef\notation@first{#1}%
+  \edef\notation@second{#2}%
+  \notation@%
+}
+
+\newcommand\notation@[2][0]{%
+  \edef\notation@donext{\noexpand\notation@@[\notation@first]%
+    {\notation@second}[#1]}%
+  \notation@donext{#2}%
+}
+
+\def\notation@parse@params#1#2{%
+  \def\notation@curr@precs{}%
+  \def\notation@curr@args{}%
+  \def\notation@curr@variant{}%
+  \def\notation@curr@arityvar{}%
+  \def\notation@curr@provided@arity{#2}
+  \def\notation@curr@lang{}%
+  \def\notation@options@temp{#1}
+  \notation@parse@params@%
+  \ifx\notation@curr@args\@empty%
+    \ifx\notation@curr@provided@arity\@empty%
+      \notation@num@to@ia\notation@curr@arityvar%
+    \else%
+      \notation@num@to@ia\notation@curr@provided@arity%
+    \fi%
+  \fi%
+  \StrLen\notation@curr@args[\notation@curr@arity]%
+}
+\def\notation@parse@params@{%
+  \IfSubStr\notation@options@temp,{%
+    \StrCut\notation@options@temp,\notation@option@temp\notation@options@temp%
+    \notation@parse@param%
+    \notation@parse@params@%
+  }{\ifx\notation@options@temp\@empty\else%
+    \let\notation@option@temp\notation@options@temp%
+    \notation@parse@param%
+  \fi}%
+}
+
+\def\notation@parse@param{%
+  \path@trimstring\notation@option@temp%
+  \ifx\notation@option@temp\@empty\else%
+    \IfSubStr\notation@option@temp={%
+      \StrCut\notation@option@temp=\notation@key\notation@value%
+      \path@trimstring\notation@key%
+      \path@trimstring\notation@value%
+      \IfStrEq\notation@key{prec}{%
+        \edef\notation@curr@precs{\notation@value}%
+      }{%
+      \IfStrEq\notation@key{args}{%
+        \edef\notation@curr@args{\notation@value}%
+      }{%
+      \IfStrEq\notation@key{lang}{%
+        \edef\notation@curr@lang{\notation@value}%
+      }{%
+      \IfStrEq\notation@key{variant}{%
+        \edef\notation@curr@variant{\notation@value}%
+      }{%
+      \IfStrEq\notation@key{arity}{%
+        \edef\notation@curr@arityvar{\notation@value}%
+      }{%
+      }}}}}%
+    }{%
+        \edef\notation@curr@variant{\notation@option@temp}%
+    }%
+  \fi%
+}
+
+\def\notation@num@to@ia#1{%
+  \IfInteger{#1}{
+    \notation@num@to@ia@#1%
+  }{%
+    %
+  }%
+}
+\def\notation@num@to@ia@#1{%
+  \ifnum#1>0%
+    \edef\notation@curr@args{\notation@curr@args i}%
+    \expandafter\notation@num@to@ia@\expandafter{\the\numexpr#1-1\@Space}%
+  \fi%
+}
+
+
+\newcount\notation@argument@counter
+
+\def\notation@@[#1]#2[#3]#4{%
+  \modules@getURIfromName{#2}%
+  \notation@parse@params{#1}{#3}%
+  \let\notation@curr@todo@args\notation@curr@args%
+  \def\notation@temp@notation{}%
+  \ex\renewcommand\ex\notation@temp@notation\ex[\notation@curr@arity]{#4}%
+  % precedence
+  \let\notation@curr@precstring\notation@curr@precs%
+  \IfSubStr\notation@curr@precs;{%
+    \StrCut\notation@curr@precs;\notation@curr@prec\notation@curr@precs%
+    \ifx\notation@curr@prec\@empty\def\notation@curr@prec{0}\fi%
+  }{%
+    \ifx\notation@curr@precs\@empty%
+      \ifnum\notation@curr@arity=0\relax%
+        \edef\notation@curr@prec{\infprec}%
+      \else%
+        \def\notation@curr@prec{0}%
+      \fi%
+    \else%
+      \edef\notation@curr@prec{\notation@curr@precs}%
+      \def\notation@curr@precs{}%
+    \fi%
+  }%
+  % arguments
+  \notation@argument@counter=0%
+  \def\notation@curr@extargs{}%
+  \notation@do@args%
+}
+
+\edef\notation@ichar{\detokenize{i}}%
+
+\def\notation@do@args{%
+  \advance\notation@argument@counter by 1%
+  \def\notation@nextarg@temp{}%
+  \ifx\notation@curr@todo@args\@empty%
+    \ex\notation@after%
+  \else%
+    % argument precedence
+    \IfSubStr\notation@curr@precs{x}{%
+      \StrCut\notation@curr@precs{x}\notation@curr@argprec\notation@curr@precs%
+    }{%
+      \edef\notation@curr@argprec{\notation@curr@precs}%
+      \def\notation@curr@precs{}%
+    }%
+    \ifx\notation@curr@argprec\@empty%
+      \let\notation@curr@argprec\notation@curr@prec%
+    \fi%
+    \StrChar\notation@curr@todo@args1[\notation@argchar]%
+    \edef\notation@argchar{\ex\detokenize\ex{\notation@argchar}}%
+    \StrGobbleLeft\notation@curr@todo@args1[\notation@curr@todo@args]%
+    \ifx\notation@argchar\notation@ichar%
+      % normal argument
+      \edef\notation@nextarg@temp{%
+        {\stex@arg{\the\notation@argument@counter}{\notation@curr@argprec}{################\the\notation@argument@counter}}%
+      }%
+      \ex\g@addto@macro@safe\ex\notation@curr@extargs%
+        \ex{\notation@nextarg@temp}%
+      \ex\ex\ex\notation@do@args%
+    \else%
+      % associative argument
+      \ex\ex\ex\notation@parse@assocarg%
+    \fi%
+  \fi%
+}
+
+\def\notation@parse@assocarg#1{%
+  \edef\notation@nextarg@temp{%
+    {\stex@arg{\the\notation@argument@counter}{\notation@curr@argprec}{\notation@assoc{#1}{################\the\notation@argument@counter}}}%
+  }%
+  \ex\g@addto@macro@safe\ex\notation@curr@extargs\ex{\notation@nextarg@temp}%
+  \notation@do@args%
+}
+
+\protected\def\safe@newcommand#1{%
+  \ifdefined#1\ex\renewcommand\else\ex\newcommand\fi#1%
+}
+
+\def\notation@after{
+  % \notation@curr@precs
+  % \notation@curr@args
+  % \notation@curr@variant
+  % \notation@curr@arity
+  % \notation@curr@provided@arity
+  % \notation@curr@lang
+  % \notation@uri
+  \def\notation@temp@fragment{}%
+  \ifx\notation@curr@arityvar\@empty\else%
+    \edef\notation@temp@fragment{arity=\notation@curr@arityvar}%
+  \fi%
+  \ifx\notation@curr@lang\@empty\else%
+    \ifx\notation@temp@fragment\@empty%
+      \edef\notation@temp@fragment{lang=\notation@curr@lang}%
+    \else%
+      \edef\notation@temp@fragment{\notation@temp@fragment\@Ampersand lang=\notation@curr@lang}%
+    \fi%
+  \fi%
+  \ifx\notation@curr@variant\@empty\else%
+    \ifx\notation@temp@fragment\@empty%
+      \edef\notation@temp@fragment{variant=\notation@curr@variant}%
+    \else%
+      \edef\notation@temp@fragment{\notation@temp@fragment\@Ampersand variant=\notation@curr@variant}%
+    \fi%
+  \fi%
+  \ex\ex\ex\def\ex\ex\ex\notation@temp@notation\ex\ex\ex%
+    {\ex\notation@temp@notation\notation@curr@extargs}%
+  \ifnum\notation@curr@arity=0
+    \edef\notation@temp@notation{\stex@oms{\notation@uri\@Fragment\notation@temp@fragment}{\notation@curr@prec}{\notation@temp@notation}}%
+  \else
+    \edef\notation@temp@notation{\stex@oma{\notation@uri\@Fragment\notation@temp@fragment}{\notation@curr@prec}{\notation@temp@notation}}%
+  \fi
+  \stex@debug{Notation \notation@uri: \meaning\notation@temp@notation}%
+  \notation@final%
+  \parsemodule@maybesetcodes%
+}
+
+\def\notation@final{%
+  \edef\notation@csname{\notation@uri\@Fragment\notation@temp@fragment}%
+  \stex@debug{Defining \notation@csname of arity \notation@curr@arity}%
+  \ifcsvoid{\notation@csname}{%
+    \ex\ex\ex\ex\ex\ex\ex\newcommand\ex\ex\ex\csname\ex\ex\ex\notation@csname%
+      \ex\ex\ex\endcsname\ex\ex\ex[\ex\notation@curr@arity\ex]%
+      \ex{\notation@temp@notation}%
+    \edef\symdecl@temps{%
+      \noexpand\safe@newcommand\ex\noexpand\csname\notation@csname\endcsname[\notation@curr@arity]%
+    }%
+    \ex\g@addto@macro@safe\csname module@defs@\module@uri\ex\endcsname\ex{\symdecl@temps}%
+    \ex\g@addto@macro@safe\csname module@defs@\module@uri\ex\endcsname\ex{\ex{\notation@temp@notation}}%
+  }{%
+    \PackageWarning{stex}{notation already defined: \notation@csname}{%
+      Choose a different set of notation options (variant,lang,arity)%
+    }%
+  }%
+  \@innotationfalse%
+  \if@inimport\else\if@latexml%
+    \let\notation@simarg@args\notation@curr@args%
+    \notation@argument@counter=0%
+    \def\notation@simargs{}%
+    \notation@simulate@arguments%
+    \latexml@notation\notation@uri\notation@temp@fragment\notation@curr@args\notation@curr@precstring%
+      {$\csname\notation@csname\ex\endcsname\notation@simargs$}%
+  \fi\fi%
+}
+\def\notation@simulate@arguments{%
+  \ifx\notation@simarg@args\@empty\else%
+    \advance\notation@argument@counter by 1%
+    \IfBeginWith\notation@simarg@args{i}{%
+      \edef\notation@simargs{\notation@simargs{\noexpand\textrm{\@Fragment\the\notation@argument@counter}}}%
+    }{%
+      \edef\notation@simargs{\notation@simargs{\noexpand\textrm{\@Fragment\@Fragment\the\notation@argument@counter a},\noexpand\textrm{\@Fragment\@Fragment\the\notation@argument@counter b}}}%
+    }%
+    \StrGobbleLeft\notation@simarg@args1[\notation@simarg@args]%
+    \notation@simulate@arguments%
+  \fi%
+}
+\def\latexml@notation#1#2#3#4{}
+\protected\def\notation@assoc#1#2{% function, argv
+  \let\@tmpop=\relax% do not print the function the first time round
+  \@for\@I:=#2\do{\@tmpop% print the function
+    % write the i-th argument with locally updated precedence
+    \@I%
+    \def\@tmpop{#1}%
+  }%
+}%
+
+\def\notation@lparen{(}
+\def\notation@rparen{)}
+\def\infprec{1000000}
+\def\neginfprec{-\infprec}
+
+\newcount\notation@downprec
+\notation@downprec=\neginfprec
+
+\newif\if@displaymode\@displaymodefalse
+\ex\everydisplay\ex{\the\everydisplay\@displaymodetrue}
+\let\old@displaystyle\displaystyle
+\def\displaystyle{\old@displaystyle\@displaymodetrue}
+
+\protected\def\dobrackets#1{% avoiding groups at all costs to ensure \parray still works!
+  \def\notation@innertmp{#1}%
+  \if@displaymode%
+    \ex\ex\ex\left\ex\ex\ex\notation@lparen%
+    \ex\notation@resetbrackets\ex\notation@innertmp%
+    \ex\right\notation@rparen%
+  \else%
+    \ex\ex\ex\notation@lparen%
+    \ex\notation@resetbrackets\ex\notation@innertmp%
+    \notation@rparen%
+  \fi%
+}
+
+\protected\def\withbrackets#1#2#3{%
+  \edef\notation@lparen{#1}%
+  \edef\notation@rparen{#2}%
+  #3%
+  \notation@resetbrackets%
+}
+
+\protected\def\notation@resetbrackets{%
+  \def\notation@lparen{(}%
+  \def\notation@rparen{)}%
+}
+
+\protected\def\stex@oms#1#2#3{%
+  \if@innotation%
+    \notation@symprec{#2}{#3}%
+  \else%
+   \@innotationtrue%
+    \latexml@oms{#1}{\notation@symprec{#2}{#3}}%
+    \@innotationfalse%
+  \fi%
+}
+
+\def\latexml@oms#1#2{%
+  #2%
+}
+
+\protected\def\stex@oma#1#2#3{%
+  \if@innotation%
+    \notation@symprec{#2}{#3}%
+  \else%
+    \@innotationtrue%
+    \latexml@oma{#1}{\notation@symprec{#2}{#3}}%
+    \@innotationfalse%
+  \fi%
+}
+
+\def\latexml@oma#1#2{%
+  #2%
+}
+
+\def\notation@symprec#1#2{%
+  \ifnum#1>\notation@downprec\relax%
+    \notation@resetbrackets#2%
+  \else%
+    \ifnum\notation@downprec=\infprec\relax%
+      \notation@resetbrackets#2%
+    \else
+      \if@inparray@
+        \notation@resetbrackets#2
+      \else\dobrackets{#2}\fi%
+  \fi\fi%
+}
+
+\newif\if@inparray@\@inparray@false
+
+\protected\def\stex@arg#1#2#3{%
+  \@innotationfalse%
+  \latexml@arg{#1}{\notation@argprec{#2}{#3}}%
+  \@innotationtrue%
+}
+
+\def\latexml@arg#1#2{%
+  #2%
+}
+
+\def\notation@argprec#1#2{%
+  \def\notation@innertmp{#2}
+  \edef\notation@downprec@temp{\number#1}%
+  \notation@downprec=\expandafter\notation@downprec@temp%
+  \expandafter\relax\expandafter\notation@innertmp%
+  \expandafter\notation@downprec\expandafter=\number\notation@downprec\relax%
+}
+\protected\def\@invoke@symbol#1{%
+  \def\@invoke@symbol@first{#1}%
+  \symbol@args%
+}
+\newcommand\symbol@args[1][]{%
+  \notation@parse@params{#1}{}%
+  \def\notation@temp@fragment{}%
+  \ifx\notation@curr@arityvar\@empty\else%
+    \edef\notation@temp@fragment{arity=\notation@curr@arity}%
+  \fi%
+  \ifx\notation@curr@lang\@empty\else%
+    \ifx\notation@temp@fragment\@empty%
+      \edef\notation@temp@fragment{lang=\notation@curr@lang}%
+    \else%
+      \edef\notation@temp@fragment{\notation@temp@fragment\@Ampersand lang=\notation@curr@lang}%
+    \fi%
+  \fi%
+  \ifx\notation@curr@variant\@empty\else%
+    \ifx\notation@temp@fragment\@empty%
+      \edef\notation@temp@fragment{variant=\notation@curr@variant}%
+    \else%
+      \edef\notation@temp@fragment{\notation@temp@fragment\@Ampersand variant=\notation@curr@variant}%
+    \fi%
+  \fi%
+  %
+  \ifmmode\def\invoke@symbol@next{\@invoke@symbol@math\@invoke@symbol@first\notation@temp@fragment}%
+  \else\def\invoke@symbol@next{\@invoke@symbol@text\@invoke@symbol@first\notation@temp@fragment}\fi%
+  \invoke@symbol@next%
+}
+\def\@invoke@symbol@math#1#2{%
+  \csname #1\@Fragment#2\endcsname%
+}
+\def\@invoke@symbol@text#1#2{%
+}
+\def\setstexlang#1{%
+  \def\stex@lang{#1}%
+}%
+\setstexlang{en}
+\def\setstexvariant#1#2{%
+  % TODO
+}
+\def\setstexvariants#1{%
+  \def\stex@variants{#1}%
+}
+\newif\ifhref\hreffalse%
+\AtBeginDocument{%
+  \@ifpackageloaded{hyperref}{%
+    \hreftrue%
+  }{%
+    \hreffalse%
+  }%
+}
+\newbox\stex@targetbox
+\def\termref@maketarget#1#2{%
+  % #1: symbol URI
+  % #2: text
+  \stex@debug{Here: #1 <> #2}%
+  \ifhref\if@smsmode\else%
+    \hypertarget{sref@#1@target}{#2}%
+  \fi\fi%
+  \stex@debug{Here!}%
+  \expandafter\edef\csname sref@#1\endcsname##1{%
+    \ifhref\if@smsmode\else\noexpand\hyperlink{sref@#1@target}{##1}\fi\fi%
+  }%
+}
+\def\@termref#1#2{%
+  % #1: symbol URI
+  % #2: text
+  \ifcsvoid{#1}{%
+    \StrCut[2]{#1}\@QuestionMark\termref@mod\termref@name%
+    \ifcsvoid{\termref@mod}{%
+      \PackageError{stex}{Term reference: Module with URI \termref@mod\ not found}{}%
+    }{%
+      \PackageError{stex}{Term reference: Module \termref@mod\ exists, but %
+        contains no symbol with name \termref@name.%
+      }{}%
+    }%
+  }{%
+    \ifcsvoid{sref@#1}{%
+      #2% TODO: No reference point exists!
+    }{%
+      \csname sref@#1\endcsname{#2}%
+    }%
+  }%
+}
+
+\def\@capitalize#1{\uppercase{#1}}%
+\newrobustcmd\capitalize[1]{\expandafter\@capitalize #1}%
+
+\newcommand\tref[2][]{%
+  \edef\tref@name{#1}%
+  \expandafter\modules@getURIfromName\expandafter{\tref@name}%
+  \expandafter\@termref\expandafter{\notation@uri}{#2}%
+}
+\def\trefs#1{%
+  \modules@getURIfromName{#1}%
+  % TODO
+}
+\def\Tref#1{%
+  \modules@getURIfromName{#1}%
+  % TODO
+}
+\def\Trefs#1{%
+  \modules@getURIfromName{#1}%
+  % TODO
+}
+\addmetakey{defi}{name}
+\def\@definiendum#1#2{%
+  \parsemodule@maybesetcodes%
+  \stex@debug{Here: #1 | #2}%
+  \termref@maketarget{#1}{#2}%\termref@maketarget{#1}{\defemph{#2}}%
+}
+
+\newcommand\defi[2][]{%
+  \metasetkeys{defi}{#1}%
+  \ifx\defi@name\@empty%
+    \symdecl@constructname{#2}%
+    \let\defi@name\symdecl@name%
+    \let\defi@verbalization\symdecl@verbalization%
+  \else%
+    \edef\defi@verbalization{#2}%
+  \fi%
+  \ifcsvoid{\module@uri\@QuestionMark\defi@name}{%
+    \symdecl\defi@name%
+  }{\edef\symdecl@uri{\module@uri\@QuestionMark\defi@name}}%
+  \@definiendum\symdecl@uri\defi@verbalization%
+}
+\def\Defi#1{%
+  \symdecl{#1}%
+  \@definiendum\symdecl@uri{\capitalize\symdecl@verbalization}%
+}
+\def\defis#1{%
+  \symdecl{#1}%
+  \@definiendum\symdecl@uri{\symdecl@verbalization s}%
+}
+\def\Defis#1{%
+  \symdecl{#1}%
+  \@definiendum\symdecl@uri{\capitalize\symdecl@verbalization s}%
+}
+\newif\ifhref\hreffalse%
+\AtBeginDocument{%
+  \@ifpackageloaded{hyperref}{%
+    \hreftrue%
+  }{%
+    \hreffalse%
+  }%
+}%
+\newcommand\sref@href@ifh[2]{%
+  \ifhref%
+    \href{#1}{#2}%
+  \else%
+    #2%
+  \fi%
+}%
+\newcommand\sref@hlink@ifh[2]{%
+  \ifhref%
+    \hyperlink{#1}{#2}%
+  \else%
+    #2%
+  \fi%
+}%
+\newcommand\sref@target@ifh[2]{%
+  \ifhref%
+    \hypertarget{#1}{#2}%
+  \else%
+    #2%
+  \fi%
+}%
+\def\sref@target{%
+  \ifx\sref@id\@empty%
+    \relax%
+  \else%
+    \edef\@target{sref@\ifcsundef{sref@part}{}{\sref@part @}\sref@id @target}%
+    \sref@target@ifh\@target{}%
+  \fi%
+}%
+\addmetakey{srefaddidkey}{prefix}
+\newcommand\srefaddidkey[2][]{%
+  \metasetkeys{srefaddidkey}{#1}%
+  \@metakeys@ext@clear@keys{#2}{sref@id}{}% id cannot have a default
+  \metakeys@ext@clear@keys{#2}{id}{}%
+  \metakeys@ext@showkeys{#2}{id}%
+  \define@key{#2}{id}{%
+    \edef\sref@id{\srefaddidkey@prefix ##1}%
+    %\expandafter\edef\csname #2@id\endcsname{\srefaddidkey@prefix ##1}%
+    \csedef{#2@id}{\srefaddidkey@prefix ##1}%
+  }%
+}%
+\newcommand\@sref@def[3]{\csgdef{sref@#1@#2}{#3}}
+\ifextrefs%
+  \newwrite\refs@file%
+\else%
+  \def\refs@file{\@auxout}%
+\fi%
+\newcommand\sref@def[3]{%
+  \protected@write\refs@file{}{\string\@sref@def{#1}{#2}{#3}}%
+}%
+\newcommand\sref@label[2]{%
+  \sref@def{\ifcsundef{sref@part}{}{\sref@part @}#2}{page}{\thepage}%
+  \sref@def{\ifcsundef{sref@part}{}{\sref@part @}#2}{label}{#1}%
+}%
+\newcommand\sreflabel[2]{\sref@label{#1 \@currentlabel}{#2}}
+\def\sref@id{} % make sure that defined
+\newcommand\sref@label@id[1]{%
+  \ifx\sref@id\@empty%
+    \relax%
+  \else%
+    \sref@label{#1}{\sref@id}%
+  \fi%
+}%
+\newcommand\sref@label@id@arg[2]{%
+  \def\@@id{#2}
+  \ifx\@@id\@empty%
+    \relax%
+  \else%
+    \sref@label{#1}{\@@id}%
+  \fi%
+}%
+\newenvironment{modsig}[2][]{\def\@test{#1}%
+\ifx\@test\@empty\begin{module}[name=#2]\else\begin{module}[name=#2,#1]\fi%
+\expandafter\gdef\csname mod@#2@multiling\endcsname{true}%
+}
+{\end{module}%\ignorespacesandpars
+}
+\def\gimport{\@ifstar\@gimport@star\@gimport@nostar}%
+\newrobustcmd\@gimport@star[2][]{\def\@test{#1}%
+\edef\mh@@repos{\mh@currentrepos}%
+\ifx\@test\@empty%
+\importmhmodule[conservative,mhrepos=\mh@@repos,path=#2]{#2}%
+\else\importmhmodule[conservative,mhrepos=#1,path=#2]{#2}\fi%
+\mathhub@setcurrentreposinfo{\mh@@repos}%
+\parsemodule@maybesetcodes}
+\newrobustcmd\@gimport@nostar[2][]{\def\@test{#1}%
+\edef\mh@@repos{\mh@currentrepos}%
+\ifx\@test\@empty%
+\importmhmodule[mhrepos=\mh@@repos,path=#2]{#2}%
+\else\importmhmodule[mhrepos=#1,path=#2]{#2}\fi%
+\mathhub@setcurrentreposinfo{\mh@@repos}%
+\parsemodule@maybesetcodes}
+\def\modules@@first#1/#2;{#1}
+\newcommand\libinput[1]{%
+\stex@debug{Libinput current repo: \meaning\mh@currentrepos}%
+\ifcsvoid{mh@currentrepos}{%
+  \PackageError{stex}{current MathHub repository not found}{}}%
+  {}
+\edef\@mh@group{\expandafter\modules@@first\mh@currentrepos;}
+\let\orig@inffile\mh@inffile\let\orig@libfile\mh@libfile
+\def\mh@inffile{\MathHub{\@mh@group/meta-inf/lib/#1}}
+\def\mh@libfile{\MathHub{\mh@currentrepos/lib/#1}}%
+\IfFileExists\mh@inffile{\stexinput\mh@inffile}{}%
+\IfFileExists\mh@inffile{}{\IfFileExists\mh@libfile{}{%
+  {\PackageError{stex}
+    {Library file missing; cannot input #1.tex\MessageBreak%
+    Both \mh@libfile.tex\MessageBreak and \mh@inffile.tex\MessageBreak%
+    do not exist}%
+  {Check whether the file name is correct}}}}
+\IfFileExists\mh@libfile{\stexinput\mh@libfile\relax}{}
+\let\mh@inffile\orig@inffile\let\mh@libfile\orig@libfile}
+\newcount\section@level
+
+\section@level=2
+\ifdefstring{\omdoc@sty@class}{book}{\section@level=0}{}
+\ifdefstring{\omdoc@sty@class}{report}{\section@level=0}{}
+\ifdefstring{\omdoc@sty@topsect}{part}{\section@level=0}{}
+\ifdefstring{\omdoc@sty@topsect}{chapter}{\section@level=1}{}
+\newcommand\omgroup@nonum[2]{%
+\ifx\hyper@anchor\@undefined\else\phantomsection\fi%
+\addcontentsline{toc}{#1}{#2}\@nameuse{#1}*{#2}}
+\newcommand\omgroup@num[2]{%
+\edef\@@ID{\sref@id}
+\ifx\omgroup@short\@empty% no short title
+\@nameuse{#1}{#2}%
+\else% we have a short title
+\@ifundefined{rdfmeta@sectioning}%
+  {\@nameuse{#1}[\omgroup@short]{#2}}%
+  {\@nameuse{rdfmeta@#1@old}[\omgroup@short]{#2}}%
+\fi%
+\sref@label@id@arg{\omdoc@sect@name~\@nameuse{the#1}}\@@ID}
+\def\@true{true}
+\def\@false{false}
+\srefaddidkey{omgroup}
+\addmetakey{omgroup}{date}
+\addmetakey{omgroup}{creators}
+\addmetakey{omgroup}{contributors}
+\addmetakey{omgroup}{srccite}
+\addmetakey{omgroup}{type}
+\addmetakey*{omgroup}{short}
+\addmetakey*{omgroup}{display}
+\addmetakey[false]{omgroup}{loadmodules}[true]
+\newif\if@mainmatter\@mainmattertrue
+\newcommand\at@begin@omgroup[3][]{}
+\addmetakey{omdoc@sect}{name}
+\addmetakey[false]{omdoc@sect}{clear}[true]
+\addmetakey{omdoc@sect}{ref}
+\addmetakey[false]{omdoc@sect}{num}[true]
+\newcommand\omdoc@sectioning[3][]{\metasetkeys{omdoc@sect}{#1}%
+\ifx\omdoc@sect@clear\@true\cleardoublepage\fi%
+\if@mainmatter% numbering not overridden by frontmatter, etc.
+\ifx\omdoc@sect@num\@true\omgroup@num{#2}{#3}\else\omgroup@nonum{#2}{#3}\fi%
+\def\current@section@level{\omdoc@sect@name}%
+\else\omgroup@nonum{#2}{#3}%
+\fi}% if@mainmatter
+\newcommand\omgroup@redefine@addtocontents[1]{%
+}% hypreref.sty loaded?
+\newcount\omgroup@level
+\newenvironment{omgroup}[2][]% keys, title
+{\metasetkeys{omgroup}{#1}\sref@target%
+\advance\omgroup@level by 1\relax%
+\ifx\omgroup@loadmodules\@true%
+\omgroup@redefine@addtocontents{\@ifundefined{module@id}\used@modules%
+{\@ifundefined{module@\module@id @path}{\used@modules}\module@id}}\fi%
+\advance\section@level by 1\relax%
+\ifcase\section@level%
+\or\omdoc@sectioning[name=\omdoc@part@kw,clear,num]{part}{#2}%
+\or\omdoc@sectioning[name=\omdoc@chapter@kw,clear,num]{chapter}{#2}%
+\or\omdoc@sectioning[name=\omdoc@section@kw,num]{section}{#2}%
+\or\omdoc@sectioning[name=\omdoc@subsection@kw,num]{subsection}{#2}%
+\or\omdoc@sectioning[name=\omdoc@subsubsection@kw,num]{subsubsection}{#2}%
+\or\omdoc@sectioning[name=\omdoc@paragraph@kw,ref=this \omdoc@paragraph@kw]{paragraph}{#2}%
+\or\omdoc@sectioning[name=\omdoc@subparagraph@kw,ref=this \omdoc@subparagraph@kw]{paragraph}{#2}%
+\fi% \ifcase
+\at@begin@omgroup[#1]\section@level{#2}}% for customization
+{\advance\section@level by -1\advance\omgroup@level by -1}
+\newcommand\omdoc@part@kw{Part}
+\newcommand\omdoc@chapter@kw{Chapter}
+\newcommand\omdoc@section@kw{Section}
+\newcommand\omdoc@subsection@kw{Subsection}
+\newcommand\omdoc@subsubsection@kw{Subsubsection}
+\newcommand\omdoc@paragraph@kw{paragraph}
+\newcommand\omdoc@subparagraph@kw{subparagraph}
+\newcommand\setSGvar[1]{\@namedef{sTeX@Gvar@#1}}
+\newrobustcmd\useSGvar[1]{%
+  \@ifundefined{sTeX@Gvar@#1}
+  {\PackageError{omdoc}
+    {The sTeX Global variable #1 is undefined}
+    {set it with \protect\setSGvar}}
+\@nameuse{sTeX@Gvar@#1}}
+\newcommand\at@begin@blindomgroup[1]{}
+\newenvironment{blindomgroup}
+{\advance\section@level by 1\at@begin@blindomgroup\setion@level}
+{\advance\section@level by -1}
+\srefaddidkey{omtext}
+\addmetakey[]{omtext}{functions}
+\addmetakey*{omtext}{display}
+\addmetakey{omtext}{for}
+\addmetakey{omtext}{from}
+\addmetakey{omtext}{type}
+\addmetakey*{omtext}{title}
+\addmetakey*{omtext}{start}
+\addmetakey{omtext}{theory}
+\addmetakey{omtext}{continues}
+\addmetakey{omtext}{verbalizes}
+\addmetakey{omtext}{subject}
+\def\st@flow{flow}
+\newif\if@in@omtext\@in@omtextfalse
+\def\omtext@pre@skip{\smallskip}
+\def\omtext@post@skip{}
+\newenvironment{omtext}[1][]{\@in@omtexttrue%
+  \bgroup\metasetkeys{omtext}{#1}\sref@label@id{this paragraph}%
+  \def\lec##1{\@lec{##1}}%
+  \omtext@pre@skip\par\noindent%
+  \ifx\omtext@title\@empty%
+    \ifx\omtext@start\@empty\else%
+      \ifx\omtext@display\st@flow\omtext@start\else\stDMemph{\omtext@start}\fi\enspace%
+    \fi% end omtext@start empty
+  \else\stDMemph{\omtext@title}:\enspace%
+    \ifx\omtext@start\@empty\else\omtext@start\enspace\fi%
+  \fi% end omtext@title empty
+  %\ignorespacesandpars
+  }
+{\egroup\omtext@post@skip\@in@omtextfalse%\ignorespacesandpars
+}
+\srefaddidkey{phrase}
+\addmetakey{phrase}{style}
+\addmetakey{phrase}{class}
+\addmetakey{phrase}{index}
+\addmetakey{phrase}{verbalizes}
+\addmetakey{phrase}{type}
+\addmetakey{phrase}{only}
+\newcommand\phrase[2][]{\metasetkeys{phrase}{#1}%
+\ifx\prhase@only\@empty\only<\phrase@only>{#2}\else #2\fi}
+\providecommand\textsubscript[1]{\ensuremath{_{#1}}}
+\newcommand\corefs[2]{#1\textsubscript{#2}}
+\newcommand\coreft[2]{#1\textsuperscript{#2}}
+\newcommand\nlex[1]{\green{\sl{#1}}}
+\newcommand\nlcex[1]{*\green{\sl{#1}}}
+\def\@sinlinequote#1{``{\sl{#1}}''}
+\def\@@sinlinequote#1#2{\@sinlinequote{#2}~#1}
+\newcommand\sinlinequote[2][]
+{\def\@opt{#1}\ifx\@opt\@empty\@sinlinequote{#2}\else\@@sinlinequote\@opt{#2}\fi}
+\newcommand\vdec[2][]{#2}
+\newcommand\vrest[2][]{#2}
+\newcommand\vcond[2][]{#2}
+\newcommand\strucdec[2][]{#2}
+\newcommand\impdec[2][]{#2}
+\def\begin@sblockquote{\begin{quote}\sl}
+\def\end@sblockquote{\end{quote}}
+\def\begin@@sblockquote#1{\begin@sblockquote}
+\def\end@@sblockquote#1{\def\@@lec##1{\textrm{##1}}\@lec{#1}\end@sblockquote}
+\newenvironment{sblockquote}[1][]
+  {\def\@opt{#1}\ifx\@opt\@empty\begin@sblockquote\else\begin@@sblockquote\@opt\fi}
+  {\ifx\@opt\@empty\end@sblockquote\else\end@@sblockquote\@opt\fi}
+\newenvironment{sboxquote}[1][]
+{\def\@@src{#1}\begin{mdframed}[leftmargin=.5cm,rightmargin=.5cm]}
+{\@lec{\textrm\@@src}\end{mdframed}}
+\providecommand{\@@lec}[1]{(#1)}
+\def\@lec#1{\strut\hfil\strut\null\nobreak\hfill\@@lec{#1}}
+\def\lec#1{\@lec{#1}\par}
+\addmetakey{omdoc@index}{at}
+\addmetakey[false]{omdoc@index}{loadmodules}[true]
+\newcommand\omdoc@indexi[2][]{\ifindex%
+\metasetkeys{omdoc@index}{#1}%
+\@bsphack\begingroup\@sanitize%
+\protected@write\@indexfile{}{\string\indexentry%
+{\ifx\omdoc@index@at\@empty\else\omdoc@index@at @\fi%
+\ifx\omdoc@index@loadmodules\@true%
+\string\withusedmodules{\@ifundefined{module@id}\used@modules\module@id}{#2}%
+\else #2\fi% loadmodules
+}{\thepage}}%
+\endgroup\@esphack\fi}%ifindex
+\newcommand\omdoc@indexii[3][]{\ifindex%
+\metasetkeys{omdoc@index}{#1}%
+\@bsphack\begingroup\@sanitize%
+\protected@write\@indexfile{}{\string\indexentry%
+{\ifx\omdoc@index@at\@empty\else\omdoc@index@at @\fi%
+\ifx\omdoc@index@loadmodules\@true%
+\string\withusedmodules{\@ifundefined{module@id}\used@modules\module@id}{#2}!%
+\string\withusedmodules{\@ifundefined{module@id}\used@modules\module@id}{#3}%
+\else #2!#3\fi% loadmodules
+}{\thepage}}%
+\endgroup\@esphack\fi}%ifindex
+\newcommand\omdoc@indexiii[4][]{\ifindex%
+\metasetkeys{omdoc@index}{#1}%
+\@bsphack\begingroup\@sanitize%
+\protected@write\@indexfile{}{\string\indexentry%
+{\ifx\omdoc@index@at\@empty\else\omdoc@index@at @\fi%
+\ifx\omdoc@index@loadmodules\@true%
+\string\withusedmodules{\@ifundefined{module@id}\used@modules\module@id}{#2}!%
+\string\withusedmodules{\@ifundefined{module@id}\used@modules\module@id}{#3}!%
+\string\withusedmodules{\@ifundefined{module@id}\used@modules\module@id}{#4}%
+\else #2!#3!#4\fi% loadmodules
+}{\thepage}}%
+\endgroup\@esphack\fi}%ifindex
+\newcommand\omdoc@indexiv[5][]{\ifindex%
+\metasetkeys{omdoc@index}{#1}%
+\@bsphack\begingroup\@sanitize%
+\protected@write\@indexfile{}{\string\indexentry%
+{\ifx\omdoc@index@at\@empty\else\omdoc@index@at @\fi%
+\ifx\omdoc@index@loadmodules\@true%
+\string\withusedmodules{\@ifundefined{module@id}\used@modules\module@id}{#2}!%
+\string\withusedmodules{\@ifundefined{module@id}\used@modules\module@id}{#3}!%
+\string\withusedmodules{\@ifundefined{module@id}\used@modules\module@id}{#4}%
+\string\withusedmodules{\@ifundefined{module@id}\used@modules\module@id}{#5}%
+\else #2!#3!#4!#5\fi% loadmodules
+}{\thepage}}%
+\endgroup\@esphack\fi}%ifindex
+\newcommand\aindi[3][]{{#2}\omdoc@indexi[#1]{#3}}
+\newcommand\indi[2][]{{#2}\omdoc@indexi[#1]{#2}}
+\newcommand\indis[2][]{{#2}\omdoc@indexi[#1]{#2s}}
+\newcommand\Indi[2][]{{\captitalize{#2}}\omdoc@indexi[#1]{#2}}
+\newcommand\Indis[2][]{{\capitalize{#2}}\omdoc@indexi[#1]{#2s}}
+
+\newcommand\@indii[3][]{\omdoc@indexii[#1]{#2}{#3}\omdoc@indexii[#1]{#3}{#2}}
+\newcommand\aindii[4][]{#2\@indii[#1]{#3}{#4}}
+\newcommand\indii[3][]{{#2 #3}\@indii[#1]{#2}{#3}}
+\newcommand\indiis[3][]{{#2 #3s}\@indii[#1]{#2}{#3}}
+\newcommand\Indii[3][]{{\captitalize{#2 #3}}\@indii[#1]{#2}{#3}}
+\newcommand\Indiis[3][]{{\capitalize{#2 #3}}\@indii[#1]{#2}{#3}}
+
+\newcommand\@indiii[4][]{\omdoc@indexiii[#1]{#2}{#3}{#4}\omdoc@indexii[#1]{#3}{#2 (#4)}}
+\newcommand\aindiii[5][]{{#2}\@indiii[#1]{#3}{#4}{#5}}
+\newcommand\indiii[4][]{{#2 #3 #4}\@indiii[#1]{#2}{#3}{#4}}
+\newcommand\indiiis[4][]{{#2 #3 #4s}\@indiii[#1]{#2}{#3}{#4}}
+\newcommand\Indiii[4][]{\captitalize{#2 #3 #4}\@indiii[#1]{#2}{#3}{#4}}
+\newcommand\Indiiis[4][]{\capitalize{#2 #3 #4s}\@indiii[#1]{#2}{#3}{#4}}
+
+\newcommand\@indiv[5][]{\omdoc@indexiv[#1]{#2}{#3}{#4}{#5}}
+\newcommand\aindiv[6][]{#2\@indiv[#1]{#3}{#4}{#5}{#6}}
+\newcommand\indiv[5][]{{#2 #3 #4 #5}\@indiv[#1]{#2}{#3}{#4}{#5}}
+\newcommand\indivs[5][]{{#2 #3 #4 #5s}\@indiv[#1]{#2}{#3}{#4}{#5}}
+\newcommand\Indiv[5][]{\capitalize{#2 #3 #4 #5s}\@indiv[#1]{#2}{#3}{#4}{#5}}
+\newcommand\Indivs[5][]{\capitalize{#2 #3 #4 #5s}\@indiv[#1]{#2}{#3}{#4}{#5}}
+\newcommand\hateq{\ensuremath{\widehat=}\xspace}
+\newcommand\hatequiv{\ensuremath{\widehat\equiv}\xspace}
+\@ifundefined{ergo}%
+{\newcommand\ergo{\ensuremath{\leadsto}\xspace}}%
+{\renewcommand\ergo{\ensuremath{\leadsto}\xspace}}%
+\newcommand{\reflect@squig}[2]{\reflectbox{$\m@th#1\rightsquigarrow$}}%
+\newcommand\ogre{\ensuremath{\mathrel{\mathpalette\reflect@squig\relax}}\xspace}%
+\newcommand\notergo{\ensuremath{\not\leadsto}}
+\newcommand\notogre{\ensuremath{\not\mathrel{\mathpalette\reflect@squig\relax}}\xspace}%
+\newcommand\indextoo[2][]{\indi[#1]{#2}%
+\PackageWarning{omtext}{\protect\indextoo\space is deprecated, use \protect\indi\space instead}}
+\newcommand\indexalt[2][]{\aindi[#1]{#2}%
+\PackageWarning{omtext}{\protect\indextoo\space is deprecated, use \protect\aindi\space instead}}
+\newcommand\twintoo[3][]{\indii[#1]{#2}{#3}%
+\PackageWarning{omtext}{\protect\twintoo\space is deprecated, use \protect\indii\space instead}}
+\newcommand\twinalt[3][]{\aindii[#1]{#2}{#3}%
+\PackageWarning{omtext}{\protect\twinalt\space is deprecated, use \protect\aindii\space instead}}
+\newcommand\atwintoo[4][]{\indiii[#1]{#2}{#3}{#4}%
+\PackageWarning{omtext}{\protect\atwintoo\space is deprecated, use \protect\indiii\space instead}}
+\newcommand\atwinalt[4][]{\aindii[#1]{#2}{#3}{#4}%
+\PackageWarning{omtext}{\protect\atwinalt\space is deprecated, use \protect\aindiii\space instead}}
+\newcommand\mygraphics[2][]{\includegraphics[#1]{#2}%
+  \PackageWarning{omtext}{\protect\mygraphics\space is deprecated, use \protect\includegraphics\space instead}}
+\newcommand\mycgraphics[2][]{\begin{center}\mygraphics[#1]{#2}\end{center}%
+  \PackageWarning{omtext}{\protect\mycgraphics\space is deprecated, use \protect\includegraphics\space instead}}
+\newcommand\mybgraphics[2][]{\fbox{\mygraphics[#1]{#2}}%
+  \PackageWarning{omtext}{\protect\mybgraphics\space is deprecated, use \protect\includegraphics\space instead}}
+\newcommand\mycbgraphics[2][]{\begin{center}\fbox{\mygraphics[#1]{#2}}\end{center}%
+  \PackageWarning{omtext}{\protect\mycbgraphics\space is deprecated, use \protect\includegraphics\space instead}}
+\addmetakey*{module}{id} % TODO: deprecate properly
+\addmetakey*{module}{load}
+\addmetakey*{module}{path}
+\addmetakey*{module}{dir}
+\addmetakey*{module}{align}[WithTheModuleOfTheSameName]
+\addmetakey*{module}{noalign}[true]
+
+\newif\if@insymdef@\@insymdef@false
+\define@key{symdef}{local}[true]{\@symdeflocaltrue}%
+\define@key{symdef}{noverb}[all]{}%
+\define@key{symdef}{align}[WithTheSymbolOfTheSameName]{}%
+\define@key{symdef}{specializes}{}%
+\addmetakey*{symdef}{noalign}[true]
+\define@key{symdef}{primary}[true]{}%
+\define@key{symdef}{assocarg}{}%
+\define@key{symdef}{bvars}{}%
+\define@key{symdef}{bargs}{}%
+\addmetakey{symdef}{lang}%
+\addmetakey{symdef}{prec}%
+\addmetakey{symdef}{arity}%
+\addmetakey{symdef}{variant}%
+\addmetakey{symdef}{ns}%
+\addmetakey{symdef}{args}%
+\addmetakey{symdef}{name}%
+\addmetakey*{symdef}{title}%
+\addmetakey*{symdef}{description}%
+\addmetakey{symdef}{subject}%
+\addmetakey*{symdef}{display}%
+\addmetakey*{symdef}{gfc}%
+\def\symdef{\@ifnextchar[{\@symdef}{\@symdef[]}}%
+\def\@symdef[#1]#2{\@ifnextchar[{\@@symdef[#1]{#2}}{\@@symdef[#1]{#2}[0]}}%
+\def\@@symdef[#1]#2[#3]{%
+  \@insymdef@true%
+  \metasetkeys{symdef}{#1}%
+  \edef\symdef@tmp@optpars{\ifcsvoid{symdef@name}{[]}{[name=\symdef@name]}}%
+  \expandafter\symdecl\symdef@tmp@optpars{#2}%
+  \@insymdef@false%
+  \notation[#1]{#2}[#3]%
+}% mod@show
+\def\symdef@type{Symbol}%
+\providecommand{\stDMemph}[1]{\textbf{#1}}
+\def\symvariant#1{%
+  \@ifnextchar[{\@symvariant{#1}}{\@symvariant{#1}[0]}%
+  }%
+\def\@symvariant#1[#2]#3#4{%
+  \notation[#3]{#1}[#2]{#4}%
+}%
+\let\abbrdef\symdef%
+\newif\if@importing\@importingfalse
+\define@key{symi}{noverb}[all]{}%
+\define@key{symi}{align}[WithTheSymbolOfTheSameName]{}%
+\define@key{symi}{specializes}{}%
+\define@key{symi}{gfc}{}%
+\define@key{symi}{noalign}[true]{}%
+\newcommand\symi{\@ifstar\@symi@star\@symi}
+\newcommand\@symi[2][]{\metasetkeys{symi}{#1}%
+  \parsemodule@maybesetcodes\if@importing\else\par\noindent Symbol: \textsf{#2}\fi%\ignorespacesandpars
+  }
+\newcommand\@symi@star[2][]{\metasetkeys{symi}{#1}%
+  \parsemodule@maybesetcodes\if@importing\else\par\noindent Primary Symbol: \textsf{#2}\fi%\ignorespacesandpars
+  }
+\newcommand\symii{\@ifstar\@symii@star\@symii}
+\newcommand\@symii[3][]{\metasetkeys{symi}{#1}%
+  \parsemodule@maybesetcodes\if@importing\else\par\noindent Symbol: \textsf{#2-#3}\fi%\ignorespacesandpars
+  }
+\newcommand\@symii@star[3][]{\metasetkeys{symi}{#1}%
+  \parsemodule@maybesetcodes\if@importing\else\par\noindent Primary Symbol: \textsf{#2-#3}\fi%\ignorespacesandpars
+  }
+\newcommand\symiii{\@ifstar\@symiii@star\@symiii}
+\newcommand\@symiii[4][]{\metasetkeys{symi}{#1}%
+  \parsemodule@maybesetcodes\if@importing\else\par\noindent Symbol: \textsf{#2-#3-#4}\fi%\ignorespacesandpars
+  }
+\newcommand\@symiii@star[4][]{\metasetkeys{symi}{#1}%
+  \parsemodule@maybesetcodes\if@importing\else\par\noindent Primary Symbol: \textsf{#2-#3-#4}\fi%\ignorespacesandpars
+  }
+\newcommand\symiv{\@ifstar\@symiv@star\@symiv}
+\newcommand\@symiv[5][]{\metasetkeys{symi}{#1}%
+  \parsemodule@maybesetcodes\if@importing\else\par\noindent Symbol: \textsf{#2-#3-#4-#5}\fi%\ignorespacesandpars
+  }
+\newcommand\@symiv@star[5][]{\metasetkeys{symi}{#1}%
+  \parsemodule@maybesetcodes\if@importing\else\par\noindent Primary Symbol: \textsf{#2-#3-#4-#5}\fi%\ignorespacesandpars
+  }
+\addmetakey{importmhmodule}{mhrepos}%
+\addmetakey{importmhmodule}{path}%
+\addmetakey{importmhmodule}{ext}% why does this exist?
+\addmetakey{importmhmodule}{dir}%
+\addmetakey[false]{importmhmodule}{conservative}[true]%
+\newcommand\importmhmodule[2][]{%
+  \parsemodule@maybesetcodes
+  \metasetkeys{importmhmodule}{#1}%
+  \ifx\importmhmodule@dir\@empty%
+    \edef\@path{\importmhmodule@path}%
+  \else\edef\@path{\importmhmodule@dir/#2}\fi%
+  \ifx\@path\@empty% if module name is not set
+    \@importmodule[]{#2}{export}%
+  \else%
+    \edef\mh@@repos{\mh@currentrepos}% remember so that we can reset it.
+    \ifx\importmhmodule@mhrepos\@empty% if in the same repos
+      \relax% no need to change mh@currentrepos, i.e, current directory.
+    \else%
+      \mathhub@setcurrentreposinfo\importmhmodule@mhrepos% change it.
+      \addto@thismodulex{\noexpand\mathhub@setcurrentreposinfo{\importmhmodule@mhrepos}}%
+    \fi%
+    \@importmodule[\MathHub{\mh@currentrepos/source/\@path}]{#2}{export}%
+    \mathhub@setcurrentreposinfo\mh@@repos% after importing, reset to old value
+    \addto@thismodulex{\noexpand\mathhub@setcurrentreposinfo{\mh@@repos}}%
+  \fi%
+  %\ignorespacesandpars%
+}
+\addmetakey{importmhmodule}{load}
+\addmetakey{importmhmodule}{id}
+\addmetakey{importmhmodule}{dir}
+\addmetakey{importmhmodule}{mhrepos}
+
+\addmetakey{importmodule}{load}
+\addmetakey{importmodule}{id}
+
+\newcommand\usemhmodule[2][]{%
+\metasetkeys{importmhmodule}{#1}%
+\ifx\importmhmodule@dir\@empty%
+\edef\@path{\importmhmodule@path}%
+\else\edef\@path{\importmhmodule@dir/#2}\fi%
+\ifx\@path\@empty%
+\usemodule[id=\importmhmodule@id]{#2}%
+\else%
+\edef\mh@@repos{\mh@currentrepos}%
+\ifx\importmhmodule@mhrepos\@empty%
+\else\mathhub@setcurrentreposinfo{\importmhmodule@mhrepos}\fi%
+\usemodule{\@path\@QuestionMark#2}%
+\mathhub@setcurrentreposinfo\mh@@repos%
+\fi%
+}
+\newcommand\mhinputref[2][]{%
+  \edef\mhinputref@first{#1}%
+  \ifx\mhinputref@first\@empty%
+    \inputref{#2}%
+  \else%
+    \inputref[mhrepos=\mhinputref@first]{#2}%
+  \fi%
+}
+\newcommand\trefi[2][]{%
+  \edef\trefi@mod{#1}%
+  \ifx\trefi@mod\@empty\tref{#2}\else\tref{#1\@QuestionMark#2}\fi%
+}
+\newcommand\trefii[3][]{%
+  \edef\trefi@mod{#1}%
+  \ifx\trefi@mod\@empty\tref{#2-#3}\else\tref{#1\@QuestionMark#2-#3}\fi%
+}
+\def\defii#1#2{\defi{#1!#2}}
+\def\Defii#1#2{\Defi{#1!#2}}
+\def\defiis#1#2{\defis{#1!#2}}
+\def\Defiis#1#2{\Defis{#1!#2}}
+\def\defiii#1#2#3{\defi{#1!#2!#3}}
+\def\Defiii#1#2#3{\Defi{#1!#2!#3}}
+\def\defiiis#1#2#3{\defis{#1!#2!#3}}
+\def\Defiiis#1#2#3{\Defis{#1!#2!#3}}
+\def\defiv#1#2#3#4{\defi{#1!#2!#3!#4}}
+\def\Defiv#1#2#3#4{\Defi{#1!#2!#3!#4}}
+\def\defivs#1#2#3#4{\defis{#1!#2!#3!#4}}
+\def\Defivs#1#2#3#4{\Defis{#1!#2!#3!#4}}
+\def\adefi#1#2{\defi[name=#2]{#1}}
+\def\adefii#1#2#3{\defi[name=#2-#3]{#1}}
+\def\adefiii#1#2#3#4{\defi[name=#2-#3-#4]{#1}}
+\def\adefiv#1#2#3#4#5{\defi[name=#2-#3-#4-#5]{#1}}
+\newlinechar=\old@newlinechar
+\endinput
+%%
+%% End of file `stex.sty'.
