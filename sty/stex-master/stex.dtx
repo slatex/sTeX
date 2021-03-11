@@ -68,9 +68,19 @@
 %    FAU Erlangen-N\"urnberg\\
 %    \url{http://kwarc.info/}}
 % \maketitle
-% 
-% \makeatletter\def\test{\begingroup\makeatletter\@test}
-% \long\def\@test#1{\textcolor{blue}{\textbf{Test:}\\#1}\endgroup}\makeatother
+%
+% \makeatletter
+% \def\testwrite{\begingroup\catcode`\\=12\catcode`\#=12\catcode`\&=12\testwrite@}
+% \def\testwrite@#1{\ex\gdef\ex\test@content\ex{\detokenize{#1}}\ex\immediate\ex\write\ex\testoutfile\ex{\test@content}\endgroup}
+% \def\testwriteI{\begingroup\catcode`\\=12\catcode`\#=12\catcode`\&=12\testwriteI@}
+% \newcount\test@counter\test@counter=0
+% \def\testwriteI@#1{\ex\gdef\ex\test@content\ex{\detokenize{#1}}\immediate\write\testoutfile{^^J\detokenize{\advance\test@counter by 1\begingroup\paragraph{Test \the\test@counter:}}^^J}\ex\immediate\ex\write\ex\testoutfile\ex{\test@content}\immediate\write\testoutfile{^^J\endgroup^^J}\endgroup\@test}
+% \newwrite\testoutfile\immediate\openout\testoutfile=alltests.tex
+% \testwrite{\documentclass{article}^^J\usepackage{stex}^^J\begin{document}\makeatletter^^J}
+% \testwrite{\newcount\test@counter\test@counter=0}
+% \def\test{\begingroup\makeatletter\testwriteI}
+% \long\def\@test{\global\advance\test@counter by 1\paragraph{\textcolor{blue}{Test \the\test@counter:}}\textcolor{blue}{\ex\scantokens\ex{\test@content}}\endgroup}
+% \makeatother
 %
 % \begin{abstract}
 %    TODO
@@ -104,8 +114,6 @@
 \RequirePackage{stex}
 %</cls>
 %<*package>
-\edef\old@newlinechar{\the\newlinechar}
-\newlinechar=-1
 \let\ex\expandafter
 % TODO
 \newif\if@stex@debugmode\@stex@debugmodefalse
@@ -304,6 +312,8 @@
 }
 %    \end{macrocode}
 % \test{
+%\gdef\present#1{\texttt{>>\meaning#1<<}}
+%\gdef\printltx#1{\texttt{\detokenize{#1}}}^^J
 % \begin{center}
 % \begin{tabular}{|l|l|l|}\hline
 %   path & canonicalized path & expected\\\hline
@@ -590,10 +600,11 @@
 }
 \stex@currfile@pop
 %    \end{macrocode}
-% \newwrite\testfile\immediate\openout\testfile=testfile.tex
+% \test{
+% \global\newwrite\testfile\immediate\openout\testfile=testfile.tex
 % \immediate\write\testfile{A test file: \string\stex@currfile}
 % \immediate\closeout\testfile
-% \test{This file: \stex@currfile\\
+% This file: \stex@currfile\\
 % \stexinput{testfile.tex}
 % \\Back: \stex@currfile}
 % \end{macro}
@@ -726,11 +737,12 @@
   }%
 }
 %    \end{macrocode}
+% \test{
 % \immediate\openout\testfile=FOO/MANIFEST.MF
 % \immediate\write\testfile{id: FOO/BAR}
 % \immediate\write\testfile{ns: http://mathhub.info/FOO/BAR}
 % \immediate\closeout\testfile
-% \test{\mathhub@parsemanifest{test@}{./FOO}
+%\mathhub@parsemanifest{test@}{./FOO}
 % id: \test@id\\ns: \test@ns\\dir: \test@dir
 % }
 %\end{macro}
@@ -1023,10 +1035,10 @@
 \newenvironment{latexml@module}[1]{}{}
 %    \end{macrocode}
 % \test{
-%    \begin{module}[name=Foo]\\
+%    \begin{module}[name=Foo]
 %      Name: \module@name\\
 %      URI: \module@uri\\
-%      this@module: \expandafter\meaning\csname module@defs@\module@uri\endcsname
+%      this@module: \expandafter\present\csname module@defs@\module@uri\endcsname
 %    \end{module}
 %}
 %
@@ -1041,7 +1053,7 @@
 %    \begin{module}[name=Foo2]\\
 %      Name: \module@name\\
 %      URI: \module@uri\\
-%      this@module: \ex\meaning\csname module@defs@\module@uri\endcsname
+%      this@module: \ex\present\csname module@defs@\module@uri\endcsname
 %    \end{module}
 %}
 %
@@ -1050,7 +1062,7 @@
 %    \begin{module}[name=Foo]\\
 %      Name: \module@name\\
 %      URI: \module@uri\\
-%      this@module: \ex\meaning\csname module@defs@\module@uri\endcsname
+%      this@module: \ex\present\csname module@defs@\module@uri\endcsname
 %    \end{module}}
 %
 % \test{
@@ -1064,7 +1076,7 @@
 %    \begin{module}[name=Foo2]\\
 %      Name: \module@name\\
 %      URI: \module@uri\\
-%      this@module: \expandafter\meaning\csname module@defs@\module@uri\endcsname
+%      this@module: \expandafter\present\csname module@defs@\module@uri\endcsname
 %    \end{module}
 %}
 %
@@ -1426,8 +1438,8 @@
     \parsemodule@maybesetcodes%
   }
 %    \end{macrocode}
+% \test{
 % \immediate\openout\testfile=FOO/testmodule.tex
-% \makeatletter
 % \edef\firststring{\detokenize{\begin}}
 % \path@trimstring\firststring
 % \edef\firststring{\firststring{module}[name=testmodule]}
@@ -1438,11 +1450,10 @@
 % \edef\firststring{\firststring{module}}
 % \immediate\write\testfile{\firststring}
 % \immediate\closeout\testfile
-% \makeatother
-% \test{\mathhub@parsemanifest{test@}{./FOO}
+% \mathhub@parsemanifest{test@}{./FOO}
 % parsing |FOO/testmodule.tex|\\
 % \requiremodules@smsmode{FOO/testmodule}
-% \meaning\stex@module@testmodule
+% \present\stex@module@testmodule
 % }
 % \end{macro}
 %
@@ -1577,43 +1588,41 @@
 }%
 %    \end{macrocode}
 %
+% \test{
 % \immediate\openout\testfile=testmoduleimporta.tex
-% \makeatletter
-% \def\macrostring#1#2{
+% \gdef\macrostring#1#2{
 %   \edef\firststring{\detokenize{#1}}
 %   \path@trimstring\firststring
 %   \edef\firststring{\firststring#2}
 %   \immediate\write\testfile{\firststring}
 % }
-% \makeatother
 % \macrostring{\begin}{{module}[name=testmoduleimporta]}
 % \immediate\write\testfile{  foo bar boo far}
 % \macrostring{\symdecl}{{foo}}
 % \macrostring{\end}{{module}}
 % \immediate\closeout\testfile
-% \test{
-%  \detokenize{\importmodule{testmoduleimporta}}:
+%  \printltx{\importmodule{testmoduleimporta}}:
 %    \importmodule{testmoduleimporta}\\
-% \meaning\stex@module@testmoduleimporta\\
-% \meaning\foo
+% \present\stex@module@testmoduleimporta\\
+% \present\foo
 % }
+% \test{
 % \immediate\openout\testfile=testmoduleimportb.tex
 % \macrostring{\begin}{{module}[name=importb]}
 % \immediate\write\testfile{  foo bar boo far}
 % \macrostring{\symdecl}{{bar}}
 % \macrostring{\end}{{module}}
-% \immediate\closeout\testfile\\
-% \test{
-%    \detokenize{\importmodule{testmoduleimportb?importb}}:
+% \immediate\closeout\testfile
+%    \printltx{\importmodule{testmoduleimportb?importb}}:
 %    \importmodule{testmoduleimportb?importb}\\
-% \meaning\stex@module@importb\\
-% \meaning\bar
+% \present\stex@module@importb\\
+% \present\bar
 % }
 % 
 % \test{
 % \importmodule[mhrepos=FoMID/Core]{foundations/types/type.en}
-% \ex\meaning\csname module@defs@http://mathhub.info/FoMID/Core/foundations/types?type.en\endcsname\\
-% \meaning\type
+% \ex\present\csname module@defs@http://mathhub.info/FoMID/Core/foundations/types?type.en\endcsname\\
+% \present\type
 % }
 %
 % \end{macro}
@@ -1691,16 +1700,16 @@
 % \test{
 %  \begin{module}[name=Foo]
 %    \symdecl{foo}
-%  \end{module}\\
+%  \end{module}
 %  \begin{module}[name=Bar]
-%    \usemodule{Foo}\\
-%    \meaning\foo
+%    \usemodule{Foo}
+%    \present\foo
 %    \symdecl{bar}
-%  \end{module}\\
+%  \end{module}
 %  \begin{module}[name=Baz]
-%    \importmodule{Bar}\\
-%    Should be undefined: \meaning\foo\\
-%    Should be defined:   \meaning\bar
+%    \importmodule{Bar}
+%    Should be undefined: \present\foo\\
+%    Should be defined:   \present\bar
 %  \end{module}
 %}
 %
@@ -1820,8 +1829,8 @@
 %    \end{macrocode}
 % \test{
 %  \begin{module}[name=foo]
-%    \detokenize{\symdecl{bar}} \symdecl{bar}\\
-%    Yields: \meaning\bar
+%    \printltx{\symdecl{bar}} \symdecl{bar}\\
+%    Yields: \present\bar
 %  \end{module}
 %}
 % \end{macro}
@@ -2352,42 +2361,41 @@
 }
 %    \end{macrocode}
 % \test{
-%\def\present#1{\texttt{>>\meaning#1<<}}
 %\def\mathhub@archive@ns{http\@Colon\@Slash\@Slash mathhub.info\@Slash test}
 %\def\mathhub@archive@id{Others\@Slash stextests}
 %\def\mathhub@archive@dir{\@Slash home\@Slash jazzpirate\@Slash work\@Slash LaTeX\@Slash Others\@Slash stextests}
 %\@setcurrentreposinfo
 %\begin{module}[name=FooBar]
-%    \detokenize{\symdecl{barbar}} \symdecl{barbar}\\
-%    \detokenize{\notation[arity=0]{barbar}{\psi}} \notation[arity=0]{barbar}{\psi}\\
-%    \detokenize{\notation[prec=50;\infprec]{barbar}[1]{\barbar[arity=0]\dobrackets{#1}}}
+%    \printltx{\symdecl{barbar}} \symdecl{barbar}\\
+%    \printltx{\notation[arity=0]{barbar}{\psi}} \notation[arity=0]{barbar}{\psi}\\
+%    \printltx{\notation[prec=50;\infprec]{barbar}[1]{\barbar[arity=0]\dobrackets{##1}}}
 %    \notation[prec=50;\infprec]{barbar}[1]{\barbar[arity=0]\dobrackets{#1}}\\
-%    \detokenize{\notation[arity=0,variant=cap]{barbar}{\Psi}}
+%    \printltx{\notation[arity=0,variant=cap]{barbar}{\Psi}}
 %    \notation[arity=0,variant=cap]{barbar}{\Psi}\\
-%    \detokenize{\notation[variant=cap]{barbar}[1]{\barbar[arity=0,variant=cap]\dobrackets{#1}}}
+%    \printltx{\notation[variant=cap]{barbar}[1]{\barbar[arity=0,variant=cap]\dobrackets{##1}}}
 %    \notation[variant=cap]{barbar}[1]{\barbar[arity=0,variant=cap]\dobrackets{#1}}\\\ \\
-%    \detokenize{$\barbar{A}$}: $\barbar{A}$\\
-%    \detokenize{$\barbar[variant=cap]{A}$}: $\barbar[variant=cap]{A}$\\\ \\
-%    \detokenize{\symdecl{plus}}\symdecl{plus}\\
-%    \detokenize{\symdecl{times}}\symdecl{times}\\
-%    \detokenize{\symdecl{vara}}\symdecl{vara}\\
-%    \detokenize{\symdecl{varb}}\symdecl{varb}\\
-%    \detokenize{\symdecl{varc}}\symdecl{varc}\\
-%    \detokenize{\symdecl{vard}}\symdecl{vard}\\
-%    \detokenize{\symdecl{vare}}\symdecl{vare}\\
-%    \detokenize{\notation{vara}{a}}\notation{vara}{a}\\
-%    \detokenize{\notation{varb}{b}}\notation{varb}{b}\\
-%    \detokenize{\notation{varc}{c}}\notation{varc}{c}\\
-%    \detokenize{\notation{vard}{d}}\notation{vard}{d}\\
-%    \detokenize{\notation{vare}{e}}\notation{vare}{e}\\
-%    \detokenize{\notation[prec=500;500,args=a]{plus}{\withbrackets\langle\rangle{#1}}{+}}
+%    \printltx{$\barbar{A}$}: $\barbar{A}$\\
+%    \printltx{$\barbar[variant=cap]{A}$}: $\barbar[variant=cap]{A}$\\\ \\
+%    \printltx{\symdecl{plus}}\symdecl{plus}\\
+%    \printltx{\symdecl{times}}\symdecl{times}\\
+%    \printltx{\symdecl{vara}}\symdecl{vara}\\
+%    \printltx{\symdecl{varb}}\symdecl{varb}\\
+%    \printltx{\symdecl{varc}}\symdecl{varc}\\
+%    \printltx{\symdecl{vard}}\symdecl{vard}\\
+%    \printltx{\symdecl{vare}}\symdecl{vare}\\
+%    \printltx{\notation{vara}{a}}\notation{vara}{a}\\
+%    \printltx{\notation{varb}{b}}\notation{varb}{b}\\
+%    \printltx{\notation{varc}{c}}\notation{varc}{c}\\
+%    \printltx{\notation{vard}{d}}\notation{vard}{d}\\
+%    \printltx{\notation{vare}{e}}\notation{vare}{e}\\
+%    \printltx{\notation[prec=500;500,args=a]{plus}{\withbrackets\langle\rangle{##1}}{+}}
 %    \notation[prec=500;500,args=a]{plus}{\withbrackets\langle\rangle{#1}}{+}\\
-%    \detokenize{\notation[prec=600;600,args=a]{times}{#1}{\cdot}}
+%    \printltx{\notation[prec=600;600,args=a]{times}{##1}{\cdot}}
 %    \notation[prec=600;600,args=a]{times}{#1}{\cdot}\\\ \\
-%    \detokenize{
+%    \printltx{
 %      $\times{\frac\vara\varb,\plus{\frac\vara{\frac\vara\varb},\times{\varc,\plus{\vard,\vare}}}}$}:\\
 %    $\times{\frac\vara\varb,\plus{\frac\vara{\frac\vara\varb},\times{\varc,\plus{\vard,\vare}}}}$\\\ \\
-%    \detokenize{
+%    \printltx{
 %      \[\times{\frac\vara\varb,\plus{\frac\vara{\frac\vara\varb},\times{\varc,\plus{\vard,\vare}}}}\]}:\\
 %    \[\times{\frac\vara\varb,\plus{\frac\vara{\frac\vara\varb},\times{\varc,\plus{\vard,\vare}}}}\]
 %  \end{module}
@@ -3565,7 +3573,6 @@
 %    \end{macrocode}
 % \end{macro}
 %
-%    \begin{macrocode}
-\newlinechar=\old@newlinechar
-%    \end{macrocode}
+%\testwrite{^^J\end{document}}
+%\immediate\closeout\testoutfile
 % \endinput
