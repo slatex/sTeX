@@ -134,6 +134,15 @@
   \ex\newif\csname if@latexml\endcsname\@latexmlfalse
 \fi
 %    \end{macrocode}
+% The following macro and environment generate LaTeXML annotations as a |<span>| node with the first and second arguments as 
+% |property| and |resource| attributes respectively, and the third argument as content. In math mode, the first two arguments are
+% instead used as the |class| attribute, separated by an underscore.
+%    \begin{macrocode}
+\def\latexml@annotate#1#2#3{\ifmmode\latexml@annotate@math{#1}{#2}{#3}\else\latexml@annotate@text{#1}{#2}{#3}\fi}
+\def\latexml@annotate@text#1#2#3{}
+\def\latexml@annotate@math#1#2#3{}
+\newenvironment{latexml@annotateenv}[2]{}{}
+%    \end{macrocode}
 %
 %    \begin{macrocode}
 \RequirePackage{xspace}
@@ -1032,7 +1041,7 @@
   \fi%
 }%
 % For LaTeXML bindings
-\newenvironment{latexml@module}[1]{}{}
+\newenvironment{latexml@module}[1]{\begin{latexml@annotateenv}{stex:theory}{#1}}{\end{latexml@annotateenv}}
 %    \end{macrocode}
 % \test{
 %    \begin{module}[name=Foo]
@@ -1662,7 +1671,7 @@
 %   directly afterwards to prohibit further activations.
 %    \begin{macrocode}
 \newif\if@inimport\@inimportfalse
-\def\latexml@import#1{\stex@debug{LaTeXML Import: #1}}%
+\def\latexml@import#1{\latexml@annotate{stex:import}{#1}{\ }}%
 \def\activate@defs#1{%
   \stex@debug{Activating import #1}%
   \if@inimport\else%
@@ -1834,7 +1843,7 @@
   \if@inimport\else\latexml@symdecl\symdecl@uri{$\symdecl@type$}\fi%
   \if@insymdef@\else\parsemodule@maybesetcodes\fi%
 }
-\def\latexml@symdecl#1{}
+\def\latexml@symdecl#1{\latexml@annotate{stex:symdecl}{#1}{\ }}
 %    \end{macrocode}
 % \test{
 %  \begin{module}[name=foo]
@@ -2178,7 +2187,12 @@
   \fi%
 }
 % URI, fragment, arity, notation
-\def\latexml@notation#1#2#3#4{}
+\def\latexml@notation#1#2#3#4#5{\latexml@annotate{stex:notation}{#1}{%
+  \latexml@annotate{fragment}{#2}{\ }%
+  \latexml@annotate{arity}{#3}{\ }%
+  \latexml@annotate{precedence}{#4}{\ }%
+  \latexml@annotate{notation}{}{#5}%
+}}
 %    \end{macrocode}
 % \end{macro}
 %
@@ -2246,7 +2260,7 @@
 
 % for LaTeXML Bindings
 \def\latexml@oms#1#2{%
-  #2%
+  \if@latexml\latexml@annotate{stex:OMS}{#1}{#2}\else#2\fi%
 }
 
 \protected\def\stex@oma#1#2#3{%
@@ -2261,7 +2275,7 @@
 
 % for LaTeXML Bindings
 \def\latexml@oma#1#2{%
-  #2%
+  \if@latexml\latexml@annotate{stex:OMA}{#1}{#2}\else#2\fi%
 }
 
 \def\notation@symprec#1#2{%
@@ -2288,7 +2302,7 @@
 
 % for LaTeXML Bindings
 \def\latexml@arg#1#2{%
-  #2%
+  \if@latexml\latexml@annotate{stex:arg}{#1}{#2}\else#2\fi%
 }
 
 \def\notation@argprec#1#2{%

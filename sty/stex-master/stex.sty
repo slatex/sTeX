@@ -20,6 +20,10 @@
 \ifcsname if@latexml\endcsname\else
   \ex\newif\csname if@latexml\endcsname\@latexmlfalse
 \fi
+\def\latexml@annotate#1#2#3{\ifmmode\latexml@annotate@math{#1}{#2}{#3}\else\latexml@annotate@text{#1}{#2}{#3}\fi}
+\def\latexml@annotate@text#1#2#3{}
+\def\latexml@annotate@math#1#2#3{}
+\newenvironment{latexml@annotateenv}[2]{}{}
 \RequirePackage{xspace}
 \RequirePackage{standalone}
 \RequirePackageWithOptions{stex-metakeys}
@@ -604,7 +608,7 @@
   \addto@thismodulex{\noexpand\mathhub@setcurrentreposinfo{\expandafter\noexpand\csname mh@old@repos@\module@uri\endcsname}}%
   \fi%
 }%
-\newenvironment{latexml@module}[1]{}{}
+\newenvironment{latexml@module}[1]{\begin{latexml@annotateenv}{stex:theory}{#1}}{\end{latexml@annotateenv}}
 \def\@URI{uri} % TODO check this
 \def\@invoke@module#1#2{%
   \ifx\@URI#2%
@@ -946,7 +950,7 @@
   }%
 }
 \newif\if@inimport\@inimportfalse
-\def\latexml@import#1{\stex@debug{LaTeXML Import: #1}}%
+\def\latexml@import#1{\latexml@annotate{stex:import}{#1}{\ }}%
 \def\activate@defs#1{%
   \stex@debug{Activating import #1}%
   \if@inimport\else%
@@ -1050,7 +1054,7 @@
   \if@inimport\else\latexml@symdecl\symdecl@uri{$\symdecl@type$}\fi%
   \if@insymdef@\else\parsemodule@maybesetcodes\fi%
 }
-\def\latexml@symdecl#1{}
+\def\latexml@symdecl#1{\latexml@annotate{stex:symdecl}{#1}{\ }}
 \edef\stex@ambiguous{\detokenize{ambiguous}}
 \edef\stex@macrostring{\detokenize{macro:->\@invoke@symbol}}
 \def\modules@getURIfromName#1{%
@@ -1346,7 +1350,12 @@
     \notation@simulate@arguments%
   \fi%
 }
-\def\latexml@notation#1#2#3#4{}
+\def\latexml@notation#1#2#3#4#5{\latexml@annotate{stex:notation}{#1}{%
+  \latexml@annotate{fragment}{#2}{\ }%
+  \latexml@annotate{arity}{#3}{\ }%
+  \latexml@annotate{precedence}{#4}{\ }%
+  \latexml@annotate{notation}{}{#5}%
+}}
 \protected\def\notation@assoc#1#2{% function, argv
   \let\@tmpop=\relax% do not print the function the first time round
   \@for\@I:=#2\do{\@tmpop% print the function
@@ -1405,7 +1414,7 @@
 }
 
 \def\latexml@oms#1#2{%
-  #2%
+  \if@latexml\latexml@annotate{stex:OMS}{#1}{#2}\else#2\fi%
 }
 
 \protected\def\stex@oma#1#2#3{%
@@ -1419,7 +1428,7 @@
 }
 
 \def\latexml@oma#1#2{%
-  #2%
+  \if@latexml\latexml@annotate{stex:OMA}{#1}{#2}\else#2\fi%
 }
 
 \def\notation@symprec#1#2{%
@@ -1444,7 +1453,7 @@
 }
 
 \def\latexml@arg#1#2{%
-  #2%
+  \if@latexml\latexml@annotate{stex:arg}{#1}{#2}\else#2\fi%
 }
 
 \def\notation@argprec#1#2{%
