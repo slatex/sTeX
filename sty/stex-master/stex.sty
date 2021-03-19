@@ -20,10 +20,11 @@
 \ifcsname if@latexml\endcsname\else
   \ex\newif\csname if@latexml\endcsname\@latexmlfalse
 \fi
-\def\latexml@annotate#1#2#3{\ifmmode\latexml@annotate@math{#1}{#2}{#3}\else\latexml@annotate@text{#1}{#2}{#3}\fi}
-\def\latexml@annotate@text#1#2#3{}
-\def\latexml@annotate@math#1#2#3{}
+\protected\long\def\latexml@annotate#1#2#3{\ifmmode\latexml@annotate@math{#1}{#2}{#3}\else\latexml@annotate@text{#1}{#2}{#3}\fi}
+\protected\long\def\latexml@annotate@text#1#2#3{}
+\protected\long\def\latexml@annotate@math#1#2#3{}
 \newenvironment{latexml@annotateenv}[2]{}{}
+\protected\long\def\latexml@annotate@invisible#1#2#3{}
 \RequirePackage{xspace}
 \RequirePackage{standalone}
 \RequirePackageWithOptions{stex-metakeys}
@@ -561,7 +562,7 @@
     \ifx\module@narr\@empty%
       \setkeys{module}{narr=\module@ns}%
     \fi%
-  }{
+  }{%
     \if@smsmode%
       \ifx\module@ns\@empty\set@default@ns\fi%
       \ifx\module@narr\@empty%
@@ -579,11 +580,11 @@
   \csgdef{module@names@\module@uri}{}%
   \csgdef{module@imports@\module@uri}{}%
   \csxdef{\module@uri}{\noexpand\@invoke@module{\module@uri}}%
-  \ifcsvoid{stex@module@\module@name}{
+  \ifcsvoid{stex@module@\module@name}{%
     \ex\global\ex\let\csname stex@module@\module@name\ex\endcsname\csname\module@uri\endcsname%
-  }{
-    \ex\edef\csname stex@module@\module@name\endcsname{\detokenize{ambiguous}}
-  }
+  }{%
+    \ex\edef\csname stex@module@\module@name\endcsname{\detokenize{ambiguous}}%
+  }%
   \edef\this@module{%
     \ex\noexpand\csname module@defs@\module@uri\endcsname%
   }%
@@ -600,15 +601,26 @@
   \let\currentmodule@uri\module@uri%
   \stex@debug{^^JNew module: \module@uri^^J}%
   \parsemodule@maybesetcodes%
-  \begin{latexml@module}{\module@uri}%
+  \begin{latexml@annotateenv}{theory}{\module@uri}%
 }{%
-  \end{latexml@module}%
+  \end{latexml@annotateenv}%
   \if@inmhrepos%
   \@inmhreposfalse%
   \addto@thismodulex{\noexpand\mathhub@setcurrentreposinfo{\expandafter\noexpand\csname mh@old@repos@\module@uri\endcsname}}%
   \fi%
 }%
-\newenvironment{latexml@module}[1]{\begin{latexml@annotateenv}{stex:theory}{#1}}{\end{latexml@annotateenv}}
+\newenvironment{@structural@feature}[2]{%
+  \ifcsvoid{currentmodule@uri}{%
+    \set@default@ns\let\currentmodule@ns\module@ns%
+    \set@next@moduleid\let\currentmodule@name\module@name%
+  }{}%
+  \edef\currentmodule@name{\currentmodule@name\@Slash#2}%
+  \edef\currentmodule@uri{\currentmodule@ns\@QuestionMark\currentmodule@name}%
+  \parsemodule@maybesetcodes%
+  \begin{latexml@annotateenv}{feature:#1}{\currentmodule@uri}%
+}{%
+  \end{latexml@annotateenv}%
+}%
 \def\@URI{uri} % TODO check this
 \def\@invoke@module#1#2{%
   \ifx\@URI#2%
@@ -644,6 +656,7 @@
 \parsemodule@allowenv{mhmodsig}
 \parsemodule@allowenv{mhmodnl}
 \parsemodule@allowenv{modnl}
+\parsemodule@allowenv{@structural@feature}
 \parsemodule@allow{symvariant}
 \parsemodule@allow{symi}
 \parsemodule@allow{symii}
@@ -950,7 +963,7 @@
   }%
 }
 \newif\if@inimport\@inimportfalse
-\def\latexml@import#1{\latexml@annotate{stex:import}{#1}{\ }}%
+\def\latexml@import#1{\latexml@annotate@invisible{import}{#1}{\ }}%
 \def\activate@defs#1{%
   \stex@debug{Activating import #1}%
   \if@inimport\else%
@@ -1046,7 +1059,11 @@
       }%
     }%
     \define@in@module\symdecl@uri{\noexpand\@invoke@symbol{\symdecl@uri}}%
-    \define@in@module{#2}{\noexpand\@invoke@symbol{\symdecl@uri}}%
+    \IfStrEq\symdecl@local{false}{%
+      \define@in@module{#2}{\noexpand\@invoke@symbol{\symdecl@uri}}%
+    }{%
+      \csdef{#2}{\noexpand\@invoke@symbol{\symdecl@uri}}%
+    }%
   }{%
     \PackageError{stex}{\detokenize{\symdecl} not in a module}{You need to be in a module%
     in order to declare a new symbol}
@@ -1054,7 +1071,7 @@
   \if@inimport\else\latexml@symdecl\symdecl@uri{$\symdecl@type$}\fi%
   \if@insymdef@\else\parsemodule@maybesetcodes\fi%
 }
-\def\latexml@symdecl#1{\latexml@annotate{stex:symdecl}{#1}{\ }}
+\def\latexml@symdecl#1{\latexml@annotate@invisible{symdecl}{#1}{\ }}
 \edef\stex@ambiguous{\detokenize{ambiguous}}
 \edef\stex@macrostring{\detokenize{macro:->\@invoke@symbol}}
 \def\modules@getURIfromName#1{%
@@ -1350,7 +1367,7 @@
     \notation@simulate@arguments%
   \fi%
 }
-\def\latexml@notation#1#2#3#4#5{\latexml@annotate{stex:notation}{#1}{%
+\def\latexml@notation#1#2#3#4#5{\latexml@annotate@invisible{notation}{#1}{%
   \latexml@annotate{fragment}{#2}{\ }%
   \latexml@annotate{arity}{#3}{\ }%
   \latexml@annotate{precedence}{#4}{\ }%
@@ -1414,7 +1431,7 @@
 }
 
 \def\latexml@oms#1#2{%
-  \if@latexml\latexml@annotate{stex:OMS}{#1}{#2}\else#2\fi%
+  \if@latexml\latexml@annotate{OMS}{#1}{#2}\else#2\fi%
 }
 
 \protected\def\stex@oma#1#2#3{%
@@ -1428,7 +1445,7 @@
 }
 
 \def\latexml@oma#1#2{%
-  \if@latexml\latexml@annotate{stex:OMA}{#1}{#2}\else#2\fi%
+  \if@latexml\latexml@annotate{OMA}{#1}{#2}\else#2\fi%
 }
 
 \def\notation@symprec#1#2{%
@@ -1453,7 +1470,7 @@
 }
 
 \def\latexml@arg#1#2{%
-  \if@latexml\latexml@annotate{stex:arg}{#1}{#2}\else#2\fi%
+  \if@latexml\latexml@annotate{arg}{#1}{#2}\else#2\fi%
 }
 
 \def\notation@argprec#1#2{%
