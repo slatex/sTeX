@@ -2,7 +2,268 @@ use LaTeXML::Package;
 use strict;
 use warnings;
 
+# XSTRING ------------------------------------------------------------------------------------------
+
+
+DefMacro('\IfBeginWith OptionalMatch:* {}{}{}{}', sub {
+    my ($gullet,$star,$stratks,$strbtks,$tcase,$fcase)=@_;
+    my $stra = ToString(Expand($stratks));
+    my $strb = ToString(Expand($strbtks));
+
+    if(substr($stra,0,length($strb)) eq $strb) {
+        return $tcase;
+    } else {
+        return $fcase;
+    }
+});
+
+DefMacro('\IfEndWith OptionalMatch:* {}{}{}{}', sub {
+    my ($gullet,$star,$stratks,$strbtks,$tcase,$fcase)=@_;
+    my $stra = ToString(Expand($stratks));
+    my $strb = ToString(Expand($strbtks));
+
+#    print("\nEndWith Input: \"".$stra."\" and \"".$strb."\" ");
+
+    if(substr($stra,length($stra)-length($strb)) eq $strb) {
+#        print("true\n");
+        return $tcase;
+    } else {
+#        print("false\n");
+        return $fcase;
+    }
+});
+
+DefMacro('\IfSubStr OptionalMatch:* {}{}{}{}', sub {
+    my ($gullet,$star,$stratks,$strbtks,$tcase,$fcase)=@_;
+    my $stra = ToString(Expand($stratks));
+    my $strb = ToString(Expand($strbtks));
+
+    if(index($stra,$strb) != -1) {
+        return $tcase;
+    } else {
+        return $fcase;
+    }
+});
+
+DefMacro('\IfStrEq OptionalMatch:* {}{}{}{}', sub {
+    my ($gullet,$star,$stratks,$strbtks,$tcase,$fcase)=@_;
+    my $stra = ToString(Expand($stratks));
+    my $strb = ToString(Expand($strbtks));
+
+    if($stra eq $strb) {
+        return $tcase;
+    } else {
+        return $fcase;
+    }
+});
+
+sub is_integer {
+    defined $_[0] && $_[0] =~ /^[+-]?\d+$/;
+}
+
+sub is_float {
+    defined $_[0] && $_[0] =~ /^[+-]?(?!\.(?!\d)|$)\d*(?:\.\d*)?$/;
+}
+
+DefMacro('\IfInteger {}{}{}', sub {
+    my ($gullet,$strtks,$tcase,$fcase)=@_;
+    my $stra = ToString(Expand($strtks));
+
+    if(is_integer($stra)) {
+        return $tcase;
+    } else {
+        return $fcase;
+    }
+});
+
+DefMacro('\IfDecimal {}{}{}', sub {
+    my ($gullet,$strtks,$tcase,$fcase)=@_;
+    my $stra = ToString(Expand($strtks));
+
+    if(is_float($stra)) {
+        my @ls = split(quotemeta('.'),$stra);
+        my $int = $ls[0];
+        my $dec = $ls[1];
+        my @reti = (T_CS('\def'),T_CS('\integerpart'),T_BEGIN,Explode($int),T_END);
+        my @retdec = (T_CS('\def'),T_CS('\decimalpart'),T_BEGIN,Explode($dec),T_END);
+        return (@reti,@retdec,$tcase);
+    } else {
+        if (is_integer($stra)) {
+            my @reta = (T_CS('\def'),T_CS('\@xs@afterdecimal'),T_BEGIN,Explode('X'),T_END);
+            my @retb = (T_CS('\def'),T_CS('\afterdecimal'),T_BEGIN,Explode('X'),T_END);
+            return (@reta,@retb,$fcase);
+        } else {
+            # TODO
+            my @reta = (T_CS('\def'),T_CS('\@xs@afterdecimal'),T_BEGIN,Explode(''),T_END);
+            my @retb = (T_CS('\def'),T_CS('\afterdecimal'),T_BEGIN,Explode(''),T_END);
+            return (@reta,@retb,$fcase);
+        };
+    }
+});
+
+DefMacro('\StrBefore OptionalMatch:* []{}{}[]', sub{
+    my ($gullet,$star,$num,$stratks,$strbtks,$macro)=@_;
+    my $stra = ToString(Expand($stratks));
+    my $strb = ToString(Expand($strbtks));
+
+    if(defined $num) {$num = ToString(Expand($num))-1;} else {$num = 0;}
+
+    my $first = join $strb,(split(quotemeta($strb),$stra))[0..$num];
+
+    if($first eq $stra) {$first = "";}
+
+#   print("\nStrBefore Input: \"".$stra."\" and \"".$strb."\" - ".ToString($macro)."\nOutput: \"".$first."\"\n");
+
+    if(defined $macro) {
+        (T_CS('\def'),$macro,T_BEGIN,Explode($first),T_END);
+    } else {Explode($first);}
+});
+
+DefMacro('\StrBehind OptionalMatch:* []{}{}[]', sub{
+    my ($gullet,$star,$num,$stratks,$strbtks,$macro)=@_;
+    my $stra = ToString(Expand($stratks));
+    my $strb = ToString(Expand($strbtks));
+
+    if(defined $num) {$num = ToString(Expand($num))-1;} else {$num = 0;}
+
+    #print STDERR "\nStrBehind num: ".$num."\n";
+
+    my $first = join $strb,(split(quotemeta($strb),$stra))[0..$num];
+    my $last = substr($stra,length($first)+length($strb));
+
+   #print STDERR "\nStrBehind Input: \"".$stra."\" and \"".$strb."\" - ".ToString($macro)."\nOutput: \"".$last."\"\n";
+
+    if(defined $macro) {
+        (T_CS('\def'),$macro,T_BEGIN,Explode($last),T_END);
+    } else {Explode($last);}
+});
+
+
+DefMacro('\StrCut OptionalMatch:* []{}{}{}{}', sub {
+    my ($gullet,$star,$num,$stratks,$strbtks,$macroa,$macrob)=@_;
+    my $stra = ToString(Expand($stratks));
+    my $strb = ToString(Expand($strbtks));
+
+
+    if(defined $num) {$num = ToString(Expand($num))-1;} else {$num = 0;}
+
+    my $first = join $strb,(split(quotemeta($strb),$stra))[0..$num];
+
+    my $last = "";
+
+    if ($first eq $stra) {} else {
+        $last = substr($stra,length($first)+length($strb));
+    }
+
+
+   # print("\nStrCut Input: \"".$stra."\" and \"".$strb."\" - ".ToString($macroa)." ".ToString($macrob)."\nOutput: \"".$first."\" and \"".$last."\"\n");
+
+    (
+        T_CS('\def'),$macroa,T_BEGIN,Explode($first),T_END,
+        T_CS('\def'),$macrob,T_BEGIN,Explode($last),T_END,
+    );
+
+});
+
+DefMacro('\StrGobbleLeft {}{}[]', sub {
+    my ($gullet,$stratks,$num,$macro)=@_;
+    my $stra = ToString(Expand($stratks));
+    $num = ToString(Expand($num));
+
+    if ($num >= length($stra)) {$stra="";} else
+        {$stra = substr($stra,$num);}
+
+    if(defined $macro) {
+        (T_CS('\def'),$macro,T_BEGIN,Explode($stra),T_END);
+    } else {Explode($stra);}
+});
+
+DefMacro('\StrGobbleRight {}{}[]', sub {
+    my ($gullet,$stratks,$num,$macro)=@_;
+    my $stra = ToString(Expand($stratks));
+    $num = ToString(Expand($num));
+
+    $stra = substr($stra,0,length($stra)-$num);
+
+    if(defined $macro) {
+        (T_CS('\def'),$macro,T_BEGIN,Explode($stra),T_END);
+    } else {Explode($stra);}
+});
+
+DefMacro('\StrMid{}{}{}[]', sub {
+    my ($gullet,$strtks,$numa,$numb,$macro)=@_;
+    my $stra = ToString(Expand($strtks));
+    $numa = ToString(Expand($numa))-1;
+    $numb = ToString(Expand($numb)) - $numa - 1;
+
+    my $strb = substr($stra,$numa,$numb);
+
+    # print STDERR "\nStrMid: \"".$stra."\": ".$numa." and ".$numb."\nReturn: ".$strb."\n";
+
+    if(defined $macro) {
+        (T_CS('\def'),$macro,T_BEGIN,Explode($strb),T_END);
+    } else {Explode($strb);}
+});
+
+DefMacro('\StrChar OptionalMatch:* {}{}[]', sub {
+    my ($gullet,$star,$strtks,$num,$macro)=@_;
+    my $stra = ToString(Expand($strtks));
+    $num = ToString(Expand($num)) - 1;
+
+    # print STDERR "\nStrChar: \"".$stra."\" and ".$num."\nReturn: ".substr($stra,$num,1)."\n";
+
+    if(defined $macro) {
+        (T_CS('\def'),$macro,T_BEGIN,Explode(substr($stra,$num,1)),T_END);
+    } else {Explode(substr($stra,$num,1));}
+});
+
+DefMacro('\StrCount {}{}[]', sub {
+    my ($gullet,$stratks,$strbtks,$macro)=@_;
+    my $stra = ToString(Expand($stratks));
+    my $strb = quotemeta(ToString(Expand($strbtks)));
+
+    #print STDERR "\nStrCount Input: \"".$stra."\" and \"".$strb."\" - ".ToString($macro);
+
+    my $count = () = $stra =~ /$strb/g;
+
+    #print STDERR "\nOutput: ".$count;
+
+    if(defined $macro) {
+        (T_CS('\def'),$macro,T_BEGIN,Explode($count),T_END);
+    } else {Explode($count);}
+});
+
+DefMacro('\StrLen {}[]', sub {
+    my ($gullet,$strtks,$macro)=@_;
+    my $stra = ToString(Expand($strtks));
+
+   #print STDERR "\nStrCount Input: \"".$stra."\" and \"".$strb."\" - ".ToString($macro)."\nOutput: ".$count;
+
+    if(defined $macro) {
+        (T_CS('\def'),$macro,T_BEGIN,Explode(length($stra)),T_END);
+    } else {Explode(length($stra));}
+});
+
+DefMacro('\StrPosition []{}{}[]', sub {
+    my ($gullet,$num,$stratks,$strbtks,$macro)=@_;
+    my $stra = ToString(Expand($stratks));
+    my $strb = ToString(Expand($strbtks));
+    if (defined $num) {$num = ToString(Expand($num))-1;} else {$num = 0;}
+
+    my $first = join $strb,(split(quotemeta($strb),$stra))[0..$num];
+
+
+    if(defined $macro) {
+        (T_CS('\def'),$macro,T_BEGIN,Explode(length($stra)+1),T_END);
+    } else {Explode(length($stra)+1);}
+});
+
+# STEX --------------------------------------------------------------------------------------------------------------------------
+
+
 RawTeX('\newif\if@latexml\@latexmltrue');
+
+DefMacro('\surroundwithmdframed',sub {}, locked => 1);
 
 DefMacro('\@kpsewhich{}{}', sub {
     my($gullet,$arga,$argb)=@_;
@@ -71,7 +332,7 @@ DefConstructor('\latexml@annotate@text{}{}{}',
 );
 
 DefConstructor('\latexml@annotate@math{}{}{}', 
-    '<ltx:XMApp class="stex:#1_#2">#3</ltx:XMApp>',
+    '<ltx:XMApp class="stex:#1_#2">#3<ltx:XMArg/></ltx:XMApp>',
 locked => 1);
 
 DefEnvironment('{latexml@annotateenv}{}{}',

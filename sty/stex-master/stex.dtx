@@ -17,7 +17,7 @@
 \documentclass{ltxdoc}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
-\usepackage[showmods]{stex}
+\usepackage[showmods,debug]{stex}
 \usepackage{url,array,float,textcomp}
 \usepackage[show]{ed}
 \usepackage[hyperref=auto,style=alphabetic]{biblatex}
@@ -76,7 +76,7 @@
 % \newcount\test@counter\test@counter=0
 % \def\testwriteI@#1{\ex\gdef\ex\test@content\ex{\detokenize{#1}}\immediate\write\testoutfile{^^J\detokenize{\advance\test@counter by 1\begingroup\paragraph{Test \the\test@counter:}}^^J}\ex\immediate\ex\write\ex\testoutfile\ex{\test@content}\immediate\write\testoutfile{^^J\endgroup^^J}\endgroup\@test}
 % \newwrite\testoutfile\immediate\openout\testoutfile=alltests.tex
-% \testwrite{\documentclass{article}^^J\usepackage{stex}^^J\begin{document}\makeatletter^^J}
+% \testwrite{\documentclass{article}^^J\usepackage[showmods]{stex}^^J\begin{document}\makeatletter^^J}
 % \testwrite{\newcount\test@counter\test@counter=0}
 % \def\test{\begingroup\makeatletter\testwriteI}
 % \long\def\@test{\global\advance\test@counter by 1\paragraph{\textcolor{blue}{Test \the\test@counter:}}\textcolor{blue}{\ex\scantokens\ex{\test@content}}\endgroup}
@@ -110,7 +110,9 @@
 % \section{Implementation}\label{sec:impl}
 %    \begin{macrocode}
 %<*cls>
-\LoadClass{standalone}
+\LoadClass[border=1px,varwidth]{standalone}
+\setlength\textwidth{15cm}
+\g@addto@macro{\@parboxrestore}{\setlength\parskip{\baselineskip}}
 \RequirePackage{stex}
 %</cls>
 %<*package>
@@ -138,7 +140,10 @@
 % |property| and |resource| attributes respectively, and the third argument as content. In math mode, the first two arguments are
 % instead used as the |class| attribute, separated by an underscore.
 %    \begin{macrocode}
-\protected\long\def\latexml@annotate#1#2#3{\ifmmode\latexml@annotate@math{#1}{#2}{#3}\else\latexml@annotate@text{#1}{#2}{#3}\fi}
+\protected\long\def\latexml@annotate#1#2#3{%
+  \def\latexml@annotate@bodyarg{#3}%
+  \if@latexml\ifmmode\latexml@annotate@math{#1}{#2}{\ifx\latexml@annotate@bodyarg\@empty\ \else#3\fi}\else\latexml@annotate@text{#1}{#2}{#3}\fi\else#3\fi%
+}
 \protected\long\def\latexml@annotate@text#1#2#3{}
 \protected\long\def\latexml@annotate@math#1#2#3{}
 \newenvironment{latexml@annotateenv}[2]{}{}
@@ -149,7 +154,7 @@
 \RequirePackage{xspace}
 \RequirePackage{standalone}
 \RequirePackageWithOptions{stex-metakeys}
-\RequirePackage{xstring}
+\if@latexml\else\RequirePackage{xstring}\fi
 \RequirePackage{etoolbox}
 %    \end{macrocode}
 %
@@ -1046,13 +1051,25 @@
     \set@default@ns\let\currentmodule@ns\module@ns%
     \set@next@moduleid\let\currentmodule@name\module@name%
   }{}%
-  \edef\currentmodule@name{\currentmodule@name\@Slash#2}%
+  \edef\currentmodule@name{\currentmodule@name\@Slash#2\_feature}%
+  \parsemodule@maybesetcodes%
+  \begin{latexml@annotateenv}{feature:#1}{\currentmodule@uri\QuestionMark#2}%
   \edef\currentmodule@uri{\currentmodule@ns\@QuestionMark\currentmodule@name}%
   \parsemodule@maybesetcodes%
-  \begin{latexml@annotateenv}{feature:#1}{\currentmodule@uri}%
 }{%
   \end{latexml@annotateenv}%
 }%
+\newcommand\structural@feature[3]{\begingroup%
+  \ifcsvoid{currentmodule@uri}{%
+    \set@default@ns\let\currentmodule@ns\module@ns%
+    \set@next@moduleid\let\currentmodule@name\module@name%
+  }{}%
+  \edef\currentmodule@name{\currentmodule@name\@Slash#2\_feature}%
+  \parsemodule@maybesetcodes%
+  \latexml@annotate{feature:#1}{\currentmodule@uri\QuestionMark#2}{%
+  \edef\currentmodule@uri{\currentmodule@ns\@QuestionMark\currentmodule@name}%
+  #3}%
+\endgroup}
 %    \end{macrocode}
 % \test{
 %    \begin{module}[name=Foo]
@@ -1171,6 +1188,7 @@
 \parsemodule@allowenv{modnl}
 \parsemodule@allowenv{@structural@feature}
 \parsemodule@allow{symvariant}
+\parsemodule@allow{structural@feature}
 \parsemodule@allow{symi}
 \parsemodule@allow{symii}
 \parsemodule@allow{symiii}
@@ -1664,6 +1682,7 @@
   \edef\this@module{%
     \expandafter\noexpand\csname module@defs@\module@uri\endcsname%
   }%
+  \latexml@annotate@invisible{namespace}{\module@ns\@Slash\module@name}{}%
   \csdef{module@defs@\module@uri}{}%
   \ifcsvoid{mh@currentrepos}{}{%
     \@inmhrepostrue%
@@ -1683,7 +1702,7 @@
 %   directly afterwards to prohibit further activations.
 %    \begin{macrocode}
 \newif\if@inimport\@inimportfalse
-\def\latexml@import#1{\latexml@annotate@invisible{import}{#1}{\ }}%
+\def\latexml@import#1{\latexml@annotate@invisible{import}{#1}{}}%
 \def\activate@defs#1{%
   \stex@debug{Activating import #1}%
   \if@inimport\else%
@@ -1828,7 +1847,7 @@
     }%
     \ifcsvoid{symdecl@args}{\csgdef{\symdecl@uri\@QuestionMark args}{}}{%
       \IfInteger\symdecl@args{\notation@num@to@ia@\symdecl@args\csxdef{\symdecl@uri\@QuestionMark args}{\notation@curr@args}}{%
-        \ex\globale\ex\let\csname\symdecl@uri\@QuestionMark args\endcsname\symdecl@args%
+        \ex\global\ex\let\csname\symdecl@uri\@QuestionMark args\endcsname\symdecl@args%
       }%
     }%
     \expandafter\g@addto@macro@safe\csname module@defs@\module@uri%
@@ -1856,10 +1875,15 @@
     \PackageError{stex}{\detokenize{\symdecl} not in a module}{You need to be in a module%
     in order to declare a new symbol}
   }%
-  \if@inimport\else\latexml@symdecl\symdecl@uri{$\symdecl@type$}\fi%
+  \if@inimport\else\if@inabbrdef\else\latexml@symdecl\symdecl@uri{$\symdecl@type$}{\csname\symdecl@uri\@QuestionMark args\endcsname}{}{#2}\fi\fi%
   \if@insymdef@\else\parsemodule@maybesetcodes\fi%
 }
-\def\latexml@symdecl#1{\latexml@annotate@invisible{symdecl}{#1}{\ }}
+\def\latexml@symdecl#1#2#3#4#5{\latexml@annotate@invisible{symdecl}{#1}{%
+  \latexml@annotate{type}{}{#2}%
+  \latexml@annotate{args}{#3}{}%
+  \latexml@annotate{definiens}{}{#4}%
+  \latexml@annotate{macroname}{#2}{}%
+}}
 %    \end{macrocode}
 % \test{
 %  \begin{module}[name=foo]
@@ -1875,59 +1899,59 @@
 % This macro searches for the full URI given a symbol name
 % and stores it in |\notation@uri|. Used by e.g. |\notation[...]{foo}{...}| to
 % figure out what symbol |foo| refers to:
-%    \begin{macrocode}
+%    \begin{macrocode} % TODO make this work with actual macros (it doesn't)
 \edef\stex@ambiguous{\detokenize{ambiguous}}
 \edef\stex@macrostring{\detokenize{macro:->\@invoke@symbol}}
 \def\modules@getURIfromName#1{%
   \def\notation@uri{}%
   \edef\modules@getURI@name{#1}%
-  \ifcsvoid{\modules@getURI@name}{
-    \edef\modules@temp@meaning{}
-  }{
-    \edef\modules@temp@meaning{\expandafter\meaning\csname\modules@getURI@name\endcsname}
-  }
-  \IfBeginWith\modules@temp@meaning\stex@macrostring{
+  \ifcsvoid{\modules@getURI@name}{%
+    \edef\modules@temp@meaning{}%
+  }{%
+    \edef\modules@temp@meaning{\ex\meaning\csname\modules@getURI@name\endcsname}%
+  }%
+  \IfBeginWith\modules@temp@meaning\stex@macrostring{%
     % is a \@invoke@symbol macro
-    \StrPosition\modules@temp@meaning\@close@brace[\stex@tempnum]
-    \StrMid\modules@temp@meaning{26}{\the\numexpr\stex@tempnum-1\@Space}[\notation@uri]
-  }{
+    \StrPosition\modules@temp@meaning\@close@brace[\stex@tempnum]%
+    \StrMid\modules@temp@meaning{26}{\the\numexpr\stex@tempnum-1\@Space}[\notation@uri]%
+  }{%
     % Check whether full URI or module?symbol or just name
-    \StrCount\modules@getURI@name\@QuestionMark[\isuri@number]
-    \ifnum\isuri@number=2
-      \edef\notation@uri{\modules@getURI@name}
-    \else
-      \ifnum\isuri@number=1
+    \StrCount\modules@getURI@name\@QuestionMark[\isuri@number]%
+    \ifnum\isuri@number=2%
+      \edef\notation@uri{\modules@getURI@name}%
+    \else%
+      \ifnum\isuri@number=1%
         % module?name
-        \StrCut\modules@getURI@name\@QuestionMark\isuri@mod\isuri@name
-        \ifcsvoid{stex@module@\isuri@mod}{
-          \PackageError{stex}{No module with name \isuri@mod\@Space loaded}{}
-        }{
-          \expandafter\ifx\csname stex@module@\isuri@mod\endcsname\stex@ambiguous
-            \PackageError{stex}{Module name \isuri@mod\@Space is ambiguous}{}
-          \else
-            \edef\notation@uri{\csname stex@module@\isuri@mod\endcsname\@URI\@QuestionMark\isuri@name}
-          \fi
-        }
-      \else
+        \StrCut\modules@getURI@name\@QuestionMark\isuri@mod\isuri@name%
+        \ifcsvoid{stex@module@\isuri@mod}{%
+          \PackageError{stex}{No module with name \isuri@mod\@Space loaded}{}%
+        }{%
+          \expandafter\ifx\csname stex@module@\isuri@mod\endcsname\stex@ambiguous%
+            \PackageError{stex}{Module name \isuri@mod\@Space is ambiguous}{}%
+          \else%
+            \edef\notation@uri{\csname stex@module@\isuri@mod\endcsname\@URI\@QuestionMark\isuri@name}%
+          \fi%
+        }%
+      \else%
         %name
-        \ifcsvoid{stex@symbol@\modules@getURI@name}{
-          \PackageError{stex}{No symbol with name \modules@getURI@name\@Space known}{}
-        }{
-         \ifcsvoid{\module@uri\@QuestionMark\modules@getURI@name}{
-           \expandafter\ifx\csname stex@symbol@\modules@getURI@name\endcsname\stex@ambiguous
+        \ifcsvoid{stex@symbol@\modules@getURI@name}{%
+          \PackageError{stex}{No symbol with name \modules@getURI@name\@Space known}{}%
+        }{%
+         \ifcsvoid{\module@uri\@QuestionMark\modules@getURI@name}{%
+           \expandafter\ifx\csname stex@symbol@\modules@getURI@name\endcsname\stex@ambiguous%
              % Symbol name ambiguous and not in current module
              \PackageError{stex}{Symbol name, URI or macroname \detokenize{#1} found!}{}%
-           \else
+           \else%
              % Symbol not in current module, but unambiguous
-             \edef\notation@uri{\csname stex@symbol@\modules@getURI@name\endcsname}
-           \fi
-          }{ % Symbol in current module
-            \edef\notation@uri{\module@uri\@QuestionMark\modules@getURI@name}
-          }
-        }
-      \fi
-    \fi
-  }
+             \edef\notation@uri{\csname stex@symbol@\modules@getURI@name\endcsname}%
+           \fi%
+          }{% Symbol in current module
+            \edef\notation@uri{\module@uri\@QuestionMark\modules@getURI@name}%
+          }%
+        }%
+      \fi%
+    \fi%
+  }%
 }
 %    \end{macrocode}
 % \end{macro}
@@ -1936,29 +1960,14 @@
 %
 % Adds a new notation to a symbol |foo|, as in:
 % |\notation[lang=en,arity=0,variant=op]{foo}{...}|
-% |\notation[variant=bar]{foo}[2]{...}|
-% |\notation[args=aia,prec=500;50x49x51]{foo}{#1 bla #2 bla #3}{arg1}{arg3}|
+% |\notation[variant=bar]{foo}{...}|
+% |\notation[prec=500;50x49x51]{foo}{#1 bla #2 bla #3}{arg1}{arg3}|
 %
 % the actual notation is ultimately stored in |\|\meta{uri}|#|\meta{variant},
 % where \meta{variant} contains |arity|,|lang| and |variant| in that order.
 %
 %    \begin{macrocode}
 \newif\if@innotation\@innotationfalse
-%    \end{macrocode}
-% First, we eat the optional arguments in two separate macros and pass them on:
-%    \begin{macrocode}
-\providerobustcmd\notation[2][]{%
-  \edef\notation@first{#1}%
-  \edef\notation@second{#2}%
-  \notation@%
-}
-
-\newcommand\notation@[2][0]{%
-  \edef\notation@donext{\noexpand\notation@@[\notation@first]%
-    {\notation@second}[#1]}%
-  \notation@donext{#2}%
-}
-
 %    \end{macrocode}
 % The next method actually parses the optional arguments and stores them
 % in helper macros. This method will also be used later in symbol
@@ -2038,20 +2047,18 @@
   \fi%
 }
 
-%    \end{macrocode}
-%
-%    \begin{macrocode}
-
 \newcount\notation@argument@counter
 
 % parses the notation arguments and wraps them in 
 % \notation@assoc and \notation@argprec for flexary arguments and precedences
-\def\notation@@[#1]#2[#3]#4{%
+\providerobustcmd\notation[3][]{%
   \modules@getURIfromName{#2}%
-  \notation@parse@params{#1}{#3}%
-  \let\notation@curr@todo@args\notation@curr@args%
+  \notation@parse@params{#1}{}%
   \def\notation@temp@notation{}%
-  \ex\renewcommand\ex\notation@temp@notation\ex[\notation@curr@arity]{#4}%
+  \ex\let\ex\notation@curr@args\csname\notation@uri\@QuestionMark args\endcsname%
+  \let\notation@curr@todo@args\notation@curr@args%
+  \StrLen\notation@curr@todo@args[\notation@curr@arity]%
+  \ex\renewcommand\ex\notation@temp@notation\ex[\notation@curr@arity]{#3}%
   % precedence
   \let\notation@curr@precstring\notation@curr@precs%
   \IfSubStr\notation@curr@precs;{%
@@ -2076,6 +2083,8 @@
 }
 
 \edef\notation@ichar{\detokenize{i}}%
+\edef\notation@achar{\detokenize{a}}%
+\edef\notation@bchar{\detokenize{b}}%
 
 % parses additional notation components for (associative) arguments
 \def\notation@do@args{%
@@ -2100,21 +2109,32 @@
     \ifx\notation@argchar\notation@ichar%
       % normal argument
       \edef\notation@nextarg@temp{%
-        {\stex@arg{\the\notation@argument@counter}{\notation@curr@argprec}{################\the\notation@argument@counter}}%
+        {\stex@arg{\the\notation@argument@counter}{\notation@curr@argprec}{########\the\notation@argument@counter}}%
       }%
       \ex\g@addto@macro@safe\ex\notation@curr@extargs%
         \ex{\notation@nextarg@temp}%
       \ex\ex\ex\notation@do@args%
-    \else%
-      % associative argument
-      \ex\ex\ex\notation@parse@assocarg%
+    \else\ifx\notation@argchar\notation@bchar%
+        % bound argument
+        \edef\notation@nextarg@temp{%
+          {\stex@arg{\the\notation@argument@counter}{\notation@curr@argprec}{########\the\notation@argument@counter}}%
+        }%
+        \ex\g@addto@macro@safe\ex\notation@curr@extargs%
+          \ex{\notation@nextarg@temp}%
+        \ex\ex\ex\ex\ex\ex\ex\notation@do@args%
+      \else%
+        % associative argument
+        \ex\ex\ex\ex\ex\ex\ex\notation@parse@assocarg%
+      \fi%
     \fi%
   \fi%
 }
 
 \def\notation@parse@assocarg#1{%
+  \def\notation@parse@assocop{#1}%
   \edef\notation@nextarg@temp{%
-    {\stex@arg{\the\notation@argument@counter}{\notation@curr@argprec}{\notation@assoc{#1}{################\the\notation@argument@counter}}}%
+    {\stex@arg{\the\notation@argument@counter}{\notation@curr@argprec}{\notation@assoc{\ex\unexpanded\ex{\notation@parse@assocop}}%
+      {########\the\notation@argument@counter}}}%
   }%
   \ex\g@addto@macro@safe\ex\notation@curr@extargs\ex{\notation@nextarg@temp}%
   \notation@do@args%
@@ -2153,11 +2173,15 @@
   \fi%
   \ex\ex\ex\def\ex\ex\ex\notation@temp@notation\ex\ex\ex%
     {\ex\notation@temp@notation\notation@curr@extargs}%
-  \ifnum\notation@curr@arity=0
-    \edef\notation@temp@notation{\stex@oms{\notation@uri\@Fragment\notation@temp@fragment}{\notation@curr@prec}{\notation@temp@notation}}%
-  \else
-    \edef\notation@temp@notation{\stex@oma{\notation@uri\@Fragment\notation@temp@fragment}{\notation@curr@prec}{\notation@temp@notation}}%
-  \fi
+  \ifnum\notation@curr@arity=0%
+    \edef\notation@temp@notation{\stex@dooms{\notation@uri}{\notation@temp@fragment}{\notation@curr@prec}{\ex\unexpanded\ex{\notation@temp@notation}}}%
+  \else%
+    \IfSubStr\notation@curr@args\notation@bchar{%
+      \edef\notation@temp@notation{\stex@doomb{\notation@uri}{\notation@temp@fragment}{\notation@curr@prec}{\ex\unexpanded\ex{\notation@temp@notation}}}%
+    }{%
+      \edef\notation@temp@notation{\stex@dooma{\notation@uri}{\notation@temp@fragment}{\notation@curr@prec}{\ex\unexpanded\ex{\notation@temp@notation}}}%
+    }%
+  \fi%
   \stex@debug{Notation \notation@uri: \meaning\notation@temp@notation}%
   \notation@final%
   \parsemodule@maybesetcodes%
@@ -2196,7 +2220,11 @@
     \IfBeginWith\notation@simarg@args{i}{%
       \edef\notation@simargs{\notation@simargs{\noexpand\textrm{\@Fragment\the\notation@argument@counter}}}%
     }{%
-      \edef\notation@simargs{\notation@simargs{\noexpand\textrm{\@Fragment\@Fragment\the\notation@argument@counter a},\noexpand\textrm{\@Fragment\@Fragment\the\notation@argument@counter b}}}%
+      \IfBeginWith\notation@simarg@args{b}{%
+        \edef\notation@simargs{\notation@simargs{\noexpand\textrm{\@Fragment\the\notation@argument@counter}}}%
+      }{%
+        \edef\notation@simargs{\notation@simargs{\noexpand\textrm{\@Fragment\@Fragment\the\notation@argument@counter a},\noexpand\textrm{\@Fragment\@Fragment\the\notation@argument@counter b}}}%
+      }%
     }%
     \StrGobbleLeft\notation@simarg@args1[\notation@simarg@args]%
     \notation@simulate@arguments%
@@ -2204,10 +2232,10 @@
 }
 % URI, fragment, arity, notation
 \def\latexml@notation#1#2#3#4#5{\latexml@annotate@invisible{notation}{#1}{%
-  \latexml@annotate{fragment}{#2}{\ }%
-  \latexml@annotate{arity}{#3}{\ }%
-  \latexml@annotate{precedence}{#4}{\ }%
-  \latexml@annotate{notation}{}{#5}%
+  \latexml@annotate{notationfragment}{#2}{}%
+  \latexml@annotate{args}{#3}{}%
+  \latexml@annotate{precedence}{#4}{}%
+  \latexml@annotate{notationcomp}{}{#5}%
 }}
 %    \end{macrocode}
 % \end{macro}
@@ -2264,34 +2292,57 @@
   \def\notation@rparen{)}%
 }
 
-\protected\def\stex@oms#1#2#3{%
+\protected\def\stex@dooms#1#2#3#4{%
   \if@innotation%
-    \notation@symprec{#2}{#3}%
+    \notation@symprec{#3}{#4}%
   \else%
    \@innotationtrue%
-    \latexml@oms{#1}{\notation@symprec{#2}{#3}}%
+    \latexml@oms{#1}{#2}{\notation@symprec{#3}{#4}}%
     \@innotationfalse%
   \fi%
 }
 
-% for LaTeXML Bindings
-\def\latexml@oms#1#2{%
-  \if@latexml\latexml@annotate{OMS}{#1}{#2}\else#2\fi%
-}
-
-\protected\def\stex@oma#1#2#3{%
+\protected\def\stex@doomb#1#2#3#4{%
   \if@innotation%
-    \notation@symprec{#2}{#3}%
+    \notation@symprec{#3}{#4}%
   \else%
     \@innotationtrue%
-    \latexml@oma{#1}{\notation@symprec{#2}{#3}}%
+    \latexml@ombind{#1}{#2}{\notation@symprec{#3}{#4}}%
+    \@innotationfalse%
+  \fi%
+}
+
+\protected\def\stex@dooma#1#2#3#4{%
+  \if@innotation%
+    \notation@symprec{#3}{#4}%
+  \else%
+    \@innotationtrue%
+    \latexml@oma{#1}{#2}{\notation@symprec{#3}{#4}}%
     \@innotationfalse%
   \fi%
 }
 
 % for LaTeXML Bindings
-\def\latexml@oma#1#2{%
-  \if@latexml\latexml@annotate{OMA}{#1}{#2}\else#2\fi%
+\protected\def\latexml@oms#1#2#3{%
+  \latexml@annotate{OMID}{#1\@Fragment#2}{#3}%
+}
+
+\protected\def\latexml@oma#1#2#3{%
+  \edef\latexml@oma@uri{%
+    \ifcsname#1\@QuestionMark args\endcsname%
+      #1\@Fragment\csname#1\@QuestionMark args\endcsname\@Fragment#2%
+    \else#1\@Fragment\@Fragment#2\fi%
+    }%
+  \latexml@annotate{OMA}{\latexml@oma@uri}{#3}%
+}
+
+\protected\def\latexml@ombind#1#2#3{%
+  \edef\latexml@oma@uri{%
+    \ifcsname#1\@QuestionMark args\endcsname%
+      #1\@Fragment\csname#1\@QuestionMark args\endcsname\@Fragment#2%
+    \else#1\@Fragment\@Fragment#2\fi%
+  }%
+  \latexml@annotate{OMBIND}{\latexml@oma@uri}{#3}%
 }
 
 \def\notation@symprec#1#2{%
@@ -2318,31 +2369,42 @@
 
 % for LaTeXML Bindings
 \def\latexml@arg#1#2{%
-  \if@latexml\latexml@annotate{arg}{#1}{#2}\else#2\fi%
+  \latexml@annotate{arg}{#1}{#2}%
 }
 
 \def\notation@argprec#1#2{%
   \def\notation@innertmp{#2}
   \edef\notation@downprec@temp{\number#1}%
-  \notation@downprec=\expandafter\notation@downprec@temp%
-  \expandafter\relax\expandafter\notation@innertmp%
-  \expandafter\notation@downprec\expandafter=\number\notation@downprec\relax%
+  \notation@downprec=\ex\notation@downprec@temp%
+  \ex\relax\ex\notation@innertmp%
+  \ex\notation@downprec\ex=\number\notation@downprec\relax%
 }
+%    \end{macrocode}
+% Macros for introducing |OMS|s and |OMA|s manually
+%    \begin{macrocode}
+\protected\def\stex@oms#1#2{\modules@getURIfromName{#1}\latexml@oms{\notation@uri}{}{#2}}
+\protected\def\stex@oma#1#2{\modules@getURIfromName{#1}\latexml@oma{\notation@uri}{}{#2}}
+\protected\def\stex@ombind#1#2{\modules@getURIfromName{#1}\latexml@ombind{\notation@uri}{}{#2}}
 %    \end{macrocode}
 %
 % \begin{macro}{\@invoke@symbol}
 % after |\symdecl{foo}|, |\foo| expands to |\@invoke@symbol{<uri>}|:
 %    \begin{macrocode}
 \protected\def\@invoke@symbol#1{%
-  \def\@invoke@symbol@first{#1}%
-  \symbol@args%
+  \ifmmode%
+    \def\@invoke@symbol@first{#1}%
+    \let\invoke@symbol@next\invoke@symbol@math%
+  \else%
+    \def\invoke@symbol@next{\invoke@symbol@text{#1}}%
+  \fi%
+  \invoke@symbol@next%
 }
 %    \end{macrocode}
 %
 % takes care of the optional notation-option-argument, and either invokes |\@invoke@symbol@math| for
 % symbolic presentation or |\@invoke@symbol@text| for verbalization (TODO)
 %    \begin{macrocode}
-\newcommand\symbol@args[1][]{%
+\newcommand\invoke@symbol@math[1][]{%
   \notation@parse@params{#1}{}%
   \def\notation@temp@fragment{}%
   \ifx\notation@curr@arityvar\@empty\else%
@@ -2362,24 +2424,7 @@
       \edef\notation@temp@fragment{\notation@temp@fragment\@Ampersand variant=\notation@curr@variant}%
     \fi%
   \fi%
-  %
-  \ifmmode\def\invoke@symbol@next{\@invoke@symbol@math\@invoke@symbol@first\notation@temp@fragment}%
-  \else\def\invoke@symbol@next{\@invoke@symbol@text\@invoke@symbol@first\notation@temp@fragment}\fi%
-  \invoke@symbol@next%
-}
-%    \end{macrocode}
-%
-% This finally gets called with both uri and notation-option,
-% convenient for e.g. a LaTeXML binding:
-%    \begin{macrocode}
-\def\@invoke@symbol@math#1#2{%
-  \csname #1\@Fragment#2\endcsname%
-}
-%    \end{macrocode}
-%
-% TODO:
-%    \begin{macrocode}
-\def\@invoke@symbol@text#1#2{%
+  \csname\@invoke@symbol@first\@Fragment\notation@temp@fragment\endcsname%
 }
 %    \end{macrocode}
 %
@@ -2405,18 +2450,8 @@
 %\def\mathhub@archive@dir{\@Slash home\@Slash jazzpirate\@Slash work\@Slash LaTeX\@Slash Others\@Slash stextests}
 %\@setcurrentreposinfo
 %\begin{module}[name=FooBar]
-%    \printltx{\symdecl{barbar}} \symdecl{barbar}\\
-%    \printltx{\notation[arity=0]{barbar}{\psi}} \notation[arity=0]{barbar}{\psi}\\
-%    \printltx{\notation[prec=50;\infprec]{barbar}[1]{\barbar[arity=0]\dobrackets{##1}}}
-%    \notation[prec=50;\infprec]{barbar}[1]{\barbar[arity=0]\dobrackets{#1}}\\
-%    \printltx{\notation[arity=0,variant=cap]{barbar}{\Psi}}
-%    \notation[arity=0,variant=cap]{barbar}{\Psi}\\
-%    \printltx{\notation[variant=cap]{barbar}[1]{\barbar[arity=0,variant=cap]\dobrackets{##1}}}
-%    \notation[variant=cap]{barbar}[1]{\barbar[arity=0,variant=cap]\dobrackets{#1}}\\\ \\
-%    \printltx{$\barbar{A}$}: $\barbar{A}$\\
-%    \printltx{$\barbar[variant=cap]{A}$}: $\barbar[variant=cap]{A}$\\\ \\
-%    \printltx{\symdecl{plus}}\symdecl{plus}\\
-%    \printltx{\symdecl{times}}\symdecl{times}\\
+%    \printltx{\symdecl[args=a]{plus}}\symdecl[args=a]{plus}\\
+%    \printltx{\symdecl[args=a]{times}}\symdecl[args=a]{times}\\
 %    \printltx{\symdecl{vara}}\symdecl{vara}\\
 %    \printltx{\symdecl{varb}}\symdecl{varb}\\
 %    \printltx{\symdecl{varc}}\symdecl{varc}\\
@@ -2427,10 +2462,10 @@
 %    \printltx{\notation{varc}{c}}\notation{varc}{c}\\
 %    \printltx{\notation{vard}{d}}\notation{vard}{d}\\
 %    \printltx{\notation{vare}{e}}\notation{vare}{e}\\
-%    \printltx{\notation[prec=500;500,args=a]{plus}{\withbrackets\langle\rangle{##1}}{+}}
-%    \notation[prec=500;500,args=a]{plus}{\withbrackets\langle\rangle{#1}}{+}\\
-%    \printltx{\notation[prec=600;600,args=a]{times}{##1}{\cdot}}
-%    \notation[prec=600;600,args=a]{times}{#1}{\cdot}\\\ \\
+%    \printltx{\notation[prec=500;500]{plus}{\withbrackets\langle\rangle{##1}}{+}}
+%    \notation[prec=500;500]{plus}{\withbrackets\langle\rangle{#1}}{+}\\
+%    \printltx{\notation[prec=600;600]{times}{##1}{\cdot}}
+%    \notation[prec=600;600]{times}{#1}{\cdot}\\\ \\
 %    \printltx{
 %      $\times{\frac\vara\varb,\plus{\frac\vara{\frac\vara\varb},\times{\varc,\plus{\vard,\vare,2}}}}$}:\\
 %    $\times{\frac\vara\varb,\plus{\frac\vara{\frac\vara\varb},\times{\varc,\plus{\vard,\vare,2}}}}$\\\ \\
@@ -2439,6 +2474,186 @@
 %    \[\times{\frac\vara\varb,\plus{\frac\vara{\frac\vara\varb},\times{\varc,\plus{\vard,\vare,2}}}}\]
 %  \end{module}
 %}
+%
+% \begin{macro}{\abbrdef}
+%   The |\abbrdef| macro is a variant of |\symdecl| that does the same on the {\LaTeX}
+%   level, and adds a definiens on the OMDoc level.
+%    \begin{macrocode}
+\newif\if@inabbrdef\@inabbrdeffalse
+\def\abbrdef@definiens{}
+\newcommand\abbrdef[3][]{%
+  \@inabbrdeftrue\symdecl[#1]{#2}%
+  \@inabbrdeffalse%
+  \ex\let\ex\abbrdef@args\csname\symdecl@uri\@QuestionMark args\endcsname%
+  \StrLen\abbrdef@args[\abbrdef@arity]
+  \ex\renewcommand\ex\abbrdef@definiens\ex[\abbrdef@arity]{\unexpanded{#3}}%
+  \if@inimport\else\if@latexml%
+    \let\notation@simarg@args\abbrdef@args%
+    \notation@argument@counter=0%
+    \def\notation@simargs{}%
+    \notation@simulate@arguments%
+    \latexml@symdecl\symdecl@uri{$\symdecl@type$}{\csname\symdecl@uri\@QuestionMark args\endcsname}%
+      {$\ex\abbrdef@definiens\notation@simargs$}{#2}%
+  \fi\fi%
+}
+%    \end{macrocode}
+% \test{
+%   \printltx{\symdecl{foo}}\\
+%   \symdecl{foo}
+%   \printltx{\notation{foo}{\psi}}\\
+%   \notation{foo}{\psi}\\
+%   \printltx{$\foo$}\\
+%   \printltx{\abbrdef{lftype}{\stex@oms{http://cds.omdoc.org/urtheories?Typed?type}{}}}\\
+%   \abbrdef{lftype}{\stex@oms{http://cds.omdoc.org/urtheories?Typed?type}{}}
+%   \printltx{\notation{lftype}{\noexpand\mathtt{type}}}\\
+%   \notation{lftype}{\noexpand\mathtt{type}}
+%   \printltx{$\lftype$}\\
+%   $\lftype$
+%}
+% \end{macro}
+%
+%
+%
+% \subsection{Verbalizations}
+%
+%
+%    \begin{macrocode}
+\newif\if@inoms
+\def\invoke@symbol@text#1{%
+  \edef\invoke@symbol@uri{#1}%
+  \def\invoke@symbol@return{}%
+  \notation@argument@counter=0%
+  \edef\invoke@symbol@arity{\csname #1\@QuestionMark args\endcsname}%
+  \ifx\invoke@symbol@arity\@empty\@inomstrue\else\@inomsfalse\fi%
+  \invoke@symbol@text@args%
+}
+
+\edef\notation@Xchar{\detokenize{X}}%
+
+\protected\def\opref#1{%
+  \modules@getURIfromName{#1}%
+  \let\invoke@symbol@uri\notation@uri%
+  \def\invoke@symbol@return{}%
+  \notation@argument@counter=0%
+  \def\invoke@symbol@arity{}%
+  \@inomstrue%
+  \invoke@symbol@text@args%
+}
+
+\def\invoke@symbol@text@args{%
+  \advance\notation@argument@counter by 1%
+  \edef\notation@charnum{\the\notation@argument@counter}%
+  \StrChar\invoke@symbol@arity{\the\notation@argument@counter}[\invoke@symbol@nextchar]%
+  \ifx\invoke@symbol@nextchar\notation@Xchar%
+    \ex\invoke@symbol@text@args%
+  \else%
+    \ifx\invoke@symbol@nextchar\@empty%
+      \let\invoke@symbol@nextstep\invoke@symbol@text@finally%
+      \ex\ex\ex\invoke@symbol@maybesqbracket%
+    \else%
+      \let\invoke@symbol@nextstep\invoke@symbol@normalarg%
+      \ex\ex\ex\invoke@symbol@maybestarI%
+    \fi%
+  \fi%
+}
+
+\def\invoke@symbol@maybestarI{%
+  \@ifnextchar*{%
+    \@ifnextchar[{%
+      \invoke@symbol@switchnum%
+    }{%
+      \invoke@symbol@invisible%
+    }%
+  }{%
+    \invoke@symbol@maybesqbracket%
+  }%
+}
+
+\def\invoke@symbol@maybesqbracket{%
+  \@ifnextchar[{\invoke@symbol@verbcomp}{\invoke@symbol@nextstep}%
+}
+
+\def\invoke@symbol@verbcomp[#1]{%
+  \ex\def\ex\invoke@symbol@return\ex{\invoke@symbol@return #1}%
+  \invoke@symbol@nextstep%
+}
+
+\def\invoke@symbol@invisible*#1{% TODO a-args
+  \edef\invoke@symbol@frame{\noexpand\latexml@annotate@invisible{arg}{\notation@charnum}}%
+  \ex\ex\ex\def\ex\ex\ex\invoke@symbol@return\ex\ex\ex{\ex\invoke@symbol@return\invoke@symbol@frame{#1}}%
+  \invoke@symbol@text@args%
+}
+
+\def\invoke@symbol@normalarg#1{% TODO a-args
+  \edef\invoke@symbol@frame{\noexpand\latexml@annotate{arg}{\notation@charnum}}%
+  \ex\ex\ex\def\ex\ex\ex\invoke@symbol@return\ex\ex\ex{\ex\invoke@symbol@return\invoke@symbol@frame{#1}}%
+  \invoke@symbol@text@args%
+}
+
+\def\invoke@symbol@switchnum*[#1]{%
+  \advance\notation@argument@counter by -1%
+  \edef\notation@charnum{#1}%
+  \StrChar\invoke@symbol@arity\notation@charnum[\invoke@symbol@nextchar]%
+  \ifx\invoke@symbol@nextchar\notation@ichar%
+    \StrLeft\invoke@symbol@arity{\numexpr\notation@charnum-1}[\invoke@symbol@newarityLeft]%
+    \StrGobbleLeft\invoke@symbol@arity\notation@charnum[\invoke@symbol@newarity]%
+    \edef\invoke@symbol@newarity{\invoke@symbol@newarityLeft\notation@Xchar\invoke@symbol@newarity}%
+  \else% TODO
+  \fi%
+  \invoke@symbol@maybestarII%
+}
+
+\def\invoke@symbol@maybestarII{%
+  \@ifnextchar*{%
+    \invoke@symbol@invisible%
+  }{%
+    \invoke@symbol@normalarg%
+  }%
+}
+
+\def\invoke@symbol@text@finally{%
+  \stex@debug{HERE! \meaning\invoke@symbol@return}%
+  \if@inoms\latexml@oms{\invoke@symbol@uri}{}{\invoke@symbol@return}%
+  \else\latexml@oma{\invoke@symbol@uri}{}{\invoke@symbol@return}%
+  \fi%
+}
+%    \end{macrocode}
+%
+%\test{\begin{module}[name=FooBarVerbs]
+% \printltx{\symdecl[args=ii]{plus}}\symdecl[args=ii]{plus}\\
+% \printltx{\symdecl{someprime}}\symdecl{someprime}\\
+% \printltx{\plus[The sum of ]{\someprime[$p$]}[ and ]{$2$}}: ``\plus[The sum of ]{\someprime[$p$]}[ and ]{$2$}''\\
+% \opref{plus}[plus] and $\opref{plus}[+]$ and $+$.
+% \end{module}
+%}
+%
+%
+%
+%
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 %
 % \subsection{Term References}
 %
@@ -3447,13 +3662,6 @@
 %    \end{macrocode}
 % \end{macro}
 %
-% \begin{macro}{\abbrdef}
-%   The |\abbrdef| macro is a variant of |\symdef| that does the same on the {\LaTeX}
-%   level.
-%    \begin{macrocode}
-\let\abbrdef\symdef%
-%    \end{macrocode}
-% \end{macro}
 %
 % \begin{macro}{\@sym*}
 %   has a starred form for primary symbols. The key/value interface has no effect on the
