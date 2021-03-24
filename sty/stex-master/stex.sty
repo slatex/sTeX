@@ -8,6 +8,8 @@
 %% 
 \NeedsTeXFormat{LaTeX2e}[1999/12/01]
 \ProvidesPackage{stex}[2020/11/10 v2.0 Semantic Markup]
+\RequirePackage{amsfonts}
+
 \let\ex\expandafter
 \newif\if@stex@debugmode\@stex@debugmodefalse
 \DeclareOption{debug}{\@stex@debugmodetrue}
@@ -17,6 +19,8 @@
 \newif\ifextrefs\extrefsfalse
 \DeclareOption{extrefs}{\extrefstrue}
 \ProcessOptions
+
+\if@stex@debugmode\stex@debug{sTeX debug mode on}\fi
 \ifcsname if@latexml\endcsname\else
   \ex\newif\csname if@latexml\endcsname\@latexmlfalse
 \fi
@@ -496,6 +500,12 @@
     \ifx\module@title\@empty :\quad\else\quad(\module@title)\hfill\\\fi%
   \fi%
 }%
+
+\def\stex@metatheory{fomid:/foundation?Meta}
+\protected\def\metatheory#1{%
+  \if@inimport\else\latexml@annotate@invisible{metatheory}{#1}{}\fi%
+}
+
 \newenvironment{module}[1][]{%
   \begin{@module}[#1]%
   \module@heading% make the headings
@@ -662,6 +672,7 @@
 \def\parsemodule@escapechar@endstring{end}
 \parsemodule@allow{symdef}
 \parsemodule@allow{abbrdef}
+\parsemodule@allow{metatheory}
 \parsemodule@allow{importmodule}
 \parsemodule@allowenv{module}
 \parsemodule@allowenv{@module}
@@ -1028,18 +1039,25 @@
     \expandafter\endcsname\expandafter{\define@in@module@temp}%
   \fi%
 }
-\addmetakey{symdecl}{name}%
-\addmetakey{symdecl}{type}%
-\addmetakey{symdecl}{args}%
+\define@key{symdecl}{name}{\def\symdecl@name{#1}}%
+\define@key{symdecl}{type}{\def\symdecl@type{#1}}%
+\define@key{symdecl}{args}{\def\symdecl@args{#1}}%
+\define@key{symdecl}{local}[true]{\def\symdecl@local{#1}}%
+
 \addmetakey[false]{symdecl}{local}[true]%
 
 \newcommand\symdecl[2][]{%
+  \def\symdecl@local{false}%
+  \def\symdecl@name{}%
+  \def\symdecl@type{}%
+  \def\symdecl@args{}%
   \ifcsdef{this@module}{%
-    \metasetkeys{symdecl}{#1}%
+    \setkeys{symdecl}{#1}%
     \ifcsvoid{symdecl@name}{
       \edef\symdecl@name{#2}%
     }{}%
     \edef\symdecl@uri{\module@uri\@QuestionMark\symdecl@name}%
+    \stex@debug{Symdecl \symdecl@uri^^Jtype: \meaning\symdecl@type}%
     \ifcsvoid{stex@symbol@\symdecl@name}{%
       \expandafter\edef\csname stex@symbol@\symdecl@name\endcsname{\symdecl@uri}%
     }{%
@@ -1052,9 +1070,9 @@
         \expandafter\def\expandafter\noexpand\csname stex@symbol@\symdecl@name\endcsname{\detokenize{ambiguous}}%
       }%
     }%
-    \ifcsvoid{symdecl@type}{}{%
-      \setbox\modules@import@tempbox\hbox{$\symdecl@type$} % only to have latex check this
-    }%
+    \if@inimport\else\if@smsmode\else\ifcsvoid{symdecl@type}{}{%
+      \setbox\modules@import@tempbox\hbox{$\symdecl@type$}% only to have latex check this
+    }\fi\fi%
     \ifcsvoid{symdecl@args}{\csgdef{\symdecl@uri\@QuestionMark args}{}}{%
       \IfInteger\symdecl@args{\notation@num@to@ia@\symdecl@args\csxdef{\symdecl@uri\@QuestionMark args}{\notation@curr@args}}{%
         \ex\global\ex\let\csname\symdecl@uri\@QuestionMark args\endcsname\symdecl@args%
@@ -1085,7 +1103,9 @@
     \PackageError{stex}{\detokenize{\symdecl} not in a module}{You need to be in a module%
     in order to declare a new symbol}
   }%
-  \if@inimport\else\if@inabbrdef\else\latexml@symdecl\symdecl@uri{$\symdecl@type$}{\csname\symdecl@uri\@QuestionMark args\endcsname}{}{#2}\fi\fi%
+  \if@inimport\else\if@inabbrdef\else\if@smsmode\else%
+    \latexml@symdecl\symdecl@uri{$\symdecl@type$}{\csname\symdecl@uri\@QuestionMark args\endcsname}{}{#2}%
+  \fi\fi\fi%
   \if@insymdef@\else\parsemodule@maybesetcodes\fi%
 }
 \def\latexml@symdecl#1#2#3#4#5{\latexml@annotate@invisible{symdecl}{#1}{%
@@ -1110,39 +1130,44 @@
     \StrMid\modules@temp@meaning{26}{\the\numexpr\stex@tempnum-1\@Space}[\notation@uri]%
   }{%
     % Check whether full URI or module?symbol or just name
-    \StrCount\modules@getURI@name\@QuestionMark[\isuri@number]%
-    \ifnum\isuri@number=2%
+    \StrCount\modules@getURI@name\@Colon[\isuri@number]%
+    \ifnum\isuri@number>0%
       \edef\notation@uri{\modules@getURI@name}%
-    \else%
-      \ifnum\isuri@number=1%
-        % module?name
-        \StrCut\modules@getURI@name\@QuestionMark\isuri@mod\isuri@name%
-        \ifcsvoid{stex@module@\isuri@mod}{%
-          \PackageError{stex}{No module with name \isuri@mod\@Space loaded}{}%
-        }{%
-          \expandafter\ifx\csname stex@module@\isuri@mod\endcsname\stex@ambiguous%
-            \PackageError{stex}{Module name \isuri@mod\@Space is ambiguous}{}%
-          \else%
-            \edef\notation@uri{\csname stex@module@\isuri@mod\endcsname\@URI\@QuestionMark\isuri@name}%
-          \fi%
-        }%
+    \else
+      \StrCount\modules@getURI@name\@QuestionMark[\isuri@number]%
+      \ifnum\isuri@number=2%
+        \edef\notation@uri{\modules@getURI@name}%
       \else%
-        %name
-        \ifcsvoid{stex@symbol@\modules@getURI@name}{%
-          \PackageError{stex}{No symbol with name \modules@getURI@name\@Space known}{}%
-        }{%
-         \ifcsvoid{\module@uri\@QuestionMark\modules@getURI@name}{%
-           \expandafter\ifx\csname stex@symbol@\modules@getURI@name\endcsname\stex@ambiguous%
-             % Symbol name ambiguous and not in current module
-             \PackageError{stex}{Symbol name, URI or macroname \detokenize{#1} found!}{}%
-           \else%
-             % Symbol not in current module, but unambiguous
-             \edef\notation@uri{\csname stex@symbol@\modules@getURI@name\endcsname}%
-           \fi%
-          }{% Symbol in current module
-            \edef\notation@uri{\module@uri\@QuestionMark\modules@getURI@name}%
+        \ifnum\isuri@number=1%
+          % module?name
+          \StrCut\modules@getURI@name\@QuestionMark\isuri@mod\isuri@name%
+          \ifcsvoid{stex@module@\isuri@mod}{%
+            \PackageError{stex}{No module with name \isuri@mod\@Space loaded}{}%
+          }{%
+            \expandafter\ifx\csname stex@module@\isuri@mod\endcsname\stex@ambiguous%
+              \PackageError{stex}{Module name \isuri@mod\@Space is ambiguous}{}%
+            \else%
+              \edef\notation@uri{\csname stex@module@\isuri@mod\endcsname\@URI\@QuestionMark\isuri@name}%
+            \fi%
           }%
-        }%
+        \else%
+          %name
+          \ifcsvoid{stex@symbol@\modules@getURI@name}{%
+            \PackageError{stex}{No symbol with name \modules@getURI@name\@Space known}{}%
+          }{%
+          \ifcsvoid{\module@uri\@QuestionMark\modules@getURI@name}{%
+            \expandafter\ifx\csname stex@symbol@\modules@getURI@name\endcsname\stex@ambiguous%
+              % Symbol name ambiguous and not in current module
+              \PackageError{stex}{Symbol name, URI or macroname \detokenize{#1} found!}{}%
+            \else%
+              % Symbol not in current module, but unambiguous
+              \edef\notation@uri{\csname stex@symbol@\modules@getURI@name\endcsname}%
+            \fi%
+            }{% Symbol in current module
+              \edef\notation@uri{\module@uri\@QuestionMark\modules@getURI@name}%
+            }%
+          }%
+        \fi%
       \fi%
     \fi%
   }%
@@ -1539,6 +1564,15 @@
 \protected\def\stex@oms#1#2{\modules@getURIfromName{#1}\latexml@oms{\notation@uri}{}{#2}}
 \protected\def\stex@oma#1#2{\modules@getURIfromName{#1}\latexml@oma{\notation@uri}{}{#2}}
 \protected\def\stex@ombind#1#2{\modules@getURIfromName{#1}\latexml@ombind{\notation@uri}{}{#2}}
+\protected\def\stex@rule#1#2{%
+  \latexml@annotate@invisible{mmtrule}{#1}{%
+    \notation@argument@counter=0%
+    \@for\@I:=#2\do{%
+      \advance\notation@argument@counter by 1%
+      \latexml@annotate{arg}{\the\notation@argument@counter}{$\@I$}%
+    }%
+  }%
+}
 \protected\def\@invoke@symbol#1{%
   \ifmmode%
     \def\@invoke@symbol@first{#1}%
