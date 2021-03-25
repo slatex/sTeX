@@ -20,10 +20,31 @@
 \DeclareOption{extrefs}{\extrefstrue}
 \ProcessOptions
 
-\if@stex@debugmode\stex@debug{sTeX debug mode on}\fi
 \ifcsname if@latexml\endcsname\else
   \ex\newif\csname if@latexml\endcsname\@latexmlfalse
 \fi
+
+\RequirePackage{xspace}
+\RequirePackage{standalone}
+\RequirePackageWithOptions{stex-metakeys}
+\if@latexml\else\RequirePackage{xstring}\fi
+\RequirePackage{etoolbox}
+
+\def\stex@babel@set#1#2{
+  \csdef{stex@babel@short#1}{#2}
+  \csdef{stex@babel@long#2}{#1}
+}
+\stex@babel@set{english}{en}
+\stex@babel@set{ngerman}{de}
+\stex@babel@set{arabic}{ar}
+\stex@babel@set{bulgarian}{bg}
+\stex@babel@set{russian}{ru}
+\stex@babel@set{finnish}{fi}
+\stex@babel@set{romanian}{ro}
+\stex@babel@set{turkish}{tr}
+\stex@babel@set{french}{fr}
+
+\if@stex@debugmode\stex@debug{sTeX debug mode on}\fi
 \protected\long\def\latexml@annotate#1#2#3{%
   \def\latexml@annotate@bodyarg{#3}%
   \if@latexml\ifmmode\latexml@annotate@math{#1}{#2}{\ifx\latexml@annotate@bodyarg\@empty\ \else#3\fi}\else\latexml@annotate@text{#1}{#2}{#3}\fi\else#3\fi%
@@ -32,11 +53,6 @@
 \protected\long\def\latexml@annotate@math#1#2#3{}
 \newenvironment{latexml@annotateenv}[2]{}{}
 \protected\long\def\latexml@annotate@invisible#1#2#3{}
-\RequirePackage{xspace}
-\RequirePackage{standalone}
-\RequirePackageWithOptions{stex-metakeys}
-\if@latexml\else\RequirePackage{xstring}\fi
-\RequirePackage{etoolbox}
 \protected\def\stex{%
   \@ifundefined{texorpdfstring}%
   {\let\texorpdfstring\@firstoftwo}%
@@ -491,6 +507,8 @@
 \addmetakey*{module}{srccite}
 \addmetakey*{module}{ns}
 \addmetakey*{module}{narr}
+\addmetakey*{module}{lang}
+\addmetakey*{module}{sig}
 \ifdef{\thesection}{\newcounter{module}[section]}{\newcounter{module}}%
 \newrobustcmd\module@heading{%
   \stepcounter{module}%
@@ -501,9 +519,16 @@
   \fi%
 }%
 
-\def\stex@metatheory{fomid:/foundation?Meta}
+\def\stex@metatheory#1{\latexml@annotate@invisible{metatheory}{#1}{}}%
 \protected\def\metatheory#1{%
-  \if@inimport\else\latexml@annotate@invisible{metatheory}{#1}{}\fi%
+  \edef\metatheory@path{#1}%
+  \ifcsvoid{metatheory@path}{%
+    \stex@metatheory{}%
+  }{%
+    \stex@debug{Metatheory: #1 \if@inimport(in import)\fi}%
+    \if@inimport\importmodule{#1}\else%
+      \latexml@annotate{metatheory}{}{\importmodule{#1}}\fi%
+  }%
 }
 
 \newenvironment{module}[1][]{%
@@ -567,6 +592,16 @@
 }
 \newenvironment{@module}[1][]{%
   \metasetkeys{module}{#1}%
+  \ifcsvoid{module@lang}{}{%
+    \ifcsvoid{languagename}{}{%
+      \ifcsvoid{stex@babel@long\module@lang}{
+        \PackageError{stex}{unknown language: \module@lang}{}
+      }{%
+        \edef\module@current@language{\csname stex@babel@long\module@lang\endcsname}%
+        \ex\selectlanguage\ex{\module@current@language}%
+      }%
+    }%
+  }%
   \ifcsvoid{module@name}{\let\module@name\module@id}{}% % TODO deprecate
   \ifcsvoid{module@name}{\set@next@moduleid}{}%
   \let\module@id\module@name% % TODO deprecate
@@ -593,10 +628,28 @@
   \csgdef{module@names@\module@uri}{}%
   \csgdef{module@imports@\module@uri}{}%
   \csxdef{\module@uri}{\noexpand\@invoke@module{\module@uri}}%
-  \ifcsvoid{stex@module@\module@name}{%
-    \ex\global\ex\let\csname stex@module@\module@name\ex\endcsname\csname\module@uri\endcsname%
+  \ifcsvoid{module@sig}{%
+    \ifcsvoid{stex@module@\module@name}{%
+      \ex\global\ex\let\csname stex@module@\module@name\ex\endcsname\csname\module@uri\endcsname%
+    }{%
+      \ex\edef\csname stex@module@\module@name\endcsname{\detokenize{ambiguous}}%
+    }%
   }{%
-    \ex\edef\csname stex@module@\module@name\endcsname{\detokenize{ambiguous}}%
+    \IfEndWith\stex@currfile{.tex}{}{%
+      \edef\stex@currfile{\stex@currfile.tex}%
+    }%
+    \path@filename\stex@currfile\module@lang@filename%
+    \ifcsvoid{module@lang}{%
+      \PackageError{stex}{Module \module@uri: Signature \module@sig %
+        provided, but no language set.}{Use lang=<language> in module}%
+    }{}%
+    \IfEndWith\module@lang@filename{\module@lang.tex}{}{%
+      \PackageError{stex}{multilingual module \module@uri not in file ending with %
+        \module@lang.tex}{}%
+    }%
+    \StrLen{\module@lang.tex}[\module@lang@length]%
+    \StrGobbleRight\stex@currfile{\numexpr\module@lang@length}[\module@sig@file]%
+    \@@importmodule[\module@sig@file\module@sig]{\module@name}%
   }%
   \edef\this@module{%
     \ex\noexpand\csname module@defs@\module@uri\endcsname%
@@ -916,9 +969,25 @@
     \if@smsmode\else\ifcsvoid{stex@module@\@importmodule@name}{% TODO check this
       \stex@iffileexists\@load{
         \stex@debug{Exists: #1}%
-        \requiremodules\@load}{%
+        \requiremodules\@load%
+      }{%
         \stex@debug{Does not exist: #1^^JTrying \@load\@Slash\@importmodule@name}%
-        \requiremodules{\@load\@Slash\@importmodule@name}%
+        \edef\@nload{\@load\@Slash\@importmodule@name}%
+        \stex@iffileexists\@nload{%
+          \requiremodules{\@nload}%
+        }{%
+          \stex@debug{Does not exist: \@nload}%
+          \ifcsvoid{languagename}{% Try english as default
+            \requiremodules{\@nload.en}%
+          }{%
+            \ifcsvoid{stex@babel@short\languagename}{%
+              \PackageError{stex}{Module #1?#2 not found and unknown %
+                language \languagename}{}%
+            }{%
+              \requiremodules{\@nload.\csname stex@babel@short\languagename\endcsname}%
+            }%
+          }%
+        }%
       }%
     }{}\fi%
     \ifx\@load\@empty\else%
