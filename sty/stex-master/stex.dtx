@@ -918,6 +918,7 @@
     \if@inimport\importmodule{#1}\else%
       \latexml@annotate{metatheory}{}{\importmodule{#1}}\fi%
   }%
+  \parsemodule@maybesetcodes%
 }
 
 \newenvironment{module}[1][]{%
@@ -1036,6 +1037,7 @@
 %   module is activated.
 %
 %    \begin{macrocode}
+\edef\stex@dot@tex{\detokenize{.tex}}
 \newenvironment{@module}[1][]{%
   \metasetkeys{module}{#1}%
   \ifcsvoid{module@lang}{}{%
@@ -1074,28 +1076,39 @@
   \csgdef{module@names@\module@uri}{}%
   \csgdef{module@imports@\module@uri}{}%
   \csxdef{\module@uri}{\noexpand\@invoke@module{\module@uri}}%
+  \begin{latexml@annotateenv}{theory}{\module@uri}%
+    \latexml@annotate@invisible{signature}{\module@sig}{}%
+    \latexml@annotate@invisible{language}{\module@lang}{}%
   \ifcsvoid{module@sig}{%
     \ifcsvoid{stex@module@\module@name}{%
       \ex\global\ex\let\csname stex@module@\module@name\ex\endcsname\csname\module@uri\endcsname%
     }{%
       \ex\edef\csname stex@module@\module@name\endcsname{\detokenize{ambiguous}}%
     }%
+    \csdef{module@defs@\module@uri}{}%
   }{%
-    \IfEndWith\stex@currfile{.tex}{}{%
-      \edef\stex@currfile{\stex@currfile.tex}%
+    \stex@debug{Module in file \stex@currfile}%
+    \IfEndWith\stex@currfile\stex@dot@tex{}{%
+      \edef\stex@currfile{\stex@currfile\stex@dot@tex}%
+      \stex@debug{updated to \stex@currfile}%
     }%
     \path@filename\stex@currfile\module@lang@filename%
     \ifcsvoid{module@lang}{%
       \PackageError{stex}{Module \module@uri: Signature \module@sig %
         provided, but no language set.}{Use lang=<language> in module}%
     }{}%
-    \IfEndWith\module@lang@filename{\module@lang.tex}{}{%
-      \PackageError{stex}{multilingual module \module@uri not in file ending with %
-        \module@lang.tex}{}%
+    \edef\module@lang{\ex\detokenize\ex{\module@lang}}%
+    \IfEndWith\module@lang@filename{\module@lang\stex@dot@tex}{}{%
+      \PackageError{stex}{multilingual module \module@uri~not in file ending with %
+        >>\module@lang\stex@dot@tex<<^^JFilename:>>\module@lang@filename<<}{}%
     }%
-    \StrLen{\module@lang.tex}[\module@lang@length]%
-    \StrGobbleRight\stex@currfile{\numexpr\module@lang@length}[\module@sig@file]%
-    \@@importmodule[\module@sig@file\module@sig]{\module@name}%
+    \StrLen{\module@lang\stex@dot@tex}[\module@lang@length]%
+    \StrGobbleRight\stex@currfile{\module@lang@length}[\module@sig@file]%
+    \requiremodules{\module@sig@file\module@sig\stex@dot@tex}%
+    \let\old@ifinimport\if@inimport%
+    \@inimporttrue%
+    \csname module@defs@\module@uri\endcsname%
+    \let\if@inimport\old@ifinimport%
   }%
   \edef\this@module{%
     \ex\noexpand\csname module@defs@\module@uri\endcsname%
@@ -1113,7 +1126,6 @@
   \let\currentmodule@uri\module@uri%
   \stex@debug{^^JNew module: \module@uri^^J}%
   \parsemodule@maybesetcodes%
-  \begin{latexml@annotateenv}{theory}{\module@uri}%
 }{%
   \end{latexml@annotateenv}%
   \if@inmhrepos%
@@ -1334,7 +1346,7 @@
     }%
   }
   \def\set@parsemodule@catcodes{%
-      \ifcat`\\=0%
+      \ifnum\catcode`\\=0%
       \global\catcode`\\=13%
       \global\catcode`\#=12%
       \global\catcode`\{=12%
@@ -1354,7 +1366,7 @@
 % \begin{macro}{\reset@parsemodule@catcodes}
 %    \begin{macrocode}
   \def\reset@parsemodule@catcodes{%
-      \ifcat`\\=13%
+      \ifnum\catcode`\\=13%
       \global\catcode`\\=0%
       \global\catcode`\#=6%
       \global\catcode`\{=1%
@@ -1526,7 +1538,7 @@
   \newrobustcmd\requiremodules[1]{%
     \mod@showfalse%
     \edef\mod@path{#1}%
-    \edef\mod@path{\expandafter\detokenize\expandafter{\mod@path}}%
+    \edef\mod@path{\ex\detokenize\ex{\mod@path}}%
     \requiremodules@smsmode{#1}%
   }%
 %    \end{macrocode}
@@ -1547,7 +1559,9 @@
       \hfuzz=10000pt\relax%
       \vbadness=100000\relax%
       \vfuzz=10000pt\relax%
-      \stexinput{#1.tex}%
+      \edef\requiremodules@path@temp{#1}%
+      \IfEndWith\requiremodules@path@temp\stex@dot@tex%
+        {\stexinput{#1}}{\stexinput{#1.tex}}%
       \reset@parsemodule@catcodes%
     }%
     \parsemodule@maybesetcodes%
@@ -1664,7 +1678,11 @@
               \PackageError{stex}{Module #1?#2 not found and unknown %
                 language \languagename}{}%
             }{%
+            \stex@iffileexists{\@nload.\csname stex@babel@short\languagename\endcsname}{%
               \requiremodules{\@nload.\csname stex@babel@short\languagename\endcsname}%
+            }{% Try english as default
+              \requiremodules{\@nload.en}%
+            }%
             }%
           }%
         }%
@@ -2498,6 +2516,24 @@
       \advance\notation@argument@counter by 1%
       \latexml@annotate{arg}{\the\notation@argument@counter}{$\@I$}%
     }%
+  }%
+}
+
+\protected\long\def\symboldoc#1#2{%
+  \modules@getURIfromName{#1}%
+  \latexml@annotate{symboldoc}{\notation@uri}{%
+    \def\symboldoc@lang{en}%
+    \ifcsvoid{module@lang}{%
+      \ifcsvoid{languagename}{}{%
+        \ifcsvoid{stex@babel@short\languagename}{}{%
+          \edef\symboldoc@lang{\csname stex@babel@short\languagename\endcsname}%
+        }%
+      }%
+    }{%
+      \let\symboldoc@lang\module@lang%
+    }%
+    \latexml@annotate{language}\symboldoc@lang{}%
+    #2%
   }%
 }
 %    \end{macrocode}
