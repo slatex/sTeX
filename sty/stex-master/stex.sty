@@ -8,7 +8,9 @@
 %% 
 \NeedsTeXFormat{LaTeX2e}[1999/12/01]
 \ProvidesPackage{stex}[2020/11/10 v2.0 Semantic Markup]
-\RequirePackage{amsfonts}
+\RequirePackage{amsfonts,amsmath}
+
+\def\defemph#1{\textbf{#1}}
 
 \let\ex\expandafter
 \newif\if@stex@debugmode\@stex@debugmodefalse
@@ -544,14 +546,14 @@
 \def\g@addto@macro@safe#1#2{\ifx#1\relax\def#1{}\fi\g@addto@macro#1{#2}}
 \def\addto@thismodule#1{%
   \@ifundefined{this@module}{}{%
-    \expandafter\g@addto@macro@safe\this@module{#1}%
+    \ex\g@addto@macro@safe\this@module{#1}%
   }%
 }
 \def\addto@thismodulex#1{%
 \@ifundefined{this@module}{}{%
   \edef\addto@thismodule@exp{#1}%
-  \expandafter\expandafter\expandafter\g@addto@macro@safe%
-  \expandafter\this@module\expandafter{\addto@thismodule@exp}%
+  \ex\ex\ex\g@addto@macro@safe%
+  \ex\this@module\ex{\addto@thismodule@exp}%
 }}
 \newif\ifarchive@ns@empty@\archive@ns@empty@false
 \def\set@default@ns{%
@@ -595,7 +597,7 @@
 \newenvironment{@module}[1][]{%
   \metasetkeys{module}{#1}%
   \ifcsvoid{module@lang}{}{%
-    \ifcsvoid{languagename}{}{%
+    \ifcsvoid{main@language}{}{%
       \ifcsvoid{stex@babel@long\module@lang}{
         \PackageError{stex}{unknown language: \module@lang}{}
       }{%
@@ -659,10 +661,10 @@
     \StrLen{\module@lang\stex@dot@tex}[\module@lang@length]%
     \StrGobbleRight\stex@currfile{\module@lang@length}[\module@sig@file]%
     \requiremodules{\module@sig@file\module@sig\stex@dot@tex}%
-    \let\old@ifinimport\if@inimport%
-    \@inimporttrue%
+    %\let\old@ifinimport\if@inimport%
+    %\@inimporttrue%
     \csname module@defs@\module@uri\endcsname%
-    \let\if@inimport\old@ifinimport%
+    %\let\if@inimport\old@ifinimport%
   }%
   \edef\this@module{%
     \ex\noexpand\csname module@defs@\module@uri\endcsname%
@@ -681,12 +683,13 @@
   \stex@debug{^^JNew module: \module@uri^^J}%
   \parsemodule@maybesetcodes%
 }{%
-  \end{latexml@annotateenv}%
   \if@inmhrepos%
   \@inmhreposfalse%
-  \addto@thismodulex{\noexpand\mathhub@setcurrentreposinfo{\expandafter\noexpand\csname mh@old@repos@\module@uri\endcsname}}%
+  \addto@thismodulex{\noexpand\mathhub@setcurrentreposinfo{\ex\noexpand\csname mh@old@repos@\module@uri\endcsname}}%
   \fi%
+  \end{latexml@annotateenv}%
 }%
+
 \newenvironment{@structural@feature}[2]{%
   \ifcsvoid{currentmodule@uri}{%
     \set@default@ns\let\currentmodule@ns\module@ns%
@@ -700,6 +703,7 @@
 }{%
   \end{latexml@annotateenv}%
 }%
+
 \newcommand\structural@feature[3]{\begingroup%
   \ifcsvoid{currentmodule@uri}{%
     \set@default@ns\let\currentmodule@ns\module@ns%
@@ -711,6 +715,11 @@
   \edef\currentmodule@uri{\currentmodule@ns\@QuestionMark\currentmodule@name}%
   #3}%
 \endgroup}
+
+\def\module@export#1#2{%
+  \addto@thismodule{\unexpanded{#2}}%
+  #1#2\parsemodule@maybesetcodes%
+}
 \def\@URI{uri} % TODO check this
 \def\@invoke@module#1#2{%
   \ifx\@URI#2%
@@ -735,9 +744,14 @@
 }
 \def\parsemodule@escapechar@beginstring{begin}
 \def\parsemodule@escapechar@endstring{end}
+\def\parsemodule@oldmakeatletter{\parsemodule@maybesetcodes\catcode`@=11}
+\def\parsemodule@oldmakeatother{\parsemodule@maybesetcodes\catcode`@=12}
+\parsemodule@replacemacro{makeatletter}{parsemodule@oldmakeatletter}
+\parsemodule@replacemacro{makeatother}{parsemodule@oldmakeatother}
 \parsemodule@allow{symdef}
 \parsemodule@allow{abbrdef}
 \parsemodule@allow{metatheory}
+\parsemodule@allow{module@export}
 \parsemodule@allow{importmodule}
 \parsemodule@allowenv{module}
 \parsemodule@allowenv{@module}
@@ -865,7 +879,7 @@
                 \edef\parsemodule@do@next{\noexpand\parsemodule@converttoproperbraces\@open@brace}%
               \else%
                 \reset@parsemodule@catcodes%
-                \edef\parsemodule@do@next{\ex\noexpand\csname parsemodule@allowedmacro@\parsemodule@escape@currcs\endcsname\parsemodule@last@char}%
+                \edef\parsemodule@do@next{\ex\noexpand\csname parsemodule@allowedmacro@\parsemodule@escape@currcs\endcsname\ex\noexpand\parsemodule@last@char}%
               \fi%
             }%
         \fi%
@@ -912,6 +926,7 @@
     \mod@showfalse%
     \edef\mod@path{#1}%
     \edef\mod@path{\ex\detokenize\ex{\mod@path}}%
+    \stex@debug{Reading in file \mod@path}%
     \requiremodules@smsmode{#1}%
   }%
   \newbox\modules@import@tempbox
@@ -974,35 +989,49 @@
   \importmodule@bookkeeping{#1}{#2}{%
     \@importmodule[\importmodule@dir]\importmodule@modulename{#3}%
   }%
+  \parsemodule@maybesetcodes%
 }
 \newcommand\@importmodule[3][]{%
   {%
     \edef\@load{#1}%
     \edef\@importmodule@name{#2}%
-    \stex@debug{Loading #1}%
+    \stex@debug{Loading #2 in #1}%
     \if@smsmode\else\ifcsvoid{stex@module@\@importmodule@name}{% TODO check this
-      \stex@iffileexists\@load{
+      \stex@iffileexists{\@load.tex}{
         \stex@debug{Exists: #1}%
         \requiremodules\@load%
       }{%
         \stex@debug{Does not exist: #1^^JTrying \@load\@Slash\@importmodule@name}%
         \edef\@nload{\@load\@Slash\@importmodule@name}%
-        \stex@iffileexists\@nload{%
+        \stex@iffileexists{\@nload.tex}{%
           \requiremodules{\@nload}%
         }{%
-          \stex@debug{Does not exist: \@nload}%
-          \ifcsvoid{languagename}{% Try english as default
-            \requiremodules{\@nload.en}%
+          \stex@debug{Does not exist: \@nload.tex}%
+          \ifcsvoid{main@language}{% Try english as default
+            \stex@iffileexists{\@load.en.tex}{%
+              \requiremodules{\@load.en}%
+            }{%
+              \requiremodules{\@nload.en}%
+            }%
           }{%
             \ifcsvoid{stex@babel@short\languagename}{%
               \PackageError{stex}{Module #1?#2 not found and unknown %
                 language \languagename}{}%
             }{%
-            \stex@iffileexists{\@nload.\csname stex@babel@short\languagename\endcsname}{%
-              \requiremodules{\@nload.\csname stex@babel@short\languagename\endcsname}%
-            }{% Try english as default
-              \requiremodules{\@nload.en}%
-            }%
+              \edef\stex@implang{\csname stex@babel@short\languagename\endcsname}%
+              \stex@iffileexists{\@load.\stex@implang.tex}{%
+                \requiremodules{\@load.\stex@implang}%
+              }{%
+                \stex@iffileexists{\@load.en.tex}{%
+                  \requiremodules{\@load.en}%
+                }{%
+                  \stex@iffileexists{\@nload.\stex@implang.tex}{%
+                    \requiremodules{\@nload.\stex@implang}%
+                  }{%
+                    \requiremodules{\@nload.en}%
+                  }%
+                }%
+              }%
             }%
           }%
         }%
@@ -1027,7 +1056,7 @@
   %\ifx\@export\@@export\export@defs{#2}\fi% export the module
   \ifx\@export\@@export\addto@thismodulex{%
     \noexpand\@importmodule[\@importmodule@load]{#2}{noexport}%
-  }%
+  }\fi%
   \if@smsmode\else
   \ifcsvoid{this@module}{}{%
     \ifcsvoid{module@imports@\module@uri}{
@@ -1041,7 +1070,7 @@
       }%
     }%
   }%
-  \fi\fi%
+  \fi%
   \if@smsmode\else%
     \edef\activate@module@name{#2}%
     \StrCount\activate@module@name\@Slash[\activate@module@lastslash]%
@@ -1051,6 +1080,11 @@
     \ifcsvoid{stex@lastmodule@\activate@module@name}{%
       \PackageError{stex}{No module with name \activate@module@name found}{}%
     }{%
+      \ifx\@export\@@export%
+        \latexml@annotate@invisible{import}{\csname stex@lastmodule@\activate@module@name}{}%
+      \else%
+        \latexml@annotate@invisible{usemodule}{\csname stex@lastmodule@\activate@module@name\endcsname}{}%
+      \fi
       \ex\ex\ex\activate@defs\ex\ex\ex{\csname stex@lastmodule@\activate@module@name\endcsname}%
     }%
   \fi% activate the module
@@ -1064,25 +1098,22 @@
   \csgdef{module@names@\module@uri}{}%
   \csgdef{module@imports@\module@uri}{}%
   \csxdef{\module@uri}{\noexpand\@invoke@module{\module@uri}}%
-  \expandafter\global\expandafter\let\csname stex@module@\module@name\expandafter\endcsname\csname\module@uri\endcsname%
+  \ex\global\ex\let\csname stex@module@\module@name\ex\endcsname\csname\module@uri\endcsname%
   \edef\this@module{%
-    \expandafter\noexpand\csname module@defs@\module@uri\endcsname%
+    \ex\noexpand\csname module@defs@\module@uri\endcsname%
   }%
-  \latexml@annotate@invisible{namespace}{\module@ns\@Slash\module@name}{}%
   \csdef{module@defs@\module@uri}{}%
   \ifcsvoid{mh@currentrepos}{}{%
     \@inmhrepostrue%
-    \addto@thismodulex{\expandafter\edef\expandafter\noexpand\csname mh@old@repos@\module@uri\endcsname%
+    \addto@thismodulex{\ex\edef\ex\noexpand\csname mh@old@repos@\module@uri\endcsname%
       {\noexpand\mh@currentrepos}}%
     \addto@thismodulex{\noexpand\mathhub@setcurrentreposinfo{\mh@currentrepos}}%
   }%
 }
 \newif\if@inimport\@inimportfalse
-\def\latexml@import#1{\latexml@annotate@invisible{import}{#1}{}}%
 \def\activate@defs#1{%
   \stex@debug{Activating import #1}%
   \if@inimport\else%
-    \latexml@import{#1}%
     \def\inimport@module{#1}%
     \stex@debug{Entering import #1}%
     \@inimporttrue%
@@ -1103,7 +1134,9 @@
     \stex@debug{Leaving import #1}%
   \fi%
 }%
-\newcommand\usemodule[2][]{\@@importmodule[#1]{#2}{noexport}}
+\newcommand\usemodule[2][]{%
+  \@@importmodule[#1]{#2}{noexport}%
+}
 \def\inputref@preskip{}
 \def\inputref@postskip{}
 \newrobustcmd\inputref[2][]{%
@@ -1158,6 +1191,7 @@
       }%
     }%
     \if@inimport\else\if@smsmode\else\ifcsvoid{symdecl@type}{}{%
+      \stex@debug{HERE1: \symdecl@uri}%
       \setbox\modules@import@tempbox\hbox{$\symdecl@type$}% only to have latex check this
     }\fi\fi%
     \ifcsvoid{symdecl@args}{\csgdef{\symdecl@uri\@QuestionMark args}{}}{%
@@ -1191,6 +1225,7 @@
     in order to declare a new symbol}
   }%
   \if@inimport\else\if@inabbrdef\else\if@smsmode\else%
+    \stex@debug{HERE2: \symdecl@uri}%
     \latexml@symdecl\symdecl@uri{$\symdecl@type$}{\csname\symdecl@uri\@QuestionMark args\endcsname}{}{#2}%
   \fi\fi\fi%
   \if@insymdef@\else\parsemodule@maybesetcodes\fi%
@@ -1199,7 +1234,7 @@
   \latexml@annotate{type}{}{#2}%
   \latexml@annotate{args}{#3}{}%
   \latexml@annotate{definiens}{}{#4}%
-  \latexml@annotate{macroname}{#2}{}%
+  \latexml@annotate{macroname}{#5}{}%
 }}
 \edef\stex@ambiguous{\detokenize{ambiguous}}
 \edef\stex@macrostring{\detokenize{macro:->\@invoke@symbol}}
@@ -1520,7 +1555,7 @@
 \protected\def\notation@assoc#1#2{% function, argv
   \let\@tmpop=\relax% do not print the function the first time round
   \@for\@I:=#2\do{\@tmpop% print the function
-    % write the i-th argument with locally updated precedence
+    % write the i-th argument
     \@I%
     \def\@tmpop{#1}%
   }%
@@ -1536,8 +1571,6 @@
 
 \newif\if@displaymode\@displaymodefalse
 \ex\everydisplay\ex{\the\everydisplay\@displaymodetrue}
-\let\old@displaystyle\displaystyle
-\def\displaystyle{\old@displaystyle\@displaymodetrue}
 
 \protected\def\dobrackets#1{% avoiding groups at all costs to ensure \parray still works!
   \def\notation@innertmp{#1}%
@@ -1666,7 +1699,7 @@
   \latexml@annotate{symboldoc}{\notation@uri}{%
     \def\symboldoc@lang{en}%
     \ifcsvoid{module@lang}{%
-      \ifcsvoid{languagename}{}{%
+      \ifcsvoid{main@language}{}{%
         \ifcsvoid{stex@babel@short\languagename}{}{%
           \edef\symboldoc@lang{\csname stex@babel@short\languagename\endcsname}%
         }%
@@ -1727,14 +1760,14 @@
   \ex\let\ex\abbrdef@args\csname\symdecl@uri\@QuestionMark args\endcsname%
   \StrLen\abbrdef@args[\abbrdef@arity]
   \ex\renewcommand\ex\abbrdef@definiens\ex[\abbrdef@arity]{\unexpanded{#3}}%
-  \if@inimport\else\if@latexml%
+  \if@inimport\else\if@smsmode\else\if@latexml%
     \let\notation@simarg@args\abbrdef@args%
     \notation@argument@counter=0%
     \def\notation@simargs{}%
     \notation@simulate@arguments%
     \latexml@symdecl\symdecl@uri{$\symdecl@type$}{\csname\symdecl@uri\@QuestionMark args\endcsname}%
       {$\ex\abbrdef@definiens\notation@simargs$}{#2}%
-  \fi\fi%
+  \fi\fi\fi%
 }
 \newif\if@inoms
 \def\invoke@symbol@text#1{%
@@ -2311,7 +2344,6 @@
 \addmetakey*{module}{noalign}[true]
 
 \newif\if@insymdef@\@insymdef@false
-\define@key{symdef}{local}[true]{\@symdeflocaltrue}%
 \define@key{symdef}{noverb}[all]{}%
 \define@key{symdef}{align}[WithTheSymbolOfTheSameName]{}%
 \define@key{symdef}{specializes}{}%
@@ -2332,15 +2364,28 @@
 \addmetakey{symdef}{subject}%
 \addmetakey*{symdef}{display}%
 \addmetakey*{symdef}{gfc}%
-\def\symdef{\@ifnextchar[{\@symdef}{\@symdef[]}}%
-\def\@symdef[#1]#2{\@ifnextchar[{\@@symdef[#1]{#2}}{\@@symdef[#1]{#2}[0]}}%
-\def\@@symdef[#1]#2[#3]{%
+
+\define@key{symdef}{type}{\def\symdef@type{#1}}%
+\define@key{symdef}{args}{\def\symdef@args{#1}}%
+\define@key{symdef}{local}[true]{\def\symdef@local{#1}}%
+
+\def\symdef{\@ifnextchar[{\@@symdef}{\@@symdef[]}}%
+\def\@@symdef[#1]#2{%
   \@insymdef@true%
+  \def\symdef@name{}%
+  \def\symdef@type{}%
+  \def\symdef@args{}%
+  \def\symdef@local{}%
   \metasetkeys{symdef}{#1}%
-  \edef\symdef@tmp@optpars{\ifcsvoid{symdef@name}{[]}{[name=\symdef@name]}}%
+  \edef\symdef@tmp@optpars{[%
+    \ifcsvoid{symdef@name}{}{name=\symdef@name,}%
+    \ifcsvoid{symdef@type}{}{type={\noexpand\symdef@type},}%
+    \ifcsvoid{symdef@args}{}{args={\symdef@args},}%
+    \ifcsvoid{symdef@local}{}{local={\symdef@local}}%
+  ]}%
   \expandafter\symdecl\symdef@tmp@optpars{#2}%
   \@insymdef@false%
-  \notation[#1]{#2}[#3]%
+  \notation[#1]{#2}%
 }% mod@show
 \def\symdef@type{Symbol}%
 \providecommand{\stDMemph}[1]{\textbf{#1}}
