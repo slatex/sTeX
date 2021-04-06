@@ -346,39 +346,13 @@ DefConstructor('\latexml@annotate@math{}{}{}',
         my $current = $document->getLastChildElement($node) || $node;
         my @nodes = $document->getChildElements($current);
         if (scalar(@nodes) == 1) {
-            print STDERR "\n\nHere: ".Stringify($current)."\n";
             my $child = $nodes[0];
-            print STDERR "\n\nChild: ".Stringify($child)."\n";
-            print STDERR "\n\nClass: ".Stringify($current->getAttribute('class'))."\n";
             my $class = $current->getAttribute('class');
             my $childclass = $child->getAttribute('class');
             if (defined($childclass)) {
-                print STDERR "Child class: ".$childclass."\n";
                 $current->setAttribute('class',$class.' '.$childclass);
-            } else {
-                print STDERR "No child class.\n"
             }
-#            map { $node->removeChild($_) } @nodes;
-#            $new = $parent->addNewChild('http://dlmf.nist.gov/LaTeXML', 'XMApp');
-#            $new->setAttribute('class',$node->getAttribute('class'));
-#            map {$new->addChild($_)} @nodes;
-#        } elsif (scalar(@nodes) == 1){
-#            my $new = $nodes[0];
-#            $node->removeChild($new);
-#            $parent->replaceChild($node,$new);
-#            $new->setAttribute('class',($node->getAttribute('class')).' '.($new->getAttribute('class')));
-#            $document->replaceNode($node,$new);
-#        } else {
-#            print STDERR "\n\nHere multiple?\n";
-#            print STDERR Stringify($current)."\n";
-#            map {print STDERR Stringify($_)."\n"} @nodes;
-#            print STDERR "Class: ".($current->getAttribute('class'))."\n";
-#            $new = $parent->addNewChild('http://dlmf.nist.gov/LaTeXML', 'XMTok');
-#            $new->setAttribute('class',$node->getAttribute('class'));
         }
-#        $parent->removeChild($node);
-#        print STDERR "\n\nHere: ".Stringify($parent)."\n\n";
-#        print STDERR "\n\nHere2: ".Stringify($new)."\n\n";
     },
 locked => 1);
 
@@ -386,5 +360,48 @@ DefEnvironment('{latexml@annotateenv}{}{}',
   '<ltx:block property="stex:#1" resource="#2">#body</ltx:block>',
 locked => 1);
 
+
+
+
+
+
+
+sub AttachSourceRefs {
+    my ($document,$child) = @_;
+    if (defined($document->getNodeBox($child))) {
+        my $sref = $document->getNodeBox($child)->getLocator;
+        my $filename = $$sref{source};
+        my $fromLine = $$sref{fromLine};
+        my $toLine = $$sref{toLine};
+        my $fromCol = $$sref{fromCol};
+        my $toCol = $$sref{toCol};
+        my $refline = $filename."#(".$fromLine.";".$fromCol.")(".$toLine.";".$toCol.")";
+
+        my $new = $child->addNewChild('http://dlmf.nist.gov/LaTeXML', 'inline-block');
+        $new->setAttribute('class','ltx_rdf');
+        $new->setAttribute('property','srcref');
+        $new->setAttribute('resource',$refline);
+        $new->setAttribute('_font','');
+
+
+        # addNodes($document,$child,['ltx:inline-block',{property=>'srcref',resource=>$refline}]);
+#        print STDERR "\n\nHere: ".Stringify($child)."\n";
+#        print STDERR Stringify($document->getNodeBox($child))."\n";
+#        print STDERR "\n\nFilename: ".$filename."\n";
+#        print STDERR "Ref: (".$fromLine.",".$fromCol.") (".$toLine.",".$toCol.")\n";
+#        print STDERR $sref->toAttribute."\n";
+    }
+    map {AttachSourceRefs($document,$_)} $document->getChildElements($child);
+}
+
+DefRewrite(
+    xpath => 'descendant-or-self::ltx:para',
+    replace => sub {
+        my ($document,$node) = @_;
+        AttachSourceRefs($document,$node);
+        #map {AttachSourceRefs($_)} $document->getChildElements($node);
+        $document->getNode->appendChild($node);
+    }
+);
 
 1;
