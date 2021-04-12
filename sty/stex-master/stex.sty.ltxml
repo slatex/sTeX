@@ -363,35 +363,34 @@ locked => 1);
 
 
 
-
-
+use LaTeXML::Core::Rewrite;
 
 sub AttachSourceRefs {
     my ($document,$child) = @_;
     if (defined($document->getNodeBox($child))) {
-        my $sref = $document->getNodeBox($child)->getLocator;
-        my $filename = $$sref{source};
-        my $fromLine = $$sref{fromLine};
-        my $toLine = $$sref{toLine};
-        my $fromCol = $$sref{fromCol};
-        my $toCol = $$sref{toCol};
-        my $refline = $filename."#(".$fromLine.";".$fromCol.")(".$toLine.";".$toCol.")";
-
-        my $new = $child->addNewChild('http://dlmf.nist.gov/LaTeXML', 'inline-block');
-        $new->setAttribute('class','ltx_rdf');
-        $new->setAttribute('property','srcref');
-        $new->setAttribute('resource',$refline);
-        $new->setAttribute('_font','');
-
-
+        if(substr($child,0,5) eq "<Math") {}
+        else {
+            my $sref = $document->getNodeBox($child)->getLocator;
+            my $filename = $$sref{source};
+            my $fromLine = $$sref{fromLine};
+            my $toLine = $$sref{toLine};
+            my $fromCol = $$sref{fromCol};
+            my $toCol = $$sref{toCol};
+            my $refline = $filename."#(".$fromLine.";".$fromCol.")(".$toLine.";".$toCol.")";
+            my $new = $child->addNewChild('http://dlmf.nist.gov/LaTeXML', 'inline-block');
+            $new->setAttribute('class','ltx_rdf');
+            $new->setAttribute('property','srcref');
+            $new->setAttribute('resource',$refline);
+            $new->setAttribute('_font','');
+            map {AttachSourceRefs($document,$_)} $document->getChildElements($child);
+        }
+    }
         # addNodes($document,$child,['ltx:inline-block',{property=>'srcref',resource=>$refline}]);
 #        print STDERR "\n\nHere: ".Stringify($child)."\n";
 #        print STDERR Stringify($document->getNodeBox($child))."\n";
 #        print STDERR "\n\nFilename: ".$filename."\n";
 #        print STDERR "Ref: (".$fromLine.",".$fromCol.") (".$toLine.",".$toCol.")\n";
 #        print STDERR $sref->toAttribute."\n";
-    }
-    map {AttachSourceRefs($document,$_)} $document->getChildElements($child);
 }
 
 DefRewrite(
