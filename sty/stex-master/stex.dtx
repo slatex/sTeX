@@ -184,6 +184,9 @@
   \def\latexml@annotate@bodyarg{#3}%
   \if@latexml\ifmmode\latexml@annotate@math{#1}{#2}{\ifx\latexml@annotate@bodyarg\@empty\ \else#3\fi}\else\latexml@annotate@text{#1}{#2}{#3}\fi\else#3\fi%
 }
+\protected\long\def\latexml@invisible#1{%
+  \if@latexml\ifmmode\latexml@invisible@math{#1}\else\latexml@invisible@text{#1}\fi\fi%
+}
 \protected\long\def\latexml@annotate@text#1#2#3{}
 \protected\long\def\latexml@annotate@math#1#2#3{}
 \newenvironment{latexml@annotateenv}[2]{}{}
@@ -879,6 +882,7 @@
 \addmetakey*{module}{narr}
 \addmetakey*{module}{lang}
 \addmetakey*{module}{sig}
+\addmetakey*{module}{meta}
 %    \end{macrocode}
 %
 % \begin{macro}{module@heading}
@@ -909,17 +913,34 @@
 %    \begin{macrocode}
 
 % meta-theory
+\def\metatheory@none{None}
 \def\stex@metatheory#1{\latexml@annotate@invisible{metatheory}{#1}{}}%
-\protected\def\metatheory#1{%
-  \edef\metatheory@path{#1}%
-  \ifcsvoid{metatheory@path}{%
+\def\stex@do@metatheory{%
+  \edef\metatheory@path{\module@meta}%
+  \ifx\metatheory@path\metatheory@none%
     \stex@metatheory{}%
-  }{%
-    \stex@debug{Metatheory: #1 \if@inimport(in import)\fi}%
-    \if@inimport\importmodule{#1}\else%
-      \latexml@annotate{metatheory}{}{\importmodule{#1}}\fi%
-  }%
+  \else%
+    \metatheory@splitoptions%
+    \stex@debug{Metatheory: \metatheory@options:\metatheory@path \if@inimport(in import)\fi}%
+    \if@inimport\ex\importmodule\ex[\metatheory@options]\metatheory@path\else%
+      \if@latexml\latexml@annotate@invisible{metatheory}{}{\ex\importmodule\ex[\metatheory@options]\metatheory@path}\else
+        \ex\importmodule\ex[\metatheory@options]\metatheory@path
+      \fi%
+    \fi%
+  \fi%
   \parsemodule@maybesetcodes%
+}
+\def\metatheory@splitoptions{%
+  \IfBeginWith\metatheory@path{[}{%
+    \ex\metatheory@parseoptions\metatheory@path\end%
+  }{%
+    \def\metatheory@options{}%
+  }%
+}
+
+\def\metatheory@parseoptions[#1]#2\end{%
+  \def\metatheory@options{#1}%
+  \def\metatheory@path{#2}%
 }
 
 \newenvironment{module}[1][]{%
@@ -970,11 +991,11 @@
   \edef\@module@ns@temp{\stex@currpath}%
   \if@iswindows@\windows@to@path\@module@ns@temp\fi%
   \archive@ns@empty@false%
-  \stex@debug{Generate new namespace^^J  Filepath: \@module@ns@temp}%
+  %\stex@debug{Generate new namespace^^J  Filepath: \@module@ns@temp}%
   \ifcsvoid{mh@currentrepos}{\archive@ns@empty@true}%
   {\ex\ifx\csname mathhub@ns@\mh@currentrepos\endcsname\@empty\archive@ns@empty@true\fi%
   }%
-  \stex@debug{  \ifarchive@ns@empty@ Namespace empty\else Namespace not empty\fi}%
+  %\stex@debug{  \ifarchive@ns@empty@ Namespace empty\else Namespace not empty\fi}%
   \ifarchive@ns@empty@%
     \edef\@module@ns@tempuri{file\@Colon\@Slash\@Slash\@module@ns@temp}%
   \else%
@@ -1088,10 +1109,10 @@
     }%
     \csdef{module@defs@\module@uri}{}%
   }{%
-    \stex@debug{Module in file \stex@currfile}%
+    %\stex@debug{Module in file \stex@currfile}%
     \IfEndWith\stex@currfile\stex@dot@tex{}{%
       \edef\stex@currfile{\stex@currfile\stex@dot@tex}%
-      \stex@debug{updated to \stex@currfile}%
+      %\stex@debug{updated to \stex@currfile}%
     }%
     \path@filename\stex@currfile\module@lang@filename%
     \ifcsvoid{module@lang}{%
@@ -1125,7 +1146,14 @@
   \let\currentmodule@name\module@name%
   \let\currentmodule@ns\module@ns%
   \let\currentmodule@uri\module@uri%
-  \stex@debug{^^JNew module: \module@uri^^J}%
+  \ex\let\csname\module@name\ex\endcsname\csname\module@uri\endcsname%
+  \addto@thismodulex{%
+    \let\ex\noexpand\csname\module@name\endcsname\ex\noexpand\csname\module@uri\endcsname%
+  }%
+  \stex@debug{New module: \module@uri}%
+  \ifcsvoid{module@meta}{}{%
+    \stex@do@metatheory%
+  }%
   \parsemodule@maybesetcodes%
 }{%
   \if@inmhrepos%
@@ -1140,10 +1168,14 @@
     \set@default@ns\let\currentmodule@ns\module@ns%
     \set@next@moduleid\let\currentmodule@name\module@name%
   }{}%
-  \edef\currentmodule@name{\currentmodule@name\@Slash#2\_feature}%
-  \parsemodule@maybesetcodes%
-  \begin{latexml@annotateenv}{feature:#1}{\currentmodule@uri\QuestionMark#2}%
+  \edef\currentmodule@name{\currentmodule@name\@Slash#2-feature}%
+  \begin{latexml@annotateenv}{feature:#1}{\currentmodule@uri\@QuestionMark#2}%
   \edef\currentmodule@uri{\currentmodule@ns\@QuestionMark\currentmodule@name}%
+  \let\module@uri\currentmodule@uri%
+  \csdef{module@defs@\module@uri}{}%
+  \edef\this@module{%
+    \ex\noexpand\csname module@defs@\module@uri\endcsname%
+  }%
   \parsemodule@maybesetcodes%
 }{%
   \end{latexml@annotateenv}%
@@ -1154,15 +1186,40 @@
     \set@default@ns\let\currentmodule@ns\module@ns%
     \set@next@moduleid\let\currentmodule@name\module@name%
   }{}%
-  \edef\currentmodule@name{\currentmodule@name\@Slash#2\_feature}%
-  \parsemodule@maybesetcodes%
+  \edef\currentmodule@name{\currentmodule@name\@Slash#2-feature}%
   \latexml@annotate{feature:#1}{\currentmodule@uri\QuestionMark#2}{%
-  \edef\currentmodule@uri{\currentmodule@ns\@QuestionMark\currentmodule@name}%
+    \edef\currentmodule@uri{\currentmodule@ns\@QuestionMark\currentmodule@name}%
+    \let\module@uri\currentmodule@uri%
+    \csdef{module@defs@\module@uri}{}%
+    \edef\this@module{%
+      \ex\noexpand\csname module@defs@\module@uri\endcsname%
+    }%
   #3}%
 \endgroup}
 
+\def\term@annotate{\@ifnextchar*{\term@annotate@star}{\term@annotate@nostar}}%
+
+\def\term@annotate@nostar#1#2{%
+  \latexml@annotate{term}{#1}{#2}%
+}
+\def\term@annotate@star*#1#2{%
+  \latexml@annotate@invisible{term}{#1}{#2}%
+}
+
+
+\def\variable@annotate{\@ifnextchar*{\variable@annotate@star}{\variable@annotate@nostar}}%
+
+\def\variable@annotate@nostar#1#2{%
+  \latexml@annotate@invisible{variable}{#1}{#2}%
+}
+
+\def\variable@annotate@star*#1#2{%
+  \latexml@annotate@invisible{variable:implicit}{#1}{#2}%
+}
+
 \def\module@export#1#2{%
-  \addto@thismodule{\unexpanded{#2}}%
+  \stex@debug{Exporting \unexpanded{#2}}%
+  \addto@thismodule{#2}%
   #1#2\parsemodule@maybesetcodes%
 }
 %    \end{macrocode}
@@ -1225,7 +1282,9 @@
     #1%
   \else%
     % TODO something else
-    #2%
+    %\def\invoke@module@next{\csname#1\@QuestionMark#2\endcsname}%
+    %\ex\invoke@module@next%
+    \csname#1\@QuestionMark#2\ex\endcsname%
   \fi%
 }
 %    \end{macrocode}
@@ -1276,9 +1335,11 @@
 \parsemodule@replacemacro{makeatother}{parsemodule@oldmakeatother}
 \parsemodule@allow{symdef}
 \parsemodule@allow{abbrdef}
-\parsemodule@allow{metatheory}
 \parsemodule@allow{module@export}
 \parsemodule@allow{importmodule}
+\parsemodule@allow{mmt@symdecl}
+\parsemodule@allow{instantiates}
+\parsemodule@allow{setnotation}
 \parsemodule@allowenv{module}
 \parsemodule@allowenv{@module}
 \parsemodule@allow{importmhmodule}
@@ -1575,10 +1636,36 @@
       \vfuzz=10000pt\relax%
       \edef\requiremodules@path@temp{#1}%
       \IfEndWith\requiremodules@path@temp\stex@dot@tex%
-        {\stexinput{#1}}{\stexinput{#1.tex}}%
+        {}{\edef\requiremodules@path@temp{\requiremodules@path@temp.tex}}%
+      \message{^^J(\requiremodules@path@temp}%
+      \stex@currfile@push\requiremodules@path@temp%
+      \requiremodules@readfile%
+      \ex\scantokens\ex{\requiremodules@filecontent^^J}%
+      \message{)}%
+      \stex@currfile@pop%
       \reset@parsemodule@catcodes%
     }%
     \parsemodule@maybesetcodes%
+  }
+  \newread\usemodules@fileread%
+  \def\requiremodules@readfile{%
+  \begingroup%
+    \immediate\openin\usemodules@fileread=\requiremodules@path@temp\relax%
+    \catcode`\\=12%
+    \catcode`\%=12%
+    \def\requiremodules@filecontent{}%
+    \requiremodules@readfileI%
+    \immediate\closein\usemodules@fileread%
+    \xdef\requiremodules@filecontent{\requiremodules@filecontent}%
+  \endgroup%
+  }
+  \def\requiremodules@readfileI{%
+    \ifeof\usemodules@fileread\else%
+    \read\usemodules@fileread to \requiremodules@filecontent@temp\relax%
+    \ex\ex\ex\def\ex\ex\ex\requiremodules@filecontent\ex\ex\ex{%
+      \ex\requiremodules@filecontent\requiremodules@filecontent@temp^^J}%
+    \ex\requiremodules@readfileI%
+    \fi%
   }
 %    \end{macrocode}
 % \test{
@@ -1607,23 +1694,23 @@
 \newif\if@importmodule@switchrepos\@importmodule@switchreposfalse
 \def\importmodule@bookkeeping#1#2#3{%
   \@importmodule@switchreposfalse%
-  \stex@debug{Importmodule: #1^^J  #2^^J\detokenize{#3}}%
-  \metasetkeys{importmodule}{#1}%
+  \stex@debug{Importmodule: #1^^J  #2}%
+  \edef\importmodule@mhrepos{#1}%
   \ifcsvoid{importmodule@mhrepos}{%
     \ifcsvoid{currentrepos@dir}{%
-      \stex@debug{Importmodule: Set importmodule@dir to \stex@PWD}%
+      %\stex@debug{Importmodule: Set importmodule@dir to \stex@PWD}%
       \let\importmodule@dir\stex@PWD%
     }{%
-      \stex@debug{Importmodule: Set importmodule@dir to \currentrepos@dir\@Slash source}%
+      %\stex@debug{Importmodule: Set importmodule@dir to \currentrepos@dir\@Slash source}%
       \edef\importmodule@dir{\currentrepos@dir\@Slash source}%
     }%
   }{%
     \@importmodule@switchrepostrue%
-    \stex@debug{Importmodule: Repository switch to \importmodule@mhrepos}%
-    \stex@debug{Importmodule: Current repos: \mh@currentrepos}%
+    %\stex@debug{Importmodule: Repository switch to \importmodule@mhrepos}%
+    %\stex@debug{Importmodule: Current repos: \mh@currentrepos}%
     \ex\let\csname importmodule@oldrepos@#2\endcsname\mh@currentrepos%
     \mathhub@setcurrentreposinfo\importmodule@mhrepos%
-    \stex@debug{Importmodule: New repos: \mh@currentrepos^^J  Namespace: \currentrepos@ns}%
+    %\stex@debug{Importmodule: New repos: \mh@currentrepos^^J  Namespace: \currentrepos@ns}%
     \edef\importmodule@dir{\currentrepos@dir\@Slash source}%
   }%
   \StrCut{#2}\@QuestionMark\importmodule@subdir\importmodule@modulename%
@@ -1638,7 +1725,7 @@
   #3%
   \if@importmodule@switchrepos%
     \ex\mathhub@setcurrentreposinfo\csname importmodule@oldrepos@#2\endcsname%
-    \stex@debug{Importmodule: switched back to: \mh@currentrepos}%
+    %\stex@debug{Importmodule: switched back to: \mh@currentrepos}%
   \fi%
   %\ignorespacesandpars%
 }
@@ -1648,7 +1735,6 @@
 % \begin{macro}{\importmodule}
 %    \begin{macrocode}
 %\srefaddidkey{importmodule}
-\addmetakey{importmodule}{mhrepos}
 \newcommand\importmodule[2][]{\@@importmodule[#1]{#2}{export}}
 \newcommand\@@importmodule[3][]{%
   \importmodule@bookkeeping{#1}{#2}{%
@@ -1675,7 +1761,7 @@
     \edef\@load{#1}%
     \edef\@importmodule@name{#2}%
     \stex@debug{Loading #2 in #1}%
-    \if@smsmode\else\ifcsvoid{stex@module@\@importmodule@name}{% TODO check this
+    \ifcsvoid{stex@module@\@importmodule@name}{% TODO check this
       \stex@iffileexists{\@load.tex}{
         \stex@debug{Exists: #1}%
         \requiremodules\@load%
@@ -1715,7 +1801,7 @@
           }%
         }%
       }%
-    }{}\fi%
+    }{}%
     \ifx\@load\@empty\else%
       {% TODO
   %      \edef\@path{\csname module@#2@path\endcsname}%
@@ -1736,7 +1822,6 @@
   \ifx\@export\@@export\addto@thismodulex{%
     \noexpand\@importmodule[\@importmodule@load]{#2}{noexport}%
   }\fi%
-  \if@smsmode\else
   \ifcsvoid{this@module}{}{%
     \ifcsvoid{module@imports@\module@uri}{
       \csxdef{module@imports@\module@uri}{%
@@ -1749,8 +1834,6 @@
       }%
     }%
   }%
-  \fi%
-  \if@smsmode\else%
     \edef\activate@module@name{#2}%
     \StrCount\activate@module@name\@Slash[\activate@module@lastslash]%
     \ifnum\activate@module@lastslash>0%
@@ -1766,7 +1849,7 @@
       \fi\fi%
       \ex\ex\ex\activate@defs\ex\ex\ex{\csname stex@lastmodule@\activate@module@name\endcsname}%
     }%
-  \fi% activate the module
+  % activate the module
 }%
 %    \end{macrocode}
 %
@@ -1801,11 +1884,6 @@
 % \present\bar
 % }
 % 
-% \test{
-% \importmodule[mhrepos=FoMID/Core]{foundations/types/type.en}
-% \ex\present\csname module@defs@http://mathhub.info/FoMID/Core/foundations/types?type.en\endcsname\\
-% \present\type
-% }
 %
 % \end{macro}
 %
@@ -1845,10 +1923,9 @@
 %    \begin{macrocode}
 \newif\if@inimport\@inimportfalse
 \def\activate@defs#1{%
-  \stex@debug{Activating import #1}%
   \if@inimport\else%
     \def\inimport@module{#1}%
-    \stex@debug{Entering import #1}%
+%    \stex@debug{Entering import #1}%
     \@inimporttrue%
   \fi%
   \edef\activate@defs@uri{#1}%
@@ -1858,13 +1935,19 @@
     }
   }{%
     \ifcsundef{module@\activate@defs@uri @activated}%
-      {\csname module@defs@\activate@defs@uri\endcsname}{}%
-    \@namedef{module@\activate@defs@uri @activated}{true}%
+      {%
+        \csdef{module@\activate@defs@uri @activated}{true}%
+        \if@smsmode\else\stex@debug{Activating import \activate@defs@uri}\fi%
+        %\stex@debug{\ex\meaning\csname module@defs@\activate@defs@uri\endcsname}%
+        \csname module@defs@\activate@defs@uri\endcsname%
+      }{%
+        \stex@debug{Already activated: \activate@defs@uri}%
+      }%
   }%
   \def\inimport@thismodule{#1}%
-  \stex@debug{End of import #1}%
+%  \stex@debug{End of import #1}%
   \ifx\inimport@thismodule\inimport@module\@inimportfalse%
-    \stex@debug{Leaving import #1}%
+%    \stex@debug{Leaving import #1}%
   \fi%
 }%
 %    \end{macrocode}
@@ -1921,9 +2004,6 @@
 }%
 %    \end{macrocode}
 %
-% \test{
-% \inputref[mhrepos=FoMID/Core]{foundations/types/type.en}
-% }
 %
 % \end{macro}
 %
@@ -1992,7 +2072,7 @@
       }%
     }%
     \if@inimport\else\if@smsmode\else\ifcsvoid{symdecl@type}{}{%
-      \stex@debug{HERE1: \symdecl@uri}%
+      %\stex@debug{HERE1: \symdecl@uri}%
       \setbox\modules@import@tempbox\hbox{$\symdecl@type$}% only to have latex check this
     }\fi\fi%
     \ifcsvoid{symdecl@args}{\csgdef{\symdecl@uri\@QuestionMark args}{}}{%
@@ -2011,9 +2091,7 @@
       }%
     }{%
     % not compatible with circular dependencies, e.g. test/omdoc/07-modules/smstesta.tex
-      \PackageWarning{stex}{symbol already defined: \symdecl@uri}{%
-        You need to pick a fresh name for your symbol%
-      }%
+      \PackageWarning{stex}{symbol already defined: \symdecl@uri}{}%
     }%
     \define@in@module\symdecl@uri{\noexpand\@invoke@symbol{\symdecl@uri}}%
     \IfStrEq\symdecl@local{false}{%
@@ -2025,18 +2103,66 @@
     \PackageError{stex}{\detokenize{\symdecl} not in a module}{You need to be in a module%
     in order to declare a new symbol}
   }%
+  \ex\gdef\csname\symdecl@uri\@QuestionMark notations\endcsname{}%
   \if@inimport\else\if@inabbrdef\else\if@smsmode\else%
-    \stex@debug{HERE2: \symdecl@uri}%
+    %\stex@debug{HERE2: \symdecl@uri}%
     \latexml@symdecl\symdecl@uri{$\symdecl@type$}{\csname\symdecl@uri\@QuestionMark args\endcsname}{}{#2}%
   \fi\fi\fi%
   \if@insymdef@\else\parsemodule@maybesetcodes\fi%
 }
 \def\latexml@symdecl#1#2#3#4#5{\latexml@annotate@invisible{symdecl}{#1}{%
-  \latexml@annotate{type}{}{#2}%
-  \latexml@annotate{args}{#3}{}%
-  \latexml@annotate{definiens}{}{#4}%
-  \latexml@annotate{macroname}{#5}{}%
+  \latexml@annotate@invisible{type}{}{#2}%
+  \latexml@annotate@invisible{args}{#3}{}%
+  \latexml@annotate@invisible{definiens}{}{#4}%
+  \latexml@annotate@invisible{macroname}{#5}{}%
 }}
+
+\newcommand\mmt@symdecl[4][]{
+  \def\symdecl@local{false}%
+  \def\symdecl@args{}%
+  \setkeys{symdecl}{#1}%
+  \edef\mmt@symdecl@name{#3}%
+  \edef\mmt@symdecl@uri{#2\@QuestionMark\mmt@symdecl@name}%
+  \stex@debug{MMT-Symdecl \mmt@symdecl@uri^^fof arity \symdecl@args}%
+  \ifcsvoid{stex@symbol@\mmt@symdecl@name}{%
+    \ex\edef\csname stex@symbol@\mmt@symdecl@name\endcsname{\mmt@symdecl@uri}%
+  }{%
+    \ex\def\csname stex@symbol@\mmt@symdecl@name\endcsname{\detokenize{ambiguous}}%
+  }%
+  \edef\symdecl@symbolmacro{%
+    \noexpand\ifcsvoid{stex@symbol@\mmt@symdecl@name}{%
+      \ex\edef\ex\noexpand\csname stex@symbol@\mmt@symdecl@name\endcsname{\mmt@symdecl@uri}%
+    }{%
+      \ex\def\ex\noexpand\csname stex@symbol@\mmt@symdecl@name\endcsname{\detokenize{ambiguous}}%
+    }%
+  }%
+  \ifcsvoid{symdecl@args}{\csgdef{\mmt@symdecl@uri\@QuestionMark args}{}}{%
+    \IfInteger\symdecl@args{\notation@num@to@ia@\symdecl@args\csxdef{\mmt@symdecl@uri\@QuestionMark args}{\notation@curr@args}}{%
+      \ex\global\ex\let\csname\mmt@symdecl@uri\@QuestionMark args\endcsname\symdecl@args%
+    }%
+  }%
+  \ex\g@addto@macro@safe\csname module@defs@\module@uri%
+    \ex\endcsname\ex{\symdecl@symbolmacro}%
+  \ifcsvoid{\mmt@symdecl@uri}{%
+    \ifcsvoid{module@names@\module@uri}{%
+      \csxdef{module@names@\module@uri}{\mmt@symdecl@name}%
+    }{%
+      \csxdef{module@names@\module@uri}{\mmt@symdecl@name,%
+        \csname module@names@\module@uri\endcsname}%
+    }%
+  }{%
+  % not compatible with circular dependencies, e.g. test/omdoc/07-modules/smstesta.tex
+    \PackageWarning{stex}{symbol already defined: \mmt@symdecl@uri}{}%
+  }%
+  \define@in@module\mmt@symdecl@uri{\noexpand\@invoke@symbol{\mmt@symdecl@uri}}%
+  \IfStrEq\symdecl@local{false}{%
+    \define@in@module{#4}{\noexpand\@invoke@symbol{\mmt@symdecl@uri}}%
+  }{%
+    \csdef{#4}{\noexpand\@invoke@symbol{\mmt@symdecl@uri}}%
+  }%
+  \ex\gdef\csname\mmt@symdecl@uri\@QuestionMark notations\endcsname{}%
+  \parsemodule@maybesetcodes%
+}
 %    \end{macrocode}
 % \test{
 %  \begin{module}[name=foo]
@@ -2214,6 +2340,7 @@
   \notation@parse@params{#1}{}%
   \def\notation@temp@notation{}%
   \ex\let\ex\notation@curr@args\csname\notation@uri\@QuestionMark args\endcsname%
+  \stex@debug{Notation for \notation@uri: \notation@curr@args}%
   \let\notation@curr@todo@args\notation@curr@args%
   \StrLen\notation@curr@todo@args[\notation@curr@arity]%
   \ex\renewcommand\ex\notation@temp@notation\ex[\notation@curr@arity]{#3}%
@@ -2291,8 +2418,8 @@
 \def\notation@parse@assocarg#1{%
   \def\notation@parse@assocop{#1}%
   \edef\notation@nextarg@temp{%
-    {\stex@arg{\the\notation@argument@counter}{\notation@curr@argprec}{\notation@assoc{\ex\unexpanded\ex{\notation@parse@assocop}}%
-      {########\the\notation@argument@counter}}}%
+    {\notation@assoc{\the\notation@argument@counter}{\notation@curr@argprec}{\ex\unexpanded\ex{\notation@parse@assocop}}%
+      {########\the\notation@argument@counter}}%
   }%
   \ex\g@addto@macro@safe\ex\notation@curr@extargs\ex{\notation@nextarg@temp}%
   \notation@do@args%
@@ -2312,6 +2439,7 @@
   % \notation@curr@lang
   % \notation@uri
   \def\notation@temp@fragment{}%
+  \protected\def\notation@thisuri{}%
   \ifx\notation@curr@arityvar\@empty\else%
     \edef\notation@temp@fragment{arity=\notation@curr@arityvar}%
   \fi%
@@ -2329,15 +2457,16 @@
       \edef\notation@temp@fragment{\notation@temp@fragment\@Ampersand variant=\notation@curr@variant}%
     \fi%
   \fi%
+  \notation@do@unused%
   \ex\ex\ex\def\ex\ex\ex\notation@temp@notation\ex\ex\ex%
     {\ex\notation@temp@notation\notation@curr@extargs}%
   \ifnum\notation@curr@arity=0%
-    \edef\notation@temp@notation{\stex@dooms{\notation@uri}{\notation@temp@fragment}{\notation@curr@prec}{\ex\unexpanded\ex{\notation@temp@notation}}}%
+    \edef\notation@temp@notation{\stex@dooms{\notation@thisuri}{\notation@temp@fragment}{\notation@curr@prec}{\ex\unexpanded\ex{\notation@temp@notation}}}%
   \else%
     \IfSubStr\notation@curr@args\notation@bchar{%
-      \edef\notation@temp@notation{\stex@doomb{\notation@uri}{\notation@temp@fragment}{\notation@curr@prec}{\ex\unexpanded\ex{\notation@temp@notation}}}%
+      \edef\notation@temp@notation{\stex@doomb{\notation@thisuri}{\notation@temp@fragment}{\notation@curr@prec}{\ex\unexpanded\ex{\notation@temp@notation}}}%
     }{%
-      \edef\notation@temp@notation{\stex@dooma{\notation@uri}{\notation@temp@fragment}{\notation@curr@prec}{\ex\unexpanded\ex{\notation@temp@notation}}}%
+      \edef\notation@temp@notation{\stex@dooma{\notation@thisuri}{\notation@temp@fragment}{\notation@curr@prec}{\ex\unexpanded\ex{\notation@temp@notation}}}%
     }%
   \fi%
   \stex@debug{Notation \notation@uri: \meaning\notation@temp@notation}%
@@ -2345,13 +2474,64 @@
   \parsemodule@maybesetcodes%
 }
 
+\def\notation@do@unused{%
+  \edef\notation@curr@notstring{\ex\detokenize\ex{\meaning\notation@temp@notation}}%
+  \StrBehind\notation@curr@notstring{->}[\notation@curr@notstring]%
+  %\stex@debug{HERE: Arity: \notation@curr@arity^^J    Notation: \notation@curr@notstring}%
+  \notation@argument@counter=0%
+  \notation@unused@loop%
+}
+
+\def\notation@unused@loop{%
+  \advance\notation@argument@counter by 1\relax%
+  \ifnum\notation@argument@counter>\notation@curr@arity\else%
+    \IfSubStr\notation@curr@notstring{\@Fragment\the\notation@argument@counter}{%
+      %\stex@debug{Argument \the\notation@argument@counter is used}%
+    }{%
+      \stex@debug{Argument \the\notation@argument@counter: NOT used}%
+      \notation@unused@escapeargs%
+      \ex\edef\ex\notation@temp@notation\notation@unused@sig{\ex\notation@temp@notation\notation@unused@args\stex@arg@unused{##\the\notation@argument@counter}}%
+      \stex@debug{Updated: \meaning\notation@temp@notation}%
+    }%
+    \ex\notation@unused@loop%
+  \fi%
+}
+
+\newcount\notation@unused@counter
+\def\notation@unused@escapeargs{%
+  \notation@unused@counter=0\relax%
+  \def\notation@unused@args{}%
+  \def\notation@unused@sig{}%
+  \def\notation@unused@arg{\noexpand\notation@unused@arg}%
+  \def\notation@unused@sigarg{\noexpand\notation@unused@sigarg}%
+  \notation@unused@escapeargs@loop%
+  \def\notation@unused@arg##1{##########1}%
+  \def\notation@unused@sigarg##1{##########1}%
+  \edef\notation@unused@sig{\notation@unused@sig}%
+  %\stex@debug{Sig: \meaning\notation@unused@sig}%
+  \ex\edef\ex\notation@temp@notation\notation@unused@sig{\ex\notation@temp@notation\notation@unused@args}%
+  %\stex@debug{New meaning: \meaning\notation@temp@notation}%
+}
+\def\notation@unused@escapeargs@loop{%
+  \advance\notation@unused@counter by 1\relax%
+  \ifnum\notation@unused@counter>\notation@curr@arity\else%
+    %\stex@debug{HERE: \the\notation@unused@counter}%
+    \edef\notation@unused@args{\notation@unused@args{\notation@unused@arg{\the\notation@unused@counter}}}%
+    \edef\notation@unused@sig{\notation@unused@sig\notation@unused@sigarg{\the\notation@unused@counter}}%
+    %\stex@debug{New: \meaning\notation@unused@sig}%
+    \ex\notation@unused@escapeargs@loop%
+  \fi%
+}
+
 \def\notation@final{%
   \edef\notation@csname{\notation@uri\@Fragment\notation@temp@fragment}%
-  \stex@debug{Defining \notation@csname of arity \notation@curr@arity}%
+  \ex\xdef\csname\notation@uri\@QuestionMark notations\endcsname{\csname\notation@uri\@QuestionMark notations\endcsname,\notation@temp@fragment}%
+  %\stex@debug{Defining \notation@csname of arity \notation@curr@arity}%
   \ifcsvoid{\notation@csname}{}{%
     \PackageWarning{stex}{notation already defined: \notation@csname, %
       Choose a different set of notation options (variant,lang,arity)%
     }%
+    \ex\let\csname\notation@csname\endcsname\undefined%
   }%
   \ex\ex\ex\ex\ex\ex\ex\newcommand\ex\ex\ex\csname\ex\ex\ex\notation@csname%
     \ex\ex\ex\endcsname\ex\ex\ex[\ex\notation@curr@arity\ex]%
@@ -2361,6 +2541,12 @@
   }%
   \ex\g@addto@macro@safe\csname module@defs@\module@uri\ex\endcsname\ex{\symdecl@temps}%
   \ex\g@addto@macro@safe\csname module@defs@\module@uri\ex\endcsname\ex{\ex{\notation@temp@notation}}%
+  \ifcsvoid{\notation@uri\@Fragment}{%
+    \ex\let\csname\notation@uri\@Fragment\ex\endcsname\csname\notation@csname\endcsname%
+    \ex\g@addto@macro@safe\csname module@defs@\module@uri\ex\endcsname\ex{%
+      \ex\let\csname\notation@uri\@Fragment\ex\endcsname\csname\notation@csname\endcsname%
+    }%
+  }{}%
   \@innotationfalse%
   \if@inimport\else\if@latexml%
     \let\notation@simarg@args\notation@curr@args%
@@ -2388,12 +2574,46 @@
   \fi%
 }
 % URI, fragment, arity, notation
-\def\latexml@notation#1#2#3#4#5{\latexml@annotate@invisible{notation}{#1}{%
-  \latexml@annotate{notationfragment}{#2}{}%
-  \latexml@annotate{args}{#3}{}%
-  \latexml@annotate{precedence}{#4}{}%
-  \latexml@annotate{notationcomp}{}{#5}%
+\def\latexml@notation#1#2#3#4#5{%
+  \begingroup%
+  \def\notation@thisuri{#1}%
+  \latexml@annotate@invisible{notation}{#1}{%
+  \latexml@annotate@invisible{notationfragment}{#2}{}%
+  \latexml@annotate@invisible{args}{#3}{}%
+  \latexml@annotate@invisible{precedence}{#4}{}%
+  \latexml@annotate@invisible{notationcomp}{}{#5}%
+  \endgroup%
 }}
+
+\protected\def\instantiates#1#2{%
+  \modules@getURIfromName{#2}%
+  \let\instantiates@domuri\notation@uri%
+  \modules@getURIfromName{#1}%
+  \let\instantiates@coduri\notation@uri%
+  \stex@debug{Instantiation: \instantiates@coduri = \instantiates@domuri }%
+  \stex@debug{inherit notations: \csname\instantiates@domuri\@QuestionMark notations\endcsname}%
+  \ex\let\ex\instantiates@notations\csname\instantiates@domuri\@QuestionMark notations\endcsname%
+  \ex\xdef\csname\instantiates@coduri\@QuestionMark notations\endcsname{\csname\instantiates@coduri\@QuestionMark notations\endcsname,\instantiates@notations}%
+  \@for\@I:=\instantiates@notations%
+  \do{%
+    \stex@debug{Inherit \@I^^J\ex\meaning\csname\instantiates@domuri\@Fragment\@I\endcsname}%
+    \ex\let\csname\instantiates@coduri\@Fragment\@I\ex\endcsname%
+      \csname\instantiates@domuri\@Fragment\@I\endcsname%
+  }%
+  \parsemodule@maybesetcodes%
+  \addto@thismodule{\instantiates{#1}{#2}}%
+}
+
+\protected\def\setnotation#1#2{%
+  \modules@getURIfromName{#1}%
+  \notation@construct@fragment{#2}%
+  \stex@debug{Defining default notation for \notation@uri
+    as \notation@temp@fragment: \ex\meaning\csname\notation@uri\@Fragment\notation@temp@fragment\endcsname}%
+  \ex\let\csname\notation@uri\@Fragment\ex\endcsname%
+    \csname\notation@uri\@Fragment\notation@temp@fragment\endcsname%
+  \parsemodule@maybesetcodes%
+  \addto@thismodule{\setnotation{#1}{#2}}%
+}
 %    \end{macrocode}
 % \end{macro}
 %
@@ -2401,12 +2621,12 @@
 % The following macros take care of precedences, parentheses/bracketing,
 % associative (flexary) arguments etc. in presentation:
 %    \begin{macrocode}
-\protected\def\notation@assoc#1#2{% function, argv
+\protected\def\notation@assoc#1#2#3#4{% function, argv
   \let\@tmpop=\relax% do not print the function the first time round
-  \@for\@I:=#2\do{\@tmpop% print the function
+  \@for\@I:=#4\do{\@tmpop% print the function
     % write the i-th argument
-    \@I%
-    \def\@tmpop{#1}%
+    \stex@arg{#1}{#2}{\@I}%
+    \def\@tmpop{#3}%
   }%
 }%
 
@@ -2503,11 +2723,11 @@
 }
 
 \protected\def\notation@symprec#1#2{%
-  \stex@debug{Precedence: #1 > \number\notation@downprec}%
+  %\stex@debug{Precedence: #1 > \number\notation@downprec}%
   \ifnum#1>\notation@downprec\relax%
     \notation@resetbrackets#2%
   \else%
-    \ifnum\notation@downprec=\infprec\relax%
+    \ifnum\notation@downprec=\neginfprec\relax%
       \notation@resetbrackets#2%
     \else
       \if@inparray@
@@ -2523,6 +2743,10 @@
   \@innotationfalse%
   \latexml@arg{#1}{\notation@argprec{#2}{#3}}%
   \@innotationtrue%
+}
+
+\protected\def\stex@arg@unused#1{%
+    \latexml@invisible{#1}%
 }
 
 % for LaTeXML Bindings
@@ -2548,7 +2772,7 @@
     \notation@argument@counter=0%
     \@for\@I:=#2\do{%
       \advance\notation@argument@counter by 1%
-      \latexml@annotate{arg}{\the\notation@argument@counter}{$\@I$}%
+      \latexml@annotate{arg}{\the\notation@argument@counter}{\ensuremath{\@I}}%
     }%
   }%
 }
@@ -2592,6 +2816,7 @@
 % after |\symdecl{foo}|, |\foo| expands to |\@invoke@symbol{<uri>}|:
 %    \begin{macrocode}
 \protected\def\@invoke@symbol#1{%
+  \def\notation@thisuri{#1}%
   \ifmmode%
     \def\@invoke@symbol@first{#1}%
     \let\invoke@symbol@next\invoke@symbol@math%
@@ -2605,7 +2830,7 @@
 % takes care of the optional notation-option-argument, and either invokes |\@invoke@symbol@math| for
 % symbolic presentation or |\@invoke@symbol@text| for verbalization (TODO)
 %    \begin{macrocode}
-\newcommand\invoke@symbol@math[1][]{%
+\def\notation@construct@fragment#1{%
   \notation@parse@params{#1}{}%
   \def\notation@temp@fragment{}%
   \ifx\notation@curr@arityvar\@empty\else%
@@ -2625,6 +2850,10 @@
       \edef\notation@temp@fragment{\notation@temp@fragment\@Ampersand variant=\notation@curr@variant}%
     \fi%
   \fi%
+}
+
+\newcommand\invoke@symbol@math[1][]{%
+  \notation@construct@fragment{#1}%
   \csname\@invoke@symbol@first\@Fragment\notation@temp@fragment\endcsname%
 }
 %    \end{macrocode}
@@ -2798,9 +3027,10 @@
 \def\invoke@symbol@switchnum[#1]{%
   \advance\notation@argument@counter by -1%
   \edef\notation@charnum{#1}%
-  \StrChar\invoke@symbol@arity\notation@charnum[\invoke@symbol@nextchar]%
+  \edef\notation@charnum@mone{\the\numexpr\notation@charnum-1\relax}%
+  %\StrChar\invoke@symbol@arity\notation@charnum[\invoke@symbol@nextchar]%
 %  \ifx\invoke@symbol@nextchar\notation@ichar%
-    \StrLeft\invoke@symbol@arity{\numexpr\notation@charnum-1}[\invoke@symbol@newarityLeft]%
+    \StrLeft\invoke@symbol@arity\notation@charnum@mone[\invoke@symbol@newarityLeft]%
     \StrGobbleLeft\invoke@symbol@arity\notation@charnum[\invoke@symbol@newarity]%
     \edef\invoke@symbol@arity{\invoke@symbol@newarityLeft\notation@Xchar\invoke@symbol@newarity}%
 %  \else% TODO
@@ -2817,7 +3047,7 @@
 }
 
 \def\invoke@symbol@text@finally{%
-  \stex@debug{HERE! \meaning\invoke@symbol@return}%
+  %\stex@debug{HERE! \meaning\invoke@symbol@return}%
   \if@inoms\latexml@oms{\invoke@symbol@uri}{}{\invoke@symbol@return}%
   \else\latexml@oma{\invoke@symbol@uri}{}{\invoke@symbol@return}%
   \fi%
@@ -2884,11 +3114,11 @@
 \def\termref@maketarget#1#2{%
   % #1: symbol URI
   % #2: text
-  \stex@debug{Here: #1 <> #2}%
+  %\stex@debug{Here: #1 <> #2}%
   \ifhref\if@smsmode\else%
     \hypertarget{sref@#1@target}{#2}%
   \fi\fi%
-  \stex@debug{Here!}%
+  %\stex@debug{Here!}%
   \expandafter\edef\csname sref@#1\endcsname##1{%
     \ifhref\if@smsmode\else\noexpand\hyperlink{sref@#1@target}{##1}\fi\fi%
   }%
@@ -2952,7 +3182,7 @@
 \addmetakey{defi}{name}
 \def\@definiendum#1#2{%
   \parsemodule@maybesetcodes%
-  \stex@debug{Here: #1 | #2}%
+  %\stex@debug{Here: #1 | #2}%
   \termref@maketarget{#1}{#2}%\termref@maketarget{#1}{\defemph{#2}}%
 }
 
