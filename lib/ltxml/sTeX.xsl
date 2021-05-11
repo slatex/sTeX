@@ -12,13 +12,14 @@
 
   <xsl:template match="/" mode="footer" priority="9"/>
 
-  <xsl:template match="stex:annotation[@visible='false' or (current()='')]">
+  <xsl:template match="stex:annotation[@visible='false' or (current()='')]" priority="2">
     <xsl:element name="span" namespace="{$html_ns}"><xsl:copy-of select="@*"/><xsl:attribute name="style">display:none</xsl:attribute>‎<xsl:apply-templates /></xsl:element>
   </xsl:template>
 
   <xsl:template match="stex:annotation">
     <xsl:element name="span" namespace="{$html_ns}">
       <xsl:copy-of select="@*"/>
+      <xsl:apply-templates select="." mode="add_RDFa"/>
       <xsl:apply-templates />
     </xsl:element>
   </xsl:template>
@@ -49,6 +50,7 @@
     <xsl:element name="math" namespace="{$mml_ns}">
       <xsl:call-template name="add_id"/>
       <xsl:call-template name="add_attributes"/>
+      <xsl:apply-templates select="." mode="add_RDFa"/>
       <xsl:if test="@mode='display'">
         <xsl:attribute name="display">block</xsl:attribute>
       </xsl:if>
@@ -146,15 +148,16 @@
   <xsl:template match="ltx:XMApp[@role='POSTSUBSCRIPT']"/>
   <xsl:template match="ltx:XMApp[@role='POSTSUPERSCRIPT']"/>
 
-  <xsl:template match="ltx:XMArg[@role='sTeX']" priority="5" mode="normal">
+ <!--<xsl:template match="ltx:XMArg[@role='sTeX']" priority="5" mode="normal">
     <xsl:element name="mrow" namespace="{$mml_ns}">
       <xsl:copy-of select="@*"/>
       <xsl:apply-templates />
     </xsl:element>
-  </xsl:template>
+  </xsl:template>-->
 
   <xsl:template match="ltx:XMApp[ltx:XMTok[@role='FRACOP']]" priority="2" mode="normal">
     <xsl:element name="mfrac" namespace="{$mml_ns}">
+      <xsl:apply-templates select="." mode="add_RDFa"/>
       <xsl:apply-templates />
     </xsl:element>
   </xsl:template>
@@ -163,6 +166,7 @@
 
   <xsl:template match="ltx:XMApp[*[@role='OVERACCENT']]" priority="2" mode="normal">
     <xsl:element name="mover" namespace="{$mml_ns}">
+      <xsl:apply-templates select="." mode="add_RDFa"/>
       <xsl:attribute name="accent">true</xsl:attribute>
       <xsl:for-each select="./*">
         <xsl:sort select="position()" data-type="number" order="descending"/>
@@ -180,6 +184,7 @@
 
     <xsl:template match="ltx:XMApp[*[@role='UNDERACCENT']]" priority="2" mode="normal">
     <xsl:element name="munder" namespace="{$mml_ns}">
+      <xsl:apply-templates select="." mode="add_RDFa"/>
       <xsl:attribute name="accentunder">true</xsl:attribute>
       <xsl:for-each select="./*">
         <xsl:sort select="position()" data-type="number" order="descending"/>
@@ -197,6 +202,7 @@
 
   <xsl:template match="ltx:XMTok[@role='SUMOP' or @role='INTOP' or @role='BIGOP']" mode="normal">
     <xsl:element name="mo" namespace="{$mml_ns}">
+      <xsl:apply-templates select="." mode="add_RDFa"/>
       <xsl:attribute name="largeop">true</xsl:attribute>
       <xsl:attribute name="symmetric">true</xsl:attribute>
       <xsl:copy-of select="@stretchy"/>
@@ -206,6 +212,7 @@
 
   <xsl:template match="ltx:XMTok[@role='SUMOP' or @role='INTOP' or @role='BIGOP']" mode="movablelimits">
     <xsl:element name="mo" namespace="{$mml_ns}">
+      <xsl:apply-templates select="." mode="add_RDFa"/>
       <xsl:attribute name="largeop">true</xsl:attribute>
       <xsl:attribute name="symmetric">true</xsl:attribute>
       <xsl:attribute name="movablelimits">false</xsl:attribute>
@@ -216,6 +223,7 @@
 
   <xsl:template match="ltx:XMTok[@role='METARELOP' or @role='PUNCT' or @role='PERIOD' or @role='ADDOP' or @role='OPEN' or @role='CLOSE' or @role='OPFUNCTION' or @role='SUPOP' or @role='ID' or @role='OPERATOR' or @role='VERTBAR' or @role='FUNCTION' or @role='MULOP' or @role='RELOP' or @role='UNDERACCENT' or @role='OVERACCENT']" mode="normal">
     <xsl:element name="mo" namespace="{$mml_ns}">
+      <xsl:apply-templates select="." mode="add_RDFa"/>
       <xsl:copy-of select="@stretchy"/>
       <xsl:apply-templates />
     </xsl:element>
@@ -223,6 +231,7 @@
 
   <xsl:template match="ltx:XMTok[@role='METARELOP' or @role='PUNCT' or @role='PERIOD' or @role='ADDOP' or @role='OPEN' or @role='CLOSE' or @role='OPFUNCTION' or @role='SUPOP' or @role='ID' or @role='OPERATOR' or @role='VERTBAR' or @role='FUNCTION' or @role='MULOP' or @role='RELOP' or @role='UNDERACCENT' or @role='OVERACCENT']" mode="movablelimits">
     <xsl:element name="mo" namespace="{$mml_ns}">
+      <xsl:apply-templates select="." mode="add_RDFa"/>
       <xsl:copy-of select="@stretchy"/>
       <xsl:attribute name="movablelimits">false</xsl:attribute>
       <xsl:apply-templates />
@@ -231,6 +240,7 @@
 
   <xsl:template match="ltx:XMText" mode="normal">
     <xsl:element name="mtext" namespace="{$mml_ns}">
+      <xsl:apply-templates select="." mode="add_RDFa"/>
         <xsl:choose>
           <xsl:when test="./ltx:text">
             <xsl:value-of select="./ltx:text"/>
@@ -242,32 +252,39 @@
     </xsl:element>
   </xsl:template>
 
-
-  <xsl:template match="ltx:XMArg[@stex:visible='false']" mode="normal">
-    <xsl:element name="mrow" namespace="{$mml_ns}">
-      <xsl:attribute name="style">display:none</xsl:attribute>
-      <xsl:apply-templates />
-    </xsl:element>
+  <xsl:template name="maybedrop">
+    <xsl:choose>
+      <xsl:when test="count(*)=1 and not(@property) and not(@resource) and not(@stex:arg)">
+        <xsl:for-each select="./*">
+          <xsl:apply-templates select="."/>
+        </xsl:for-each>
+      </xsl:when>
+      <xsl:otherwise>
+        <xsl:element name="mrow" namespace="{$mml_ns}">
+          <xsl:apply-templates select="." mode="add_RDFa"/>
+          <xsl:for-each select="./*">
+            <xsl:apply-templates select="."/>
+          </xsl:for-each>
+        </xsl:element>
+      </xsl:otherwise>
+    </xsl:choose>
   </xsl:template>
 
   <xsl:template match="ltx:XMArg" mode="normal">
-    <xsl:element name="mrow" namespace="{$mml_ns}">
-      <xsl:apply-templates />
-    </xsl:element>
+    <xsl:call-template select="." name="maybedrop"/>
   </xsl:template>
 
   <xsl:template match="ltx:XMApp" mode="normal">
-    <xsl:call-template select="." name="maybewrap"/>
+    <xsl:call-template select="." name="maybedrop"/>
   </xsl:template>
 
   <xsl:template match="ltx:XMWrap" mode="normal">
-    <xsl:element name="mrow" namespace="{$mml_ns}">
-      <xsl:apply-templates />
-    </xsl:element>
+    <xsl:call-template select="." name="maybedrop"/>
   </xsl:template>
 
   <xsl:template match="ltx:XMHint[@width]" mode="normal">
     <xsl:element name="mspace" namespace="{$mml_ns}">
+      <xsl:apply-templates select="." mode="add_RDFa"/>
       <xsl:copy-of select="@width"/>
     </xsl:element>
   </xsl:template>
@@ -282,26 +299,27 @@
 
   <xsl:template match="ltx:XMTok" mode="normal">
     <xsl:element name="mi" namespace="{$mml_ns}">
-    <xsl:choose>
-      <xsl:when test="@font='bold'">
-        <xsl:call-template name="makeBold"/>
-      </xsl:when>
-      <xsl:when test="@font='sansserif'">
-        <xsl:call-template name="makeSans"/>
-      </xsl:when>
-      <xsl:when test="@font='fraktur'">
-        <xsl:call-template name="makeFrak"/>
-      </xsl:when>
-      <xsl:when test="@font='caligraphic' or @font='script'">
-        <xsl:call-template name="makeCal"/>
-      </xsl:when>
-      <xsl:when test="@font='typewriter'">
-        <xsl:call-template name="makeTT"/>
-      </xsl:when>
-      <xsl:otherwise>
-        <xsl:apply-templates/>
-      </xsl:otherwise>
-    </xsl:choose>
+      <xsl:apply-templates select="." mode="add_RDFa"/>
+      <xsl:choose>
+        <xsl:when test="@font='bold'">
+          <xsl:call-template name="makeBold"/>
+        </xsl:when>
+        <xsl:when test="@font='sansserif'">
+          <xsl:call-template name="makeSans"/>
+        </xsl:when>
+        <xsl:when test="@font='fraktur'">
+          <xsl:call-template name="makeFrak"/>
+        </xsl:when>
+        <xsl:when test="@font='caligraphic' or @font='script'">
+          <xsl:call-template name="makeCal"/>
+        </xsl:when>
+        <xsl:when test="@font='typewriter'">
+          <xsl:call-template name="makeTT"/>
+        </xsl:when>
+        <xsl:otherwise>
+          <xsl:apply-templates/>
+        </xsl:otherwise>
+      </xsl:choose>
     </xsl:element>
   </xsl:template>
 
@@ -339,8 +357,15 @@
       <xsl:attribute name="prefix"><xsl:value-of select="@prefix"/></xsl:attribute>
     </xsl:if>
     -->
+    <xsl:if test="@stex:visible='false'">
+      <xsl:attribute name="stex:visible"><xsl:value-of select="@stex:visible"/></xsl:attribute>
+      <xsl:attribute name="style">display:none</xsl:attribute>
+    </xsl:if>
     <xsl:if test="@stex:sourceref">
       <xsl:attribute name="stex:sourceref"><xsl:value-of select="@stex:sourceref"/></xsl:attribute>
+    </xsl:if>
+    <xsl:if test="@stex:arg">
+      <xsl:attribute name="stex:arg"><xsl:value-of select="@stex:arg"/></xsl:attribute>
     </xsl:if>
     <xsl:if test="@about">
       <xsl:attribute name="about"><xsl:value-of select="@about"/></xsl:attribute>

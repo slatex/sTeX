@@ -332,17 +332,75 @@ sub AttachSourceRefs {
     }
 }
 
+sub PropagateAttributes {
+    my ($document,$whatsit) = @_;
+    my $node = $document->getNode;
+    my $current = $document->getLastChildElement($node) || $node;
+    my @nodes = $current->childNodes();
+    if ($current->getAttribute('property') eq 'stex:arg') {
+        $current->setAttribute('stex:arg',$current->getAttribute('resource'));
+        $current->removeAttribute('property');
+        $current->removeAttribute('resource');
+        if (scalar(@nodes) == 1) {
+            my $child = $nodes[0];
+            if(!$child->hasAttribute('stex:arg')) {
+                $child->setAttribute('stex:arg',$current->getAttribute('stex:arg'));
+                if ($current->hasAttribute('stex:visible')) {
+                    $child->setAttribute('stex:visible',$current->getAttribute('stex:visible'));
+                }
+                $document->replaceNode($current,$child);
+            }
+        }
+    } else {
+        if (scalar(@nodes) == 1) {
+            my $child = $nodes[0];
+            if(!$child->hasAttribute('property') && !$child->hasAttribute('resource') && !$child->hasAttribute('stex:arg')) {
+                $child->setAttribute('property',$current->getAttribute('property'));
+                $child->setAttribute('resource',$current->getAttribute('resource'));
+                if ($current->hasAttribute('stex:visible')) {
+                    $child->setAttribute('stex:visible',$current->getAttribute('stex:visible'));
+                }
+                $document->replaceNode($current,$child);
+            }
+        }
+    }
+}
+
+sub PropagateVisible {
+    my ($document,$whatsit) = @_;
+    my $node = $document->getNode;
+    my $current = $document->getLastChildElement($node) || $node;
+    my @nodes = $current->childNodes();
+    if (scalar(@nodes) == 1) {
+        my $child = $nodes[0];
+        $child->setAttribute('stex:visible','false');
+        $document->replaceNode($current,$child);
+    }
+}
+
 if ($stexmode) {
     DefConstructor('\latexml@annotate@invisible{}{}{}',
-        '<stex:annotation property="stex:#1" resource="#2" visible="false">#3</stex:annotation>'
+        '<stex:annotation property="stex:#1" resource="#2" stex:visible="false">#3</stex:annotation>',
+        afterConstruct => sub {
+            my ($document,$node) = @_;
+            PropagateAttributes($document,$node);
+       }
     );
 
     DefConstructor('\latexml@annotate@text{}{}{}',
-        '<stex:annotationtext property="stex:#1" resource="#2">#3</stex:annotationtext>'
+        '<stex:annotationtext property="stex:#1" resource="#2">#3</stex:annotationtext>',
+#        afterConstruct => sub {
+#            my ($document,$node) = @_;
+#            PropagateAttributes($document,$node);
+#       }
     );
 
     DefConstructor('\latexml@invisible@text{}',
-        '<stex:annotation visible="false">#1</stex:annotation>'
+        '<stex:annotation stex:visible="false">#1</stex:annotation>',
+        afterConstruct => sub {
+            my ($document,$node) = @_;
+            PropagateVisible($document,$node);
+       }
     );
 
     DefEnvironment('{latexml@annotateenv}{}{}',
@@ -351,25 +409,18 @@ if ($stexmode) {
 
     DefConstructor('\latexml@invisible@math{}', 
         '<ltx:XMArg role="sTeX" stex:visible="false">#1</ltx:XMArg>',
-    #    '<ltx:XMApp class="stex:#1_#2"><ltx:XMTok/><ltx:XMArg>#3</ltx:XMArg></ltx:XMApp>',
-#        afterConstruct => sub {
-#            my ($document,$whatsit) = @_;
-#            my $node = $document->getNode;
-#            my $current = $document->getLastChildElement($node) || $node;
-#            my @nodes = $document->getChildElements($current);
-#            if (scalar(@nodes) == 1) {
-#                my $child = $nodes[0];
-#                my $class = $current->getAttribute('class');
-#                my $childclass = $child->getAttribute('class');
-#                if (defined($childclass)) {
-#                    $current->setAttribute('class',$class.' '.$childclass);
-#                }
-#            }
-#        },
+        afterConstruct => sub {
+            my ($document,$node) = @_;
+            PropagateVisible($document,$node);
+       },
     locked => 1);
 
     DefConstructor('\latexml@annotate@math{}{}{}', 
        '<ltx:XMArg role="sTeX" property="stex:#1" resource="#2">#3</ltx:XMArg>',
+       afterConstruct => sub {
+            my ($document,$node) = @_;
+            PropagateAttributes($document,$node);
+       },
     #    '<ltx:XMApp class="stex:#1_#2"><ltx:XMTok/><ltx:XMArg>#3</ltx:XMArg></ltx:XMApp>',
 #        afterConstruct => sub {
 #            my ($document,$whatsit) = @_;
@@ -398,11 +449,6 @@ if ($stexmode) {
     );
 
 }
-
-
-#DefConstructor('\latexml@annotate@text{}{}{}',
-#  '<ltx:inline-block property="stex:#1" resource="#2">#3</ltx:inline-block>'
-#);
 
 
 1;
