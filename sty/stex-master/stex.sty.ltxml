@@ -310,6 +310,7 @@ locked => 1);
 InputDefinitions('stex', type => 'sty', noltxml => 1);
 
 use LaTeXML::Core::Rewrite;
+use Scalar::Util qw/reftype/;
 
 sub AttachSourceRefs {
     my ($document,$child) = @_;
@@ -317,17 +318,19 @@ sub AttachSourceRefs {
         if(substr($child,0,5) eq "<Math") {}
         else {
             my $sref = $document->getNodeBox($child)->getLocator;
-            my $filename = $$sref{source};
-            my $fromLine = $$sref{fromLine};
-            my $toLine = $$sref{toLine};
-            my $fromCol = $$sref{fromCol};
-            my $toCol = $$sref{toCol};
-            my $refline = $filename."#(".$fromLine.";".$fromCol.")(".$toLine.";".$toCol.")";
-            $child->setAttribute('stex:sourceref',$refline);
-            #my $new = $child->addNewChild('http://kwarc.info/ns/sTeX', 'sourceref');
-            #$new->setAttribute('resource',$refline);
-            #$new->setAttribute('_font','');
-            map {AttachSourceRefs($document,$_)} $document->getChildElements($child);
+            if (reftype $sref eq reftype {}) {
+                my $filename = $$sref{source};
+                my $fromLine = $$sref{fromLine};
+                my $toLine = $$sref{toLine};
+                my $fromCol = $$sref{fromCol};
+                my $toCol = $$sref{toCol};
+                my $refline = $filename."#(".$fromLine.";".$fromCol.")(".$toLine.";".$toCol.")";
+                $child->setAttribute('stex:sourceref',$refline);
+                #my $new = $child->addNewChild('http://kwarc.info/ns/sTeX', 'sourceref');
+                #$new->setAttribute('resource',$refline);
+                #$new->setAttribute('_font','');
+                map {AttachSourceRefs($document,$_)} $document->getChildElements($child);
+            }
         }
     }
 }
