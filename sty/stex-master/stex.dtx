@@ -109,6 +109,7 @@
 % \section{Implementation}\label{sec:impl}
 %    \begin{macrocode}
 %<*cls>
+
 \RequirePackage{xkeyval}
 \DeclareOptionX{lang}{\def\stex@babeloption{#1}}
 \DeclareOptionX*{\PassOptionsToPackage{\CurrentOption}{stex}}
@@ -117,42 +118,39 @@
 \setlength\textwidth{15cm}
 \g@addto@macro{\@parboxrestore}{\setlength\parskip{\baselineskip}}
 \usepackage{stex}
-\ifcsvoid{stex@babeloption}{}{
-  \ifcsvoid{stex@babel@long\stex@babeloption}{
-    \PackageError{stex}{Unknown language shortcode: \stex@babeloption}{}
-  }{
-    \RequirePackage[\csname stex@babel@long\stex@babeloption\endcsname]{babel}
-  }
-}
 %</cls>
 %<*package>
-\RequirePackage{amsfonts,amsmath}
-
-\def\defemph#1{\textbf{#1}}
 
 \let\ex\expandafter
-% TODO
-\newif\if@stex@debugmode\@stex@debugmodefalse
-\DeclareOption{debug}{\@stex@debugmodetrue}
-\def\stex@debug#1{\if@stex@debugmode\message{^^J#1^^J}\fi}
-% Modules:
-\newif\ifmod@show\mod@showfalse
-\DeclareOption{showmods}{\mod@showtrue}
-% sref:
-\newif\ifextrefs\extrefsfalse
-\DeclareOption{extrefs}{\extrefstrue}
-%
-\ProcessOptions
 
 \ifcsname if@latexml\endcsname\else
   \ex\newif\csname if@latexml\endcsname\@latexmlfalse
 \fi
 
+\RequirePackage{amsfonts,amsmath,xkeyval}
 \RequirePackage{xspace}
 \RequirePackage{standalone}
 \RequirePackageWithOptions{stex-metakeys}
 \if@latexml\else\RequirePackage{xstring}\fi
 \RequirePackage{etoolbox}
+
+\def\defemph#1{\textbf{#1}}
+
+% TODO
+\newif\if@stex@debugmode\@stex@debugmodefalse
+\DeclareOptionX{debug}{\@stex@debugmodetrue}
+\def\stex@debug#1{\if@stex@debugmode\message{^^J#1^^J}\fi}
+% Modules:
+\newif\ifmod@show\mod@showfalse
+\DeclareOptionX{showmods}{\mod@showtrue}
+% sref:
+\newif\ifextrefs\extrefsfalse
+\DeclareOptionX{extrefs}{\extrefstrue}
+\DeclareOptionX{lang}{\def\stex@babeloption{#1}}
+%
+\ProcessOptionsX
+%\ProcessOptions
+
 
 \def\stex@babel@set#1#2{
   \csdef{stex@babel@short#1}{#2}
@@ -169,6 +167,14 @@
 \stex@babel@set{french}{fr}
 % \stex@babel@set{chinese simplified}{zhs}
 % \stex@babel@set{chinese traditional}{zht}
+
+\ifcsvoid{stex@babeloption}{}{
+  \ifcsvoid{stex@babel@long\stex@babeloption}{
+    \PackageError{stex}{Unknown language shortcode: \stex@babeloption}{}
+  }{
+    \RequirePackage[\csname stex@babel@long\stex@babeloption\endcsname]{babel}
+  }
+}
 
 \if@stex@debugmode\stex@debug{sTeX debug mode on}\fi
 %    \end{macrocode}
@@ -669,6 +675,7 @@
     found or wrongly set}{}
   \defpath{MathHub}{}
 \else\defpath{MathHub}\mathhub@path\fi
+\stex@debug{MathHub: \mathhub@path}
 %    \end{macrocode}
 % \test{\mathhub@path}
 %
@@ -915,16 +922,37 @@
 % meta-theory
 \def\metatheory@none{None}
 \def\stex@metatheory#1{\latexml@annotate@invisible{metatheory}{#1}{}}%
+\def\stex@defaultmeta{}
+\ifcsdef{MathHub}{
+  \stex@iffileexists{\mathhub@path/FoMID/Foundation/source/Meta}{
+    \def\stex@defaultmeta{[FoMID/Foundation]?Meta}
+  }{}
+}{}
+\stex@debug{Default meta theory: \stex@defaultmeta}
+
 \def\stex@do@metatheory{%
   \edef\metatheory@path{\module@meta}%
   \ifx\metatheory@path\metatheory@none%
     \stex@metatheory{}%
   \else%
-    \metatheory@splitoptions%
-    \stex@debug{Metatheory: \metatheory@options:\metatheory@path \if@inimport(in import)\fi}%
-    \if@inimport\ex\importmodule\ex[\metatheory@options]\metatheory@path\else%
-      \if@latexml\latexml@annotate@invisible{metatheory}{}{\ex\importmodule\ex[\metatheory@options]\metatheory@path}\else
-        \ex\importmodule\ex[\metatheory@options]\metatheory@path
+    \ifx\metatheory@path\@empty%
+      \ifx\stex@defaultmeta\@empty\else%
+        \let\metatheory@path\stex@defaultmeta%
+        \metatheory@splitoptions%
+        \stex@debug{Metatheory: \metatheory@options:\metatheory@path \if@inimport(in import)\fi}%
+        \if@inimport\ex\importmodule\ex[\metatheory@options]\metatheory@path\else%
+          \if@latexml\latexml@annotate@invisible{metatheory}{}{\ex\importmodule\ex[\metatheory@options]\metatheory@path}\else
+            \ex\importmodule\ex[\metatheory@options]\metatheory@path
+          \fi%
+        \fi%
+      \fi%
+    \else%
+      \metatheory@splitoptions%
+      \stex@debug{Metatheory: \metatheory@options:\metatheory@path \if@inimport(in import)\fi}%
+      \if@inimport\ex\importmodule\ex[\metatheory@options]\metatheory@path\else%
+        \if@latexml\latexml@annotate@invisible{metatheory}{}{\ex\importmodule\ex[\metatheory@options]\metatheory@path}\else
+          \ex\importmodule\ex[\metatheory@options]\metatheory@path
+        \fi%
       \fi%
     \fi%
   \fi%
@@ -1154,9 +1182,7 @@
   \latexml@annotate@invisible{header}{}{%
     \latexml@annotate@invisible{signature}{\module@sig}{}%
     \latexml@annotate@invisible{language}{\module@lang}{}%
-    \ifcsvoid{module@meta}{}{%
-      \stex@do@metatheory%
-    }%
+    \stex@do@metatheory%
   }%
   \parsemodule@maybesetcodes%
 }{%
