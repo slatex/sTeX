@@ -316,6 +316,12 @@
         <xsl:when test="@font='typewriter'">
           <xsl:call-template name="makeTT"/>
         </xsl:when>
+        <xsl:when test="@font='blackboard'">
+          <xsl:call-template name="makeBB"/>
+        </xsl:when>
+        <xsl:when test="@font='blackboard upright'">
+          <xsl:call-template name="makeBB"/>
+        </xsl:when>
         <xsl:otherwise>
           <xsl:apply-templates/>
         </xsl:otherwise>
@@ -346,6 +352,11 @@
   <xsl:template name="makeCal">
     <xsl:param name="value" select="."/>
     <xsl:value-of select="translate($value,'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz','𝒜ℬ𝒞𝒟ℰℱ𝒢ℋℐ𝒥𝒦ℒℳ𝒩𝒪𝒫𝒬ℛ𝒮𝒯𝒰𝒱𝒲𝒳𝒴𝒵𝒶𝒷𝒸𝒹ℯ𝒻ℊ𝒽𝒾𝒿𝓀𝓁𝓂𝓃ℴ𝓅𝓆𝓇𝓈𝓉𝓊𝓋𝓌𝓍𝓎𝓏')"/>
+  </xsl:template>
+
+  <xsl:template name="makeBB">
+    <xsl:param name="value" select="."/>
+    <xsl:value-of select="translate($value,'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz','𝔸𝔹ℂ𝔻𝔼𝔽𝔾ℍ𝕀𝕁𝕂𝕃𝕄ℕ𝕆ℙℚℝ𝕊𝕋𝕌𝕍𝕎𝕏𝕐ℤ𝕒𝕓𝕔𝕕𝕖𝕗𝕘𝕙𝕚𝕛𝕜𝕝𝕞𝕟𝕠𝕡𝕢𝕣𝕤𝕥𝕦𝕧𝕨𝕩𝕪𝕫')"/>
   </xsl:template>
 
   <xsl:template match="*" mode="add_RDFa" priority="2">
