@@ -7,7 +7,6 @@
 %% stex.dtx  (with options: `cls')
 %% 
 \ProvidesClass{stex}[2021/03/08 v2.0 Semantic Markup]
-
 \RequirePackage{xkeyval}
 \DeclareOptionX{lang}{\def\stex@babeloption{#1}}
 \DeclareOptionX*{\PassOptionsToPackage{\CurrentOption}{stex}}

@@ -12,15 +12,15 @@
 \let\ex\expandafter
 
 \ifcsname if@latexml\endcsname\else
-  \ex\newif\csname if@latexml\endcsname\@latexmlfalse
+    \ex\newif\csname if@latexml\endcsname\@latexmlfalse
 \fi
 
-\RequirePackage{amsfonts,amsmath,xkeyval}
-\RequirePackage{xspace}
-\RequirePackage{standalone}
+\RequirePackage{amsfonts,amsmath,xkeyval,xspace,standalone,scalatex}
 \RequirePackageWithOptions{stex-metakeys}
 \if@latexml\else\RequirePackage{xstring}\fi
 \RequirePackage{etoolbox}
+
+\scalatex@addNamespaceAbbrev{stex}{http://kwarc.info/ns/sTeX}
 
 \def\defemph#1{\textbf{#1}}
 
@@ -66,8 +66,28 @@
 }
 \protected\long\def\latexml@annotate@text#1#2#3{}
 \protected\long\def\latexml@annotate@math#1#2#3{}
-\newenvironment{latexml@annotateenv}[2]{}{}
 \protected\long\def\latexml@annotate@invisible#1#2#3{}
+\newenvironment{latexml@annotateenv}[2]{}{}
+
+\protected\long\def\scalatex@invisible#1{%
+  \if@scalatex\scalatex@annotateHTML{stex:visible="false" style:display="none"}#1\scalatex@annotateHTMLEnd\fi%
+}
+\protected\long\def\scalatex@annotate#1#2#3{%
+  \def\scalatex@annotate@bodyarg{#3}%
+  \scalatex@annotateHTML{property="stex:#1" resource="#2"}\ifx\scalatex@annotate@bodyarg\@empty\ \else\scalatex@annotate@bodyarg\fi\scalatex@annotateHTMLEnd%
+}
+\protected\long\def\scalatex@annotate@invisible#1#2#3{%
+  \def\scalatex@annotate@bodyarg{#3}%
+  \scalatex@annotateHTML{property="stex:#1" resource="#2" stex:visible="false" style:display="none"}\ifx\scalatex@annotate@bodyarg\@empty\ \else\scalatex@annotate@bodyarg\fi\scalatex@annotateHTMLEnd%
+}
+\newenvironment{scalatex@annotateenv}[2]{\scalatex@annotateHTML{property="stex:#1" resource="#2"}}{\scalatex@annotateHTMLEnd}
+
+\protected\long\def\stex@invisible{\if@scalatex\expandafter\scalatex@invisible\else\expandafter\latexml@invisible\fi}
+\protected\long\def\stex@annotate{\if@scalatex\expandafter\scalatex@annotate\else\expandafter\latexml@annotate\fi}
+\protected\long\def\stex@annotate@invisible{\if@scalatex\expandafter\scalatex@annotate@invisible\else\expandafter\latexml@annotate@invisible\fi}
+\newenvironment{stex@annotateenv}[2]{\par\if@scalatex\begin{scalatex@annotateenv}{#1}{#2}\else\begin{latexml@annotateenv}{#1}{#2}\fi}{\if@scalatex\end{scalatex@annotateenv}\else\end{latexml@annotateenv}\fi}
+\newif\if@htmlmode
+\if@latexml\@htmlmodetrue\else\if@scalatex\@htmlmodetrue\else\@htmlmodefalse\fi\fi
 \protected\def\stex{%
   \@ifundefined{texorpdfstring}%
   {\let\texorpdfstring\@firstoftwo}%
@@ -537,7 +557,7 @@
 }%
 
 \def\metatheory@none{None}
-\def\stex@metatheory#1{\latexml@annotate@invisible{metatheory}{#1}{}}%
+\def\stex@metatheory#1{\stex@annotate@invisible{metatheory}{#1}{}}%
 \def\stex@defaultmeta{}
 \ifcsdef{MathHub}{
   \stex@iffileexists{\mathhub@path/FoMID/Foundation/source/Meta}{
@@ -557,7 +577,7 @@
         \metatheory@splitoptions%
         \stex@debug{Metatheory: \metatheory@options:\metatheory@path \if@inimport(in import)\fi}%
         \if@inimport\ex\importmodule\ex[\metatheory@options]\metatheory@path\else%
-          \if@latexml\latexml@annotate@invisible{metatheory}{}{\ex\importmodule\ex[\metatheory@options]\metatheory@path}\else
+          \if@htmlmode\stex@annotate@invisible{metatheory}{}{\ex\importmodule\ex[\metatheory@options]\metatheory@path}\else
             \ex\importmodule\ex[\metatheory@options]\metatheory@path
           \fi%
         \fi%
@@ -566,7 +586,7 @@
       \metatheory@splitoptions%
       \stex@debug{Metatheory: \metatheory@options:\metatheory@path \if@inimport(in import)\fi}%
       \if@inimport\ex\importmodule\ex[\metatheory@options]\metatheory@path\else%
-        \if@latexml\latexml@annotate@invisible{metatheory}{}{\ex\importmodule\ex[\metatheory@options]\metatheory@path}\else
+        \if@htmlmode\stex@annotate@invisible{metatheory}{}{\ex\importmodule\ex[\metatheory@options]\metatheory@path}\else
           \ex\importmodule\ex[\metatheory@options]\metatheory@path
         \fi%
       \fi%
@@ -686,7 +706,7 @@
   \csgdef{module@names@\module@uri}{}%
   \csgdef{module@imports@\module@uri}{}%
   \csxdef{\module@uri}{\noexpand\@invoke@module{\module@uri}}%
-  \begin{latexml@annotateenv}{theory}{\module@uri}%
+  \begin{stex@annotateenv}{theory}{\module@uri}%
   \ifcsvoid{module@sig}{%
     \ifcsvoid{stex@module@\module@name}{%
       \ex\global\ex\let\csname stex@module@\module@name\ex\endcsname\csname\module@uri\endcsname%
@@ -738,9 +758,9 @@
   }%
   \stex@debug{New module: \module@uri}%
   \stex@debug{Signature : \module@sig  Language : \module@lang}%
-  \latexml@annotate{header}{}{%
-    \latexml@annotate@invisible{signature}{\module@sig}{}%
-    \latexml@annotate@invisible{language}{\module@lang}{}%
+  \stex@annotate{header}{}{%
+    \stex@annotate@invisible{signature}{\module@sig}{}%
+    \stex@annotate@invisible{language}{\module@lang}{}%
     \stex@do@metatheory%
   }%
   \parsemodule@maybesetcodes%
@@ -749,7 +769,7 @@
   \@inmhreposfalse%
   \addto@thismodulex{\noexpand\mathhub@setcurrentreposinfo{\ex\noexpand\csname mh@old@repos@\module@uri\endcsname}}%
   \fi%
-  \end{latexml@annotateenv}%
+  \end{stex@annotateenv}%
 }%
 
 \newenvironment{@structural@feature}[3]{%
@@ -758,17 +778,17 @@
     \set@next@moduleid\let\currentmodule@name\module@name%
   }{}%
   \edef\currentmodule@name{\currentmodule@name\@Slash#2-feature}%
-  \begin{latexml@annotateenv}{feature:#1}{\currentmodule@uri\@QuestionMark#2}%
+  \begin{stex@annotateenv}{feature:#1}{\currentmodule@uri\@QuestionMark#2}%
   \edef\currentmodule@uri{\currentmodule@ns\@QuestionMark\currentmodule@name}%
   \let\module@uri\currentmodule@uri%
   \csdef{module@defs@\module@uri}{}%
   \edef\this@module{%
     \ex\noexpand\csname module@defs@\module@uri\endcsname%
   }%
-  \latexml@annotate@invisible{header}{}{#3}%
+  \stex@annotate@invisible{header}{}{#3}%
   \parsemodule@maybesetcodes%
 }{%
-  \end{latexml@annotateenv}%
+  \end{stex@annotateenv}%
 }%
 
 \newcommand\structural@feature[4]{\begingroup%
@@ -777,34 +797,34 @@
     \set@next@moduleid\let\currentmodule@name\module@name%
   }{}%
   \edef\currentmodule@name{\currentmodule@name\@Slash#2-feature}%
-  \latexml@annotate{feature:#1}{\currentmodule@uri\QuestionMark#2}{%
+  \stex@annotate{feature:#1}{\currentmodule@uri\QuestionMark#2}{%
     \edef\currentmodule@uri{\currentmodule@ns\@QuestionMark\currentmodule@name}%
     \let\module@uri\currentmodule@uri%
     \csdef{module@defs@\module@uri}{}%
     \edef\this@module{%
       \ex\noexpand\csname module@defs@\module@uri\endcsname%
     }%
-  \latexml@annotate@invisible{header}{}{#3}%
+  \stex@annotate@invisible{header}{}{#3}%
   #4}%
 \endgroup}
 
 \def\term@annotate{\@ifnextchar*{\term@annotate@star}{\term@annotate@nostar}}%
 
 \def\term@annotate@nostar#1#2{%
-  \latexml@annotate{term}{#1}{#2}%
+  \stex@annotate{term}{#1}{#2}%
 }
 \def\term@annotate@star*#1#2{%
-  \latexml@annotate@invisible{term}{#1}{#2}%
+  \stex@annotate@invisible{term}{#1}{#2}%
 }
 
 \def\variable@annotate{\@ifnextchar*{\variable@annotate@star}{\variable@annotate@nostar}}%
 
 \def\variable@annotate@nostar#1#2{%
-  \latexml@annotate@invisible{variable}{#1}{#2}%
+  \stex@annotate@invisible{variable}{#1}{#2}%
 }
 
 \def\variable@annotate@star*#1#2{%
-  \latexml@annotate@invisible{variable:implicit}{#1}{#2}%
+  \stex@annotate@invisible{variable:implicit}{#1}{#2}%
 }
 
 \def\module@export#1#2{%
@@ -1199,9 +1219,9 @@
       \PackageError{stex}{No module with name \activate@module@name found}{}%
     }{%
       \ifx\@export\@@export%
-        \latexml@annotate@invisible{import}{\csname stex@lastmodule@\activate@module@name}{}%
+        \stex@annotate@invisible{import}{\csname stex@lastmodule@\activate@module@name\endcsname}{}%
       \else\if@inimport\else%
-        \latexml@annotate@invisible{usemodule}{\csname stex@lastmodule@\activate@module@name\endcsname}{}%
+        \stex@annotate@invisible{usemodule}{\csname stex@lastmodule@\activate@module@name\endcsname}{}%
       \fi\fi%
       \ex\ex\ex\activate@defs\ex\ex\ex{\csname stex@lastmodule@\activate@module@name\endcsname}%
     }%
@@ -1345,15 +1365,15 @@
   \ex\gdef\csname\symdecl@uri\@QuestionMark notations\endcsname{}%
   \if@inimport\else\if@inabbrdef\else\if@smsmode\else%
     %\stex@debug{HERE2: \symdecl@uri}%
-    \latexml@symdecl\symdecl@uri{$\symdecl@type$}{\csname\symdecl@uri\@QuestionMark args\endcsname}{}{#2}%
+    \html@symdecl\symdecl@uri{$\symdecl@type$}{\csname\symdecl@uri\@QuestionMark args\endcsname}{}{#2}%
   \fi\fi\fi%
   \if@insymdef@\else\parsemodule@maybesetcodes\fi%
 }
-\def\latexml@symdecl#1#2#3#4#5{\latexml@annotate@invisible{symdecl}{#1}{%
-  \latexml@annotate@invisible{type}{}{#2}%
-  \latexml@annotate@invisible{args}{#3}{}%
-  \latexml@annotate@invisible{definiens}{}{#4}%
-  \latexml@annotate@invisible{macroname}{#5}{}%
+\def\html@symdecl#1#2#3#4#5{\stex@annotate@invisible{symdecl}{#1}{%
+  \stex@annotate@invisible{type}{}{#2}%
+  \stex@annotate@invisible{args}{#3}{}%
+  \stex@annotate@invisible{definiens}{}{#4}%
+  \stex@annotate@invisible{macroname}{#5}{}%
 }}
 
 \newcommand\mmt@symdecl[4][]{
@@ -1746,41 +1766,41 @@
     }%
   }{}%
   \@innotationfalse%
-  \if@inimport\else\if@latexml%
+  \if@inimport\else\if@htmlmode%
     \let\notation@simarg@args\notation@curr@args%
     \notation@argument@counter=0%
     \def\notation@simargs{}%
     \notation@simulate@arguments%
-    \latexml@notation\notation@uri\notation@temp@fragment\notation@curr@args\notation@curr@precstring%
-      {\[\csname\notation@csname\ex\endcsname\notation@simargs\]}%
+    \html@notation\notation@uri\notation@temp@fragment\notation@curr@args\notation@curr@precstring%
+      {$\displaystyle\csname\notation@csname\ex\endcsname\notation@simargs$}%
   \fi\fi%
 }
 \def\notation@simulate@arguments{%
   \ifx\notation@simarg@args\@empty\else%
     \advance\notation@argument@counter by 1%
     \IfBeginWith\notation@simarg@args{i}{%
-      \edef\notation@simargs{\notation@simargs{\notation@symprec{\infprec}{\noexpand\textrm{\@Fragment\the\notation@argument@counter}}}}%
+      \protected@edef\notation@simargs{\notation@simargs{\notation@symprec{\infprec}{\noexpand\textrm{\@Fragment\the\notation@argument@counter}}}}%
     }{%
       \IfBeginWith\notation@simarg@args{b}{%
-        \edef\notation@simargs{\notation@simargs{\notation@symprec{\infprec}{\noexpand\textrm{\@Fragment\the\notation@argument@counter}}}}%
+        \protected@edef\notation@simargs{\notation@simargs{\notation@symprec{\infprec}{\noexpand\textrm{\@Fragment\the\notation@argument@counter}}}}%
       }{%
-        \edef\notation@simargs{\notation@simargs{\notation@symprec{\infprec}{\noexpand\textrm{\@Fragment\@Fragment\the\notation@argument@counter a},\noexpand\textrm{\@Fragment\@Fragment\the\notation@argument@counter b}}}}%
+        \protected@edef\notation@simargs{\notation@simargs{\noexpand\textrm{\@Fragment\@Fragment\the\notation@argument@counter a},\noexpand\textrm{\@Fragment\@Fragment\the\notation@argument@counter b}}}%
       }%
     }%
     \StrGobbleLeft\notation@simarg@args1[\notation@simarg@args]%
     \notation@simulate@arguments%
   \fi%
 }
-\def\latexml@notation#1#2#3#4#5{%
+\def\html@notation#1#2#3#4#5{%
   \begingroup%
   \def\notation@thisuri{#1}%
-  \latexml@annotate@invisible{notation}{#1}{%
-  \latexml@annotate@invisible{notationfragment}{#2}{}%
-  \latexml@annotate@invisible{args}{#3}{}%
-  \latexml@annotate@invisible{precedence}{#4}{}%
-  \latexml@annotate@invisible{notationcomp}{}{#5}%
-  \endgroup%
-}}
+  \stex@annotate@invisible{notation}{#1}{%
+    \stex@annotate@invisible{notationfragment}{#2}{}%
+    \stex@annotate@invisible{args}{#3}{}%
+    \stex@annotate@invisible{precedence}{#4}{}%
+    \stex@annotate@invisible{notationcomp}{}{#5}%
+  }\endgroup%
+}
 
 \protected\def\instantiates#1#2{%
   \modules@getURIfromName{#2}%
@@ -1861,7 +1881,7 @@
     \notation@symprec{#3}{#4}%
   \else%
    \@innotationtrue%
-    \latexml@oms{#1}{#2}{\notation@symprec{#3}{#4}}%
+    \html@oms{#1}{#2}{\notation@symprec{#3}{#4}}%
     \@innotationfalse%
   \fi%
 }
@@ -1871,7 +1891,7 @@
     \notation@symprec{#3}{#4}%
   \else%
     \@innotationtrue%
-    \latexml@ombind{#1}{#2}{\notation@symprec{#3}{#4}}%
+    \html@ombind{#1}{#2}{\notation@symprec{#3}{#4}}%
     \@innotationfalse%
   \fi%
 }
@@ -1881,31 +1901,31 @@
     \notation@symprec{#3}{#4}%
   \else%
     \@innotationtrue%
-    \latexml@oma{#1}{#2}{\notation@symprec{#3}{#4}}%
+    \html@oma{#1}{#2}{\notation@symprec{#3}{#4}}%
     \@innotationfalse%
   \fi%
 }
 
-\protected\def\latexml@oms#1#2#3{%
-  \latexml@annotate{OMID}{#1\@Fragment#2}{#3}%
+\protected\def\html@oms#1#2#3{%
+  \stex@annotate{OMID}{#1\@Fragment#2}{#3}%
 }
 
-\protected\def\latexml@oma#1#2#3{%
-  \edef\latexml@oma@uri{%
+\protected\def\html@oma#1#2#3{%
+  \edef\html@oma@uri{%
     \ifcsname#1\@QuestionMark args\endcsname%
       #1\@Fragment\csname#1\@QuestionMark args\endcsname\@Fragment#2%
     \else#1\@Fragment\@Fragment#2\fi%
     }%
-  \latexml@annotate{OMA}{\latexml@oma@uri}{#3}%
+  \stex@annotate{OMA}{\html@oma@uri}{#3}%
 }
 
-\protected\def\latexml@ombind#1#2#3{%
-  \edef\latexml@oma@uri{%
+\protected\def\html@ombind#1#2#3{%
+  \edef\html@oma@uri{%
     \ifcsname#1\@QuestionMark args\endcsname%
       #1\@Fragment\csname#1\@QuestionMark args\endcsname\@Fragment#2%
     \else#1\@Fragment\@Fragment#2\fi%
   }%
-  \latexml@annotate{OMBIND}{\latexml@oma@uri}{#3}%
+  \stex@annotate{OMBIND}{\html@oma@uri}{#3}%
 }
 
 \protected\def\notation@symprec#1#2{%
@@ -1918,24 +1938,26 @@
     \else
       \if@inparray@
         \notation@resetbrackets#2
-      \else\dobrackets{#2}\fi%
-  \fi\fi%
+      \else\dobrackets{#2}%
+      \fi%
+    \fi%
+  \fi%
 }
 
 \newif\if@inparray@\@inparray@false
 
 \protected\def\stex@arg#1#2#3{%
   \@innotationfalse%
-  \latexml@arg{#1}{\notation@argprec{#2}{#3}}%
+  \html@arg{#1}{\notation@argprec{#2}{#3}}%
   \@innotationtrue%
 }
 
 \protected\def\stex@arg@unused#1{%
-    \latexml@invisible{#1}%
+    \stex@invisible{#1}%
 }
 
-\def\latexml@arg#1#2{%
-  \latexml@annotate{arg}{#1}{#2}%
+\def\html@arg#1#2{%
+  \stex@annotate{arg}{#1}{#2}%
 }
 
 \def\notation@argprec#1#2{%
@@ -1945,22 +1967,22 @@
   \ex\relax\ex\notation@innertmp%
   \ex\notation@downprec\ex=\number\notation@downprec\relax%
 }
-\protected\def\stex@oms#1#2{\modules@getURIfromName{#1}\latexml@oms{\notation@uri}{}{#2}}
-\protected\def\stex@oma#1#2{\modules@getURIfromName{#1}\latexml@oma{\notation@uri}{}{#2}}
-\protected\def\stex@ombind#1#2{\modules@getURIfromName{#1}\latexml@ombind{\notation@uri}{}{#2}}
+\protected\def\stex@oms#1#2{\modules@getURIfromName{#1}\html@oms{\notation@uri}{}{#2}}
+\protected\def\stex@oma#1#2{\modules@getURIfromName{#1}\html@oma{\notation@uri}{}{#2}}
+\protected\def\stex@ombind#1#2{\modules@getURIfromName{#1}\html@ombind{\notation@uri}{}{#2}}
 \protected\def\stex@rule#1#2{%
-  \latexml@annotate@invisible{mmtrule}{#1}{%
+  \stex@annotate@invisible{mmtrule}{#1}{%
     \notation@argument@counter=0%
     \@for\@I:=#2\do{%
       \advance\notation@argument@counter by 1%
-      \latexml@annotate{arg}{\the\notation@argument@counter}{\ensuremath{\@I}}%
+      \stex@annotate{arg}{\the\notation@argument@counter}{\ensuremath{\@I}}%
     }%
   }%
 }
 
 \newenvironment{symboldoc}[1]{%
   \modules@getURIfromName{#1}%
-  \begin{latexml@annotateenv}{symboldoc}{\notation@uri}%
+  \begin{stex@annotateenv}{symboldoc}{\notation@uri}%
     \def\symboldoc@lang{en}%
     \ifcsvoid{module@lang}{%
       \ifcsvoid{main@language}{}{%
@@ -1971,8 +1993,8 @@
     }{%
       \let\symboldoc@lang\module@lang%
     }%
-    \latexml@annotate{language}\symboldoc@lang{}%
-  }{\end{latexml@annotateenv}}
+    \stex@annotate{language}\symboldoc@lang{}%
+  }{\end{stex@annotateenv}}
 
 \protected\def\@invoke@symbol#1{%
   \def\notation@thisuri{#1}%
@@ -2028,12 +2050,12 @@
   \ex\let\ex\abbrdef@args\csname\symdecl@uri\@QuestionMark args\endcsname%
   \StrLen\abbrdef@args[\abbrdef@arity]
   \ex\renewcommand\ex\abbrdef@definiens\ex[\abbrdef@arity]{\unexpanded{#3}}%
-  \if@inimport\else\if@smsmode\else\if@latexml%
+  \if@inimport\else\if@smsmode\else\if@htmlmode%
     \let\notation@simarg@args\abbrdef@args%
     \notation@argument@counter=0%
     \def\notation@simargs{}%
     \notation@simulate@arguments%
-    \latexml@symdecl\symdecl@uri{$\symdecl@type$}{\csname\symdecl@uri\@QuestionMark args\endcsname}%
+    \html@symdecl\symdecl@uri{$\symdecl@type$}{\csname\symdecl@uri\@QuestionMark args\endcsname}%
       {\[\ex\abbrdef@definiens\notation@simargs\]}{#2}%
   \fi\fi\fi%
 }
@@ -2102,13 +2124,13 @@
 }
 
 \def\invoke@symbol@invisible#1{% TODO a-args
-  \edef\invoke@symbol@frame{\noexpand\latexml@annotate@invisible{arg}{\notation@charnum}}%
+  \edef\invoke@symbol@frame{\noexpand\stex@annotate@invisible{arg}{\notation@charnum}}%
   \ex\ex\ex\def\ex\ex\ex\invoke@symbol@return\ex\ex\ex{\ex\invoke@symbol@return\invoke@symbol@frame{#1}}%
   \invoke@symbol@text@args%
 }
 
 \def\invoke@symbol@normalarg#1{% TODO a-args
-  \edef\invoke@symbol@frame{\noexpand\latexml@annotate{arg}{\notation@charnum}}%
+  \edef\invoke@symbol@frame{\noexpand\stex@annotate{arg}{\notation@charnum}}%
   \ex\ex\ex\def\ex\ex\ex\invoke@symbol@return\ex\ex\ex{\ex\invoke@symbol@return\invoke@symbol@frame{#1}}%
   \invoke@symbol@text@args%
 }
@@ -2134,8 +2156,8 @@
 
 \def\invoke@symbol@text@finally{%
   %\stex@debug{HERE! \meaning\invoke@symbol@return}%
-  \if@inoms\latexml@oms{\invoke@symbol@uri}{}{\invoke@symbol@return}%
-  \else\latexml@oma{\invoke@symbol@uri}{}{\invoke@symbol@return}%
+  \if@inoms\html@oms{\invoke@symbol@uri}{}{\invoke@symbol@return}%
+  \else\html@oma{\invoke@symbol@uri}{}{\invoke@symbol@return}%
   \fi%
 }
 
