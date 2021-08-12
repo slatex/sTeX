@@ -77,7 +77,9 @@
   }
 }
 \cs_new_protected:Nn \stex_addtosms:n {
-  \iow_now:Nn \c__stex_sms_iow { #1 }
+  \bool_if:NF \c_stex_persist_mode_bool {
+    \iow_now:Nn \c__stex_sms_iow { #1 }
+  }
 }
 \RequirePackage{scalatex}
 \scalatex_add_Namespace:nn{stex}{http://kwarc.info/ns/sTeX}
@@ -575,7 +577,7 @@
   \exp_args:NNo \str_set:Nn \l_stex_module_meta_str
     \l_stex_module_meta_str
 }
-\cs_new_protected:Nn \stex_modules_begin_module: {
+\cs_new_protected:Nn \__stex_module_begin_module: {
   % Nested module?
   \stex_if_in_module:TF {
     % Nested module
@@ -605,9 +607,11 @@
 
   % language
   \str_if_empty:NF \l_stex_module_lang_str {
-    \prop_get:NVNT \c_stex_languages_prop \l_stex_module_lang_str
+    \prop_get:NVNTF \c_stex_languages_prop \l_stex_module_lang_str
       \l_tmpa_str {
         \exp_args:Nx \selectlanguage { \l_tmpa_str }
+      } {
+        % TODO throw error
       }
   }
 
@@ -616,7 +620,6 @@
     \str_if_empty:NT \l_stex_module_lang_str {
       % TODO throw error
     }
-
   }
 
   % metatheory
@@ -668,8 +671,9 @@
     }
   }
 }
-
-\cs_new_protected:Nn \stex_modules_end_module: {
+\iffalse \end{stex_annotate_env} \fi % make syntax highlighting work again
+\iffalse \begin{stex_annotate_env} \fi %^^A make syntax highlighting work again
+\cs_new_protected:Nn \__stex_module_end_module: {
   \str_set:Nx \l_tmpa_str {
     c_stex_module_
     \prop_item:Nn \l_stex_current_module_prop { ns } ?
@@ -680,7 +684,12 @@
   \prop_gset_eq:cN { \l_tmpa_str } \l_stex_current_module_prop
   \stex_if_smsmode:TF {
     \exp_args:Nx \stex_addtosms:n {
-      \prop_gset_from_keyval:Nn \exp_not:n \l_stex_current_module_prop {
+      \prop_gset_from_keyval:cn {
+        c_stex_module_
+        \prop_item:Nn \l_stex_current_module_prop { ns } ?
+        \prop_item:Nn \l_stex_current_module_prop { name }
+        _prop
+      } {
         name      = \prop_item:cn { \l_tmpa_str } { name } ,
         ns        = \prop_item:cn { \l_tmpa_str } { ns } ,
         import    = \prop_item:cn { \l_tmpa_str } { import } ,
@@ -696,14 +705,51 @@
     \end{stex_annotate_env}
   }
 }
-
 \NewDocumentEnvironment { @module } { O{} m } {
   \str_set:Nx \l_stex_module_name_str { #2 }
   \par
   \__stex_module_args:n { #1 }
-  \stex_modules_begin_module:
+  \__stex_module_begin_module:
 } {
-  \stex_modules_end_module:
+  \__stex_module_end_module:
+}
+\cs_if_exist:NTF \thesection {
+  \newcounter{module}[section]
+}{
+  \newcounter{module}
+}
+
+\bool_if:NT \c_stex_showmods_bool {
+  \latexml_if:F { \RequirePackage{mdframed} }
+}
+
+\cs_new_protected:Nn \stex_modules_heading: {
+  \stepcounter{module}
+  \par
+  \bool_if:NT \c_stex_showmods_bool {
+    \noindent{\textbf{Module} ~
+      \cs_if_exist:NT \thesection {\thesection.}
+      \themodule ~ [\l_stex_module_name_str]
+    }
+    % TODO references
+    % \sref@label@id{Module \thesection.\themodule [\module@name]}%
+    \str_if_empty:NTF \l_stex_module_title_str {
+    }{
+      \quad(\l_stex_module_title_str)\hfill
+    }
+  }
+}
+\NewDocumentEnvironment { module } { O{} m } {
+  \begin{@module}[#1]{#2}
+    \stex_modules_heading:
+    \bool_if:NT \c_stex_showmods_bool {
+      \begin{mdframed}
+    }
+}{
+  \bool_if:NT \c_stex_showmods_bool {
+    \end{mdframed}
+  }
+  \end{@module}
 }
 \tl_new:N \g_stex_smsmode_allowedmacros_tl
 \tl_new:N \g_stex_smsmode_allowedmacros_escape_tl
@@ -717,7 +763,10 @@
 }
 
 \tl_set:Nn \g_stex_smsmode_allowedmacros_escape_tl {
+  \symdef
   \importmodule
+  \notation
+  \symdecl
 }
 
 \exp_args:NNx \seq_set_from_clist:Nn \g_stex_smsmode_allowedenvs_seq {
@@ -1040,9 +1089,123 @@
     \stex_annotate_invisible:nnn
       {usemodule} {\l_stex_module_ns_str ? \l__stex_importmodule_name_str} {}
   }
+  \stex_smsmode_set_codes:
 }
 \seq_new:N \g_stex_modules_in_file_seq
 \prop_new:N \g_stex_module_files_prop
+\keys_define:nn { stex / symdecl } {
+  name  .tl_set_x:N  = \l_stex_symdecl_name_str ,
+  local .bool_set:N  = \l_stex_symdecl_local_bool ,
+  args  .tl_set_x:N  = \l_stex_symdecl_args_str ,
+  type  .tl_set:N    = \l_stex_symdecl_type_tl
+}
+
+\cs_new_protected:Nn \__stex_symdecl_args:n {
+  \str_clear:N \l_stex_symdecl_name_str
+  \str_clear:N \l_stex_symdecl_args_str
+  \bool_set_false:N \l_stex_symdecl_local_bool
+  \tl_clear:N \l_stex_symdecl_type_tl
+
+  \keys_set:nn { stex /symdecl } { #1 }
+
+  \exp_args:NNo \str_set:Nn \l_stex_symdecl_name_str
+    \l_stex_symdecl_name_str
+  \exp_args:NNo \str_set:Nn \l_stex_symdecl_args_str
+    \l_stex_symdecl_args_str
+}
+\NewDocumentCommand \symdecl { O{} m } {
+  \__stex_symdecl_args:n { #1 }
+  \tl_clear:N \l_stex_symdecl_definiens_tl
+  \stex_symdecl_do:n { #2 }
+}
+\cs_new_protected:Nn \stex_symdecl_do:n {
+  \stex_if_in_module:F {
+    % TODO throw error? some default namespace?
+  }
+
+  \str_if_empty:NT \l_stex_symdecl_name_str {
+    \str_set:Nx \l_stex_symdecl_name_str { #1 }
+  }
+
+  \prop_if_exist:cT { g_stex_symdecl_
+    \prop_item:Nn \l_stex_current_module_prop {ns} ?
+    \prop_item:Nn \l_stex_current_module_prop {name} ?
+      \l_stex_symdecl_name_str
+    _prop
+  }{
+    % TODO throw error (beware of circular dependencies)
+  }
+
+  \prop_clear:N \l_tmpa_prop
+  \prop_put:Nnx \l_tmpa_prop { module } {
+    \prop_item:Nn \l_stex_current_module_prop {ns} ?
+    \prop_item:Nn \l_stex_current_module_prop {name}
+  }
+  \seq_clear:N \l_tmpa_seq
+  \prop_put:Nno \l_tmpa_prop { notations } \l_tmpa_seq
+  \prop_put:Nno \l_tmpa_prop { name } \l_stex_symdecl_name_str
+  \prop_put:Nno \l_tmpa_prop { local } \l_stex_symdecl_local_bool
+  \prop_put:Nno \l_tmpa_prop { type } \l_stex_symdecl_type_tl
+
+  \exp_args:No \stex_add_constant_to_current_module:n {
+    \l_stex_symdecl_name_str
+  }
+
+  % TODO arity
+
+  % TODO define semantic macro
+
+  % TODO add to module content, if not local
+
+  \stex_debug:n{New~symbol:~
+    \prop_item:Nn \l_tmpa_prop { module } ?
+      \prop_item:Nn \l_tmpa_prop { name }^^J
+    Type:~\exp_not:o { \l_stex_symdecl_type_tl }^^J
+    Args:~\prop_item:Nn \l_tmpa_prop { args }
+  }
+
+  \prop_gset_eq:cN {
+    g_stex_symdecl_
+    \prop_item:Nn \l_tmpa_prop { module } ?
+    \prop_item:Nn \l_tmpa_prop { name }
+    _prop
+  } \l_tmpa_prop
+
+  \stex_if_smsmode:TF {
+    \bool_if:NF \l_stex_symdecl_local_bool {
+      \exp_args:Nx \stex_addtosms:n {
+        \prop_gset_from_keyval:cn {
+          g_stex_symdecl_
+          \prop_item:Nn \l_tmpa_prop { module } ?
+          \prop_item:Nn \l_tmpa_prop { name }
+          _prop
+        } {
+          name      = \prop_item:Nn \l_tmpa_prop { name }
+          notations = \prop_item:Nn \l_tmpa_prop { notations }
+          local     = \prop_item:Nn \l_tmpa_prop { local }
+          type      = \prop_item:Nn \l_tmpa_prop { type }
+          args      = \prop_item:Nn \l_tmpa_prop { args }
+        }
+      }
+    }
+    \stex_smsmode_set_codes:
+  }{
+    \stex_annotate_invisible:nnn {symdecl} {
+      \prop_item:Nn \l_tmpa_prop { module } ?
+      \prop_item:Nn \l_tmpa_prop { name }
+    } {
+      \stex_annotate_invisible{type}{}{$\l_stex_symdecl_type_tl$}
+      \stex_annotate_invisible{args}{}{
+        \prop_item:Nn \l_tmpa_prop { args }
+      }
+      \stex_annotate_invisible{macroname}{}{#1}
+      \str_if_empty:NF \l_stex_symdecl_definiens_tl {
+        \stex_annotate_invisible{definiens}{}
+          {$\l_stex_symdecl_definiens_tl$}
+      }
+    }
+  }
+}
 \endinput
 %%
 %% End of file `stex.sty'.
