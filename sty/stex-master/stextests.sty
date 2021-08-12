@@ -1,0 +1,126 @@
+\usepackage{listings}
+
+\lstdefinestyle{mylatex}{	
+	keywordstyle=\color{BurntOrange}
+}
+\lstdefinelanguage{mylatex}{
+	emphstyle=\underbar,
+	classoffset=0,keywordstyle=\bfseries,
+	morekeywords={\\begin,\\end},	
+	classoffset=1,keywordstyle=\color{blue},
+	morekeywords={\\Defi,\\defi,\\trefiis,\\symdef,\\symvariant,\\assoc},
+	classoffset=2,keywordstyle=\color{PineGreen},
+	morekeywords={\\nattimesOp,\\nattimes,\\eq,\\natplus},
+	classoffset=0,
+%^^A	morecomment=[l][\color{Gray}]{//},
+%^^A	morecomment=[s][\color{Gray}]{/*}{*/},
+	morecomment=[s][\color{Green}]{$}{$},
+%^^A  morestring=[b][\color{Purple}]\$,
+}
+\lstnewenvironment{latexcode}[1][language=mylatex]{\lstset{language=mylatex,basicstyle=\tiny,inputencoding=utf8,#1,alsoletter={\\,*},alsoother={\$}}}{}
+
+
+
+\usepackage{mdframed,realboxes}
+\usepackage[most]{tcolorbox}
+\usepackage{caption}
+
+\newenvironment{framed}{\begin{mdframed}\begin{center}}{\end{center}\end{mdframed}}
+\newcommand{\scaled}[2][0.9\hsize]{\begin{center}\resizebox{#1}{!}{\begin{minipage}{\textwidth} #2 \end{minipage}}\end{center}}
+
+\newenvironment{stextest@output}
+{
+  \begin{mdframed}[linewidth=1pt,backgroundcolor=white]\tiny
+}
+{\end{mdframed}}
+
+\newenvironment{stextest@input}
+{
+  \begin{mdframed}[linewidth=1pt,backgroundcolor=lightgray]\tiny
+}
+{\end{mdframed}}
+
+\makeatletter
+
+\newcount\test@counter\test@counter=0
+
+\newenvironment{stextest@border}
+{
+  \global\advance\test@counter by 1
+  \newtcolorbox{stextestborderbox}{
+    empty,
+    title={Test \the\test@counter},
+    attach boxed title to top left,
+       minipage boxed title,
+    boxed title style={empty,size=minimal,toprule=0pt,top=4pt,left=3mm,overlay={}},
+    coltitle=red,fonttitle=\bfseries,
+    before=\par\medskip\noindent,parbox=false,boxsep=0pt,left=3mm,right=0mm,top=2pt,breakable,pad at break=0mm,
+       before upper=\csname @totalleftmargin\endcsname0pt, 
+    overlay unbroken={\draw[red,line width=2pt] ([xshift=-0pt]title.north west) -- ([xshift=-0pt]frame.south west); },
+    overlay first={\draw[red,line width=2pt] ([xshift=-0pt]title.north west) -- ([xshift=-0pt]frame.south west); },
+    overlay middle={\draw[red,line width=2pt] ([xshift=-0pt]frame.north west) -- ([xshift=-0pt]frame.south west); },
+    overlay last={\draw[red,line width=2pt] ([xshift=-0pt]frame.north west) -- ([xshift=-0pt]frame.south west); },
+    }
+%^^A\refstepcounter{remark}
+\begin{stextestborderbox}\small
+}
+{\end{stextestborderbox}}
+
+ \makeatother
+ 
+\def\present#1{\texttt{>>\meaning#1<<}}
+\def\printltx#1{\texttt{\detokenize{#1}}}
+
+\newwrite\testoutfile
+\def\testfile{0}
+
+\ExplSyntaxOn
+
+\stex_indtx:T {
+	\newwrite\alltestsoutfile
+	\immediate\openout\alltestsoutfile=alltests.tst
+}
+
+  \def\stextest{
+    \begingroup 
+    \catcode`\\=12\relax
+    \catcode`\#=12\relax
+    \catcode`\&=12\relax
+    \catcode`\$=12\relax
+    \catcode`\^=12\relax
+    \catcode`\_=12\relax
+    \catcode`^^J=12\relax
+    \endlinechar=`^^J
+    \newlinechar=-1
+%^^A    \everyeof{\noexpand}
+    \test_a:n
+  }
+  \long\def \test_a:n #1 {
+    \endgroup
+    \stex_indtx:T {
+    	\immediate\write\alltestsoutfile{%
+    		^^J\c_backslash_str stextest{\detokenize{^^J^^J#1^^J}}^^J
+    	}
+    }
+    \begin{stextest@border}
+      \immediate\openout\testoutfile=stextest.tst
+      \immediate\write\testoutfile{
+        \c_backslash_str begin{latexcode}
+        \detokenize{^^J^^J#1^^J}
+        \c_backslash_str end{latexcode}
+      }
+      \immediate\closeout\testoutfile
+      \begin{stextest@input}
+        \catcode`\#=12\relax
+        \input{stextest.tst}
+      \end{stextest@input}
+      \immediate\openout\testoutfile=stextest.tst
+      \immediate\write\testoutfile{\detokenize{#1}}
+      \immediate\closeout\testoutfile
+      \begin{stextest@output}
+        \input{stextest.tst}
+      \end{stextest@output}
+    \end{stextest@border}
+  }
+  \long\def\test#1{}
+\ExplSyntaxOff
