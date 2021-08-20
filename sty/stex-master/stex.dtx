@@ -311,6 +311,33 @@
 %   The file being currently processed (respecting |\input| etc.)
 % \end{variable}
 %
+% \stextest{
+% \ExplSyntaxOn
+% \def\cpath@print#1{
+%    \stex_path_from_string:Nn \l_tmpb_seq { #1 }
+%    \stex_path_to_string:NN \l_tmpb_seq \l_tmpa_str
+%    \str_use:N \l_tmpa_str
+%  }
+% \ExplSyntaxOff
+% \begin{center}
+% \begin{tabular}{|l|l|l|}\hline
+%   path & canonicalized path & expected\\\hline
+%   aaa & \cpath@print{aaa} & aaa \\
+%   ../../aaa & \cpath@print{../../aaa} &  ../../aaa\\
+%   aaa/bbb & \cpath@print{aaa/bbb} & aaa/bbb \\
+%   aaa/.. & \cpath@print{aaa/..} &\\
+%   ../../aaa/bbb & \cpath@print{../../aaa/bbb} & ../../aaa/bbb\\
+%   ../aaa/../bbb & \cpath@print{../aaa/../bbb} & ../bbb \\
+%   ../aaa/bbb & \cpath@print{../aaa/bbb} &  ../aaa/bbb\\
+%   aaa/bbb/../ddd & \cpath@print{aaa/bbb/../ddd} & aaa/ddd\\
+%   aaa/bbb/./ddd & \cpath@print{aaa/bbb/./ddd} & aaa/bbb/ddd\\
+%   ./ & \cpath@print{./} & \\
+%   aaa/bbb/../.. & \cpath@print{aaa/bbb/../..} & \\\hline
+% \end{tabular}
+% \end{center}
+% }
+%
+%
 %  \subsection{MathHub Archives}
 %
 % \begin{variable}{\mathhub, \c_stex_mathhub_seq, \c_stex_mathhub_str}
@@ -344,6 +371,17 @@
 %   archive property list does not already exist, and
 %   adds a corresponding definition to the |.sms|-file.
 % \end{function}
+%
+% \stextest{
+%  \ExplSyntaxOn
+%  \stex_require_repository:n { Foo/Bar }
+%  id:~\prop_item:cn {c_stex_mathhub_Foo/Bar_manifest_prop} {id}\ \\
+%  narr:~\prop_item:cn {c_stex_mathhub_Foo/Bar_manifest_prop} {narr}\ \\
+%  ns:~\prop_item:cn {c_stex_mathhub_Foo/Bar_manifest_prop} {ns}\ \\
+%  deps:~\prop_item:cn {c_stex_mathhub_Foo/Bar_manifest_prop} {deps}\ \\
+% \stex_require_repository:n { Bar/Foo }
+%  \ExplSyntaxOff
+% }
 %
 % \subsection{The Module System}
 %
@@ -409,6 +447,23 @@
 %   Computes the current namespace
 % \end{function}
 %
+%\stextest{
+% \ExplSyntaxOn
+% \stex_modules_current_namespace:
+% Namespace~1:\\ \l_stex_modules_ns_str \\
+% Faking~a~repository:\\
+% \stex_set_current_repository:n{Foo/Bar}
+% \seq_pop_right:NN \g_stex_currentfile_seq \testtemp
+% \edef\testtempb{\detokenize{source}}
+% \exp_args:NNo \seq_put_right:Nn \g_stex_currentfile_seq { \testtempb }
+% \edef\testtempb{\detokenize{test}}
+% \exp_args:NNo \seq_put_right:Nn \g_stex_currentfile_seq { \testtempb }
+% \exp_args:NNo \seq_put_right:Nn \g_stex_currentfile_seq { \testtemp }
+% \stex_modules_current_namespace:
+% Namespace~2:\\ \l_stex_modules_ns_str
+% \ExplSyntaxOff
+%}
+%
 % \subsubsection{The \texttt{module}-environment}
 %
 % \begin{environment}{module}
@@ -431,6 +486,47 @@
 %
 % \end{environment}
 %
+%\stextest{
+% \ExplSyntaxOn
+% \stex_set_current_repository:n {Foo/Bar}
+% \seq_pop_right:NN \g_stex_currentfile_seq \l_tmpa_tl
+% \seq_put_right:Nx \g_stex_currentfile_seq { \tl_to_str:n{tests} }
+% \seq_put_right:Nx \g_stex_currentfile_seq { \tl_to_str:n{Foo} }
+% \seq_put_right:Nx \g_stex_currentfile_seq { \tl_to_str:n{Bar} }
+% \seq_put_right:Nx \g_stex_currentfile_seq { \tl_to_str:n{source} }
+% \seq_put_right:Nx \g_stex_currentfile_seq { \tl_to_str:n{Foo.tex} }
+% \begin{@module}{Foo}
+%  Module~path:~ 
+%  \prop_item:Nn \l_stex_current_module_prop { ns }?
+%  \prop_item:Nn \l_stex_current_module_prop { name }\\
+%  Language:~\prop_item:Nn \l_stex_current_module_prop { lang }\\
+%  Signature:~\prop_item:Nn \l_stex_current_module_prop { sig }\\
+%  Metatheory:~\prop_item:Nn \l_stex_current_module_prop { meta }\\
+% \end{@module}
+% \ExplSyntaxOff
+%}
+%
+%\stextest{
+% \ExplSyntaxOn
+% \stex_set_current_repository:n {Foo/Bar}
+% \stex_debug:n{Test:~\stex_path_to_string:N \g_stex_currentfile_seq }
+% \seq_pop_right:NN \g_stex_currentfile_seq \l_tmpa_tl
+% \seq_put_right:Nx \g_stex_currentfile_seq { \tl_to_str:n{tests} }
+% \seq_put_right:Nx \g_stex_currentfile_seq { \tl_to_str:n{Foo} }
+% \seq_put_right:Nx \g_stex_currentfile_seq { \tl_to_str:n{Bar} }
+% \seq_put_right:Nx \g_stex_currentfile_seq { \tl_to_str:n{source} }
+% \seq_put_right:Nx \g_stex_currentfile_seq { \tl_to_str:n{Foo.tex} }
+% \stex_debug:n{Test:~\stex_path_to_string:N \g_stex_currentfile_seq }
+% \begin{module}[title=Foo Bar]{Bar}
+%  Module~path:~ 
+%  \prop_item:Nn \l_stex_current_module_prop { ns }?
+%  \prop_item:Nn \l_stex_current_module_prop { name }\\
+%  Language:~\prop_item:Nn \l_stex_current_module_prop { lang }\\
+%  Signature:~\prop_item:Nn \l_stex_current_module_prop { sig }\\
+%  Metatheory:~\prop_item:Nn \l_stex_current_module_prop { meta }\\
+% \end{module}
+% \ExplSyntaxOff
+%}
 %
 %    \subsubsection{SMS Mode}
 % ``SMS Mode'' is used when loading modules from external tex files.
@@ -481,6 +577,18 @@
 %   \cs{stex_in_smsmode:nn} without spuriously terminating SMS mode.
 % \end{function}
 %
+%\stextest{
+% \immediate\openout\testfile=./tests/sometest.tex
+% \immediate\write\testfile{\detokenize{\this is \a test}^^J}
+% \immediate\write\testfile{\detokenize{this \is a \test}}
+% \immediate\closeout\testfile
+% \ExplSyntaxOn
+% \stex_in_smsmode:nn { foo } { 
+%   \input{tests/sometest.tex} 
+% }
+% \ExplSyntaxOff
+%}
+%
 %    \subsubsection{Imports and Inheritance}
 %
 % \begin{function}{\importmodule}
@@ -490,6 +598,19 @@
 %   arguments on to \cs{stex_import_module_path:nn}.
 %   
 % \end{function}
+%
+%\stextest{
+%   \begin{module}{Foo1}
+%     \symdecl[name=foo, args=3]{bar}
+%     \symdecl[args=bai]{foobar}
+%     Meaning:~\present\bar\\
+%   \end{module}
+%     Meaning:~\present\bar\\
+%   \begin{module}{Foo2}
+%     \importmodule{Foo1}
+%     Meaning:~\present\bar\\
+%   \end{module}
+%}
 %
 % \begin{function}{\usemodule}
 %   \begin{syntax} \cs{importmodule}|[|\meta{archive-ID}|]|\Arg{module-path} \end{syntax}
@@ -609,6 +730,18 @@
 %   \end{itemize}
 % \end{function}
 %
+%\stextest{
+%   \begin{module}{Foo3}
+%     \symdecl[name=foo, args=3]{bar}
+%     \symdecl[name=foobar, args=iab]{bari}
+%     \ExplSyntaxOn
+%       Meaning:~\present\bar\\
+%       \stex_get_symbol:n { bar }
+%       Result:~\l_stex_get_symbol_uri_str
+%     \ExplSyntaxOff
+%   \end{module}
+%}
+%
 % \begin{function}{\stex_get_symbol:n}
 %   Computes the full URI of a symbol from a macro argument, e.g.
 %   the macro name, the macro itself, the full URI...
@@ -620,7 +753,7 @@
 %
 % \begin{function}{\notation}
 %   \begin{syntax} \cs{notation}|[|\meta{args}|]|\Arg{symbol}\Arg{notations$^+$} \end{syntax}
-%
+%   Introduces a new notation for \meta{symbol}, see \cs{stex_notation_do:nn}
 % \end{function}
 %
 % \begin{function}{\stex_notation_do:nn}
@@ -639,8 +772,28 @@
 %     \item |opprec| (integer string),
 %     \item |argprecs| (sequence of integer strings)
 %   \end{itemize}
-%
 % \end{function}
+%
+%\stextest{
+%   \begin{module}{Foo4}
+%     \importmodule{Foo1}
+%     \notation[foo, prec=500;20x20x20]{bar}{\langle {#1 ^ {#2}}_{#3} \rangle }
+%     \notation[foo, prec=500;20x20x20]{foobar}{\langle #1 \mid [ #2 ]^{#3} \rangle }{ {#1}_{:#2} }
+%   \end{module}
+%}
+%
+% \begin{function}{\symdef}
+%   \begin{syntax} \cs{symdef}|[|\meta{args}|]|\Arg{symbol}\Arg{notations$^+$} \end{syntax}
+%   Combines \cs{symdecl} and \cs{notation} by introducing a new
+%   symbol and assigning a new notation for it.
+% \end{function}
+%
+%\stextest{
+%   \begin{module}{Foo6}
+%     \symdef[args=a, prec=50]{plus}{ #1 }{#1 + #2}
+%     $\plus{a,b,c}$
+%   \end{module}
+%}
 %
 % \begin{function}{\stex_term_oms:nnnn,\stex_term_oma:nnnn,\stex_term_omb:nnnn}
 %   \begin{syntax} \meta{URI}\meta{fragment}\meta{precedence}\meta{body} \end{syntax}
@@ -687,7 +840,31 @@
 %   after \cs{left} and \cs{right} in displaymode.
 % \end{function}
 %
+%\stextest{
+%  \begin{module}{Foo5}
+%    \importmodule{Foo1}
+%    \notation[foo, prec=500;20x20x20]{bar}{\langle {#1 ^ {#2}}_{#3} \rangle }
+%    $\bar abc$ and $\bar[foo] abc$
+%  \end{module}
+%}
 %
+%\stextest{
+%  \begin{module}{Foo7}
+%    \importmodule{Foo1}
+%     \notation[foo, prec=500;20x20x20]{foobar}{\langle #1 \mid [ #2 ]^{#3} \rangle }{ {#1}_{:#2} }
+%     $\foobar a{b,c,d,e,f}g$ and $\foobar[foo] a{b,c}g$ and $\foobar abc$
+%
+%     \symdecl[args=a]{plus}
+%     \symdecl[args=a]{mult}
+%     \notation[prec=50]{plus}{#1}{#1 + #2}
+%     \notation[prec=100]{mult}{#1}{#1 \cdot #2}
+%     $\plus{a,\mult{b,c}}$ and $\mult{a,\plus{\frac ab,\frac ac}}$
+%     \[\plus{a,\mult{b,c}}\text{ and }\mult{a,\plus{\frac ab,\frac ac}}\]
+%     $\displaystyle \plus{a,\mult{b,c}}$ and 
+%     \STEXwithbrackets[]{$\displaystyle
+%       \mult{a,\plus{\frac ab,\frac ac}}$}
+%  \end{module}
+%}
 %
 %
 %
@@ -1137,32 +1314,6 @@
 %    \end{macrocode}
 % \end{macro}
 %
-% \stextest{
-% \ExplSyntaxOn
-% \def\cpath@print#1{
-%    \stex_path_from_string:Nn\l_tmpb_seq{#1}
-%    \stex_path_to_string:NN\l_tmpb_seq\l_tmpa_str
-%    \str_use:N\l_tmpa_str
-%  }
-% \ExplSyntaxOff
-% \begin{center}
-% \begin{tabular}{|l|l|l|}\hline
-%   path & canonicalized path & expected\\\hline
-%   aaa & \cpath@print{aaa} & aaa \\
-%   ../../aaa & \cpath@print{../../aaa} &  ../../aaa\\
-%   aaa/bbb & \cpath@print{aaa/bbb} & aaa/bbb \\
-%   aaa/.. & \cpath@print{aaa/..} &\\
-%   ../../aaa/bbb & \cpath@print{../../aaa/bbb} & ../../aaa/bbb\\
-%   ../aaa/../bbb & \cpath@print{../aaa/../bbb} & ../bbb \\
-%   ../aaa/bbb & \cpath@print{../aaa/bbb} &  ../aaa/bbb\\
-%   aaa/bbb/../ddd & \cpath@print{aaa/bbb/../ddd} & aaa/ddd\\
-%   aaa/bbb/./ddd & \cpath@print{aaa/bbb/./ddd} & aaa/bbb/ddd\\
-%   ./ & \cpath@print{./} & \\
-%   aaa/bbb/../.. & \cpath@print{aaa/bbb/../..} & \\\hline
-% \end{tabular}
-% \end{center}
-% }
-%
 % \begin{macro}[EXP,pTF]{\stex_path_if_absolute:N}
 %    \begin{macrocode}
 \prg_new_conditional:Nnn \stex_path_if_absolute:N {p, T, F, TF} {
@@ -1457,17 +1608,6 @@
 %    \end{macrocode}
 % \end{macro}
 %
-% \stextest{
-%  \ExplSyntaxOn
-%  \stex_require_repository:n { Foo/Bar }
-%  id:~\prop_item:cn {c_stex_mathhub_Foo/Bar_manifest_prop} {id}\ \\
-%  narr:~\prop_item:cn {c_stex_mathhub_Foo/Bar_manifest_prop} {narr}\ \\
-%  ns:~\prop_item:cn {c_stex_mathhub_Foo/Bar_manifest_prop} {ns}\ \\
-%  deps:~\prop_item:cn {c_stex_mathhub_Foo/Bar_manifest_prop} {deps}\ \\
-% \stex_require_repository:n { Bar/Foo }
-%  \ExplSyntaxOff
-% }
-%
 %\begin{variable}{\l_stex_current_repository_prop}
 %
 % Current MathHub repository and a
@@ -1615,23 +1755,6 @@
 }
 %    \end{macrocode}
 % \end{macro}
-%
-%\stextest{
-% \ExplSyntaxOn
-% \stex_modules_current_namespace:
-% Namespace~1:\\\l_stex_modules_ns_str\\
-% Faking~a~repository:\\
-% \stex_set_current_repository:n{Foo/Bar}
-% \seq_pop_right:NN \g_stex_currentfile_seq \testtemp
-% \edef\testtempb{\detokenize{source}}
-% \exp_args:NNo \seq_put_right:Nn \g_stex_currentfile_seq { \testtempb }
-% \edef\testtempb{\detokenize{test}}
-% \exp_args:NNo \seq_put_right:Nn \g_stex_currentfile_seq { \testtempb }
-% \exp_args:NNo \seq_put_right:Nn \g_stex_currentfile_seq { \testtemp }
-% \stex_modules_current_namespace:
-% Namespace~2:\\\l_stex_modules_ns_str
-% \ExplSyntaxOff
-%}
 %
 % \subsubsection{The module environment}
 %
@@ -1838,27 +1961,6 @@
 %    \end{macrocode}
 % \end{environment}
 %
-%\stextest{
-% \ExplSyntaxOn
-% \stex_set_current_repository:n {Foo/Bar}
-% \seq_pop_right:NN \g_stex_currentfile_seq \l_tmpa_tl
-% \seq_put_right:Nx \g_stex_currentfile_seq { \tl_to_str:n{tests} }
-% \seq_put_right:Nx \g_stex_currentfile_seq { \tl_to_str:n{Foo} }
-% \seq_put_right:Nx \g_stex_currentfile_seq { \tl_to_str:n{Bar} }
-% \seq_put_right:Nx \g_stex_currentfile_seq { \tl_to_str:n{source} }
-% \seq_put_right:Nx \g_stex_currentfile_seq { \tl_to_str:n{Foo.tex} }
-% \begin{@module}{Foo}
-%  Module~path:~ 
-%  \prop_item:Nn \l_stex_current_module_prop { ns }?
-%  \prop_item:Nn \l_stex_current_module_prop { name }\\
-%  Language:~\prop_item:Nn \l_stex_current_module_prop { lang }\\
-%  Signature:~\prop_item:Nn \l_stex_current_module_prop { sig }\\
-%  Metatheory:~\prop_item:Nn \l_stex_current_module_prop { meta }\\
-% \end{@module}
-% \ExplSyntaxOff
-%}
-%
-%
 % \begin{macro}{\stex_modules_heading:}
 %
 %   Code for document headers
@@ -1910,29 +2012,6 @@
 %    \end{macrocode}
 %
 % \end{environment}
-%
-%
-%\stextest{
-% \ExplSyntaxOn
-% \stex_set_current_repository:n {Foo/Bar}
-% \stex_debug:n{Test:~\stex_path_to_string:N \g_stex_currentfile_seq }
-% \seq_pop_right:NN \g_stex_currentfile_seq \l_tmpa_tl
-% \seq_put_right:Nx \g_stex_currentfile_seq { \tl_to_str:n{tests} }
-% \seq_put_right:Nx \g_stex_currentfile_seq { \tl_to_str:n{Foo} }
-% \seq_put_right:Nx \g_stex_currentfile_seq { \tl_to_str:n{Bar} }
-% \seq_put_right:Nx \g_stex_currentfile_seq { \tl_to_str:n{source} }
-% \seq_put_right:Nx \g_stex_currentfile_seq { \tl_to_str:n{Foo.tex} }
-% \stex_debug:n{Test:~\stex_path_to_string:N \g_stex_currentfile_seq }
-% \begin{module}[title=Foo Bar]{Bar}
-%  Module~path:~ 
-%  \prop_item:Nn \l_stex_current_module_prop { ns }?
-%  \prop_item:Nn \l_stex_current_module_prop { name }\\
-%  Language:~\prop_item:Nn \l_stex_current_module_prop { lang }\\
-%  Signature:~\prop_item:Nn \l_stex_current_module_prop { sig }\\
-%  Metatheory:~\prop_item:Nn \l_stex_current_module_prop { meta }\\
-% \end{module}
-% \ExplSyntaxOff
-%}
 %
 % \subsubsection{SMS Mode}
 %    \begin{macrocode}
@@ -2209,18 +2288,6 @@
 %    \end{macrocode}
 % \end{macro}
 %
-%\stextest{
-% \immediate\openout\testfile=./tests/sometest.tex
-% \immediate\write\testfile{\detokenize{\this is \a test}^^J}
-% \immediate\write\testfile{\detokenize{this \is a \test}}
-% \immediate\closeout\testfile
-% \ExplSyntaxOn
-% \stex_in_smsmode:nn { foo } { 
-%   \input{tests/sometest.tex} 
-% }
-% \ExplSyntaxOff
-%}
-%
 % \subsubsection{Inheritance}
 %    \begin{macrocode}
 %<@@=stex_importmodule>
@@ -2424,20 +2491,6 @@
 }
 %    \end{macrocode}
 % \end{macro}
-%
-%
-%\stextest{
-%   \begin{module}{Foo1}
-%     \symdecl[name=foo, args=3]{bar}
-%     \symdecl[args=bai]{foobar}
-%     Meaning:~\present\bar\\
-%   \end{module}
-%     Meaning:~\present\bar\\
-%   \begin{module}{Foo2}
-%     \importmodule{Foo1}
-%     Meaning:~\present\bar\\
-%   \end{module}
-%}
 %
 % \begin{macro}{\usemodule}
 %    \begin{macrocode}
@@ -2707,20 +2760,6 @@
 }
 %    \end{macrocode}
 % \end{macro}
-%
-%\stextest{
-%   \begin{module}{Foo3}
-%     \symdecl[name=foo, args=3]{bar}
-%     \symdecl[name=foobar, args=iab]{bari}
-%     \ExplSyntaxOn
-%       Meaning:~\present\bar\\
-%       \stex_get_symbol:n { bar }
-%       Result:~\l_stex_get_symbol_uri_str
-%     \ExplSyntaxOff
-%   \end{module}
-%}
-%
-%
 %
 % \subsection{Notations}
 %    \begin{macrocode}
@@ -3023,15 +3062,6 @@
 %    \end{macrocode}
 % \end{macro}
 %
-%
-%\stextest{
-%   \begin{module}{Foo4}
-%     \importmodule{Foo1}
-%     \notation[foo, prec=500;20x20x20]{bar}{\langle {#1 ^ {#2}}_{#3} \rangle }
-%     \notation[foo, prec=500;20x20x20]{foobar}{\langle #1 \mid [ #2 ]^{#3} \rangle }{ {#1}_{:#2} }
-%   \end{module}
-%}
-%
 % \begin{macro}{\stex_invoke_symbol:n}
 %
 %  Invokes a semantic macro
@@ -3108,14 +3138,54 @@
 %    \end{macrocode}
 % \end{macro}
 %
-%
-%\stextest{
-%  \begin{module}{Foo5}
-%    \importmodule{Foo1}
-%    \notation[foo, prec=500;20x20x20]{bar}{\langle {#1 ^ {#2}}_{#3} \rangle }
-%    $\bar abc$ and $\bar[foo] abc$
-%  \end{module}
-%}
+% \begin{macro}{\symdef}
+%    \begin{macrocode}
+\keys_define:nn { stex / symdef } {
+  name  .tl_set_x:N  = \l_stex_symdecl_name_str ,
+  local .bool_set:N  = \l_stex_symdecl_local_bool ,
+  args  .tl_set_x:N  = \l_stex_symdecl_args_str ,
+  type  .tl_set:N    = \l_stex_symdecl_type_tl ,
+  lang    .tl_set_x:N = \l_@@_lang_str ,
+  variant .tl_set_x:N = \l_@@_variant_str ,
+  prec    .tl_set_x:N = \l_@@_prec_str ,
+  unknown .code:n     = \str_set:Nx 
+      \l_@@_variant_str \l_keys_key_str
+}
+
+\cs_new_protected:Nn \_@@_symdef_args:n {
+  \str_clear:N \l_stex_symdecl_name_str
+  \str_clear:N \l_stex_symdecl_args_str
+  \bool_set_false:N \l_stex_symdecl_local_bool
+  \tl_clear:N \l_stex_symdecl_type_tl
+  \str_clear:N \l_@@_lang_str
+  \str_clear:N \l_@@_variant_str
+  \str_clear:N \l_@@_prec_str
+  
+  \keys_set:nn { stex /symdef } { #1 }
+
+  \exp_args:NNo \str_set:Nn \l_stex_symdecl_name_str
+    \l_stex_symdecl_name_str
+  \exp_args:NNo \str_set:Nn \l_stex_symdecl_args_str
+    \l_stex_symdecl_args_str
+  \exp_args:NNo \str_set:Nn \l_@@_lang_str
+    \l_@@_lang_str
+  \exp_args:NNo \str_set:Nn \l_@@_variant_str
+    \l_@@_variant_str
+  \exp_args:NNo \str_set:Nn \l_@@_prec_str
+    \l_@@_prec_str
+}
+
+\NewDocumentCommand \symdef { O{} m } {
+  \_@@_symdef_args:n { #1 }
+  \tl_clear:N \l_stex_symdecl_definiens_tl
+  \stex_symdecl_do:n { #2 }
+  \exp_args:Nx \stex_notation_do:nn { 
+    \prop_item:Nn \l_tmpa_prop { module } ?
+    \prop_item:Nn \l_tmpa_prop { name }
+  }
+}
+%    \end{macrocode}
+% \end{macro}
 %
 %
 %
@@ -3260,23 +3330,6 @@
 }
 %    \end{macrocode}
 % \end{macro}
-%
-%\stextest{
-%  \begin{module}{Foo6}
-%    \importmodule{Foo1}
-%     \notation[foo, prec=500;20x20x20]{foobar}{\langle #1 \mid [ #2 ]^{#3} \rangle }{ {#1}_{:#2} }
-%     $\foobar a{b,c,d,e,f}g$ and $\foobar[foo] a{b,c}g$ and $\foobar abc$
-%
-%     \symdecl[args=a]{plus}
-%     \symdecl[args=a]{mult}
-%     \notation[prec=50]{plus}{#1}{#1 + #2}
-%     \notation[prec=100]{mult}{#1}{#1 \cdot #2}
-%     $\plus{a,\mult{b,c}}$ and $\mult{a,\plus{\frac ab,\frac ac}}$
-%     \[\plus{a,\mult{b,c}}\text{ and }\mult{a,\plus{\frac ab,\frac ac}}\]
-%     $\displaystyle \plus{a,\mult{b,c}}$ and $\displaystyle
-%       \STEXwithbrackets[]{\mult{a,\plus{\frac ab,\frac ac}}}$
-%  \end{module}
-%}
 %
 %
 %
