@@ -91,7 +91,11 @@
 %
 %   \section{Manual}
 %
-% \subsection{Semantic Macros}
+% \subsection{Modules}
+%
+% |{module}|, |{@module}|
+%
+% \subsection{Semantic Macros and Notations}
 %
 % Semantic macros invoke a formally declared symbol.
 %
@@ -107,7 +111,7 @@
 % \begin{@module}{SemanticMacrosExample}
 %   For example, to introduce binary multiplication,
 %   we can do |\symdecl[args=2]{mult}|. We can then supply
-%   the semantic macro with several notations, such as
+%   the semantic macro with arbitrarily many notations, such as
 %   |\notation{mult}{#1 #2}|.
 %   
 %   \stexexample{
@@ -115,6 +119,13 @@
 % \notation{mult}{#1 #2}
 % $\mult{a}{b}$
 %}
+%
+% Since usually, a freshly introduced symbol also comes with a
+% notation from the start, the \cs{symdef} command combines
+% \cs{symdecl} and \cs{notation}. So instead of the above,
+% we could have also written
+% \begin{center} |\symdef[args=2]{mult}{#1 #2}| \end{center}
+%
 % \symdecl[args=2]{mult}
 % \notation{mult}{#1 #2}
 %
@@ -156,11 +167,13 @@
 %   |\forall #1. #2|, we can write
 %   \stexexample{
 %     \symdecl[args=2]{forevery}
-%     \forevery*[2]{The proposition $P$}[ \comp{holds for every} ]{$x\in A$}
+%     \forevery*[2]{The proposition $P$}[ \comp{holds for every} ]*[1]{$x\in A$}
 %}
 %
-% The ``argument counter'' automatically continues where we left off
-% (at the first one, in this case) before jumping ahead to |*[2]|.
+% When using |*[|$n$|]|, after reading the provided ($n$th) argument,
+%  the ``argument counter'' automatically 
+% continues where we left off, so the |*[1]| in the above example
+% can be omitted.
 %
 %   For a macro with arity $>0$, we can refer to the operator
 %   \emph{itself} semantically by suffixing the semantic macro
@@ -183,10 +196,66 @@
 % (unexpanded) to highlight, and the URI of the current symbol.
 % \cs{@comp} can be safely redefined to customize the behaviour.
 %
+% \end{@module}
+%
+% \subsubsection{Other Argument Types}
+%
+% So far, we have stated the arity of a semantic macro directly.
+% This works if we only have ``normal'' (or more precisely: |i|-type) arguments.
+%  To make use of other argument types, instead of providing the arity
+% numerically, we can provide it as a sequence of characters representing
+% the argument types -- e.g. instead of writing |args=2|, we
+% can equivalently write |args=ii|, indicating that the macro
+% takes two |i|-type arguments.
+%
+% Besides |i|-type arguments, \sTeX has two other types, which we will
+% discuss now.
+%
+% The first are \emph{binding} (|b|-type) arguments, representing
+% variables that are \emph{bound} by the operator. This is the
+% case for example in the above \cs{forevery}-macro:
+% The first argument is not actually an argument that the
+% |forevery| ``function'' is ``applied'' to; rather, the first argument
+% is a new variable (e.g. $x$) that is \emph{bound} in the subsequent
+% argument. More accurately, the macro should therefore have been
+% implemented thusly:
+%   \begin{center}|\symdef[args=bi]{forevery}{\forall #1.\; #2}|\end{center}
+%
+% \begin{@module}{OtherArgs}
+% |b|-type arguments are indistinguishable from |i|-type arguments
+% within \sTeX, but are treated very differently in \omdoc and by \mmt.
+% More interesting \emph{within} \sTeX are |a|-type arguments,
+% which represent (associative) arguments of flexible arity, which are
+% provided as comma-separated lists.
+% This allows e.g. better representing the \cs{mult}-macro above:
+% 
+%   \stexexample{
+% \symdef[args=a]{mult}{#1}{#1 \comp\cdot #2}
+% $\mult{a,b,c,{d^e},f}$
+%}
+% As the example above shows, notations get a little more complicated
+% for associative arguments. For every |a|-type argument, the
+% \cs{notation}-macro takes an additional argument that declares
+% how individual entries in an |a|-type argument list are aggregated.
+% The first notation argument then describes how the aggregated
+% expression is combined into the full representation.
+%
+% For a more interesting example, consider a flexary operator
+% for ordered sequences in ordered set, that taking 
+% arguments |{a,b,c}| and |\mathbb{R}| prints
+% $a \leq b \leq c\in \mathbb R$. This operator takes
+% two arguments (an |a|-type argument and an |i|-type argument),
+% aggregates the individuals of the associative argument using |\leq|,
+% and combines the result with |\in| and the second argument thusly:
+%
+%   \stexexample{
+% \symdef[args=ai]{numseq}{#1 \comp\in #2}{#1 \comp\leq #2}
+% $\numseq{a,b,c}{\mathbb R}$
+%}
 %
 % \end{@module}
 %
-% \subsubsection{Notations and Precedences}
+% \subsubsection{Precedences}
 %
 % Every notation has an (upwards) \emph{operator precedence} and
 % for each argument a (downwards) \emph{argument precedence}
