@@ -73,6 +73,7 @@
 \makeatletter
 
 \newcount\test@counter\test@counter=0
+\newcount\example@counter\example@counter=0
 
 \newenvironment{stextest@border}
 {
@@ -95,6 +96,28 @@
 \begin{stextestborderbox}\small
 }
 {\end{stextestborderbox}}
+
+\newenvironment{example@border}
+{
+  \global\advance\example@counter by 1
+  \newtcolorbox{exampleborderbox}{
+    empty,
+    title={Example \the\example@counter},
+    attach boxed title to top left,
+       minipage boxed title,
+    boxed title style={empty,size=minimal,toprule=0pt,top=1pt,left=3mm,overlay={}},
+    coltitle=blue,fonttitle=\bfseries,
+    parbox=false,boxsep=0pt,left=3mm,right=0mm,top=2pt,breakable,pad at break=0mm,
+       before upper=\csname @totalleftmargin\endcsname0pt, 
+    overlay unbroken={\draw[blue,line width=2pt] ([xshift=-0pt]title.north west) -- ([xshift=-0pt]frame.south west); },
+    overlay first={\draw[blue,line width=2pt] ([xshift=-0pt]title.north west) -- ([xshift=-0pt]frame.south west); },
+    overlay middle={\draw[blue,line width=2pt] ([xshift=-0pt]frame.north west) -- ([xshift=-0pt]frame.south west); },
+    overlay last={\draw[blue,line width=2pt] ([xshift=-0pt]frame.north west) -- ([xshift=-0pt]frame.south west); },
+    }
+%^^A\refstepcounter{remark}
+\begin{exampleborderbox}\small
+}
+{\end{exampleborderbox}}
 
  \makeatother
  
@@ -152,5 +175,44 @@
       \end{stextest@output}
     \end{stextest@border}
   }
+
+  \def\stexexample{
+    \begingroup 
+    \catcode`\\=12\relax
+    \catcode`\#=12\relax
+    \catcode`\&=12\relax
+    \catcode`\$=12\relax
+    \catcode`\^=12\relax
+    \catcode`\_=12\relax
+    \catcode`^^J=12\relax
+    \endlinechar=`^^J
+    \newlinechar=-1
+%^^A    \everyeof{\noexpand}
+    \example_a:n
+  }
+  \long\def \example_a:n #1 {
+    \endgroup
+    \begin{example@border}
+      \immediate\openout\testoutfile=stextest.tst
+      \immediate\write\testoutfile{
+        \c_backslash_str begin{latexcode}
+        \detokenize{^^J}#1
+        \c_backslash_str end{latexcode}
+      }
+      \immediate\closeout\testoutfile
+      \begin{stextest@input}
+        \catcode`\#=12\relax
+        \input{stextest.tst}
+      \end{stextest@input}
+      \immediate\openout\testoutfile=stextest.tst
+      \immediate\write\testoutfile{#1}
+      \immediate\closeout\testoutfile
+      \begin{stextest@output}
+        \input{stextest.tst}
+      \end{stextest@output}
+    \end{example@border}
+  }
+
   \long\def\test#1{}
+
 \ExplSyntaxOff

@@ -103,56 +103,85 @@
 % yields a \emph{constant} symbol. To introduce an \emph{operator}
 % which takes arguments, we have to specify which arguments it takes.
 %
+%
 % \begin{@module}{SemanticMacrosExample}
 %   For example, to introduce binary multiplication,
 %   we can do |\symdecl[args=2]{mult}|. We can then supply
 %   the semantic macro with several notations, such as
-%   |\notation{mult}{#1 \; #2}|.
-%   \symdecl[args=2]{mult}
-%   \notation{mult}{#1 #2}
-%   Typing |$\mult{a}{b}$| (in math mode) subsequently
-%   yields $\mult{a}{b}$.
+%   |\notation{mult}{#1 #2}|.
+%   
+%   \stexexample{
+% \symdecl[args=2]{mult}
+% \notation{mult}{#1 #2}
+% $\mult{a}{b}$
+%}
+% \symdecl[args=2]{mult}
+% \notation{mult}{#1 #2}
 %
-%   \notation[cdot]{mult}{#1 \cdot #2}
-%   \notation[times]{mult}{#1 \times #2}
+%   \notation[cdot]{mult}{#1 \comp{\cdot} #2}
+%   \notation[times]{mult}{#1 \comp{\times} #2}
 %   Adding more notations like
-%   |\notation[cdot]{mult}{#1 \cdot #2}| or 
-%   |\notation[times]{mult}{#1 \times #2}|
+%   |\notation[cdot]{mult}{#1 \comp{\cdot} #2}| or 
+%   |\notation[times]{mult}{#1 \comp{\times} #2}|
 %   allows us to write |$\mult[cdot]{a}{b}$| and
-%   |$\mult[times]{a}{b}$|, yielding $\mult[cdot]{a}{b}$ and
-%   $\mult[times]{a}{b}$, respectively.
+%   |$\mult[times]{a}{b}$|:
+%   \stexexample{
+%   \notation[cdot]{mult}{#1 \comp{\cdot} #2}
+%   \notation[times]{mult}{#1 \comp{\times} #2}
+% $\mult[cdot]{a}{b}$ and $\mult[times]{a}{b}$
+%}
+%   \notation[cdot]{mult}{#1 \comp{\cdot} #2}
+%   \notation[times]{mult}{#1 \comp{\times} #2}
 %
 %   Not using an explicit option with a semantic macro yields
-%   the first declared notation, unless changed (TODO).
+%   the first declared notation, unless changed\ednote{TODO}.
 %
 %   Outside of math mode, or by using the starred variant
 %   |\foo*|, allows to provide a custom notation, where
 %   notational (or textual) components can be given
 %   explicitly in square brackets.
-%
-%   For example, we can write 
-%   |the \mult[product of ]{$a$}[ and ]{$b$}|, or
-%   |$\mult*{a}[\text{ times }]{b}$|.
+%   \stexexample{
+% $\mult*{a}[\comp{\ast}]{b}$ is the 
+% \mult[\comp{product of} ]{$a$}[ \comp{and} ]{$b$}
+%}
 %
 %   In custom mode, prefixing an argument with a star will not
-%   print that argument, but still export it to \omdoc, e.g.
-%   |\mult*{a}[multiplying by ]{b} yields...|.
-%   A the syntax |*[|\meta{int}|]| allows switching
+%   print that argument, but still export it to \omdoc:
+%   \stexexample{
+% \mult[\comp{Multiplying}]*{$\mult{a}{b}$}[ again by ]{$b$} yields...
+%}
+%   The syntax |*[|\meta{int}|]| allows switching
 %   the order of arguments. For example, given a 2-ary semantic
 %   macro |\forevery| with exemplary notation
 %   |\forall #1. #2|, we can write
-%   |\forevery*[2]{$P$}[ holds for every]*[1]{$x\in A$}|
-%   to obtain the correctly annotated sentence
-%   \emph{$P$ holds for every $x\in A$}.
+%   \stexexample{
+%     \symdecl[args=2]{forevery}
+%     \forevery*[2]{The proposition $P$}[ \comp{holds for every} ]{$x\in A$}
+%}
+%
+% The ``argument counter'' automatically continues where we left off
+% (at the first one, in this case) before jumping ahead to |*[2]|.
 %
 %   For a macro with arity $>0$, we can refer to the operator
 %   \emph{itself} semantically by suffixing the semantic macro
-%   with an exclamation point |!| in either text or math mode; 
-%   e.g. we can semantically
-%   annotate the word \emph{multiplication} with
-%   |\mult![multiplication]| or e.g.
-%   |the operation $\mult![+]$|.
+%   with an exclamation point |!| in either text or math mode.
+%   \stexexample{
+% \mult![\comp{Multiplication}] (denoted by $\mult![\comp\cdot]$) is defined by...
+%}
 %
+% The macro \cs{comp} as used everywhere above is responsible
+% for highlighting, linking, and tooltips, and should be wrapped
+% around the notation (or text) components that should be treated
+% accordingly. While it is attractive to just wrap a whole notation,
+% this would also wrap around e.g. the arguments themselves, so
+% instead, the user is tasked with marking the notation components
+% themself.
+%
+% The precise behaviour of \cs{comp} is governed by
+% the macro \cs{@comp}, which takes two arguments: The tex code
+% of the text
+% (unexpanded) to highlight, and the URI of the current symbol.
+% \cs{@comp} can be safely redefined to customize the behaviour.
 %
 %
 % \end{@module}
@@ -163,7 +192,7 @@
 % for each argument a (downwards) \emph{argument precedence}
 % used for automated bracketing. For example, a notation
 % for a binary operator \cs{foo} could be declared like this:
-% \begin{center} |\notation[prec=200;500x600]{foo}{#1 + #2}| \end{center}
+% \begin{center} |\notation[prec=200;500x600]{foo}{#1 \comp{+} #2}| \end{center}
 % assigning an operator precedence of 200, an argument precedence
 % of 500 for the first argument, and an argument precedence of 600
 % for the second argument.
@@ -186,13 +215,18 @@
 % some operator $B$, then $A$s operator precedence should be
 % larger than $B$s argument precedences.
 %
-% For example, we could set
-% \begin{center} |\notation[prec=50]{plus}{#1 + #2}| \end{center}
-% and
-% \begin{center} |\notation[prec=100]{times}{#1 \cdot #2}| \end{center}
-% then |$\plus{a}{\times{b}{c}}$| would yield $a+b\cdot c$, and
-% |$\times{a}{\plus{b}{c}}$| would yield $a\cdot(b+c)$.
+% For example:
+% \begin{@module}{NotationsEx}
+% \symdecl[args=2]{plus}
+% \symdecl[args=2]{times}
+% \stexexample{
+%\notation[prec=50]{plus}{#1 \comp{+} #2}
+%\notation[prec=100]{times}{#1 \comp{\cdot} #2}
+%$\plus{a}{\times{b}{c}}$ and $\times{a}{\plus{b}{c}}$
+%}
 %
+%
+% \end{@module}
 %
 % \subsection{Archives and Imports}
 %
@@ -861,8 +895,8 @@
 %\stextest{
 %   \begin{module}{NotationTest}
 %     \importmodule{Foo}
-%     \notation[foo, prec=500;20x20x20]{bar}{\langle {#1 ^ {#2}}_{#3} \rangle }
-%     \notation[foo, prec=500;20x20x20]{foobar}{\langle #1 \mid [ #2 ]^{#3} \rangle }{ {#1}_{:#2} }
+%     \notation[foo, prec=500;20x20x20]{bar}{\comp\langle {#1 ^ {#2}}_{#3} \comp\rangle }
+%     \notation[foo, prec=500;20x20x20]{foobar}{\comp\langle #1 \comp\mid [ #2 ]^{#3} \comp\rangle }{ {#1}_{\comp :#2} }
 %   \end{module}
 %}
 %
@@ -874,12 +908,12 @@
 %
 %\stextest{
 %   \begin{module}{SymdefTest}
-%     \symdef[args=a, prec=50]{plus}{ #1 }{#1 + #2}
+%     \symdef[args=a, prec=50]{plus}{ #1 }{#1 \comp+ #2}
 %     $\plus{a,b,c}$
 %   \end{module}
 %}
 %
-% \begin{function}{\stex_term_oms:nnnn,\stex_term_oma:nnnn,\stex_term_omb:nnnn}
+% \begin{function}{\_stex_term_math_oms:nnnn,\_stex_term_math_oma:nnnn,\_stex_term_math_omb:nnnn}
 %   \begin{syntax} \meta{URI}\meta{fragment}\meta{precedence}\meta{body} \end{syntax}
 %
 % Annotates \meta{body} as an \omdoc-term (|OMID|, |OMA| or |OMBIND|, respectively) 
@@ -889,13 +923,13 @@
 % the current downwards precedence and operator precedence.
 % \end{function}
 %
-% \begin{function}{\stex_term_arg:nnn}
+% \begin{function}{\_stex_term_math_arg:nnn}
 %   \begin{syntax} \cs{stex_term_arg:nnn}\meta{int}\meta{prec}\meta{body} \end{syntax}
 % Annotates \meta{body} as the \meta{int}th argument of the current |OMA| or |OMBIND|,
 % with (downwards) argument precedence \meta{prec}.
 % \end{function}
 %
-% \begin{function}{\stex_term_assoc_arg:nnnn}
+% \begin{function}{\_stex_term_math_assoc_arg:nnnn}
 %   \begin{syntax} \cs{stex_term_arg:nnn}\meta{int}\meta{prec}\meta{notation}\meta{body} \end{syntax}
 % Annotates \meta{body} as the \meta{int}th (associative) \emph{sequence} argument
 % (as comma-separated list of terms) of the current |OMA| or |OMBIND|,
@@ -927,7 +961,7 @@
 %\stextest{
 %  \begin{module}{MathTest1}
 %    \importmodule{Foo}
-%    \notation[foo, prec=500;20x20x20]{bar}{\langle {#1 ^ {#2}}_{#3} \rangle }
+%    \notation[foo, prec=500;20x20x20]{bar}{\comp\langle {#1 ^ {#2}}_{#3} \comp\rangle }
 %    $\bar abc$ and $\bar[foo] abc$.
 %
 %  \end{module}
@@ -936,13 +970,13 @@
 %\stextest{
 %  \begin{module}{MathTest2}
 %    \importmodule{Foo}
-%     \notation[foo, prec=500;20x20x20]{foobar}{\langle #1 \mid [ #2 ]^{#3} \rangle }{ {#1}_{:#2} }
+%     \notation[foo, prec=500;20x20x20]{foobar}{\comp\langle #1 \comp\mid [ #2 ]^{#3} \comp\rangle }{ {#1}_{\comp :#2} }
 %     $\foobar a{b,c,d,e,f}g$ and $\foobar[foo] a{b,c}g$ and $\foobar abc$
 %
 %     \symdecl[args=a]{plus}
 %     \symdecl[args=a]{mult}
-%     \notation[prec=50]{plus}{#1}{#1 + #2}
-%     \notation[prec=100]{mult}{#1}{#1 \cdot #2}
+%     \notation[prec=50]{plus}{#1}{#1 \comp+ #2}
+%     \notation[prec=100]{mult}{#1}{#1 \comp\cdot #2}
 %     $\plus{a,\mult{b,c}}$ and $\mult{a,\plus{\frac ab,\frac ac}}$
 %     \[\plus{a,\mult{b,c}}\text{ and }\mult{a,\plus{\frac ab,\frac ac}}\]
 %     $\displaystyle \plus{a,\mult{b,c}}$ and 
@@ -977,6 +1011,22 @@
 %  \end{module}
 %}
 %
+% \begin{function}{\stex_highlight_term:nn}
+%   \begin{syntax} \cs{stex_highlight_term:nn}\Arg{URI}\Arg{args}\end{syntax}
+% Establishes a context for \cs{comp}. Stores the URI in a variable
+% so that \cs{comp} knows which symbol governs the current notation.
+% \end{function}
+%
+% \begin{function}{\comp, \@comp}
+%   \begin{syntax} \cs{comp}\Arg{args}\end{syntax}
+% Marks \meta{args} as a notation component of the current symbol for
+% highlighting, linking, etc.
+%
+% The precise behavior is governed by \cs{@comp}, which takes as
+% additional argument the URI of the current symbol. By default,
+% \cs{@comp} adds the URI as a PDF tooltip and colors the highlighted part
+% in blue.
+% \end{function}
 %
 % \end{documentation}
 %
@@ -2985,7 +3035,7 @@
 
   \int_compare:nNnTF \l_tmpa_str = 0 {
     \cs_set:Npx \l_@@_macrocode_cs {} {
-      \stex_term_oms:nnnn { #1 } 
+      \_stex_term_math_oms:nnnn { #1 } 
         { \l_@@_variant_str \c_hash_str \l_@@_lang_str }
         { \prop_item:Nn \l_tmpb_prop { opprec } } 
         { #2 }
@@ -2996,7 +3046,7 @@
     \str_if_in:NnTF \l_tmpb_str b {
       \cs_generate_from_arg_count:NNnn \l_@@_macrocode_cs
       \cs_set:Npx \l_tmpa_str {
-        \stex_term_omb:nnnn { #1 } 
+        \_stex_term_math_omb:nnnn { #1 } 
           { \l_@@_variant_str \c_hash_str \l_@@_lang_str }
           { \prop_item:Nn \l_tmpb_prop { opprec } } 
           { #2 }
@@ -3004,7 +3054,7 @@
     }{
       \cs_generate_from_arg_count:NNnn \l_@@_macrocode_cs
       \cs_set:Npx \l_tmpa_str {
-        \stex_term_oma:nnnn { #1 } 
+        \_stex_term_math_oma:nnnn { #1 } 
           { \l_@@_variant_str \c_hash_str \l_@@_lang_str }
           { \prop_item:Nn \l_tmpb_prop { opprec } } 
           { #2 }
@@ -3039,7 +3089,7 @@
     }{
       \seq_pop_left:NN \l_tmpa_seq \l_tmpb_str
       \tl_put_right:Nx \l_tmpa_tl {
-        { \stex_term_arg:nnn
+        { \_stex_term_math_arg:nnn
           { \int_use:N \l_tmpa_int }
           { \l_tmpb_str }
           { ####\int_use:N \l_tmpa_int }
@@ -3058,7 +3108,7 @@
   \seq_pop_left:NN \l_tmpa_seq \l_tmpb_str
   \cs_set:Npn \l_tmpa_cs ##1 ##2 { #1 }
   \tl_put_right:Nx \l_tmpa_tl {
-    { \stex_term_assoc_arg:nnnn
+    { \_stex_term_math_assoc_arg:nnnn
       { \int_use:N \l_tmpa_int }
       { \l_tmpb_str }
       { \l_tmpa_cs {########1} {########2} }
@@ -3412,51 +3462,75 @@
 %
 % \omdoc terms:
 %
-% \begin{macro}{\stex_term_oms:nnnn}
+% \begin{macro}{\_stex_term_math_oms:nnnn}
 %    \begin{macrocode}
-\cs_new_protected:Nn \stex_term_oms:nnnn {
+\cs_new_protected:Nn \_stex_term_oms:nnn {
+  \stex_annotate:nnn{ OMID }{ #2 }{
+    \stex_highlight_term:nn { #1 } { #3 } 
+  }
+}
+
+\cs_new_protected:Nn \_stex_term_math_oms:nnnn {
   \_@@_maybe_brackets:nn { #3 }{ 
-    \stex_annotate:nnn{OMID}{#1\c_hash_str#2}{#4}
+    \_stex_term_oms:nnn { #1 } { #1\c_hash_str#2 } { #4 }
   }
 }
 %    \end{macrocode}
 % \end{macro}
 %
-% \begin{macro}{\stex_term_oma:nnnn}
+% \begin{macro}{\_stex_term_math_oma:nnnn}
 %    \begin{macrocode}
-\cs_new_protected:Nn \stex_term_oma:nnnn {
+\cs_new_protected:Nn \_stex_term_oma:nnn {
+  \stex_annotate:nnn{ OMA }{ #2 }{
+    \stex_highlight_term:nn { #1 } { #3 } 
+  }
+}
+
+\cs_new_protected:Nn \_stex_term_math_oma:nnnn {
   \_@@_maybe_brackets:nn { #3 }{ 
-    \stex_annotate:nnn{OMA}{#1\c_hash_str#2}{#4}
+    \_stex_term_oma:nnn { #1 } { #1\c_hash_str#2 } { #4 }
   }
 }
 %    \end{macrocode}
 % \end{macro}
 %
-% \begin{macro}{\stex_term_omb:nnnn}
+% \begin{macro}{\_stex_term_math_omb:nnnn}
 %    \begin{macrocode}
-\cs_new_protected:Nn \stex_term_omb:nnnn {
+\cs_new_protected:Nn \_stex_term_ombind:nnn {
+  \stex_annotate:nnn{ OMBIND }{ #2 }{
+    \stex_highlight_term:nn { #1 } { #3 }
+  }
+}
+
+\cs_new_protected:Nn \_stex_term_math_omb:nnnn {
   \_@@_maybe_brackets:nn { #3 }{ 
-    \stex_annotate:nnn{OMBIND}{#1\c_hash_str#2}{#4}
+    \_stex_term_ombind:nnn { #1 } { #1\c_hash_str#2 } { #4 }
   }
 }
 %    \end{macrocode}
 % \end{macro}
 %
-% \begin{macro}{\stex_term_arg:nnn}
+% \begin{macro}{\_stex_term_math_arg:nnn}
 %    \begin{macrocode}
-\cs_new_protected:Nn \stex_term_arg:nnn {
+\cs_new_protected:Nn \_stex_term_arg:nn {
+  \stex_unhighlight_term:n { 
+    \stex_annotate:nnn{ arg }{ #1 }{ #2 }
+  }
+}
+\cs_new_protected:Nn \_stex_term_math_arg:nnn {
   \exp_args:Nnx \use:nn
     { \int_set:Nn \l_@@_downprec { #2 } 
-       \stex_annotate:nnn{arg}{#1}{#3} }
+       \_stex_term_arg:nn { #1 } { #3 } 
+    }
     { \int_set:Nn \l_@@_downprec { \int_use:N \l_@@_downprec } }
 }
 %    \end{macrocode}
 % \end{macro}
 %
 %
-% \begin{macro}{\stex_term_assoc_arg:nnnn}
+% \begin{macro}{\_stex_term_math_assoc_arg:nnnn}
 %    \begin{macrocode}
-\cs_new_protected:Nn \stex_term_assoc_arg:nnnn {
+\cs_new_protected:Nn \_stex_term_math_assoc_arg:nnnn {
   \seq_set_split:Nnn \l_tmpa_seq , { #4 }
   \int_compare:nNnTF { \seq_count:N \l_tmpa_seq } < 2 {
     \tl_set:Nn \l_tmpa_tl { #4 }
@@ -3473,7 +3547,7 @@
     }
   }
   \exp_args:Nnno
-  \stex_term_arg:nnn{#1}{#2}{ \l_tmpa_tl }
+  \_stex_term_math_arg:nnn{#1}{#2}{ \l_tmpa_tl }
 }
 %    \end{macrocode}
 % \end{macro}
@@ -3563,12 +3637,14 @@
 
   \bool_if:nTF \l_tmpa_bool {
     \tl_put_right:Nx \l_tmpa_tl {
-      \stex_annotate_invisible:nnn { arg }{ \int_eval:n { #1 } } 
-        \exp_not:n { { #2 } }
+      \stex_annotate_invisible:n {
+        \_stex_term_arg:nn { \int_eval:n { #1 } } 
+          \exp_not:n { { #2 } }
+      }
     }
   } {
     \tl_put_right:Nx \l_tmpa_tl {
-      \stex_annotate:nnn { arg }{ \int_eval:n { #1 } } 
+      \_stex_term_arg:nn { \int_eval:n { #1 } } 
         \exp_not:n { { #2 } }
     }
   }
@@ -3603,19 +3679,79 @@
 %    \begin{macrocode}
 \cs_new_protected:Nn \_@@_custom_final: {
   \int_compare:nNnTF \l_tmpb_int = 0 {
-    \exp_args:Nnno \stex_annotate:nnn{OMID}
+    \exp_args:Nnno \_stex_term_oms:nnn
   }{
     \str_if_in:NnTF \l_tmpa_str {b} {
-      \exp_args:Nnno \stex_annotate:nnn{OMBIND}
+      \exp_args:Nnno \_stex_term_ombind:nnn
     } {
-      \exp_args:Nnno \stex_annotate:nnn{OMA}
+      \exp_args:Nnno \_stex_term_oma:nnn
     }
   }
-  { \l_@@_custom_uri } { \l_tmpa_tl }
+  { \l_@@_custom_uri } { \l_@@_custom_uri } { \l_tmpa_tl }
 }
 %    \end{macrocode}
 % \end{macro}
 %
+%
+%
+%
+% \begin{macro}{\stex_highlight_term:nn}
+%    \begin{macrocode}
+\latexml_if:F {
+  \scalatex_if:F{
+    \RequirePackage{pdfcomment}
+  }
+}
+
+\str_new:N \l_@@_highlight_uri_str
+\cs_new_protected:Nn \stex_highlight_term:nn {
+  \latexml_if:TF {
+    #2
+  } {
+    \scalatex_if:TF {
+      #2
+    } {
+      \exp_args:Nnx
+      \use:nn {
+        \str_set:Nx \l_@@_highlight_uri_str { #1 }
+        #2
+      } {
+        \str_set:Nx \exp_not:N \l_@@_highlight_uri_str 
+          { \l_@@_highlight_uri_str }
+      }
+    }
+  }
+}
+
+\cs_new_protected:Nn \stex_unhighlight_term:n {
+%  \latexml_if:TF {
+%    #1
+%  } {
+%    \scalatex_if:TF {
+%      #1
+%    } {
+      #1 %\iffalse{{\fi}} #1 {{\iffalse}}\fi
+%    }
+%  }
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\comp,\@comp}
+%    \begin{macrocode}
+\cs_new_protected:Npn \comp #1 {
+  \str_if_empty:NF \l_@@_highlight_uri_str {
+    \exp_args:Nnx \@comp { #1 } { \l_@@_highlight_uri_str }
+  }
+}
+
+\cs_new_protected:Npn \@comp #1 #2 {
+  \pdftooltip {
+    \textcolor{blue}{#1}
+  } { #2 }
+}
+%    \end{macrocode}
+% \end{macro}
 %
 %
 %
