@@ -29,7 +29,6 @@
   \detokenize{\mathhub}-value~set!
 }
 \msg_new:nnn{stex}{error/norepository}{}
-\msg_new:nnn{stex}{error/modulemissing}{}
 \cs_new_protected:Nn \stex_debug:n {
   \bool_if:nT{\c_stex_debug_bool}{
     \exp_args:Nnnx\msg_set:nnn{stex}{debug}{\\Debug:~#1\\}
@@ -331,7 +330,12 @@
     \stex_path_from_string:Nn\c_stex_mathhub_seq\c_stex_mathhub_str
   }
 }{
-  \stex_path_from_string:Nn\c_stex_mathhub_seq\mathhub
+  \stex_path_from_string:Nn \c_stex_mathhub_seq \mathhub
+  \stex_path_if_absolute:NF \c_stex_mathhub_seq {
+    \exp_args:NNx \stex_path_from_string:Nn \c_stex_mathhub_seq {
+      \c_stex_pwd_str/\mathhub
+    }
+  }
   \stex_path_to_string:NN\c_stex_mathhub_seq\c_stex_mathhub_str
   \stex_debug:n {MathHub:~\str_use:N\c_stex_mathhub_str}
 }
@@ -457,9 +461,10 @@
     \prop_get:NnN \c_stex_mathhub_main_manifest_prop {id}
       \l_tmpa_str
     \prop_set_eq:cN { c_stex_mathhub_\l_tmpa_str _manifest_prop }
-    \stex_set_current_repository:n { main }
+      \c_stex_mathhub_main_manifest_prop
+    \exp_args:Nx \stex_set_current_repository:n { \l_tmpa_str }
     \stex_debug:n{Current~repository:~
-      \prop_item:Nn \l_stex_current_repository_map {id}
+      \prop_item:Nn \l_stex_current_repository_prop {id}
     }
   }
 }
@@ -669,6 +674,7 @@
   }
   \prop_new:c { \l_tmpa_str }
   \prop_gset_eq:cN { \l_tmpa_str } \l_stex_current_module_prop
+  \stex_debug:n{Closing~module~\prop_item:Nn \l_stex_current_module_prop { name }}
   \stex_if_smsmode:TF {
     \exp_args:Nx \stex_addtosms:n {
       \prop_gset_from_keyval:cn {
@@ -814,9 +820,6 @@
   }
   \box_clear:N \l_tmpa_box
 }
-\str_const:Nn \c__stex_smsmode_begin_str { begin }
-\str_const:Nn \c__stex_smsmode_end_str { end }
-
 \cs_new_protected:Nn \__stex_smsmode_cs: {
   \str_clear:N \l_tmpa_str
   \peek_analysis_map_inline:n {
@@ -832,12 +835,12 @@
         % for now
         \peek_analysis_map_break:
       }{
-        \str_if_eq:nnTF \l_tmpa_str \c_stex_begin_str {
+        \str_if_eq:onTF \l_tmpa_str { begin } {
           \peek_analysis_map_break:n {
             \exp_after:wN \__stex_smsmode_checkbegin:n ##1
           }
         } {
-          \str_if_eq:nnTF \l_tmpa_str \c_stex_end_str {
+          \str_if_eq:onTF \l_tmpa_str { end } {
             \peek_analysis_map_break:n {
               \exp_after:wN \__stex_smsmode_checkend:n ##1
             }
@@ -846,6 +849,7 @@
           \exp_args:NNNo \exp_args:NNo \tl_if_in:NnTF
             \g_stex_smsmode_allowedmacros_tl
               { \use:c{\l_tmpa_str} } {
+              \stex_debug:n{Executing~1:~\l_tmpa_str}
               \peek_analysis_map_break:n {
                 \exp_after:wN \l_tmpa_tl ##1
               }
@@ -853,18 +857,12 @@
               \exp_args:NNNo \exp_args:NNo \tl_if_in:NnTF
               \g_stex_smsmode_allowedmacros_escape_tl
                 { \use:c{\l_tmpa_str} } {
-                \exp_args:NNNo \exp_args:No
-                \token_if_eq_charcode_p:NNTF \c_backslash_str ##1 {
-                  \peek_analysis_map_break:n {
-                    \__stex_smsmode_unset_codes:
-                    \__stex_smsmode_rescan_cs:
-                  }
-                } {
+                \stex_debug:n{Executing~2:~\l_tmpa_str}
+                % TODO \__stex_smsmode_rescan_cs:
                   \peek_analysis_map_break:n {
                     \__stex_smsmode_unset_codes:
                     \exp_after:wN \l_tmpa_tl ##1
                   }
-                }
               } {
                 \peek_analysis_map_break:n { ##1 }
               }
@@ -914,9 +912,9 @@
 
   \exp_args:NNNo \seq_set_split:Nnn \l_tmpb_seq ? { \l__stex_importmodule_path_str }
   \seq_pop_right:NN \l_tmpb_seq \l__stex_importmodule_name_str
-  \str_set:Nx \l__stex_importmodule_path_str { \seq_use:Nn \l_tmpa_seq ? }
+  \str_set:Nx \l__stex_importmodule_path_str { \seq_use:Nn \l_tmpb_seq ? }
 
-  \str_if_empty:NTF \l_tmpa_str {
+  \str_if_empty:NTF \l__stex_importmodule_archive_str {
     \stex_modules_current_namespace:
     \str_if_empty:NF \l__stex_importmodule_path_str {
       \str_set:Nx \l_stex_module_ns_str {
@@ -928,8 +926,8 @@
     \prop_get:cnN { c_stex_mathhub_\l__stex_importmodule_archive_str _manifest_prop } { ns }
       \l_stex_module_ns_str
     \str_if_empty:NF \l__stex_importmodule_path_str {
-      \str_set:Nx \l__stex_importmodule_module_ns_str {
-        \l_stex_module_ns_str / \l__stex_importmodule_path_str ? \l__stex_importmodule_name_str
+      \str_set:Nx \l_stex_module_ns_str {
+        \l_stex_module_ns_str / \l__stex_importmodule_path_str
       }
     }
   }
@@ -937,6 +935,7 @@
 \str_new:N \l__stex_importmodule_name_str
 \str_new:N \l__stex_importmodule_archive_str
 \str_new:N \l__stex_importmodule_path_str
+\str_new:N \g__stex_importmodule_file_str
 \cs_new_protected:Nn \stex_import_require_module:nnnn {
   \exp_args:Nx \stex_if_module_exists:nF { #1 ? #4 } {
     % archive
@@ -963,16 +962,16 @@
 
       \stex_debug:n{Checking~\l_tmpa_str.\l_tmpb_str.tex}
       \IfFileExists{ \l_tmpa_str.\l_tmpb_str.tex }{
-        \str_set:Nx \l_tmpa_str { \l_tmpa_str.\l_tmpb_str.tex }
+        \str_gset:Nx \g__stex_importmodule_file_str { \l_tmpa_str.\l_tmpb_str.tex }
       }{
         \stex_debug:n{Checking~\l_tmpa_str.tex}
         \IfFileExists{ \l_tmpa_str.tex }{
-          \str_set:Nx \l_tmpa_str { \l_tmpa_str.tex }
+          \str_gset:Nx \g__stex_importmodule_file_str { \l_tmpa_str.tex }
         }{
           % try english as default
           \stex_debug:n{Checking~\l_tmpa_str.en.tex}
           \IfFileExists{ \l_tmpa_str.en.tex }{
-            \str_set:Nx \l_tmpa_str { \l_tmpa_str.en.tex }
+            \str_gset:Nx \g__stex_importmodule_file_str { \l_tmpa_str.en.tex }
           }{
             \msg_new:nnn{stex}{error/modulemissing}{
               No~file~for~module~#1?#4~found
@@ -983,41 +982,43 @@
       }
 
     } {
-      \stex_path_from_string:NV \l_tmpb_seq \l_tmpb_str
+      \seq_set_split:NnV \l_tmpb_seq / \l_tmpb_str
       \seq_concat:NNN \l_tmpa_seq \l_tmpa_seq \l_tmpb_seq
 
       \cs_if_exist:NTF \languagename {
-        \prop_get:NnN \c_stex_language_abbrevs_prop
+        \exp_args:NNx \prop_get:NnN \c_stex_language_abbrevs_prop
             { \languagename } \l_tmpb_str
+      }{
+        \str_clear:N \l_tmpb_str
       }
 
       \str_set:Nx \l_tmpa_str { \stex_path_to_string:N \l_tmpa_seq }
 
       \stex_debug:n{Checking~\l_tmpa_str/#4.\l_tmpb_str.tex}
       \IfFileExists{ \l_tmpa_str/#4.\l_tmpb_str.tex }{
-        \str_set:Nx \l_tmpa_str { \l_tmpa_str/#4.\l_tmpb_str.tex }
+        \str_gset:Nx \g__stex_importmodule_file_str { \l_tmpa_str/#4.\l_tmpb_str.tex }
       }{
         \stex_debug:n{Checking~\l_tmpa_str/#4.tex}
         \IfFileExists{ \l_tmpa_str/#4.tex }{
-          \str_set:Nx \l_tmpa_str { \l_tmpa_str/#4.tex }
+          \str_gset:Nx \g__stex_importmodule_file_str { \l_tmpa_str/#4.tex }
         }{
           % try english as default
           \stex_debug:n{Checking~\l_tmpa_str/#4.en.tex}
           \IfFileExists{ \l_tmpa_str/#4.en.tex }{
-            \str_set:Nx \l_tmpa_str { \l_tmpa_str/#4.en.tex }
+            \str_gset:Nx \g__stex_importmodule_file_str { \l_tmpa_str/#4.en.tex }
           }{
             \stex_debug:n{Checking~\l_tmpa_str.\l_tmpb_str.tex}
             \IfFileExists{ \l_tmpa_str.\l_tmpb_str.tex }{
-              \str_set:Nx \l_tmpa_str { \l_tmpa_str.\l_tmpb_str.tex }
+              \str_gset:Nx \g__stex_importmodule_file_str { \l_tmpa_str.\l_tmpb_str.tex }
             }{
               \stex_debug:n{Checking~\l_tmpa_str.tex}
               \IfFileExists{ \l_tmpa_str.tex }{
-                \str_set:Nx \l_tmpa_str { \l_tmpa_str.tex }
+                \str_gset:Nx \g__stex_importmodule_file_str { \l_tmpa_str.tex }
               }{
                 % try english as default
                 \stex_debug:n{Checking~\l_tmpa_str.en.tex}
                 \IfFileExists{ \l_tmpa_str.en.tex }{
-                  \str_set:Nx \l_tmpa_str { \l_tmpa_str.en.tex }
+                  \str_gset:Nx \g__stex_importmodule_file_str { \l_tmpa_str.en.tex }
                 }{
                   \msg_new:nnn{stex}{error/modulemissing}{
                     No~file~for~module~#1?#4~found
@@ -1033,20 +1034,23 @@
 
     \seq_set_eq:NN \l_tmpa_seq \g_stex_modules_in_file_seq
     \seq_clear:N \g_stex_modules_in_file_seq
-    \exp_args:No \stex_in_smsmode:nn { \l_tmpa_str } {
-      \str_set:Nx \l_tmpb_str { #2 }
-      \str_if_empty:NF \l_tmpb_str {
-        \stex_set_current_repository:n { #2 }
+      \exp_args:No \stex_in_smsmode:nn { \g__stex_importmodule_file_str } {
+        \prop_clear:N \l_stex_current_module_prop
+        \str_set:Nx \l_tmpb_str { #2 }
+        \str_if_empty:NF \l_tmpb_str {
+          \stex_set_current_repository:n { #2 }
+        }
+        \stex_debug:n{Loading~\g__stex_importmodule_file_str}
+        \input { \g__stex_importmodule_file_str }
       }
-      \input { \l_tmpa_str }
-    }
+
     \prop_gput:Noo \g_stex_module_files_prop
-      \l_tmpa_str \g_stex_modules_in_file_seq
+    \g__stex_importmodule_file_str \g_stex_modules_in_file_seq
     \seq_set_eq:NN \g_stex_modules_in_file_seq \l_tmpa_seq
 
     \stex_if_module_exists:nF { #1 ? #4 } {
       \msg_new:nnn{stex}{error/modulemissing}{
-        Module~#1?#4~not~found~in~file~\l_tmpa_str
+        Module~#1?#4~not~found~in~file~\g__stex_importmodule_file_str
       }
       \msg_error:nn{stex}{error/modulemissing}
     }
@@ -1081,7 +1085,7 @@
   \stex_if_smsmode:F {
     \stex_import_module_uri:nn { #1 } { #2 }
     \stex_import_require_module:nnnn
-    { \l__stex_importmodule_module_ns_str } { \l__stex_importmodule_archive_str }
+    { \l_stex_module_ns_str } { \l__stex_importmodule_archive_str }
     { \l__stex_importmodule_path_str } { \l__stex_importmodule_name_str }
     \stex_annotate_invisible:nnn
       {usemodule} {\l_stex_module_ns_str ? \l__stex_importmodule_name_str} {}
@@ -1389,9 +1393,10 @@
   }
 
   \prop_put:Nno \l_tmpb_prop { argprecs } \l_tmpb_seq
+  \tl_clear:N \l_tmpa_tl
 
   \int_compare:nNnTF \l_tmpa_str = 0 {
-    \cs_set:Npx \l__stex_notation_macrocode_cs {} {
+    \cs_set:Npx \l__stex_notation_macrocode_cs {
       \_stex_term_math_oms:nnnn { #1 }
         { \l__stex_notation_variant_str \c_hash_str \l__stex_notation_lang_str }
         { \prop_item:Nn \l_tmpb_prop { opprec } }
@@ -1421,7 +1426,6 @@
     \int_zero:N \l_tmpa_int
     \prop_get:NnN \l_tmpa_prop { args } \l_tmpa_str
     \prop_get:NnN \l_tmpb_prop { argprecs } \l_tmpa_seq
-    \tl_clear:N \l_tmpa_tl
     \__stex_notation_arguments:
   }
 }
