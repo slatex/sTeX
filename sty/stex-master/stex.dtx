@@ -107,7 +107,6 @@
 % yields a \emph{constant} symbol. To introduce an \emph{operator}
 % which takes arguments, we have to specify which arguments it takes.
 %
-%
 % \begin{@module}{SemanticMacrosExample}
 %   For example, to introduce binary multiplication,
 %   we can do |\symdecl[args=2]{mult}|. We can then supply
@@ -195,6 +194,20 @@
 % of the text
 % (unexpanded) to highlight, and the URI of the current symbol.
 % \cs{@comp} can be safely redefined to customize the behaviour.
+%
+%
+% The starred variant |\symdecl*{foo}| does not introduce a semantic
+% macro, but still declares a corresponding symbol. |foo| (like
+% any other symbol, for that matter) can
+% then be accessed via \cs{STEXsymbol}|{foo}| or (if |foo| was declared
+% in a module |Foo|) via \cs{STEXModule}|{Foo}?{foo}|.
+%
+% both \cs{STEXsymbol} and \cs{STEXModule} take any
+% arbitrary ending segment of a full URI to determine
+% which symbol or module is meant. e.g.
+% \cs{STEXsymbol}|{Foo?foo}| is also valid, as are e.g.
+% \cs{STEXModule}|{path?Foo}?{foo}| or
+% \cs{STEXsymbol}|{path?Foo?foo}|
 %
 % \end{@module}
 %
@@ -544,6 +557,14 @@
 %   adds a corresponding definition to the |.sms|-file.
 % \end{function}
 %
+% \begin{function}{\libinput}
+%   \begin{syntax} \cs{libinput}\Arg{filename} \end{syntax}
+%   Inputs \meta{filename}|.tex| from the |lib| folders in the
+%   current archive and the |meta-inf|-archive of the current archive group
+%   (if existent). Throws an error if no file by that name exists in
+%   either folder, includes both if both exist.
+% \end{function}
+%
 % \stextest{
 %  \ExplSyntaxOn
 %  \stex_require_repository:n { Foo/Bar }
@@ -700,6 +721,49 @@
 % \ExplSyntaxOff
 %}
 %
+% \begin{variable}{\l_stex_all_modules_seq}
+%   Stores full URIs for all
+%   modules currently in scope.
+% \end{variable}
+%
+% \begin{function}{\STEXModule}
+%   \begin{syntax} \cs{STEXModule} \Arg{fragment} \end{syntax}
+%   Attempts to find a module whose URI ends with \meta{fragment}
+%   in the current scope and passes the full URI on to
+%   \cs{stex_invoke_module:n}.
+% \end{function}
+%
+% \begin{function}{\stex_invoke_module:n}
+%   Invoked by \cs{STEXModule}. Needs to be followed either
+%   by |!|\meta{macro} or |?|\Arg{symbolname}. In the first case,
+%   it stores the full URI in \meta{macro}; in the second
+%   case, it invokes the symbol \meta{symbolname} in the
+%   selected module.
+% \end{function}
+%
+%\stextest{
+%   \begin{module}{STEXModuleTest1}
+%     \symdecl{foo}
+%   \end{module}
+%   \begin{module}{STEXModuleTest2}
+%     \importmodule{STEXModuleTest1}
+%     \symdecl{foo}
+%   \end{module}
+%   \begin{module}{STEXModuleTest3}
+%     \importmodule{STEXModuleTest2}
+%     \symdecl{foo}
+%     \STEXModule{STEXModuleTest1}!\teststring
+%     \teststring\\
+%     \STEXModule{STEXModuleTest2}!\teststring
+%     \teststring\\
+%     \STEXModule{STEXModuleTest3}!\teststring
+%     \teststring\\
+%     \STEXModule{STEXModuleTest1}?{foo}[\comp{foo1}]\\
+%     \STEXModule{STEXModuleTest2}?{foo}[\comp{foo2}]\\
+%     \STEXModule{STEXModuleTest3}?{foo}[\comp{foo3}]\\
+%   \end{module}
+%}
+%
 %    \subsubsection{SMS Mode}
 % ``SMS Mode'' is used when loading modules from external tex files.
 % It deactivates any output and ignores all \TeX\ commands
@@ -809,6 +873,12 @@
 %     \importmodule{UseTest2}
 %     Meaning:~\present\foo\\
 %     Meaning:~\present\bar\\
+%
+%     All modules: \ExplSyntaxOn
+%       \seq_use:Nn \l_stex_all_modules_seq {,~} \\
+%     All~symbols:~
+%       \seq_use:Nn \l_stex_all_symbols_seq {,~}
+%     \ExplSyntaxOff 
 %   \end{module}
 %}
 %
@@ -955,9 +1025,20 @@
 %   \end{module}
 %}
 %
+% \begin{variable}{\l_stex_all_symbols_seq}
+%   Stores full URIs for all
+%   modules currently in scope.
+% \end{variable}
+%
 % \begin{function}{\stex_get_symbol:n}
 %   Computes the full URI of a symbol from a macro argument, e.g.
 %   the macro name, the macro itself, the full URI...
+% \end{function}
+%
+% \begin{function}{\STEXsymbol}
+%   Uses \cs{stex_get_symbol:n} to find the symbol denoted by
+%   the first argument and passes the result on to
+%   \cs{stex_invoke_symbol:n}
 % \end{function}
 %
 % \begin{function}{\stex_invoke_symbol:n}
@@ -1145,7 +1226,7 @@
 \ProvidesExplClass{stex}{2021/08/01}{1.9}{bla}
 \LoadClass[border=1px,varwidth]{standalone}
 \setlength\textwidth{15cm}
-\g@addto@macro{\@parboxrestore}{\setlength\parskip{\baselineskip}}
+%\g@addto@macro{\@parboxrestore}{\setlength\parskip{\baselineskip}}
 
 \DeclareOption*{\PassOptionsToPackage{\CurrentOption}{stex}}
 \ProcessOptions
@@ -1170,7 +1251,8 @@
   showmods  .bool_set:N   = \c_stex_showmods_bool ,
   lang      .clist_set:N  = \c_stex_languages_clist ,
   mathhub   .tl_set_x:N   = \mathhub ,
-  sms       .bool_set:N   = \c_stex_persist_mode_bool
+  sms       .bool_set:N   = \c_stex_persist_mode_bool ,
+  image     .bool_set:N   = \c_tikzinput_image_bool
 }
 \ProcessKeysOptions { stex }
 %    \end{macrocode}
@@ -1648,7 +1730,7 @@
 % \begin{variable}{\c_stex_mainfile_seq}
 %    \begin{macrocode}
 \stex_path_from_string:Nn \c_stex_mainfile_seq {
-  \c_stex_pwd_str/\g_file_curr_name_str.tex
+  \c_stex_pwd_str/\jobname.tex
 }
 %    \end{macrocode}
 % \end{variable}
@@ -1701,7 +1783,7 @@
     \msg_warning:nn{stex}{warning/nomathhub}
   }{
     \stex_debug:n {MathHub:~\str_use:N\c_stex_mathhub_str}
-    \stex_path_from_string:Nn\c_stex_mathhub_seq\c_stex_mathhub_str
+    \exp_args:NNo \stex_path_from_string:Nn\c_stex_mathhub_seq\c_stex_mathhub_str
   }
 }{
   \stex_path_from_string:Nn \c_stex_mathhub_seq \mathhub
@@ -1878,29 +1960,73 @@
 %
 %\begin{variable}{\l_stex_current_repository_prop}
 %
-% Current MathHub repository and a
-% hook for |\begin{document}| to set it initially.
+% Current MathHub repository
 %
 %    \begin{macrocode}
 \prop_new:N \l_stex_current_repository_prop
-\AddToHook{begindocument}{
-  \_@@_find_manifest:N \c_stex_pwd_seq
-  \seq_if_empty:NTF \l_@@_manifest_file_seq {
-    \stex_debug:n{Not~currently~in~a~MathHub~repository}
-  } {
-    \_@@_parse_manifest:n { main }
-    \prop_get:NnN \c_stex_mathhub_main_manifest_prop {id} 
-      \l_tmpa_str
-    \prop_set_eq:cN { c_stex_mathhub_\l_tmpa_str _manifest_prop }
-      \c_stex_mathhub_main_manifest_prop
-    \exp_args:Nx \stex_set_current_repository:n { \l_tmpa_str }
-    \stex_debug:n{Current~repository:~
-      \prop_item:Nn \l_stex_current_repository_prop {id}
-    }
+
+\_@@_find_manifest:N \c_stex_pwd_seq
+\seq_if_empty:NTF \l_@@_manifest_file_seq {
+  \stex_debug:n{Not~currently~in~a~MathHub~repository}
+} {
+  \_@@_parse_manifest:n { main }
+  \prop_get:NnN \c_stex_mathhub_main_manifest_prop {id} 
+    \l_tmpa_str
+  \prop_set_eq:cN { c_stex_mathhub_\l_tmpa_str _manifest_prop }
+    \c_stex_mathhub_main_manifest_prop
+  \exp_args:Nx \stex_set_current_repository:n { \l_tmpa_str }
+  \stex_debug:n{Current~repository:~
+    \prop_item:Nn \l_stex_current_repository_prop {id}
   }
 }
 %    \end{macrocode}
 % \end{variable}
+%
+%
+% \begin{macro}{\libinput}
+%    \begin{macrocode}
+\cs_new_protected:Npn \libinput #1 {
+  \prop_get:NnNF \l_stex_current_repository_prop {id} \l_tmpa_str {
+    \msg_set:nnn{stex}{error/norepository}{
+      \c_backslash_str libinput~needs~to~be~called~in~an~archive
+    }
+    \msg_error:nn{stex}{error/norepository}
+  }
+  \bool_set_false:N \l_tmpa_bool
+  \tl_clear:N \l_tmpa_tl
+  \seq_set_eq:NN \l_tmpa_seq \c_stex_mathhub_seq
+  \seq_set_split:NnV \l_tmpb_seq / \l_tmpa_str
+  \seq_pop_right:NN \l_tmpb_seq \l_tmpa_str
+  \seq_pop_left:NNT \l_tmpb_seq \l_tmpb_str {
+    \seq_put_right:No \l_tmpa_seq \l_tmpb_str
+    \IfFileExists{ \stex_path_to_string:N \l_tmpa_seq 
+      / meta-inf / lib / #1.tex}{
+        \bool_set_true:N \l_tmpa_bool
+        \tl_put_right:Nx \l_tmpa_tl {
+          \exp_not:N \input { \stex_path_to_string:N \l_tmpa_seq 
+          / meta-inf / lib / #1.tex}
+        }
+      }{}
+  }
+  \IfFileExists{ \stex_path_to_string:N \l_tmpa_seq
+    / \l_tmpa_str / lib / #1.tex
+  }{
+    \bool_set_true:N \l_tmpa_bool
+    \tl_put_right:Nx \l_tmpa_tl {
+      \exp_not:N \input { \stex_path_to_string:N \l_tmpa_seq 
+      / \l_tmpa_str / lib / #1.tex}
+    }
+  }{}
+  \bool_if:NF \l_tmpa_bool {
+    \msg_set:nnn{stex}{error/nofile}{
+      \c_backslash_str libinput~no~file~#1.tex~found!
+    }
+    \msg_error:nn{stex}{error/nofile}
+  }
+  \l_tmpa_tl
+}
+%    \end{macrocode}
+% \end{macro}
 %
 % \subsection{Module System}
 %    \begin{macrocode}
@@ -1936,7 +2062,7 @@
 \cs_new_protected:Nn \stex_add_to_current_module:n {
   \prop_get:NnN \l_stex_current_module_prop { content } \l_tmpa_tl
   \tl_put_right:Nn \l_tmpa_tl { #1 }
-  \prop_put:Nno \l_stex_current_module_prop { content } \l_tmpa_tl
+  \prop_put:Nno \l_stex_current_module_prop { content } { \l_tmpa_tl }
 }
 %    \end{macrocode}
 % \end{macro}
@@ -2027,17 +2153,79 @@
 %
 % \subsubsection{The module environment}
 %
+% \begin{variable}{\l_stex_all_modules_seq}
+%   Stores all available modules
+%    \begin{macrocode}
+\seq_new:N \l_stex_all_modules_seq
+%    \end{macrocode}
+% \end{variable}
+%
+% \begin{macro}{\STEXModule,\stex_invoke_module:n}
+%    \begin{macrocode}
+\NewDocumentCommand \STEXModule { m } {
+  \exp_args:NNx \str_set:Nn \l_tmpa_str { #1 }
+  \int_set:Nn \l_tmpa_int { \str_count:N \l_tmpa_str }
+  \tl_set:Nn \l_tmpa_tl {
+    \msg_set:nnn{stex}{error/unknownmodule}{
+      No~module~#1~found!
+    }
+    \msg_error:nn{stex}{error/unknownmodule}
+  }
+  \seq_map_inline:Nn \l_stex_all_modules_seq {
+    \str_set:Nn \l_tmpb_str { ##1 }
+    \str_if_eq:eeT { \l_tmpa_str } {
+      \str_range:Nnn \l_tmpb_str { -\l_tmpa_int } { -1 }
+    } {
+      \seq_map_break:n {
+        \tl_set:Nn \l_tmpa_tl {
+          \stex_invoke_module:n { ##1 }
+        }
+      }
+    }
+  }
+  \l_tmpa_tl
+}
+
+\cs_new_protected:Nn \stex_invoke_module:n {
+  \stex_debug:n{Invoking~module~#1}
+  \peek_charcode_remove:NTF ! {
+    \_@@_invoke_uri:nN { #1 }
+  } {
+    \peek_charcode_remove:NTF ? {
+      \_@@_invoke_symbol:nn { #1 }
+    } {
+      \msg_set:nnn{stex}{error/syntax}{
+        Syntax~error:~?~or~!~expected~after~
+        \c_backslash_str STEXModule{#1}
+      }
+      \msg_error:nn{stex}{error/syntax}
+    }
+  }
+}
+
+\cs_new_protected:Nn \_@@_invoke_uri:nN {
+  \str_set:Nn #2 { #1 }
+}
+
+\cs_new_protected:Nn \_@@_invoke_symbol:nn {
+  \stex_invoke_symbol:n{#1?#2}
+}
+%    \end{macrocode}
+% \end{macro}
+%
 % \begin{environment}{module}
 %
 % |module| arguments:
 %
 %    \begin{macrocode}
 \keys_define:nn { stex / module } {
-  title .tl_set_x:N  = \l_stex_module_title_str ,
-  ns    .tl_set_x:N  = \l_stex_module_ns_str ,
-  lang  .tl_set_x:N  = \l_stex_module_lang_str ,
-  sig   .tl_set_x:N  = \l_stex_module_sig_str ,
-  meta  .tl_set_x:N  = \l_stex_module_meta_str
+  title         .tl_set_x:N  = \l_stex_module_title_str ,
+  ns            .tl_set_x:N  = \l_stex_module_ns_str ,
+  lang          .tl_set_x:N  = \l_stex_module_lang_str ,
+  sig           .tl_set_x:N  = \l_stex_module_sig_str ,
+  creators      .tl_set_x:N  = \l_stex_module_creators_str ,
+  contributors  .tl_set_x:N  = \l_stex_module_contributors_str ,
+  meta          .tl_set_x:N  = \l_stex_module_meta_str
 }
 
 % module parameters here? In the body?
@@ -2047,6 +2235,8 @@
   \str_clear:N \l_stex_module_ns_str
   \str_clear:N \l_stex_module_lang_str
   \str_clear:N \l_stex_module_sig_str
+  \str_clear:N \l_stex_module_creators_str
+  \str_clear:N \l_stex_module_contributors_str
   \str_clear:N \l_stex_module_meta_str
   \keys_set:nn { stex / module } { #1 }
   \exp_args:NNo \str_set:Nn \l_stex_module_title_str 
@@ -2059,6 +2249,10 @@
     \l_stex_module_sig_str
   \exp_args:NNo \str_set:Nn \l_stex_module_meta_str 
     \l_stex_module_meta_str
+  \exp_args:NNo \str_set:Nn \l_stex_module_creators_str 
+    \l_stex_module_creators_str
+  \exp_args:NNo \str_set:Nn \l_stex_module_contributors_str 
+    \l_stex_module_contributors_str
 }
 %    \end{macrocode}
 %
@@ -2131,7 +2325,7 @@
   \exp_args:NNx \prop_set_from_keyval:Nn \l_stex_current_module_prop {
     name      = \l_stex_module_name_str ,
     ns        = \l_stex_module_ns_str ,
-    imports    = \exp_not:o { \l_tmpa_seq } ,
+    imports   = \exp_not:o { \l_tmpa_seq } ,
     constants = \exp_not:o { \l_tmpa_seq } ,
     content   = \exp_not:o { \l_tmpa_tl }  ,
     file      = \exp_not:o { \g_stex_currentfile_seq } ,
@@ -2148,6 +2342,10 @@
     Signature:~\l_stex_module_sig_str\\
     Metatheory:~\l_stex_module_meta_str\\
     File:~\stex_path_to_string:N \g_stex_currentfile_seq
+  }
+
+  \seq_put_right:Nx \l_stex_all_modules_seq {
+    \l_stex_module_ns_str ? \l_stex_module_name_str
   }
 
   \seq_gput_right:Nx  \g_stex_modules_in_file_seq
@@ -2308,52 +2506,15 @@
 \tl_set:Nn \g_stex_smsmode_allowedmacros_escape_tl {
   \symdef
   \abbrdef
-%  \module@export
   \importmodule
-%  \mmt@symdecl
-%  \instantiates
-%  \setnotation
-%  \importmhmodule
-%  \gimport
-%  \symvariant
-%  \structural@feature
-%  \symi
-%  \symii
-%  \symiii
-%  \symiv
   \notation
   \symdecl
-%  \defi
-%  \defii
-%  \defiii
-%  \defiv
-%  \adefi
-%  \adefii
-%  \adefiii
-%  \adefiv
-%  \defis
-%  \defiis
-%  \defiiis
-%  \defivs
-%  \Defi
-%  \Defii
-%  \Defiii
-%  \Defiv
-%  \Defis
-%  \Defiis
-%  \Defiiis
-%  \Defivs
 }
 
 \exp_args:NNx \seq_set_from_clist:Nn \g_stex_smsmode_allowedenvs_seq {
   \tl_to_str:n {
     module,
     @module
-%   modsig,
-%   mhmodsig,
-%   mhmodnl,
-%   modnl,
-%   @structural@feature
   }
 }
 %    \end{macrocode}
@@ -2615,7 +2776,9 @@
 %    \begin{syntax} \Arg{ns} \Arg{archive-ID} \Arg{path} \Arg{name} \end{syntax}
 %    \begin{macrocode}
 \cs_new_protected:Nn \stex_import_require_module:nnnn {
-  \exp_args:Nx \stex_if_module_exists:nF { #1 ? #4 } {
+  \exp_args:Nx \stex_if_module_exists:nF { #1 ? #4 } { 
+    % \stex_debug:n{Arguments: #1, #2, #3, #4}
+
     % archive
     \str_set:Nx \l_tmpa_str { #2 }
     \str_if_empty:NTF \l_tmpa_str {
@@ -2626,16 +2789,21 @@
       \seq_put_right:Nn \l_tmpa_seq { source }
     }
 
-    \stex_debug:n{Arguments: #1, #2, #3, #4}
-
     % path
     \str_set:Nx \l_tmpb_str { #3 }
-    \str_if_empty:NT \l_tmpb_str {
+    \str_if_empty:NTF \l_tmpb_str {
       \str_set:Nx \l_tmpa_str { \stex_path_to_string:N \l_tmpa_seq / #4 }
       
       \cs_if_exist:NTF \languagename { 
-        \prop_get:NnN \c_stex_language_abbrevs_prop 
-            { \languagename } \l_tmpb_str
+        \exp_args:NNx \prop_get:NnNF \c_stex_language_abbrevs_prop 
+            { \languagename } \l_tmpb_str {
+              \msg_set:nnn{stex}{error/unknownlanguage}{
+                Unknown~language~\languagename
+              }
+              \msg_error:nn{stex}{error/unknownlanguage}
+            }
+      } {
+        \str_clear:N \l_tmpb_str
       }
 
       \stex_debug:n{Checking~\l_tmpa_str.\l_tmpb_str.tex}
@@ -2651,7 +2819,7 @@
           \IfFileExists{ \l_tmpa_str.en.tex }{
             \str_gset:Nx \g_@@_file_str { \l_tmpa_str.en.tex }
           }{
-            \msg_new:nnn{stex}{error/modulemissing}{
+            \msg_set:nnn{stex}{error/modulemissing}{
               No~file~for~module~#1?#4~found
             }
             \msg_error:nn{stex}{error/modulemissing}
@@ -2664,13 +2832,18 @@
       \seq_concat:NNN \l_tmpa_seq \l_tmpa_seq \l_tmpb_seq
       
       \cs_if_exist:NTF \languagename { 
-        \exp_args:NNx \prop_get:NnN \c_stex_language_abbrevs_prop 
-            { \languagename } \l_tmpb_str
-      }{
+        \exp_args:NNx \prop_get:NnNF \c_stex_language_abbrevs_prop 
+            { \languagename } \l_tmpb_str {
+              \msg_set:nnn{stex}{error/unknownlanguage}{
+                Unknown~language~\languagename
+              }
+              \msg_error:nn{stex}{error/unknownlanguage}
+            }
+      } {
         \str_clear:N \l_tmpb_str
       }
 
-      \str_set:Nx \l_tmpa_str { \stex_path_to_string:N \l_tmpa_seq }
+      \stex_path_to_string:NN \l_tmpa_seq \l_tmpa_str
 
       \stex_debug:n{Checking~\l_tmpa_str/#4.\l_tmpb_str.tex}
       \IfFileExists{ \l_tmpa_str/#4.\l_tmpb_str.tex }{
@@ -2698,7 +2871,7 @@
                 \IfFileExists{ \l_tmpa_str.en.tex }{
                   \str_gset:Nx \g_@@_file_str { \l_tmpa_str.en.tex }
                 }{
-                  \msg_new:nnn{stex}{error/modulemissing}{
+                  \msg_set:nnn{stex}{error/modulemissing}{
                     No~file~for~module~#1?#4~found
                   }
                   \msg_error:nn{stex}{error/modulemissing}
@@ -2730,7 +2903,7 @@
     \seq_set_eq:NN \g_stex_modules_in_file_seq \l_tmpa_seq
 
     \stex_if_module_exists:nF { #1 ? #4 } {
-      \msg_new:nnn{stex}{error/modulemissing}{
+      \msg_set:nnn{stex}{error/modulemissing}{
         Module~#1?#4~not~found~in~file~\g_@@_file_str
       }
       \msg_error:nn{stex}{error/modulemissing}
@@ -2738,6 +2911,9 @@
   }
   % activate
   \stex_debug:n{Activating~module~#1?#4}
+  \seq_put_right:Nx \l_stex_all_modules_seq {
+    #1 ? #4
+  }
   \prop_item:cn { c_stex_module_#1?#4_prop } { content }
 }
 %    \end{macrocode}
@@ -2800,15 +2976,38 @@
 %<@@=stex_symdecl>
 %    \end{macrocode}
 %
+%
+% \begin{variable}{\l_stex_all_symbols_seq}
+%   Stores all available symbols
+%    \begin{macrocode}
+\prop_new:N \l_stex_all_symbols_seq
+%    \end{macrocode}
+% \end{variable}
+%
+% \begin{macro}{\STEXsymbol}
+%    \begin{macrocode}
+\NewDocumentCommand \STEXsymbol { m } {
+  \stex_get_symbol:n { #1 }
+  \exp_args:No
+  \stex_invoke_symbol:n { \l_stex_get_symbol_uri_str }
+}
+%    \end{macrocode}
+% \end{macro}
+%
 % |symdecl| arguments:
 %
 %    \begin{macrocode}
 \keys_define:nn { stex / symdecl } {
-  name  .tl_set_x:N  = \l_stex_symdecl_name_str ,
-  local .bool_set:N  = \l_stex_symdecl_local_bool ,
-  args  .tl_set_x:N  = \l_stex_symdecl_args_str ,
-  type  .tl_set:N    = \l_stex_symdecl_type_tl
+  name        .tl_set_x:N  = \l_stex_symdecl_name_str ,
+  local       .bool_set:N  = \l_stex_symdecl_local_bool ,
+  args        .tl_set_x:N  = \l_stex_symdecl_args_str ,
+  type        .tl_set:N    = \l_stex_symdecl_type_tl ,
+  align       .tl_set:N    = \l_stex_symdecl_align_str , % TODO(?)
+  gfc         .tl_set:N    = \l_stex_symdecl_gfc_str , % TODO(?)
+  specializes .tl_set:N    = \l_stex_symdecl_specializes_str , % TODO(?)
 }
+
+\bool_new:N \l_stex_symdecl_make_macro_bool
 
 \cs_new_protected:Nn \_@@_args:n {
   \str_clear:N \l_stex_symdecl_name_str
@@ -2832,7 +3031,17 @@
 % can do the same)
 %
 %    \begin{macrocode}
-\NewDocumentCommand \symdecl { O{} m } {
+\cs_new_protected:Npn \symdecl {
+  \peek_charcode_remove:NTF * {
+    \bool_set_false:N \l_stex_symdecl_make_macro_bool
+    \_@@_:
+  } {
+    \bool_set_true:N \l_stex_symdecl_make_macro_bool
+    \_@@_:
+  }
+}
+
+\NewDocumentCommand \_@@_: { O{} m } {
   \_@@_args:n { #1 }
   \tl_clear:N \l_stex_symdecl_definiens_tl
   \stex_symdecl_do:n { #2 }
@@ -2845,6 +3054,7 @@
 \NewDocumentCommand \abbrdef { O{} m m } {
   \_@@_args:n { #1 }
   \tl_set:Nn \l_stex_symdecl_definiens_tl { #3 }
+  \bool_set_true:N \l_stex_symdecl_make_macro_bool
   \stex_symdecl_do:n { #2 }
 }
 %    \end{macrocode}
@@ -2934,20 +3144,32 @@
 
   % semantic macro
 
-  \tl_set:cx { #1 } { \stex_invoke_symbol:n {
-    \prop_item:Nn \l_tmpa_prop { module } ?
-      \prop_item:Nn \l_tmpa_prop { name }
-  } }
+  \bool_if:NT \l_stex_symdecl_make_macro_bool {
+    \tl_set:cx { #1 } { \stex_invoke_symbol:n {
+      \prop_item:Nn \l_tmpa_prop { module } ?
+        \prop_item:Nn \l_tmpa_prop { name }
+    } }
 
-  \bool_if:NF \l_stex_symdecl_local_bool {
-    \exp_args:Nx \stex_add_to_current_module:n {
-      \tl_set:cx { #1 } { \stex_invoke_symbol:n {
-        \prop_item:Nn \l_tmpa_prop { module } ?
-          \prop_item:Nn \l_tmpa_prop { name }
-      } }
+    \bool_if:NF \l_stex_symdecl_local_bool {
+      \exp_args:Nx \stex_add_to_current_module:n {
+        \tl_set:cx { #1 } { \stex_invoke_symbol:n {
+          \prop_item:Nn \l_tmpa_prop { module } ?
+            \prop_item:Nn \l_tmpa_prop { name }
+        } }
+      }
     }
   }
 
+  % add to all symbols
+
+  \bool_if:NF \l_stex_symdecl_local_bool {
+    \exp_args:Nx \stex_add_to_current_module:n {
+      \seq_put_right:Nn \exp_not:N \l_stex_all_symbols_seq {
+        \prop_item:Nn \l_tmpa_prop { module } ?
+        \prop_item:Nn \l_tmpa_prop { name }
+      }
+    }
+  }
 
   \stex_debug:n{New~symbol:~
     \prop_item:Nn \l_tmpa_prop { module } ?
@@ -2981,10 +3203,18 @@
           arity     = \prop_item:Nn \l_tmpa_prop { arity }
           assocs    = \prop_item:Nn \l_tmpa_prop { assocs }
         }
+        \seq_put_right:Nn \exp_not:N \l_stex_all_symbols_seq {
+          \prop_item:Nn \l_tmpa_prop { module } ?
+          \prop_item:Nn \l_tmpa_prop { name }
+        }
       }
     }
     \stex_smsmode_set_codes:
   }{
+    \exp_args:NNx \seq_put_right:Nn \l_stex_all_symbols_seq {
+      \prop_item:Nn \l_tmpa_prop { module } ?
+      \prop_item:Nn \l_tmpa_prop { name }
+    }
     \stex_annotate_invisible:nnn {symdecl} {
       \prop_item:Nn \l_tmpa_prop { module } ?
       \prop_item:Nn \l_tmpa_prop { name }
@@ -3018,8 +3248,40 @@
     \cs_if_exist:cTF { #1 }{
       \exp_args:No \_@@_get_symbol_from_cs:n { \use:c { #1 } }
     }{
-      % TODO
       % argument is not a command name
+      \prop_get:NnN \l_stex_current_module_prop 
+        { constants } \l_tmpa_seq
+      \seq_if_in:NnTF \l_tmpa_seq { #1 } {
+        \str_set:Nx \l_stex_get_symbol_uri_str {
+          \prop_item:Nn \l_stex_current_module_prop { ns } ?
+          \prop_item:Nn \l_stex_current_module_prop { name } ? #1
+        }
+      } {
+        \tl_set:Nn \l_tmpa_tl {
+          \msg_set:nnn{stex}{error/unknownsymbol}{
+            No~symbol~#1~found!
+          }
+          \msg_error:nn{stex}{error/unknownsymbol}
+        }
+        \exp_args:NNx \str_set:Nn \l_tmpa_str { #1 }
+        \int_set:Nn \l_tmpa_int { \str_count:N \l_tmpa_str }
+        \seq_map_inline:Nn \l_stex_all_symbols_seq {
+          \str_set:Nn \l_tmpb_str { ##1 }
+          \str_if_eq:eeT { \l_tmpa_str } {
+            \str_range:Nnn \l_tmpb_str { -\l_tmpa_int } { -1 }
+          } {
+            \seq_map_break:n {
+              \tl_set:Nn \l_tmpa_tl {
+                \str_set:Nn \l_stex_get_symbol_uri_str {
+                  ##1
+                }
+              }
+            }
+          }
+        }
+        \l_tmpa_tl
+      }
+      % \l_stex_all_symbols_seq
     }
   }
 }
@@ -3399,6 +3661,7 @@
 \NewDocumentCommand \symdef { O{} m } {
   \_@@_symdef_args:n { #1 }
   \tl_clear:N \l_stex_symdecl_definiens_tl
+  \bool_set_true:N \l_stex_symdecl_make_macro_bool
   \stex_symdecl_do:n { #2 }
   \exp_args:Nx \stex_notation_do:nn { 
     \prop_item:Nn \l_tmpa_prop { module } ?
@@ -3875,6 +4138,362 @@
 %
 %
 %
+%
+%
+%
+%
+%
+%
+%
+%    \begin{macrocode}
+\@ifpackageloaded{tikzinput}{
+  \RequirePackage{stex-tikzinput}
+}{}
+%    \end{macrocode}
+%
+%    \begin{macrocode}
+%</package>
+%    \end{macrocode}
+%
+% \subsection{Auxiliary Packages}
+%
+% \subsubsection{tikzinput}
+%    \begin{macrocode}
+%<*tikzinput>
+%<@@=tikzinput>
+\ProvidesExplPackage{tikzinput}{2021/08/31}{1.9}{bla}
+\RequirePackage{l3keys2e}
+
+\keys_define:nn { tikzinput } {
+  image   .bool_set:N   = \c_tikzinput_image_bool
+}
+
+\ProcessKeysOptions { tikzinput }
+
+\bool_if:NTF \c_tikzinput_image_bool {
+  \RequirePackage{graphicx}
+
+  \providecommand\usetikzlibrary[]{}
+  \newcommand\tikzinput[2][]{\includegraphics[#1]{#2}}
+}{
+  \RequirePackage{tikz}
+  \RequirePackage{standalone}
+
+  \newcommand \tikzinput [2] [] {
+    \setkeys{Gin}{#1}
+    \ifx \Gin@width \Gin@exclamation
+      \ifx \Gin@height \Gin@exclamation
+        \input { #2 }
+      \else
+        \resizebox{!}{ \Gin@height }{
+          \input { #2 }
+        }
+      \fi
+    \else
+      \ifx \Gin@height \Gin@exclamation
+        \resizebox{ \Gin@width }{!}{
+          \input { #2 }
+        }
+      \else
+        \resizebox{ \Gin@width }{ \Gin@height }{
+          \input { #2 }
+        }
+      \fi
+    \fi
+  }
+}
+
+\newcommand \ctikzinput [2] [] {
+  \begin{center}
+    \tikzinput [#1] {#2}
+  \end{center}
+}
+
+\@ifpackageloaded{stex}{
+  \RequirePackage{stex-tikzinput}
+}{}
+%</tikzinput>
+%    \end{macrocode}
+%
+%    \begin{macrocode}
+%<*stex-tikzinput>
+\ProvidesExplPackage{stex-tikzinput}{2021/08/31}{1.9}{bla}
+\RequirePackage{stex}
+\RequirePackage{tikzinput}
+
+% TODO
+
+%</stex-tikzinput>
+%    \end{macrocode}
+%
+% \subsubsection{{\sTeX}1 Compatibility}
+%
+%    \begin{macrocode}
+%<*smglom>
+\RequirePackage{expl3,l3keys2e}
+\ProvidesExplClass{smglom}{2021/08/01}{1.9}{sTeX1 compatibility}
+\LoadClass[border=1px,varwidth]{standalone}
+\setlength\textwidth{15cm}
+%\g@addto@macro{\@parboxrestore}{\setlength\parskip{\baselineskip}}
+\DeclareOption{mh}{}
+\DeclareOption*{\PassOptionsToPackage{\CurrentOption}{stex}}
+\ProcessOptions
+
+\RequirePackage{stex-compatibility}
+%</smglom>
+
+%<*compat>
+\ProvidesExplPackage{stex-compatibility}{2021/08/01}{1.9}{bla}
+\RequirePackage[debug,lang={de,en}]{stex}
+
+\NewDocumentEnvironment { mhmodnl } { O{} m m } {
+  \msg_set:nnn{stex}{warning/deprecated}{
+    \\
+    Environment~mhmodnl~is~deprected! \\
+    Please~update~module~#2~in~file~
+    \stex_path_to_string:N \g_stex_currentfile_seq!
+    \\ \\
+  }
+  \msg_warning:nn{stex}{warning/deprecated}
+
+  \begin{module}[#1,lang=#3]{#2}
+    \seq_set_eq:NN \l_tmpa_seq \g_stex_currentfile_seq
+    \seq_pop_right:NN \l_tmpa_seq \l_tmpa_str
+    \seq_set_split:NnV \l_tmpb_seq . \l_tmpa_str
+    \seq_pop_left:NN \l_tmpb_seq \l_tmpa_str
+    \input { \stex_path_to_string:N \l_tmpa_seq / \l_tmpa_str.tex }
+} {
+  \end{module}
+}
+
+\NewDocumentEnvironment { modsig } { O{} m } {
+  \stex_if_in_module:TF {
+    \prop_get:NnN \l_stex_current_module_prop {name} \l_tmpa_str
+    \str_set:Nn \l_tmpb_str { #2 }
+    \str_if_eq:NNTF \l_tmpa_str \l_tmpb_str {
+      \prop_set_eq:NN \l_modsig_old_module_prop \l_stex_current_module_prop
+      \begin{@module}{modsig-#2}
+       % \prop_set_eq:NN \l_stex_current_module_prop \l_modsig_old_module_prop 
+    } {
+      \begin{@module}{#2}
+    }
+  } {
+    \begin{@module}{#2}
+  }
+}{
+  \end{@module}
+  \AddToHookNext { env / modsig / after }{
+    \stex_if_in_module:T {
+      \prop_get:NnN \l_stex_current_module_prop {name} \l_tmpa_str
+      \str_set:Nn \l_tmpb_str { #2 }
+      \str_if_eq:NNT \l_tmpa_str \l_tmpb_str {
+  %      \xdef \g_stex_module_after_group_tl {
+          \stex_if_smsmode:TF {          
+            \exp_args:Nx
+            \stex_add_to_current_module:n {
+              \stex_debug:n{Activating~signature~of~#2}
+              \exp_not:N \prop_item:cn { c_stex_module_ 
+              \prop_item:Nn \l_stex_current_module_prop {ns} ?
+              \prop_item:Nn \l_stex_current_module_prop {name}
+              / modsig-#2_prop } { content }
+            }
+          } 
+          {
+            \gdef \g_stex_module_after_group_tl  {
+              \stex_debug:n{Activating~signature~of~#2}
+              
+              \seq_put_right:Nx \l_stex_all_modules_seq {
+                \prop_item:Nn \l_stex_current_module_prop {ns} ?
+                \prop_item:Nn \l_stex_current_module_prop {name}
+                / modsig-#2_prop
+              }
+              \prop_item:cn { c_stex_module_ 
+              \prop_item:Nn \l_stex_current_module_prop {ns} ?
+              \prop_item:Nn \l_stex_current_module_prop {name}
+              / modsig-#2_prop } { content }
+              \exp_args:Nx
+              \stex_add_to_current_module:n {
+                \stex_debug:n{Activating~signature~of~#2}
+                \exp_not:N \prop_item:cn { c_stex_module_ 
+                \prop_item:Nn \l_stex_current_module_prop {ns} ?
+                \prop_item:Nn \l_stex_current_module_prop {name}
+                / modsig-#2_prop } { content }
+              }
+            }
+            \aftergroup \g_stex_module_after_group_tl
+          }
+  %      }
+  %      \aftergroup \g_stex_module_after_group_tl
+      }
+    }
+  }
+}
+
+\NewDocumentCommand \gimport { O{} m } {
+  \msg_set:nnn{stex}{warning/deprecated}{
+    \\
+    \c_backslash_str gimport~is~deprecated! \\
+    Please~use~\c_backslash_str importmodule[#1]{#2}~instead!~(in~file~
+    \stex_path_to_string:N \g_stex_currentfile_seq)
+    \\ \\
+  }
+  \msg_warning:nn{stex}{warning/deprecated}
+  \importmodule[#1]{#2}
+}
+
+\cs_new_protected:Npn \symi {
+  \peek_charcode_remove:NTF * {
+    \symi_do:
+  } {
+    \symi_do:
+  }
+}
+
+\NewDocumentCommand \symi_do: { O{} m } {
+  \msg_set:nnn{stex}{warning/deprecated}{
+    \\
+    \c_backslash_str symi~is~deprecated! \\
+    Please~use~\c_backslash_str symdecl[#1]{#2}~instead!~(in~file~
+    \stex_path_to_string:N \g_stex_currentfile_seq)
+    \\ \\
+  }
+  \msg_warning:nn{stex}{warning/deprecated}
+  \symdecl*[#1]{#2}
+}
+
+\cs_new_protected:Npn \symii {
+  \peek_charcode_remove:NTF * {
+    \symii_do:
+  } {
+    \symii_do:
+  }
+}
+
+\NewDocumentCommand \symii_do: { O{} m m } {
+  \msg_set:nnn{stex}{warning/deprecated}{
+    \\
+    \c_backslash_str symii~is~deprecated! \\
+    Please~use~\c_backslash_str symdecl[#1]{#2-#3}~instead!~(in~file~
+    \stex_path_to_string:N \g_stex_currentfile_seq)
+    \\ \\
+  }
+  \msg_warning:nn{stex}{warning/deprecated}
+  \symdecl*[#1]{#2-#3}
+}
+
+\cs_new_protected:Npn \defi {
+  \peek_charcode_remove:NTF * {
+    \defi_do:
+  } {
+    \defi_do:
+  }
+}
+
+\NewDocumentCommand \defi_do: { O{} m } {
+  \str_set:Nn \l_tmpa_str { #1 }
+  \str_if_empty:NTF \l_tmpa_str {
+    \msg_set:nnn{stex}{warning/deprecated}{
+      \\
+      \c_backslash_str defi~is~deprecated! \\
+      Please~use~\c_backslash_str STEXsymbol{#2}![#2]~instead!~(in~file~
+      \stex_path_to_string:N \g_stex_currentfile_seq)
+      \\ \\
+    }
+    \msg_warning:nn{stex}{warning/deprecated}
+    \STEXsymbol { #2 }![ \comp{#2} ]
+  } {
+    \msg_set:nnn{stex}{warning/deprecated}{
+      \\
+      \c_backslash_str defi~is~deprecated! \\
+      Please~use~\c_backslash_str STEXsymbol { #1 ? #2 }[ #2 ]~instead!~(in~file~
+      \stex_path_to_string:N \g_stex_currentfile_seq)
+      \\ \\
+    }
+    \msg_warning:nn{stex}{warning/deprecated}
+    \STEXsymbole { #1 ? #2 }[ \comp{#2} ]
+  }
+}
+
+\cs_new_protected:Npn \defii {
+  \peek_charcode_remove:NTF * {
+    \defii_do:
+  } {
+    \defii_do:
+  }
+}
+
+\NewDocumentCommand \defii_do: { O{} m m } {
+  \str_set:Nn \l_tmpa_str { #1 }
+  \str_if_empty:NTF \l_tmpa_str {
+    \msg_set:nnn{stex}{warning/deprecated}{
+      \\
+      \c_backslash_str defii~is~deprecated! \\
+      Please~use~\c_backslash_str STEXsymbol{#2-#3}![#2~#3]~instead!~(in~file~
+      \stex_path_to_string:N \g_stex_currentfile_seq)
+      \\ \\
+    }
+    \msg_warning:nn{stex}{warning/deprecated}
+    \STEXsymbol { #2-#3 }![ \comp{#2~#3} ]
+  } {
+    \msg_set:nnn{stex}{warning/deprecated}{
+      \\
+      \c_backslash_str defii~is~deprecated! \\
+      Please~use~\c_backslash_str STEXsymbol { #1 ? #2-#3 }[ #2~#3 ]~instead!~(in~file~
+      \stex_path_to_string:N \g_stex_currentfile_seq)
+      \\ \\
+    }
+    \msg_warning:nn{stex}{warning/deprecated}
+    \STEXsymbol { #1 ? #2-#3 }[ \comp{#2~#3} ]
+  }
+}
+
+%\RequirePackage[hyperref]{ntheorem}
+%\theoremstyle{plain}
+%\RequirePackage{amsthm}
+
+\NewDocumentEnvironment {definition} { O{} } {
+  \stex_smsmode_set_codes:
+  \msg_set:nnn{stex}{warning/deprecated}{
+    \\
+    definition~environment~is~deprecated!~(in~file~
+    \stex_path_to_string:N \g_stex_currentfile_seq)
+    \\ \\
+  }
+  \msg_warning:nn{stex}{warning/deprecated}
+}{}
+
+\NewDocumentCommand \trefi { O{} m } {
+  \str_set:Nn \l_tmpa_str { #1 }
+  \str_if_empty:NTF \l_tmpa_str {
+    \msg_set:nnn{stex}{warning/deprecated}{
+      \\
+      \c_backslash_str trefi~is~deprecated! \\
+      Please~use~\c_backslash_str STEXsymbol{#2}![#2]~instead!~(in~file~
+      \stex_path_to_string:N \g_stex_currentfile_seq)
+      \\ \\
+    }
+    \msg_warning:nn{stex}{warning/deprecated}
+    \STEXsymbol { #2 }![ \comp{#2} ]
+  } {
+    \msg_set:nnn{stex}{warning/deprecated}{
+      \\
+      \c_backslash_str trefi~is~deprecated! \\
+      Please~use~\c_backslash_str STEXsymbol { #1 ? #2 }[ #2 ]~instead!~(in~file~
+      \stex_path_to_string:N \g_stex_currentfile_seq)
+      \\ \\
+    }
+    \msg_warning:nn{stex}{warning/deprecated}
+    \STEXsymbol { #1 ? #2 }[ \comp{#2} ]
+  }
+}
+
+
+\seq_gput_right:Nx \g_stex_smsmode_allowedenvs_seq { \tl_to_str:n { mhmodnl } }
+\seq_gput_right:Nx \g_stex_smsmode_allowedenvs_seq { \tl_to_str:n { modsig } }
+\tl_gput_right:Nn \g_stex_smsmode_allowedmacros_escape_tl {\gimport\symi\symii\symiii\symiv}
+
+%</compat>
+%    \end{macrocode}
 %
 % \end{implementation}
 % \immediate\closeout\alltestsoutfile
