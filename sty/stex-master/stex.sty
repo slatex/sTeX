@@ -522,6 +522,11 @@
   \tl_put_right:Nn \l_tmpa_tl { #1 }
   \prop_put:Nno \l_stex_current_module_prop { content } { \l_tmpa_tl }
 }
+\NewDocumentCommand \STEXexport { m }{
+  \stex_smsmode_set_codes:
+  \stex_add_to_current_module:n { #1 }
+  #1
+}
 \cs_new_protected:Nn \stex_add_constant_to_current_module:n {
   \str_set:Nx \l_tmpa_str { #1 }
   \prop_get:NnN \l_stex_current_module_prop { constants } \l_tmpa_seq
@@ -773,7 +778,7 @@
     \prop_item:Nn \l_stex_current_module_prop { name }
     _prop
   }
-  \prop_new:c { \l_tmpa_str }
+  %^^A \prop_new:c { \l_tmpa_str }
   \prop_gset_eq:cN { \l_tmpa_str } \l_stex_current_module_prop
   \stex_debug:n{Closing~module~\prop_item:Nn \l_stex_current_module_prop { name }}
   \stex_if_smsmode:TF {
@@ -862,6 +867,7 @@
   \importmodule
   \notation
   \symdecl
+  \STEXexport
 }
 
 \exp_args:NNx \seq_set_from_clist:Nn \g_stex_smsmode_allowedenvs_seq {
@@ -1255,6 +1261,7 @@
   \__stex_symdecl_args:n { #1 }
   \tl_clear:N \l_stex_symdecl_definiens_tl
   \stex_symdecl_do:n { #2 }
+  \stex_smsmode_set_codes:
 }
 \NewDocumentCommand \abbrdef { O{} m m } {
   \__stex_symdecl_args:n { #1 }
@@ -1308,6 +1315,10 @@
         \bool_set_false:N \l_tmpa_bool
         \int_incr:N \l_tmpb_int
       }
+      {\tl_to_str:n B} {
+        \bool_set_false:N \l_tmpa_bool
+        \int_incr:N \l_tmpb_int
+      }
     }{
       \msg_set:nnn{stex}{error/wrongargs}{
         args~value~in~symbol~declaration~for~
@@ -1315,7 +1326,7 @@
         \prop_item:Nn \l_stex_current_module_prop {name} ?
         \l_stex_symdecl_name_str ~
         needs~to~be~
-        i,~a~or~b,~but~##1~given
+        i,~a,~b~or~B,~but~##1~given
       }
       \msg_error:nn{stex}{error/wrongargs}
     }
@@ -1408,7 +1419,6 @@
         }
       }
     }
-    \stex_smsmode_set_codes:
   }{
     \exp_args:NNx \seq_put_right:Nn \l_stex_all_symbols_seq {
       \prop_item:Nn \l_tmpa_prop { module } ?
@@ -1544,8 +1554,8 @@
     \prop_get:NnN \l_tmpa_prop { arity } \l_tmpa_str
     \int_compare:nNnTF \l_tmpa_str = 0 {
       \exp_args:NNnx
-      \prop_put:Nnn \l_tmpb_prop { opprec }
-        { \int_use:N \infprec }
+      \prop_put:Nno \l_tmpb_prop { opprec }
+        { \infprec }
     }{
       \prop_put:Nnn \l_tmpb_prop { opprec } { 0 }
     }
@@ -1565,8 +1575,8 @@
       \prop_get:NnN \l_tmpa_prop { arity } \l_tmpa_str
       \int_compare:nNnTF \l_tmpa_str = 0 {
         \exp_args:NNnx
-        \prop_put:Nnn \l_tmpb_prop { opprec }
-          { \int_use:N \infprec }
+        \prop_put:Nno \l_tmpb_prop { opprec }
+          { \infprec }
       }{
         \prop_put:Nnn \l_tmpb_prop { opprec } { 0 }
       }
@@ -1587,30 +1597,47 @@
   \tl_clear:N \l_tmpa_tl
 
   \int_compare:nNnTF \l_tmpa_str = 0 {
-    \cs_set:Npx \l__stex_notation_macrocode_cs {
+    \exp_args:NNe
+    \cs_set:Npn \l__stex_notation_macrocode_cs {
       \_stex_term_math_oms:nnnn { #1 }
         { \l__stex_notation_variant_str \c_hash_str \l__stex_notation_lang_str }
         { \prop_item:Nn \l_tmpb_prop { opprec } }
-        { #2 }
+        { \exp_not:n { #2 } }
     }
     \__stex_notation_final:
   }{
     \prop_get:NnN \l_tmpa_prop { args } \l_tmpb_str
     \str_if_in:NnTF \l_tmpb_str b {
+      \exp_args:Nne \use:nn
+      {
       \cs_generate_from_arg_count:NNnn \l__stex_notation_macrocode_cs
-      \cs_set:Npx \l_tmpa_str {
+      \cs_set:Npn \l_tmpa_str } { {
         \_stex_term_math_omb:nnnn { #1 }
           { \l__stex_notation_variant_str \c_hash_str \l__stex_notation_lang_str }
           { \prop_item:Nn \l_tmpb_prop { opprec } }
-          { #2 }
-      }
+          { \exp_not:n { #2 } }
+      }}
     }{
-      \cs_generate_from_arg_count:NNnn \l__stex_notation_macrocode_cs
-      \cs_set:Npx \l_tmpa_str {
-        \_stex_term_math_oma:nnnn { #1 }
-          { \l__stex_notation_variant_str \c_hash_str \l__stex_notation_lang_str }
-          { \prop_item:Nn \l_tmpb_prop { opprec } }
-          { #2 }
+      \str_if_in:NnTF \l_tmpb_str B {
+        \exp_args:Nne \use:nn
+        {
+        \cs_generate_from_arg_count:NNnn \l__stex_notation_macrocode_cs
+        \cs_set:Npn \l_tmpa_str } { {
+          \_stex_term_math_omb:nnnn { #1 }
+            { \l__stex_notation_variant_str \c_hash_str \l__stex_notation_lang_str }
+            { \prop_item:Nn \l_tmpb_prop { opprec } }
+            { \exp_not:n { #2 } }
+        } }
+      }{
+        \exp_args:Nne \use:nn
+        {
+        \cs_generate_from_arg_count:NNnn \l__stex_notation_macrocode_cs
+        \cs_set:Npn \l_tmpa_str } { {
+          \_stex_term_math_oma:nnnn { #1 }
+            { \l__stex_notation_variant_str \c_hash_str \l__stex_notation_lang_str }
+            { \prop_item:Nn \l_tmpb_prop { opprec } }
+            { \exp_not:n { #2 } }
+        } }
       }
     }
 
@@ -1630,15 +1657,19 @@
     \str_if_eq:VnTF \l_tmpb_str a {
       \__stex_notation_argument_assoc:n
     }{
-      \seq_pop_left:NN \l_tmpa_seq \l_tmpb_str
-      \tl_put_right:Nx \l_tmpa_tl {
-        { \_stex_term_math_arg:nnn
-          { \int_use:N \l_tmpa_int }
-          { \l_tmpb_str }
-          { ####\int_use:N \l_tmpa_int }
+      \str_if_eq:VnTF \l_tmpb_str B {
+        \__stex_notation_argument_assoc:n
+      }{
+        \seq_pop_left:NN \l_tmpa_seq \l_tmpb_str
+        \tl_put_right:Nx \l_tmpa_tl {
+          { \_stex_term_math_arg:nnn
+            { \int_use:N \l_tmpa_int }
+            { \l_tmpb_str }
+            { ####\int_use:N \l_tmpa_int }
+          }
         }
+        \__stex_notation_arguments:
       }
-      \__stex_notation_arguments:
     }
   }
 }
@@ -1659,14 +1690,18 @@
   \prop_get:NnN \l_tmpa_prop { arity } \l_tmpb_str
   \prop_get:NnN \l_tmpb_prop { symbol } \l_tmpa_str
   \prop_get:NnN \l_tmpb_prop { argprecs } \l_tmpa_seq
+  \exp_args:Nne \use:nn
+  {
   \cs_generate_from_arg_count:cNnn {
       stex_notation_ \l_tmpa_str \c_hash_str
       \l__stex_notation_variant_str \c_hash_str \l__stex_notation_lang_str
       _cs
     }
-    \cs_set:Npx \l_tmpb_str {
-      \exp_after:wN \l__stex_notation_macrocode_cs \l_tmpa_tl
-  }
+    \cs_set:Npn \l_tmpb_str } { {
+      \exp_after:wN \exp_after:wN \exp_after:wN
+      \exp_not:n \exp_after:wN \exp_after:wN \exp_after:wN
+      { \exp_after:wN \l__stex_notation_macrocode_cs \l_tmpa_tl }
+  } }
 
   \stex_debug:n{
     Notation~\l__stex_notation_variant_str \c_hash_str \l__stex_notation_lang_str
@@ -1752,9 +1787,16 @@
               \c_hash_str \c_hash_str \int_use:N \l_tmpa_int b
             } }
           }{
-            \tl_set:Nx \l_tmpa_tl { \l_tmpa_tl {
-              \c_hash_str \c_hash_str \int_use:N \l_tmpa_int
-            } }
+            \str_if_eq:VnTF \l_tmpb_str B {
+              \tl_set:Nx \l_tmpa_tl { \l_tmpa_tl {
+                \c_hash_str \c_hash_str \int_use:N \l_tmpa_int a ,
+                \c_hash_str \c_hash_str \int_use:N \l_tmpa_int b
+              } }
+            }{
+              \tl_set:Nx \l_tmpa_tl { \l_tmpa_tl {
+                \c_hash_str \c_hash_str \int_use:N \l_tmpa_int
+              } }
+            }
           }
         }
         \stex_annotate_invisible:nnn { notationcomp }{}{
@@ -1885,8 +1927,8 @@
   \prop_get:NnN \l_tmpa_prop { args } \l_tmpa_str
   \exp_args:Nnx \stex_term_custom:nn { #1 } { \l_tmpa_str }
 }
-\int_const:Nn \infprec {\c_max_int}
-\int_const:Nn \neginfprec {-\c_max_int}
+\tl_const:Nx \infprec {\int_use:N \c_max_int}
+\tl_const:Nx \neginfprec {-\int_use:N \c_max_int}
 \int_new:N \l__stex_term_downprec
 \int_set_eq:NN \l__stex_term_downprec \neginfprec
 \tl_set:Nn \l__stex_term_left_bracket_str (
@@ -1894,10 +1936,10 @@
 \RequirePackage{scalerel}
 \cs_new_protected:Nn \__stex_term_maybe_brackets:nn {
   \int_compare:nNnTF { #1 } < \l__stex_term_downprec {
-    \STEXdobrackets { #2 }
+    \dobrackets { #2 }
   }{ #2 }
 }
-\cs_new_protected:Npn \STEXdobrackets #1 {
+\cs_new_protected:Npn \dobrackets #1 {
   \ThisStyle{\if D\m@switch
       \exp_args:Nnx \use:nn
       { \left\l__stex_term_left_bracket_str #1 }
@@ -1908,7 +1950,7 @@
       { \l__stex_term_right_bracket_str }
   \fi}
 }
-\cs_new_protected:Npn \STEXwithbrackets #1 #2 #3 {
+\cs_new_protected:Npn \withbrackets #1 #2 #3 {
   \exp_args:Nnx \use:nn
   {
     \tl_set:Nx \l__stex_term_left_bracket_str { #1 }
@@ -1921,6 +1963,9 @@
     \tl_set:Nn \exp_not:N \l__stex_term_right_bracket_str
       {\l__stex_term_right_bracket_str}
   }
+}
+\cs_new_protected:Npn \STEXinvisible #1 {
+  \stex_annotate_invisible:n { #1 }
 }
 \cs_new_protected:Nn \_stex_term_oms:nnn {
   \stex_annotate:nnn{ OMID }{ #2 }{
@@ -1965,7 +2010,7 @@
     { \int_set:Nn \l__stex_term_downprec { #2 }
        \_stex_term_arg:nn { #1 } { #3 }
     }
-    { \int_set:Nn \l__stex_term_downprec { \int_use:N \l__stex_term_downprec } }
+    { \int_set:Nn \exp_not:N \l__stex_term_downprec { \int_use:N \l__stex_term_downprec } }
 }
 \cs_new_protected:Nn \_stex_term_math_assoc_arg:nnnn {
   \seq_set_split:Nnn \l_tmpa_seq , { #4 }
@@ -2130,6 +2175,9 @@
   \pdftooltip {
     \textcolor{blue}{#1}
   } { #2 }
+}
+\cs_new_protected:Npn \ellipses {
+  \ldots
 }
 \@ifpackageloaded{tikzinput}{
   \RequirePackage{stex-tikzinput}

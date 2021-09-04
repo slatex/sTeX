@@ -265,9 +265,12 @@
 % \symdef[args=ai]{numseq}{#1 \comp\in #2}{#1 \comp\leq #2}
 % $\numseq{a,b,c}{\mathbb R}$
 %}
+%
+% Finally, |B|-type arguments combine the functionalities of |a|
+% and |b|, i.e. they represent flexary binding operator arguments.
+%
 %\ednote{what about e.g. \detokenize{\int_x\int_y\int_z f dx dy dz}?}
 %\ednote{``decompose'' a-type arguments into fixed-arity operators?}
-%\ednote{flexary b-type arguments (e.g. for forall)?}
 %
 % \end{@module}
 %
@@ -609,7 +612,7 @@
 %   is already known.
 % \end{function}
 %
-% \begin{function}{\stex_add_to_current_module:n}
+% \begin{function}{\stex_add_to_current_module:n,\STEXexport}
 %   Adds the provided tokens to the |content| field of the current
 %   module.
 % \end{function}
@@ -1127,15 +1130,15 @@
 %   Maximal and minimal notation precedences.
 % \end{variable}
 %
-% \begin{function}{\STEXdobrackets}
-%   \begin{syntax} \cs{STEXdobrackets} \Arg{body} \end{syntax}
+% \begin{function}{\dobrackets}
+%   \begin{syntax} \cs{dobrackets} \Arg{body} \end{syntax}
 %   Puts \meta{body} in parentheses; scaled if in display mode
 %   unscaled otherwise. Uses the current \sTeX brackets (by default |(| and |)|),
-%   which can be changed temporarily using \cs{STEXwithbrackets}.
+%   which can be changed temporarily using \cs{withbrackets}.
 % \end{function}
 %
-% \begin{function}{\STEXwithbrackets}
-%   \begin{syntax} \cs{STEXwithbrackets} \meta{left} \meta{right} \Arg{body} \end{syntax}
+% \begin{function}{\withbrackets}
+%   \begin{syntax} \cs{withbrackets} \meta{left} \meta{right} \Arg{body} \end{syntax}
 %   Temporarily (i.e. within \meta{body}) sets the brackets used by \sTeX for automated
 %   bracketing (by default |(| and |)|) to \meta{left} and \meta{right}.
 %
@@ -1165,7 +1168,7 @@
 %     $\plus{a,\mult{b,c}}$ and $\mult{a,\plus{\frac ab,\frac ac}}$
 %     \[\plus{a,\mult{b,c}}\text{ and }\mult{a,\plus{\frac ab,\frac ac}}\]
 %     $\displaystyle \plus{a,\mult{b,c}}$ and 
-%     \STEXwithbrackets[]{$\displaystyle
+%     \withbrackets[]{$\displaystyle
 %       \mult{a,\plus{\frac ab,\frac ac}}$}
 %  \end{module}
 %}
@@ -1211,6 +1214,17 @@
 % additional argument the URI of the current symbol. By default,
 % \cs{@comp} adds the URI as a PDF tooltip and colors the highlighted part
 % in blue.
+% \end{function}
+%
+% \begin{function}{\STEXinvisible}
+% Exports its argument as \omdoc (invisible), but does
+% not produce PDF output. Useful e.g. for semantic macros
+% that take arguments that are not part of the symbolic
+% notation.
+% \end{function}
+%
+% \begin{function}{\ellipses}
+%   TODO
 % \end{function}
 %
 % \end{documentation}
@@ -2057,12 +2071,17 @@
 %    \end{macrocode}
 % \end{macro}
 %
-% \begin{macro}{\stex_add_to_current_module:n}
+% \begin{macro}{\stex_add_to_current_module:n,\STEXexport}
 %    \begin{macrocode}
 \cs_new_protected:Nn \stex_add_to_current_module:n {
   \prop_get:NnN \l_stex_current_module_prop { content } \l_tmpa_tl
   \tl_put_right:Nn \l_tmpa_tl { #1 }
   \prop_put:Nno \l_stex_current_module_prop { content } { \l_tmpa_tl }
+}
+\NewDocumentCommand \STEXexport { m }{
+  \stex_smsmode_set_codes:
+  \stex_add_to_current_module:n { #1 }
+  #1
 }
 %    \end{macrocode}
 % \end{macro}
@@ -2384,7 +2403,7 @@
     \prop_item:Nn \l_stex_current_module_prop { name }
     _prop
   }
-  \prop_new:c { \l_tmpa_str }
+  %^^A \prop_new:c { \l_tmpa_str }
   \prop_gset_eq:cN { \l_tmpa_str } \l_stex_current_module_prop
   \stex_debug:n{Closing~module~\prop_item:Nn \l_stex_current_module_prop { name }}
   \stex_if_smsmode:TF {
@@ -2509,6 +2528,7 @@
   \importmodule
   \notation
   \symdecl
+  \STEXexport
 }
 
 \exp_args:NNx \seq_set_from_clist:Nn \g_stex_smsmode_allowedenvs_seq {
@@ -3045,6 +3065,7 @@
   \_@@_args:n { #1 }
   \tl_clear:N \l_stex_symdecl_definiens_tl
   \stex_symdecl_do:n { #2 }
+  \stex_smsmode_set_codes:
 }
 %    \end{macrocode}
 % \end{macro}
@@ -3108,6 +3129,10 @@
         \bool_set_false:N \l_tmpa_bool
         \int_incr:N \l_tmpb_int
       }
+      {\tl_to_str:n B} { 
+        \bool_set_false:N \l_tmpa_bool
+        \int_incr:N \l_tmpb_int
+      }
     }{
       \msg_set:nnn{stex}{error/wrongargs}{
         args~value~in~symbol~declaration~for~
@@ -3115,7 +3140,7 @@
         \prop_item:Nn \l_stex_current_module_prop {name} ?
         \l_stex_symdecl_name_str ~
         needs~to~be~
-        i,~a~or~b,~but~##1~given
+        i,~a,~b~or~B,~but~##1~given
       }
       \msg_error:nn{stex}{error/wrongargs}
     }
@@ -3209,7 +3234,6 @@
         }
       }
     }
-    \stex_smsmode_set_codes:
   }{
     \exp_args:NNx \seq_put_right:Nn \l_stex_all_symbols_seq {
       \prop_item:Nn \l_tmpa_prop { module } ?
@@ -3373,8 +3397,8 @@
     \prop_get:NnN \l_tmpa_prop { arity } \l_tmpa_str
     \int_compare:nNnTF \l_tmpa_str = 0 {
       \exp_args:NNnx
-      \prop_put:Nnn \l_tmpb_prop { opprec } 
-        { \int_use:N \infprec }
+      \prop_put:Nno \l_tmpb_prop { opprec } 
+        { \infprec }
     }{
       \prop_put:Nnn \l_tmpb_prop { opprec } { 0 }
     }
@@ -3394,8 +3418,8 @@
       \prop_get:NnN \l_tmpa_prop { arity } \l_tmpa_str
       \int_compare:nNnTF \l_tmpa_str = 0 {
         \exp_args:NNnx
-        \prop_put:Nnn \l_tmpb_prop { opprec } 
-          { \int_use:N \infprec }
+        \prop_put:Nno \l_tmpb_prop { opprec } 
+          { \infprec }
       }{
         \prop_put:Nnn \l_tmpb_prop { opprec } { 0 }
       }
@@ -3416,30 +3440,47 @@
   \tl_clear:N \l_tmpa_tl
 
   \int_compare:nNnTF \l_tmpa_str = 0 {
-    \cs_set:Npx \l_@@_macrocode_cs {
+    \exp_args:NNe
+    \cs_set:Npn \l_@@_macrocode_cs {
       \_stex_term_math_oms:nnnn { #1 } 
         { \l_@@_variant_str \c_hash_str \l_@@_lang_str }
         { \prop_item:Nn \l_tmpb_prop { opprec } } 
-        { #2 }
+        { \exp_not:n { #2 } }
     }
     \_@@_final:
   }{
     \prop_get:NnN \l_tmpa_prop { args } \l_tmpb_str
     \str_if_in:NnTF \l_tmpb_str b {
+      \exp_args:Nne \use:nn
+      {
       \cs_generate_from_arg_count:NNnn \l_@@_macrocode_cs
-      \cs_set:Npx \l_tmpa_str {
+      \cs_set:Npn \l_tmpa_str } { {
         \_stex_term_math_omb:nnnn { #1 } 
           { \l_@@_variant_str \c_hash_str \l_@@_lang_str }
           { \prop_item:Nn \l_tmpb_prop { opprec } } 
-          { #2 }
-      }
+          { \exp_not:n { #2 } }
+      }}
     }{
-      \cs_generate_from_arg_count:NNnn \l_@@_macrocode_cs
-      \cs_set:Npx \l_tmpa_str {
-        \_stex_term_math_oma:nnnn { #1 } 
-          { \l_@@_variant_str \c_hash_str \l_@@_lang_str }
-          { \prop_item:Nn \l_tmpb_prop { opprec } } 
-          { #2 }
+      \str_if_in:NnTF \l_tmpb_str B {
+        \exp_args:Nne \use:nn
+        {
+        \cs_generate_from_arg_count:NNnn \l_@@_macrocode_cs
+        \cs_set:Npn \l_tmpa_str } { {
+          \_stex_term_math_omb:nnnn { #1 } 
+            { \l_@@_variant_str \c_hash_str \l_@@_lang_str }
+            { \prop_item:Nn \l_tmpb_prop { opprec } } 
+            { \exp_not:n { #2 } }
+        } }
+      }{
+        \exp_args:Nne \use:nn
+        {
+        \cs_generate_from_arg_count:NNnn \l_@@_macrocode_cs
+        \cs_set:Npn \l_tmpa_str } { {
+          \_stex_term_math_oma:nnnn { #1 } 
+            { \l_@@_variant_str \c_hash_str \l_@@_lang_str }
+            { \prop_item:Nn \l_tmpb_prop { opprec } } 
+            { \exp_not:n { #2 } }
+        } }
       }
     }
 
@@ -3468,15 +3509,19 @@
     \str_if_eq:VnTF \l_tmpb_str a {
       \_@@_argument_assoc:n
     }{
-      \seq_pop_left:NN \l_tmpa_seq \l_tmpb_str
-      \tl_put_right:Nx \l_tmpa_tl {
-        { \_stex_term_math_arg:nnn
-          { \int_use:N \l_tmpa_int }
-          { \l_tmpb_str }
-          { ####\int_use:N \l_tmpa_int }
+      \str_if_eq:VnTF \l_tmpb_str B {
+        \_@@_argument_assoc:n
+      }{
+        \seq_pop_left:NN \l_tmpa_seq \l_tmpb_str
+        \tl_put_right:Nx \l_tmpa_tl {
+          { \_stex_term_math_arg:nnn
+            { \int_use:N \l_tmpa_int }
+            { \l_tmpb_str }
+            { ####\int_use:N \l_tmpa_int }
+          }
         }
+        \_@@_arguments:
       }
-      \_@@_arguments:
     }
   }
 }
@@ -3510,14 +3555,18 @@
   \prop_get:NnN \l_tmpa_prop { arity } \l_tmpb_str
   \prop_get:NnN \l_tmpb_prop { symbol } \l_tmpa_str
   \prop_get:NnN \l_tmpb_prop { argprecs } \l_tmpa_seq
+  \exp_args:Nne \use:nn
+  {
   \cs_generate_from_arg_count:cNnn {
       stex_notation_ \l_tmpa_str \c_hash_str 
       \l_@@_variant_str \c_hash_str \l_@@_lang_str
       _cs
     }
-    \cs_set:Npx \l_tmpb_str {
-      \exp_after:wN \l_@@_macrocode_cs \l_tmpa_tl
-  }
+    \cs_set:Npn \l_tmpb_str } { {
+      \exp_after:wN \exp_after:wN \exp_after:wN
+      \exp_not:n \exp_after:wN \exp_after:wN \exp_after:wN 
+      { \exp_after:wN \l_@@_macrocode_cs \l_tmpa_tl }
+  } }
 
   \stex_debug:n{
     Notation~\l_@@_variant_str \c_hash_str \l_@@_lang_str
@@ -3603,9 +3652,16 @@
               \c_hash_str \c_hash_str \int_use:N \l_tmpa_int b
             } }
           }{
-            \tl_set:Nx \l_tmpa_tl { \l_tmpa_tl { 
-              \c_hash_str \c_hash_str \int_use:N \l_tmpa_int
-            } }
+            \str_if_eq:VnTF \l_tmpb_str B {
+              \tl_set:Nx \l_tmpa_tl { \l_tmpa_tl { 
+                \c_hash_str \c_hash_str \int_use:N \l_tmpa_int a ,
+                \c_hash_str \c_hash_str \int_use:N \l_tmpa_int b
+              } }
+            }{
+              \tl_set:Nx \l_tmpa_tl { \l_tmpa_tl { 
+                \c_hash_str \c_hash_str \int_use:N \l_tmpa_int
+              } }
+            }
           }
         }
         \stex_annotate_invisible:nnn { notationcomp }{}{
@@ -3777,8 +3833,8 @@
 % Precedences:
 % \begin{variable}{\infprec, \neginfprec, \l_@@_downprec}
 %    \begin{macrocode}
-\int_const:Nn \infprec {\c_max_int}
-\int_const:Nn \neginfprec {-\c_max_int}
+\tl_const:Nx \infprec {\int_use:N \c_max_int}
+\tl_const:Nx \neginfprec {-\int_use:N \c_max_int}
 \int_new:N \l_@@_downprec
 \int_set_eq:NN \l_@@_downprec \neginfprec
 %    \end{macrocode}
@@ -3801,15 +3857,15 @@
 %    \begin{macrocode}
 \cs_new_protected:Nn \_@@_maybe_brackets:nn {
   \int_compare:nNnTF { #1 } < \l_@@_downprec {
-    \STEXdobrackets { #2 }
+    \dobrackets { #2 }
   }{ #2 }
 }
 %    \end{macrocode}
 % \end{macro}
 %
-% \begin{macro}{\STEXdobrackets}
+% \begin{macro}{\dobrackets}
 %    \begin{macrocode}
-\cs_new_protected:Npn \STEXdobrackets #1 {
+\cs_new_protected:Npn \dobrackets #1 {
   \ThisStyle{\if D\m@switch
       \exp_args:Nnx \use:nn
       { \left\l_@@_left_bracket_str #1 } 
@@ -3823,9 +3879,9 @@
 %    \end{macrocode}
 % \end{macro}
 %
-% \begin{macro}{\STEXwithbrackets}
+% \begin{macro}{\withbrackets}
 %    \begin{macrocode}
-\cs_new_protected:Npn \STEXwithbrackets #1 #2 #3 {
+\cs_new_protected:Npn \withbrackets #1 #2 #3 {
   \exp_args:Nnx \use:nn
   {  
     \tl_set:Nx \l_@@_left_bracket_str { #1 }
@@ -3838,6 +3894,14 @@
     \tl_set:Nn \exp_not:N \l_@@_right_bracket_str 
       {\l_@@_right_bracket_str}
   }
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\STEXinvisible}
+%    \begin{macrocode}
+\cs_new_protected:Npn \STEXinvisible #1 {
+  \stex_annotate_invisible:n { #1 }
 }
 %    \end{macrocode}
 % \end{macro}
@@ -3904,7 +3968,7 @@
     { \int_set:Nn \l_@@_downprec { #2 } 
        \_stex_term_arg:nn { #1 } { #3 } 
     }
-    { \int_set:Nn \l_@@_downprec { \int_use:N \l_@@_downprec } }
+    { \int_set:Nn \exp_not:N \l_@@_downprec { \int_use:N \l_@@_downprec } }
 }
 %    \end{macrocode}
 % \end{macro}
@@ -4135,7 +4199,13 @@
 %    \end{macrocode}
 % \end{macro}
 %
-%
+% \begin{macro}{\ellipses}
+%    \begin{macrocode}
+\cs_new_protected:Npn \ellipses {
+  \ldots
+}
+%    \end{macrocode}
+% \end{macro}
 %
 %
 %
@@ -4243,6 +4313,7 @@
 %</smglom>
 
 %<*compat>
+%<@@=stex_deprec>
 \ProvidesExplPackage{stex-compatibility}{2021/08/01}{1.9}{bla}
 \RequirePackage[debug,lang={de,en}]{stex}
 
@@ -4329,7 +4400,15 @@
   }
 }
 
-\NewDocumentCommand \gimport { O{} m } {
+\cs_new_protected:Npn \gimport {
+  \peek_charcode_remove:NTF * {
+    \gimport_do:
+  } {
+    \gimport_do:
+  }
+}
+
+\NewDocumentCommand \gimport_do: { O{} m } {
   \msg_set:nnn{stex}{warning/deprecated}{
     \\
     \c_backslash_str gimport~is~deprecated! \\
@@ -4339,6 +4418,26 @@
   }
   \msg_warning:nn{stex}{warning/deprecated}
   \importmodule[#1]{#2}
+}
+
+\cs_new_protected:Npn \guse {
+  \peek_charcode_remove:NTF * {
+    \guse_do:
+  } {
+    \guse_do:
+  }
+}
+
+\NewDocumentCommand \guse_do: { O{} m } {
+  \msg_set:nnn{stex}{warning/deprecated}{
+    \\
+    \c_backslash_str guse~is~deprecated! \\
+    Please~use~\c_backslash_str usemodule[#1]{#2}~instead!~(in~file~
+    \stex_path_to_string:N \g_stex_currentfile_seq)
+    \\ \\
+  }
+  \msg_warning:nn{stex}{warning/deprecated}
+  \usemodule[#1]{#2}
 }
 
 \cs_new_protected:Npn \symi {
@@ -4381,6 +4480,30 @@
   \symdecl*[#1]{#2-#3}
 }
 
+\cs_new_protected:Npn \symiii {
+  \peek_charcode_remove:NTF * {
+    \symiii_do:
+  } {
+    \symiii_do:
+  }
+}
+
+\NewDocumentCommand \symiii_do: { O{} m m m } {
+  \msg_set:nnn{stex}{warning/deprecated}{
+    \\
+    \c_backslash_str symiii~is~deprecated! \\
+    Please~use~\c_backslash_str symdecl[#1]{#2-#3-#4}~instead!~(in~file~
+    \stex_path_to_string:N \g_stex_currentfile_seq)
+    \\ \\
+  }
+  \msg_warning:nn{stex}{warning/deprecated}
+  \symdecl*[#1]{#2-#3-#4}
+}
+
+\keys_define:nn { stex / deprec / defi } {
+  name  .tl_set_x:N = \l_tmpa_str
+}
+
 \cs_new_protected:Npn \defi {
   \peek_charcode_remove:NTF * {
     \defi_do:
@@ -4390,7 +4513,9 @@
 }
 
 \NewDocumentCommand \defi_do: { O{} m } {
-  \str_set:Nn \l_tmpa_str { #1 }
+  \str_clear:N \l_tmpa_str
+  \keys_set:nn { stex / deprec / defi } { #1 }
+  
   \str_if_empty:NTF \l_tmpa_str {
     \msg_set:nnn{stex}{warning/deprecated}{
       \\
@@ -4405,12 +4530,12 @@
     \msg_set:nnn{stex}{warning/deprecated}{
       \\
       \c_backslash_str defi~is~deprecated! \\
-      Please~use~\c_backslash_str STEXsymbol { #1 ? #2 }[ #2 ]~instead!~(in~file~
+      Please~use~\c_backslash_str STEXsymbol { \l_tmpa_str }[ #2 ]~instead!~(in~file~
       \stex_path_to_string:N \g_stex_currentfile_seq)
       \\ \\
     }
     \msg_warning:nn{stex}{warning/deprecated}
-    \STEXsymbole { #1 ? #2 }[ \comp{#2} ]
+    \exp_args:No \STEXsymbol { \l_tmpa_str }[ \comp{#2} ]
   }
 }
 
@@ -4444,6 +4569,40 @@
     }
     \msg_warning:nn{stex}{warning/deprecated}
     \STEXsymbol { #1 ? #2-#3 }[ \comp{#2~#3} ]
+  }
+}
+
+
+\cs_new_protected:Npn \defiis {
+  \peek_charcode_remove:NTF * {
+    \defiis_do:
+  } {
+    \defiis_do:
+  }
+}
+
+\NewDocumentCommand \defiis_do: { O{} m m } {
+  \str_set:Nn \l_tmpa_str { #1 }
+  \str_if_empty:NTF \l_tmpa_str {
+    \msg_set:nnn{stex}{warning/deprecated}{
+      \\
+      \c_backslash_str defiis~is~deprecated! \\
+      Please~use~\c_backslash_str STEXsymbol{#2-#3}![#2~#3s]~instead!~(in~file~
+      \stex_path_to_string:N \g_stex_currentfile_seq)
+      \\ \\
+    }
+    \msg_warning:nn{stex}{warning/deprecated}
+    \STEXsymbol { #2-#3 }![ \comp{#2~#3s} ]
+  } {
+    \msg_set:nnn{stex}{warning/deprecated}{
+      \\
+      \c_backslash_str defii~is~deprecated! \\
+      Please~use~\c_backslash_str STEXsymbol { #1 ? #2-#3 }[ #2~#3s ]~instead!~(in~file~
+      \stex_path_to_string:N \g_stex_currentfile_seq)
+      \\ \\
+    }
+    \msg_warning:nn{stex}{warning/deprecated}
+    \STEXsymbol { #1 ? #2-#3 }[ \comp{#2~#3s} ]
   }
 }
 
@@ -4487,10 +4646,54 @@
   }
 }
 
+\NewDocumentCommand \symvariant { O{} m O{0} m m} {
+  \msg_set:nnn{stex}{warning/deprecated}{
+    \\
+    \c_backslash_str symvariant~is~deprecated! \\
+    Please~use~\c_backslash_str notation[#4]{ #2 }~instead!~(in~file~
+    \stex_path_to_string:N \g_stex_currentfile_seq)
+    \\ \\
+  }
+  \msg_warning:nn{stex}{warning/deprecated}
+
+  \notation[variant=#4]{#2}{#5}
+}
+
+\NewDocumentCommand \mixfixi { O{} m m m} {
+  \msg_set:nnn{stex}{warning/deprecated}{
+    \c_backslash_str mixfixi~is~fatally~deprecated!\\
+    Symbol:~\l__stex_term_highlight_uri_str\\
+    Current~file:~\stex_path_to_string:N \g_stex_currentfile_seq
+  }
+  \msg_error:nn{stex}{warning/deprecated}
+}
+
+
+\NewDocumentCommand \infix {} {
+  \msg_set:nnn{stex}{warning/deprecated}{
+    \c_backslash_str infix~is~fatally~deprecated!\\
+    Symbol:~\l__stex_term_highlight_uri_str\\
+    Current~file:~\stex_path_to_string:N \g_stex_currentfile_seq
+  }
+  \msg_error:nn{stex}{warning/deprecated}
+}
+
+\let\iprec\infprec
+
+\NewDocumentCommand \inlineex { m } {
+  \msg_set:nnn{stex}{warning/deprecated}{
+    \c_backslash_str inlineex~is~deprecated!\\
+    No~replacement~exists~yet.\\
+    Current~file:~\stex_path_to_string:N \g_stex_currentfile_seq
+  }
+  \msg_warning:nn{stex}{warning/deprecated}
+  #1
+}
+
 
 \seq_gput_right:Nx \g_stex_smsmode_allowedenvs_seq { \tl_to_str:n { mhmodnl } }
 \seq_gput_right:Nx \g_stex_smsmode_allowedenvs_seq { \tl_to_str:n { modsig } }
-\tl_gput_right:Nn \g_stex_smsmode_allowedmacros_escape_tl {\gimport\symi\symii\symiii\symiv}
+\tl_gput_right:Nn \g_stex_smsmode_allowedmacros_escape_tl {\gimport\symi\symii\symiii\symiv\symvariant}
 
 %</compat>
 %    \end{macrocode}
