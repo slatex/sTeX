@@ -695,10 +695,24 @@
   }
 
   % language
+  \str_if_empty:NT \l_stex_module_lang_str {
+    \seq_get_right:NN \g_stex_currentfile_seq \l_tmpa_str
+    \seq_set_split:NnV \l_tmpa_seq . \l_tmpa_str
+    \seq_pop_right:NN \l_tmpa_seq \l_tmpa_str % .tex
+    \seq_pop_left:NN \l_tmpa_seq \l_tmpa_str % <filename>
+    \seq_if_empty:NF \l_tmpa_seq { %remaining element should be language
+      \stex_debug:n {Language~\l_stex_module_lang_str~
+        inferred~from~file~name}
+      \seq_pop_left:NN \l_tmpa_seq \l_stex_module_lang_str
+    }
+  }
+
   \str_if_empty:NF \l_stex_module_lang_str {
     \prop_get:NVNTF \c_stex_languages_prop \l_stex_module_lang_str
       \l_tmpa_str {
-        \exp_args:Nx \selectlanguage { \l_tmpa_str }
+        \ltx@ifpackageloaded{babel}{
+          \exp_args:Nx \selectlanguage { \l_tmpa_str }
+        }{}
       } {
         \msg_set:nnn{stex}{error/unknownlanguage}{
           Unknown~language~\l_tmpa_str
@@ -708,7 +722,22 @@
   }
 
   % signature
-  \str_if_empty:NF \l_stex_module_sig_str {
+  \str_if_empty:NTF \l_stex_module_sig_str {
+    \str_clear:N \l_tmpa_str
+    \seq_clear:N \l_tmpa_seq
+    \tl_clear:N \l_tmpa_tl
+    \exp_args:NNx \prop_set_from_keyval:Nn \l_stex_current_module_prop {
+      name      = \l_stex_module_name_str ,
+      ns        = \l_stex_module_ns_str ,
+      imports   = \exp_not:o { \l_tmpa_seq } ,
+      constants = \exp_not:o { \l_tmpa_seq } ,
+      content   = \exp_not:o { \l_tmpa_tl }  ,
+      file      = \exp_not:o { \g_stex_currentfile_seq } ,
+      lang      = \l_stex_module_lang_str ,
+      sig       = \l_stex_module_sig_str ,
+      meta      = \l_stex_module_meta_str
+    }
+  }{
     \str_if_empty:NT \l_stex_module_lang_str {
       \msg_set:nnn{stex}{error/siglanguage}{
         Module~\l_stex_module_ns_str?\l_stex_module_name_str~
@@ -717,23 +746,45 @@
       }
       \msg_error:nn{stex}{error/siglanguage}
     }
+
+    \seq_set_eq:NN \l_tmpa_seq \g_stex_currentfile_seq
+    \seq_pop_right:NN \l_tmpa_seq \l_tmpa_str
+    \seq_set_split:NnV \l_tmpb_seq . \l_tmpa_str
+    \seq_pop_right:NN \l_tmpb_seq \l_tmpa_str % .tex
+    \seq_pop_left:NN \l_tmpb_seq \l_tmpa_str % <filename>
+    \str_set:Nx \l_tmpa_str {
+      \stex_path_to_string:N \l_tmpa_seq /
+      \l_tmpa_str . \l_stex_module_sig_str .tex
+    }
+    \IfFileExists \l_tmpa_str {
+      \exp_args:No \stex_in_smsmode:nn { \l_tmpa_str } {
+        \seq_clear:N \l_stex_all_modules_seq
+        \prop_clear:N \l_stex_current_module_prop
+        \stex_debug:n{Loading~signature~\l_tmpa_str}
+        \input { \l_tmpa_str }
+      }
+    }{
+      \msg_set:nnn{stex}{error/modulemissing}{
+        No~file~for~signature~module~\l_tmpa_str~found
+      }
+      \msg_error:nn{stex}{error/modulemissing}
+    }
+    \stex_activate_module:n {
+      \l_stex_module_ns_str ? \l_stex_module_name_str
+    }
+    \prop_set_eq:Nc \l_stex_current_module_prop {
+      c_stex_module_
+      \l_stex_module_ns_str ?
+      \l_stex_module_name_str
+      _prop
+    }
   }
 
   % metatheory
-
-  \str_clear:N \l_tmpa_str
-  \seq_clear:N \l_tmpa_seq
-  \tl_clear:N \l_tmpa_tl
-  \exp_args:NNx \prop_set_from_keyval:Nn \l_stex_current_module_prop {
-    name      = \l_stex_module_name_str ,
-    ns        = \l_stex_module_ns_str ,
-    imports   = \exp_not:o { \l_tmpa_seq } ,
-    constants = \exp_not:o { \l_tmpa_seq } ,
-    content   = \exp_not:o { \l_tmpa_tl }  ,
-    file      = \exp_not:o { \g_stex_currentfile_seq } ,
-    lang      = \l_stex_module_lang_str ,
-    sig       = \l_stex_module_sig_str ,
-    meta      = \l_stex_module_meta_str
+  \str_if_empty:NT \l_stex_module_meta_str {
+    \str_set:Nx \l_stex_module_meta_str {
+      \c_stex_metatheory_ns_str ? Metatheory
+    }
   }
 
   \stex_debug:n{
@@ -763,11 +814,18 @@
     \stex_annotate_invisible:nnn{header}{} {
       \stex_annotate:nnn{language}{ \l_stex_module_lang_str }{}
       \stex_annotate:nnn{signature}{ \l_stex_module_sig_str }{}
-      \str_if_empty:NT \l_stex_module_meta_str {
-        % TODO metatheory
+      \str_if_eq:VnF \l_stex_module_meta_str {NONE} {
+        \stex_annotate:nnn{metatheory}{ \l_stex_module_meta_str }{}
       }
     }
   }
+
+  \str_if_eq:VnF \l_stex_module_meta_str {NONE} {
+    \exp_args:Nx \STEXexport{
+      \stex_activate_module:n {\l_stex_module_meta_str}
+    }
+  }
+  % TODO: Inherit metatheory for nested modules?
 }
 \iffalse \end{stex_annotate_env} \fi % make syntax highlighting work again
 \iffalse \begin{stex_annotate_env} \fi %^^A make syntax highlighting work again
@@ -1062,7 +1120,7 @@
     \str_if_empty:NTF \l_tmpb_str {
       \str_set:Nx \l_tmpa_str { \stex_path_to_string:N \l_tmpa_seq / #4 }
 
-      \cs_if_exist:NTF \languagename {
+      \ltx@ifpackageloaded{babel} {
         \exp_args:NNx \prop_get:NnNF \c_stex_language_abbrevs_prop
             { \languagename } \l_tmpb_str {
               \msg_set:nnn{stex}{error/unknownlanguage}{
@@ -1099,7 +1157,7 @@
       \seq_set_split:NnV \l_tmpb_seq / \l_tmpb_str
       \seq_concat:NNN \l_tmpa_seq \l_tmpa_seq \l_tmpb_seq
 
-      \cs_if_exist:NTF \languagename {
+      \ltx@ifpackageloaded{babel} {
         \exp_args:NNx \prop_get:NnNF \c_stex_language_abbrevs_prop
             { \languagename } \l_tmpb_str {
               \msg_set:nnn{stex}{error/unknownlanguage}{
@@ -1154,6 +1212,7 @@
     \seq_set_eq:NN \l_tmpa_seq \g_stex_modules_in_file_seq
     \seq_clear:N \g_stex_modules_in_file_seq
       \exp_args:No \stex_in_smsmode:nn { \g__stex_importmodule_file_str } {
+        \seq_clear:N \l_stex_all_modules_seq
         \prop_clear:N \l_stex_current_module_prop
         \str_set:Nx \l_tmpb_str { #2 }
         \str_if_empty:NF \l_tmpb_str {
@@ -1174,12 +1233,14 @@
       \msg_error:nn{stex}{error/modulemissing}
     }
   }
-  % activate
-  \stex_debug:n{Activating~module~#1?#4}
-  \seq_put_right:Nx \l_stex_all_modules_seq {
-    #1 ? #4
+  \stex_activate_module:n { #1 ? #4 }
+}
+\cs_new_protected:Nn \stex_activate_module:n {
+  \stex_debug:n{Activating~module~#1}
+  \exp_args:NNx \seq_if_in:NnF \l_stex_all_modules_seq { #1 } {
+    \seq_put_right:Nx \l_stex_all_modules_seq { #1 }
+    \prop_item:cn { c_stex_module_#1_prop } { content }
   }
-  \prop_item:cn { c_stex_module_#1?#4_prop } { content }
 }
 \NewDocumentCommand \importmodule { O{} m } {
   \stex_import_module_uri:nn { #1 } { #2 }
@@ -1216,7 +1277,7 @@
 }
 \seq_new:N \g_stex_modules_in_file_seq
 \prop_new:N \g_stex_module_files_prop
-\prop_new:N \l_stex_all_symbols_seq
+\seq_new:N \l_stex_all_symbols_seq
 \NewDocumentCommand \STEXsymbol { m } {
   \stex_get_symbol:n { #1 }
   \exp_args:No
@@ -1388,12 +1449,21 @@
     Args:~\prop_item:Nn \l_tmpa_prop { args }
   }
 
-  \prop_gset_eq:cN {
+  % circular dependencies require this:
+
+  \prop_if_exist:cF {
     g_stex_symdecl_
     \prop_item:Nn \l_tmpa_prop { module } ?
     \prop_item:Nn \l_tmpa_prop { name }
     _prop
-  } \l_tmpa_prop
+  } {
+    \prop_gset_eq:cN {
+      g_stex_symdecl_
+      \prop_item:Nn \l_tmpa_prop { module } ?
+      \prop_item:Nn \l_tmpa_prop { name }
+      _prop
+    } \l_tmpa_prop
+  }
 
   \stex_if_smsmode:TF {
     \bool_if:NF \l_stex_symdecl_local_bool {
@@ -1404,13 +1474,13 @@
           \prop_item:Nn \l_tmpa_prop { name }
           _prop
         } {
-          name      = \prop_item:Nn \l_tmpa_prop { name }
-          module    = \prop_item:Nn \l_tmpa_prop { module }
-          notations = \prop_item:Nn \l_tmpa_prop { notations }
-          local     = \prop_item:Nn \l_tmpa_prop { local }
-          type      = \prop_item:Nn \l_tmpa_prop { type }
-          args      = \prop_item:Nn \l_tmpa_prop { args }
-          arity     = \prop_item:Nn \l_tmpa_prop { arity }
+          name      = \prop_item:Nn \l_tmpa_prop { name }       ,
+          module    = \prop_item:Nn \l_tmpa_prop { module }     ,
+          notations = \prop_item:Nn \l_tmpa_prop { notations }  ,
+          local     = \prop_item:Nn \l_tmpa_prop { local }      ,
+          type      = \prop_item:Nn \l_tmpa_prop { type }       ,
+          args      = \prop_item:Nn \l_tmpa_prop { args }       ,
+          arity     = \prop_item:Nn \l_tmpa_prop { arity }      ,
           assocs    = \prop_item:Nn \l_tmpa_prop { assocs }
         }
         \seq_put_right:Nn \exp_not:N \l_stex_all_symbols_seq {
@@ -1449,67 +1519,76 @@
     % argument is a string
     % is it a command name?
     \cs_if_exist:cTF { #1 }{
-      \exp_args:No \__stex_symdecl_get_symbol_from_cs:n { \use:c { #1 } }
-    }{
-      % argument is not a command name
-      \prop_get:NnN \l_stex_current_module_prop
-        { constants } \l_tmpa_seq
-      \seq_if_in:NnTF \l_tmpa_seq { #1 } {
-        \str_set:Nx \l_stex_get_symbol_uri_str {
-          \prop_item:Nn \l_stex_current_module_prop { ns } ?
-          \prop_item:Nn \l_stex_current_module_prop { name } ? #1
+      \cs_set_eq:Nc \l_tmpa_tl { #1 }
+      \str_set:Nx \l_tmpa_str { \cs_argument_spec:N \l_tmpa_tl }
+      \str_if_empty:NTF \l_tmpa_str {
+        \exp_args:Nx \cs_if_eq:NNTF {
+          \tl_head:N \l_tmpa_tl
+        } \stex_invoke_symbol:n {
+          \exp_args:No \__stex_symdecl_get_symbol_from_cs:n { \use:c { #1 } }
+        }{
+          \__stex_symdecl_get_symbol_from_string:n { #1 }
         }
       } {
-        \tl_set:Nn \l_tmpa_tl {
-          \msg_set:nnn{stex}{error/unknownsymbol}{
-            No~symbol~#1~found!
-          }
-          \msg_error:nn{stex}{error/unknownsymbol}
-        }
-        \exp_args:NNx \str_set:Nn \l_tmpa_str { #1 }
-        \int_set:Nn \l_tmpa_int { \str_count:N \l_tmpa_str }
-        \seq_map_inline:Nn \l_stex_all_symbols_seq {
-          \str_set:Nn \l_tmpb_str { ##1 }
-          \str_if_eq:eeT { \l_tmpa_str } {
-            \str_range:Nnn \l_tmpb_str { -\l_tmpa_int } { -1 }
-          } {
-            \seq_map_break:n {
-              \tl_set:Nn \l_tmpa_tl {
-                \str_set:Nn \l_stex_get_symbol_uri_str {
-                  ##1
-                }
-              }
-            }
-          }
-        }
-        \l_tmpa_tl
+        \__stex_symdecl_get_symbol_from_string:n { #1 }
       }
+    }{
+      % argument is not a command name
+      \__stex_symdecl_get_symbol_from_string:n { #1 }
       % \l_stex_all_symbols_seq
     }
   }
 }
 
-\cs_new_protected:Nn \__stex_symdecl_get_symbol_from_cs:n {
-  \tl_set:Nx \l_tmpa_tl { #1 }
-  \exp_args:Nx \cs_if_eq:NNTF { \tl_head:N \l_tmpa_tl }
-    \stex_invoke_symbol:n {
-    \exp_args:NNx \tl_set:Nn \l_tmpa_tl
-      { \tl_tail:N \l_tmpa_tl }
-    \tl_if_single:NTF \l_tmpa_tl {
-      \exp_args:No \tl_if_head_is_group:nTF \l_tmpa_tl {
-        \exp_after:wN \str_set:Nn \exp_after:wN
-          \l_stex_get_symbol_uri_str \l_tmpa_tl
-      }{
-        % TODO
-        % tail is not a single group
+\cs_new_protected:Nn \__stex_symdecl_get_symbol_from_string:n {
+  \prop_get:NnN \l_stex_current_module_prop
+  { constants } \l_tmpa_seq
+  \seq_if_in:NnTF \l_tmpa_seq { #1 } {
+  \str_set:Nx \l_stex_get_symbol_uri_str {
+    \prop_item:Nn \l_stex_current_module_prop { ns } ?
+    \prop_item:Nn \l_stex_current_module_prop { name } ? #1
+  }
+  } {
+    \tl_set:Nn \l_tmpa_tl {
+      \msg_set:nnn{stex}{error/unknownsymbol}{
+        No~symbol~#1~found!
       }
+      \msg_error:nn{stex}{error/unknownsymbol}
+    }
+    \exp_args:NNx \str_set:Nn \l_tmpa_str { #1 }
+    \int_set:Nn \l_tmpa_int { \str_count:N \l_tmpa_str }
+    \seq_map_inline:Nn \l_stex_all_symbols_seq {
+      \str_set:Nn \l_tmpb_str { ##1 }
+      \str_if_eq:eeT { \l_tmpa_str } {
+        \str_range:Nnn \l_tmpb_str { -\l_tmpa_int } { -1 }
+      } {
+        \seq_map_break:n {
+          \tl_set:Nn \l_tmpa_tl {
+            \str_set:Nn \l_stex_get_symbol_uri_str {
+              ##1
+            }
+          }
+        }
+      }
+    }
+    \l_tmpa_tl
+  }
+}
+
+\cs_new_protected:Nn \__stex_symdecl_get_symbol_from_cs:n {
+  \exp_args:NNx \tl_set:Nn \l_tmpa_tl
+    { \tl_tail:N \l_tmpa_tl }
+  \tl_if_single:NTF \l_tmpa_tl {
+    \exp_args:No \tl_if_head_is_group:nTF \l_tmpa_tl {
+      \exp_after:wN \str_set:Nn \exp_after:wN
+        \l_stex_get_symbol_uri_str \l_tmpa_tl
     }{
       % TODO
       % tail is not a single group
     }
   }{
     % TODO
-    % head is not \stex_invoke_symbol:n
+    % tail is not a single group
   }
 }
 \keys_define:nn { stex / notation } {
@@ -1680,7 +1759,8 @@
     { \_stex_term_math_assoc_arg:nnnn
       { \int_use:N \l_tmpa_int }
       { \l_tmpb_str }
-      { \l_tmpa_cs {########1} {########2} }
+      \exp_args:No \exp_not:n
+      {\exp_after:wN { \l_tmpa_cs {####1} {####2} } }
       { ####\int_use:N \l_tmpa_int }
     }
   }
@@ -1697,7 +1777,7 @@
       \l__stex_notation_variant_str \c_hash_str \l__stex_notation_lang_str
       _cs
     }
-    \cs_set:Npn \l_tmpb_str } { {
+    \cs_gset:Npn \l_tmpb_str } { {
       \exp_after:wN \exp_after:wN \exp_after:wN
       \exp_not:n \exp_after:wN \exp_after:wN \exp_after:wN
       { \exp_after:wN \l__stex_notation_macrocode_cs \l_tmpa_tl }
@@ -1746,11 +1826,11 @@
         g_stex_notation_ \l_tmpa_str \c_hash_str \l__stex_notation_variant_str
           \c_hash_str \l__stex_notation_lang_str _prop
       } {
-        symbol    = \prop_item:Nn \l_tmpb_prop { symbol }
-        language  = \prop_item:Nn \l_tmpb_prop { language }
-        variant   = \prop_item:Nn \l_tmpb_prop { variant }
-        opprec    = \prop_item:Nn \l_tmpb_prop { opprec }
-        argprecs  = \prop_item:Nn \l_tmpb_prop { argprecs }
+        symbol    = \prop_item:Nn \l_tmpb_prop { symbol }     ,
+        language  = \prop_item:Nn \l_tmpb_prop { language }   ,
+        variant   = \prop_item:Nn \l_tmpb_prop { variant }    ,
+        opprec    = \prop_item:Nn \l_tmpb_prop { opprec }     ,
+        argprecs  = \prop_item:Nn \l_tmpb_prop { argprecs }   ,
       }
     }
   }{
@@ -1933,22 +2013,23 @@
 \int_set_eq:NN \l__stex_term_downprec \neginfprec
 \tl_set:Nn \l__stex_term_left_bracket_str (
 \tl_set:Nn \l__stex_term_right_bracket_str )
-\RequirePackage{scalerel}
 \cs_new_protected:Nn \__stex_term_maybe_brackets:nn {
   \int_compare:nNnTF { #1 } < \l__stex_term_downprec {
-    \dobrackets { #2 }
+    \bool_if:NTF \l_stex_inparray_bool { #2 }{
+      \dobrackets { #2 }
+    }
   }{ #2 }
 }
 \cs_new_protected:Npn \dobrackets #1 {
-  \ThisStyle{\if D\m@switch
-      \exp_args:Nnx \use:nn
-      { \left\l__stex_term_left_bracket_str #1 }
-      { \right\l__stex_term_right_bracket_str }
-    \else
+  %\ThisStyle{\if D\m@switch
+  %    \exp_args:Nnx \use:nn
+  %    { \exp_after:wN \left\l__stex_term_left_bracket_str #1 }
+  %    { \exp_not:N\right\l__stex_term_right_bracket_str }
+  %  \else
       \exp_args:Nnx \use:nn
       { \l__stex_term_left_bracket_str #1 }
       { \l__stex_term_right_bracket_str }
-  \fi}
+  %\fi}
 }
 \cs_new_protected:Npn \withbrackets #1 #2 #3 {
   \exp_args:Nnx \use:nn
@@ -2089,10 +2170,11 @@
     \str_item:Nn \l_tmpa_str { #1 }
   }
   \str_case:VnTF \l_tmpb_str {
-    { X } { } % TODO throw error
+    { X } { } % TODO throw error ?
     { i } { \__stex_term_custom_set_X:n { #1 } }
     { b } { \__stex_term_custom_set_X:n { #1 } }
-    { a } { } % TODO ?
+    { a } { \__stex_term_custom_set_X:n { #1 } } % TODO ?
+    { B } { \__stex_term_custom_set_X:n { #1 } } % TODO ?
   }{}{
     % TODO throw error
   }
@@ -2121,7 +2203,7 @@
   }
 }
 \cs_new_protected:Npn \__stex_term_custom_component:w [ #1 ] {
-  \tl_put_right:Nn \l_tmpa_tl { #1 }
+  \tl_put_right:Nn \l_tmpa_tl { \comp{ #1 } }
   \__stex_term_custom_loop:
 }
 \cs_new_protected:Nn \__stex_term_custom_final: {
@@ -2136,29 +2218,24 @@
   }
   { \l__stex_term_custom_uri } { \l__stex_term_custom_uri } { \l_tmpa_tl }
 }
+\NewDocumentCommand \symref { m m }{
+  \STEXsymbol{#1}![#2]
+}
 \latexml_if:F {
   \scalatex_if:F{
     \RequirePackage{pdfcomment}
   }
 }
 
-\str_new:N \l__stex_term_highlight_uri_str
+\str_new:N \l__stex_notationcomps_highlight_uri_str
 \cs_new_protected:Nn \stex_highlight_term:nn {
-  \latexml_if:TF {
+  \exp_args:Nnx
+  \use:nn {
+    \str_set:Nx \l__stex_notationcomps_highlight_uri_str { #1 }
     #2
   } {
-    \scalatex_if:TF {
-      #2
-    } {
-      \exp_args:Nnx
-      \use:nn {
-        \str_set:Nx \l__stex_term_highlight_uri_str { #1 }
-        #2
-      } {
-        \str_set:Nx \exp_not:N \l__stex_term_highlight_uri_str
-          { \l__stex_term_highlight_uri_str }
-      }
-    }
+    \str_set:Nx \exp_not:N \l__stex_notationcomps_highlight_uri_str
+      { \l__stex_notationcomps_highlight_uri_str }
   }
 }
 
@@ -2166,8 +2243,12 @@
       #1 %\iffalse{{\fi}} #1 {{\iffalse}}\fi
 }
 \cs_new_protected:Npn \comp #1 {
-  \str_if_empty:NF \l__stex_term_highlight_uri_str {
-    \exp_args:Nnx \@comp { #1 } { \l__stex_term_highlight_uri_str }
+  \str_if_empty:NF \l__stex_notationcomps_highlight_uri_str {
+    \scalatex_if:TF {
+      \stex_annotate:nnn { comp }{ \l__stex_notationcomps_highlight_uri_str }{ #1 }
+    }{
+      \exp_args:Nnx \@comp { #1 } { \l__stex_notationcomps_highlight_uri_str }
+    }
   }
 }
 
@@ -2176,12 +2257,59 @@
     \textcolor{blue}{#1}
   } { #2 }
 }
-\cs_new_protected:Npn \ellipses {
-  \ldots
+\NewDocumentCommand \ellipses {} { \ldots }
+\bool_new:N \l_stex_inparray_bool
+\bool_set_false:N \l_stex_inparray_bool
+\NewDocumentCommand \parray { m m } {
+  \begingroup
+  \bool_set_true:N \l_stex_inparray_bool
+  \begin{array}{#1}
+    #2
+  \end{array}
+  \endgroup
+}
+
+\NewDocumentCommand \prmatrix { m } {
+  \begingroup
+  \bool_set_true:N \l_stex_inparray_bool
+  \begin{matrix}
+    #1
+  \end{matrix}
+  \endgroup
+}
+
+\def \parrayline #1 #2 {
+  #1 #2 \bool_if:NT \l_stex_inparray_bool {\\}
+}
+
+\def \parraycell #1 {
+  #1 \bool_if:NT \l_stex_inparray_bool {&}
+}
+\NewDocumentEnvironment{symboldoc}{ m }{
+  \seq_set_split:Nnn \l_tmpa_seq , { #1 }
+  \seq_clear:N \l_tmpb_seq
+  \seq_map_inline:Nn \l_tmpa_seq {
+    \stex_get_symbol:n { ##1 }
+    \exp_args:NNo \seq_put_right:Nn \l_tmpb_seq {
+      \l_stex_get_symbol_uri_str
+    }
+  }
+  \par
+  \exp_args:Nnnx
+  \begin{stex_annotate_env}{symboldoc}{\seq_use:Nn \l_tmpb_seq {,}}
+}{
+  \end{stex_annotate_env}
+}
+\NewDocumentCommand \MSC {m} {
+  % TODO
 }
 \@ifpackageloaded{tikzinput}{
   \RequirePackage{stex-tikzinput}
 }{}
+
+\AddToHook{begindocument}{
+  \input{stex-metatheory}
+}
 
 \endinput
 %%
