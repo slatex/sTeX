@@ -849,7 +849,7 @@
       } {
         name      = \prop_item:cn { \l_tmpa_str } { name } ,
         ns        = \prop_item:cn { \l_tmpa_str } { ns } ,
-        imports    = \prop_item:cn { \l_tmpa_str } { imports } ,
+        imports   = \prop_item:cn { \l_tmpa_str } { imports } ,
         constants = \prop_item:cn { \l_tmpa_str } { constants } ,
         content   = \prop_item:cn { \l_tmpa_str } { content } ,
         file      = \prop_item:cn { \l_tmpa_str } { file } ,
@@ -921,7 +921,6 @@
 
 \tl_set:Nn \g_stex_smsmode_allowedmacros_escape_tl {
   \symdef
-  \abbrdef
   \importmodule
   \notation
   \symdecl
@@ -1291,6 +1290,7 @@
   align       .tl_set:N    = \l_stex_symdecl_align_str , % TODO(?)
   gfc         .tl_set:N    = \l_stex_symdecl_gfc_str , % TODO(?)
   specializes .tl_set:N    = \l_stex_symdecl_specializes_str , % TODO(?)
+  def         .tl_set:N    = \l_stex_symdecl_definiens_tl
 }
 
 \bool_new:N \l_stex_symdecl_make_macro_bool
@@ -1300,6 +1300,7 @@
   \str_clear:N \l_stex_symdecl_args_str
   \bool_set_false:N \l_stex_symdecl_local_bool
   \tl_clear:N \l_stex_symdecl_type_tl
+  \tl_clear:N \l_stex_symdecl_definiens_tl
 
   \keys_set:nn { stex /symdecl } { #1 }
 
@@ -1308,27 +1309,16 @@
   \exp_args:NNo \str_set:Nn \l_stex_symdecl_args_str
     \l_stex_symdecl_args_str
 }
-\cs_new_protected:Npn \symdecl {
-  \peek_charcode_remove:NTF * {
+
+\NewDocumentCommand \symdecl { s O{} m } {
+  \__stex_symdecl_args:n { #2 }
+  \IfBooleanTF #1 {
     \bool_set_false:N \l_stex_symdecl_make_macro_bool
-    \__stex_symdecl_:
   } {
     \bool_set_true:N \l_stex_symdecl_make_macro_bool
-    \__stex_symdecl_:
   }
-}
-
-\NewDocumentCommand \__stex_symdecl_: { O{} m } {
-  \__stex_symdecl_args:n { #1 }
-  \tl_clear:N \l_stex_symdecl_definiens_tl
-  \stex_symdecl_do:n { #2 }
+  \stex_symdecl_do:n { #3 }
   \stex_smsmode_set_codes:
-}
-\NewDocumentCommand \abbrdef { O{} m m } {
-  \__stex_symdecl_args:n { #1 }
-  \tl_set:Nn \l_stex_symdecl_definiens_tl { #3 }
-  \bool_set_true:N \l_stex_symdecl_make_macro_bool
-  \stex_symdecl_do:n { #2 }
 }
 \cs_new_protected:Nn \stex_symdecl_do:n {
   \stex_if_in_module:F {
@@ -1894,6 +1884,7 @@
   local .bool_set:N  = \l_stex_symdecl_local_bool ,
   args  .tl_set_x:N  = \l_stex_symdecl_args_str ,
   type  .tl_set:N    = \l_stex_symdecl_type_tl ,
+  def    .tl_set:N    = \l_stex_symdecl_definiens_tl ,
   lang    .tl_set_x:N = \l__stex_notation_lang_str ,
   variant .tl_set_x:N = \l__stex_notation_variant_str ,
   prec    .tl_set_x:N = \l__stex_notation_prec_str ,
@@ -1906,6 +1897,7 @@
   \str_clear:N \l_stex_symdecl_args_str
   \bool_set_false:N \l_stex_symdecl_local_bool
   \tl_clear:N \l_stex_symdecl_type_tl
+  \tl_clear:N \l_stex_symdecl_definiens_tl
   \str_clear:N \l__stex_notation_lang_str
   \str_clear:N \l__stex_notation_variant_str
   \str_clear:N \l__stex_notation_prec_str
@@ -1926,7 +1918,6 @@
 
 \NewDocumentCommand \symdef { O{} m } {
   \__stex_notation_symdef_args:n { #1 }
-  \tl_clear:N \l_stex_symdecl_definiens_tl
   \bool_set_true:N \l_stex_symdecl_make_macro_bool
   \stex_symdecl_do:n { #2 }
   \exp_args:Nx \stex_notation_do:nn {
@@ -2221,6 +2212,18 @@
 \NewDocumentCommand \symref { m m }{
   \STEXsymbol{#1}![#2]
 }
+
+\NewDocumentCommand \nameref { m }{
+  \stex_get_symbol:n { #1 }
+  \exp_args:No
+  \str_set:Nx \l_tmpa_str {
+    \prop_item:cn { g_stex_symdecl_ \l_stex_get_symbol_uri_str _prop } { name }
+  }
+  \exp_args:NNno \str_replace_all:Nnn \l_tmpa_str {-} {~}
+  \stex_invoke_symbol:n { \l_stex_get_symbol_uri_str }![
+    \l_tmpa_str
+  ]
+}
 \latexml_if:F {
   \scalatex_if:F{
     \RequirePackage{pdfcomment}
@@ -2255,6 +2258,12 @@
 \cs_new_protected:Npn \@comp #1 #2 {
   \pdftooltip {
     \textcolor{blue}{#1}
+  } { #2 }
+}
+
+\cs_new_protected:Npn \@defemph #1 #2 {
+  \pdftooltip {
+    \textbf{\emph{\textcolor{green}{#1}}}
   } { #2 }
 }
 \NewDocumentCommand \ellipses {} { \ldots }
@@ -2299,6 +2308,188 @@
   \begin{stex_annotate_env}{symboldoc}{\seq_use:Nn \l_tmpb_seq {,}}
 }{
   \end{stex_annotate_env}
+}
+\cs_new_protected:Nn \__stex_features_defi_begin:n {
+  \cs_set_protected:Npn \definiendum ##1 ##2 {
+    \stex_get_symbol:n { ##1 }
+    \scalatex_if:TF {
+      \stex_annotate:nnn { definiendum } { \l_stex_get_symbol_uri_str } { ##2 }
+    } {
+      \exp_args:Nnx \@defemph { ##2 } { \l_stex_get_symbol_uri_str }
+    }
+  }
+  \cs_set_protected:Npn \definame ##1 {
+    \stex_get_symbol:n { ##1 }
+    \str_set:Nx \l_tmpa_str {
+      \prop_item:cn { g_stex_symdecl_ \l_stex_get_symbol_uri_str _prop } { name }
+    }
+    \exp_args:NNno \str_replace_all:Nnn \l_tmpa_str {-} {~}
+    \scalatex_if:TF {
+      \stex_annotate:nnn { definiendum } { \l_stex_get_symbol_uri_str } {
+        \l_tmpa_str
+       }
+    } {
+      \@defemph {
+        \l_tmpa_str
+      } { \l_stex_get_symbol_uri_str }
+    }
+  }
+
+  \seq_set_split:Nnn \l_tmpa_seq , { #1 }
+  \seq_clear:N \l_tmpb_seq
+  \seq_map_inline:Nn \l_tmpa_seq {
+    \stex_get_symbol:n { ##1 }
+    \exp_args:NNo \seq_put_right:Nn \l_tmpb_seq {
+      \l_stex_get_symbol_uri_str
+    }
+  }
+  \exp_args:Nnnx
+  \begin{stex_annotate_env}{definition}{\seq_use:Nn \l_tmpb_seq {,}}
+}
+
+\cs_new_protected:Nn \__stex_features_defi_end: {
+  \end{stex_annotate_env}
+}
+
+\NewDocumentEnvironment{STEXdefinition}{ m }{
+  \__stex_features_defi_begin:n { #1 }
+}{
+  \__stex_features_defi_end:
+}
+\cs_new_protected:Npn \setSTEXdefinition #1 {
+  \AddToHook{env/#1/before}[stex]{\__stex_features_defi_begin:n{#1}}
+  \AddToHook{env/#1/after}[stex]{\__stex_features_defi_end:}
+}
+
+\NewDocumentEnvironment{structural@feature}{ m m m }{
+  \stex_if_in_module:F {
+    \msg_set:nnn{stex}{error/nomodule}{
+      Structural~Feature~has~to~occur~in~a~module:\\
+      Feature~#2~of~type~#1\\
+      In~File:~\stex_path_to_string:N \g_stex_currentfile_seq
+    }
+    \msg_error:nn{stex}{error/nomodule}
+  }
+
+  \str_set:Nx \l_stex_module_name_str {
+    \prop_item:Nn \l_stex_current_module_prop
+      { name } / #2 - feature
+  }
+
+  \str_clear:N \l_tmpa_str
+  \seq_clear:N \l_tmpa_seq
+  \tl_clear:N \l_tmpa_tl
+  \exp_args:NNx \prop_set_from_keyval:Nn \l_stex_current_module_prop {
+    origname  = #2,
+    name      = \l_stex_module_name_str ,
+    ns        = \l_stex_module_ns_str ,
+    imports   = \exp_not:o { \l_tmpa_seq } ,
+    constants = \exp_not:o { \l_tmpa_seq } ,
+    content   = \exp_not:o { \l_tmpa_tl }  ,
+    file      = \exp_not:o { \g_stex_currentfile_seq } ,
+    lang      = \l_stex_module_lang_str ,
+    sig       = \l_tmpa_str ,
+    meta      = \l_tmpa_str ,
+    feature   = #1 ,
+  }
+
+  \stex_if_smsmode:TF {
+    \stex_smsmode_set_codes:
+  } {
+    \begin{stex_annotate_env}{ feature:#1 }{}
+      \stex_annotate_invisible:nnn{header}{}{ #3 }
+  }
+}{
+  \str_set:Nx \l_tmpa_str {
+    c_stex_feature_
+    \prop_item:Nn \l_stex_current_module_prop { ns } ?
+    \prop_item:Nn \l_stex_current_module_prop { name }
+    _prop
+  }
+  \prop_gset_eq:cN { \l_tmpa_str } \l_stex_current_module_prop
+  \prop_gset_eq:NN \g_stex_last_feature_prop \l_stex_current_module_prop
+
+  \stex_if_smsmode:TF {
+    \exp_args:Nx \stex_addtosms:n {
+      \prop_gset_from_keyval:cn {
+        c_stex_feature_
+        \prop_item:Nn \l_stex_current_module_prop { ns } ?
+        \prop_item:Nn \l_stex_current_module_prop { name }
+        _prop
+      } {
+        origname  = #2,
+        name      = \prop_item:cn { \l_tmpa_str } { name } ,
+        ns        = \prop_item:cn { \l_tmpa_str } { ns } ,
+        imports   = \prop_item:cn { \l_tmpa_str } { imports } ,
+        constants = \prop_item:cn { \l_tmpa_str } { constants } ,
+        content   = \prop_item:cn { \l_tmpa_str } { content } ,
+        file      = \prop_item:cn { \l_tmpa_str } { file } ,
+        lang      = \prop_item:cn { \l_tmpa_str } { lang } ,
+        sig       = \prop_item:cn { \l_tmpa_str } { sig } ,
+        meta      = \prop_item:cn { \l_tmpa_str } { meta } ,
+        feature   = \prop_item:cn { \l_tmpa_str } { feature }
+      }
+    }
+  } {
+      \end{stex_annotate_env}
+  }
+}
+
+
+\seq_new:N \l_stex_all_structures_seq
+
+\keys_define:nn { stex / features / structure } {
+  name         .tl_set_x:N  = \l__stex_features_structure_name_str ,
+}
+
+\cs_new_protected:Nn \__stex_features_structure_args:n {
+  \str_clear:N \l__stex_features_structure_name_str
+  \keys_set:nn { stex / features / structure } { #1 }
+  \exp_args:NNo \str_set:Nn \l__stex_features_structure_name_str
+    \l__stex_features_structure_name_str
+}
+
+
+\NewDocumentEnvironment{structure}{ O{} m }{
+  \__stex_features_structure_args:n { #1 }
+  \str_if_empty:NT \l__stex_features_structure_name_str {
+    \str_set:Nx \l__stex_features_structure_name_str { #2 }
+  }
+  \exp_args:Nnnx
+  \begin{structural@feature}{ structure }
+    { \l__stex_features_structure_name_str }{}
+    \seq_clear:N \l_tmpa_seq
+    \prop_put:Nno \l_stex_current_module_prop { fields } \l_tmpa_seq
+
+}{
+    \prop_get:NnN \l_stex_current_module_prop { constants } \l_tmpa_seq
+    \prop_get:NnN \l_stex_current_module_prop { fields } \l_tmpb_seq
+    \str_set:Nx \l_tmpa_str {
+      \prop_item:Nn \l_stex_current_module_prop { ns } ?
+      \prop_item:Nn \l_stex_current_module_prop { name }
+    }
+    \seq_map_inline:Nn \l_tmpa_seq {
+      \exp_args:NNx \seq_put_right:Nn \l_tmpb_seq { \l_tmpa_str ? ##1 }
+    }
+    \prop_put:Nno \l_stex_current_module_prop { fields } { \l_tmpb_seq }
+    \exp_args:Nnx
+    \AddToHookNext { env / structural@feature / after }{
+      \symdecl*[type = \exp_not:N\collection,def={\STEXsymbol{module-type}{
+        \_stex_term_math_oms:nnnn { \l_tmpa_str }{}{0}{}
+      }}]{\prop_item:Nn \l_stex_current_module_prop { origname } }
+      \STEXexport {
+        \seq_put_right:Nn \exp_not:N \l_stex_all_structures_seq {
+          \l_tmpa_str ,
+          \prop_item:Nn \l_stex_current_module_prop { origname }
+        }
+      }
+    }
+
+  \end{structural@feature}
+  % \g_stex_last_feature_prop
+}
+\cs_new_protected:Nn \stex_invoke_structure:n {
+
 }
 \NewDocumentCommand \MSC {m} {
   % TODO
