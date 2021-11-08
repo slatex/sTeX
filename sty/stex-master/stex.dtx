@@ -1195,7 +1195,7 @@
 % \begin{function}{\stex_term_custom:nn}
 %   \begin{syntax} \cs{stex_term_custom:nn}\Arg{URI}\Arg{args}\end{syntax}
 % Implements custom one-time notation.
-% Invoked by \cs{stex:invoke_symbol:n} in text mode, or if
+% Invoked by \cs{stex_invoke_symbol:n} in text mode, or if
 % followed by |*| in math mode, or whenever followed by |!|.
 % \end{function}
 %
@@ -1279,10 +1279,15 @@
 %     \present\magma
 %
 %     \instantiate{magma}[
+%       universe ! {{\comp U}},
 %       op ! {{#1 \comp+ #2 }}
 %     ]{mM}
+%     \notation[op = U]{mM/universe}{\comp U}
+%     \notation[op = +]{mM/op}{#1 \comp+ #2}
 %
 %     Test: $\mM{op}ab$
+%
+%     Test2: $\mM{}$
 % \end{module}
 %}
 %
@@ -4504,8 +4509,9 @@
       \exp_args:Nnx \@defemph { ##2 } { \l_stex_get_symbol_uri_str }
     }
   }
-  \cs_set_protected:Npn \definame ##1 {
-    \stex_get_symbol:n { ##1 }
+  \NewDocumentCommand \definame { O{} m } {
+    % TODO: root
+    \stex_get_symbol:n { ##2 }
     \str_set:Nx \l_tmpa_str {
       \prop_item:cn { g_stex_symdecl_ \l_stex_get_symbol_uri_str _prop } { name }
     }
@@ -4869,8 +4875,28 @@
 % #1: URI of the instance
 % #2: URI of the instantiated module
 \cs_new_protected:Nn \stex_invoke_structure:nnn {
-  \tl_if_empty:nTF{ #3 }{
-    % TODO: structure notations
+  \tl_if_empty:nTF{ #3 }{  
+    \prop_set_eq:Nc \l_@@_structure_prop {
+      c_stex_feature_ #2 _prop
+    }
+    \tl_clear:N \l_tmpa_tl
+    \prop_get:NnN \l_@@_structure_prop { fields } \l_tmpa_seq
+    \seq_map_inline:Nn \l_tmpa_seq {
+      \seq_set_split:Nnn \l_tmpb_seq ? { ##1 }
+      \seq_get_right:NN \l_tmpb_seq \l_tmpa_str
+      \cs_if_exist:cT {
+        stex_notation_ #1/\l_tmpa_str \c_hash_str\c_hash_str _cs
+      }{
+        \tl_if_empty:NF \l_tmpa_tl {
+          \tl_put_right:Nn \l_tmpa_tl {,}
+        }
+        \tl_put_right:Nx \l_tmpa_tl {
+          \stex_invoke_symbol:n {#1/\l_tmpa_str}!
+        }
+      }
+    }
+    \scalatexBREAK
+    \exp_args:No \mathstruct \l_tmpa_tl
   }{
     \stex_invoke_symbol:n{#1/#3}
   }
@@ -4990,6 +5016,7 @@
   \symdecl*[args=1]{module-type}
   \notation{module-type}{\mathtt{MOD} #1}
   \symdecl[name=mathematical-structure,args=a]{mathstruct} % TODO
+  \notation[angle,prec=nobrackets]{mathstruct}{\comp\langle #1 \comp\rangle}{#1 \comp, #2}
 
   \STEXexport{
     \let\nappa\apply
@@ -5763,6 +5790,36 @@
   }
   \msg_warning:nn{stex}{warning/deprecated}
   #1
+}
+
+
+\NewDocumentCommand \Definame { O{} m } {
+  \stex_get_symbol:n { #2 }
+  \str_set:Nx \l_tmpa_str {
+    \prop_item:cn { g_stex_symdecl_ \l_stex_get_symbol_uri_str _prop } { name }
+  }
+  \exp_args:NNno \str_replace_all:Nnn \l_tmpa_str {-} {~}
+  \scalatex_if:TF {
+    \stex_annotate:nnn { definiendum } { \l_stex_get_symbol_uri_str } { 
+      \l_tmpa_str
+     }
+  } {
+    \@defemph {
+      \exp_after:wN \stex_capitalize:n \l_tmpa_str
+    } { \l_stex_get_symbol_uri_str }
+  }
+}
+
+\NewDocumentCommand \Symname { m }{
+  \stex_get_symbol:n { #1 }
+  \str_set:Nx \l_tmpa_str {
+    \prop_item:cn { g_stex_symdecl_ \l_stex_get_symbol_uri_str _prop } { name }
+  }
+  \exp_args:NNno \str_replace_all:Nnn \l_tmpa_str {-} {~}
+  \exp_args:NNx \use:nn
+  \stex_invoke_symbol:n { { \l_stex_get_symbol_uri_str }![
+    \exp_after:wN \stex_capitalize:n \l_tmpa_str
+  ] }
 }
 
 

@@ -2370,8 +2370,9 @@
       \exp_args:Nnx \@defemph { ##2 } { \l_stex_get_symbol_uri_str }
     }
   }
-  \cs_set_protected:Npn \definame ##1 {
-    \stex_get_symbol:n { ##1 }
+  \NewDocumentCommand \definame { O{} m } {
+    % TODO: root
+    \stex_get_symbol:n { ##2 }
     \str_set:Nx \l_tmpa_str {
       \prop_item:cn { g_stex_symdecl_ \l_stex_get_symbol_uri_str _prop } { name }
     }
@@ -2674,7 +2675,27 @@
 }
 \cs_new_protected:Nn \stex_invoke_structure:nnn {
   \tl_if_empty:nTF{ #3 }{
-    % TODO: structure notations
+    \prop_set_eq:Nc \l__stex_features_structure_prop {
+      c_stex_feature_ #2 _prop
+    }
+    \tl_clear:N \l_tmpa_tl
+    \prop_get:NnN \l__stex_features_structure_prop { fields } \l_tmpa_seq
+    \seq_map_inline:Nn \l_tmpa_seq {
+      \seq_set_split:Nnn \l_tmpb_seq ? { ##1 }
+      \seq_get_right:NN \l_tmpb_seq \l_tmpa_str
+      \cs_if_exist:cT {
+        stex_notation_ #1/\l_tmpa_str \c_hash_str\c_hash_str _cs
+      }{
+        \tl_if_empty:NF \l_tmpa_tl {
+          \tl_put_right:Nn \l_tmpa_tl {,}
+        }
+        \tl_put_right:Nx \l_tmpa_tl {
+          \stex_invoke_symbol:n {#1/\l_tmpa_str}!
+        }
+      }
+    }
+    \scalatexBREAK
+    \exp_args:No \mathstruct \l_tmpa_tl
   }{
     \stex_invoke_symbol:n{#1/#3}
   }
