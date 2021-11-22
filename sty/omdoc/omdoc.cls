@@ -30,7 +30,7 @@
 \PassOptionsToPackage{\CurrentOption}{omdoc}
 \ProcessKeyvalOptions{omdoc@cls}
 \LoadClass[\@omdoc@cls@docopt]{\omdoc@cls@class}
-\srefaddidkey{document}
+%\srefaddidkey{document}
 \newcommand\documentkeys[1]{\metasetkeys{document}{#1}}
 \let\orig@document=\document
 \renewcommand{\document}[1][]{\metasetkeys{document}{#1}\orig@document}
