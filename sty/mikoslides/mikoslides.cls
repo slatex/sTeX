@@ -9,6 +9,7 @@
 \NeedsTeXFormat{LaTeX2e}[1999/12/01]
 \ProvidesClass{mikoslides}[2020/12/06 v1.3 MiKo slides Class]
 \RequirePackage{kvoptions}
+\RequirePackage{stex-metakeys}
 \RequirePackage{etoolbox}
 \SetupKeyvalOptions{family=mks@cls,prefix=mks@cls@}
 \DeclareStringOption[article]{class}
