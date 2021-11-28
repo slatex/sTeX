@@ -15,6 +15,7 @@
 
 \RequirePackage{stex-compatibility}
 
+
 \endinput
 %%
 %% End of file `smglom.cls'.

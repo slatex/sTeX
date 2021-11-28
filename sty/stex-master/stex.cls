@@ -16,6 +16,7 @@
 
 \RequirePackage{stex}
 
+
 \endinput
 %%
 %% End of file `stex.cls'.
