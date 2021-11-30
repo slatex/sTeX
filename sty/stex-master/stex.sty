@@ -470,24 +470,37 @@
 }
 \newif \ifinputref \inputreffalse
 
-\cs_new_protected:Nn \inputref:nn {
+\cs_new_protected:Nn \stex_in_repository:nn {
   \str_set:Nx \l_tmpa_str { #1 }
+  \cs_set:Npn \l_tmpa_cs ##1 { #2 }
   \str_if_empty:NTF \l_tmpa_str {
-    \prop_if_empty:NF \l_stex_current_repository_prop {
-      \prop_get:NnN \l_stex_current_repository_prop { id } \l_tmpa_str
+    \exp_args:Ne \l_tmpa_cs{
+      \prop_item:Nn \l_stex_current_repository_prop { id }
     }
-  } {
+  }{
     \stex_require_repository:n \l_tmpa_str
     \str_set:Nx \l_tmpa_str { #1 }
+    \exp_args:Nne \use:nn {
+      \stex_set_current_repository:n \l_tmpa_str
+      \exp_args:Nx \l_tmpa_cs{\l_tmpa_str}
+    }{
+       \stex_set_current_repository:n {
+        \prop_item:Nn \l_stex_current_repository_prop { id }
+       }
+    }
   }
-  \str_set:Nx \l_tmpa_str { \c_stex_mathhub_str / \l_tmpa_str / source / #2 }
-  \ifinputref
-    \input{ \l_tmpa_str }
-  \else
-    \inputreftrue
-    \input{ \l_tmpa_str }
-    \inputreffalse
-  \fi
+}
+
+\cs_new_protected:Nn \inputref:nn {
+  \stex_in_repository:nn {#1} {
+    \ifinputref
+      \input{ \c_stex_mathhub_str / ##1 / source / #2 }
+    \else
+      \inputreftrue
+      \input{ \c_stex_mathhub_str / ##1 / source / #2 }
+      \inputreffalse
+    \fi
+  }
 }
 \NewDocumentCommand \inputref { O{} m}{
   \inputref:nn{ #1 }{ #2 }
