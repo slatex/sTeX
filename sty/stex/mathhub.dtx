@@ -1,0 +1,743 @@
+% \iffalse meta-comment
+% An Infrastructure for Semantic Macros and Module Scoping
+% Copyright (c) 2019 Michael Kohlhase, all rights reserved
+%                this file is released under the
+%                LaTeX Project Public License (LPPL)
+% 
+% The original of this file is in the public repository at 
+% http://github.com/sLaTeX/sTeX/
+%
+% TODO update copyright  
+%
+%<*driver>
+\input{../doc/docheader}
+
+\begin{document}
+  \DocInput{\jobname.dtx}
+\end{document}
+%</driver>
+% \fi
+%
+% \title{ \sTeX-MathHub
+% 	\thanks{Version {\fileversion} (last revised {\filedate})} 
+% }
+%
+% \author{Michael Kohlhase, Dennis Müller\\
+% 	FAU Erlangen-Nürnberg\\
+% 	\url{http://kwarc.info/}
+% }
+%
+% \maketitle
+%
+% \begin{documentation}\label{pkg:mathhub:doc}
+%
+% Code related to managing and using MathHub repositories,
+% files, paths and related hooks and methods.
+%
+% \section{Macros and Environments}\label{pkg:mathhub:doc:macros}
+%
+% \begin{function}{\stex_kpsewhich:n}
+% |\stex_kpsewhich:n| executes kpsewhich and stores the return
+% in\\ |\l_stex_kpsewhich_return_str|. This does not require
+% shell escaping.
+% \end{function}
+%
+%   \subsection{Files, Paths, URIs}
+%
+% \begin{function}{\stex_path_from_string:Nn, 
+%    \stex_path_from_string:NV,
+%    \stex_path_from_string:cn,
+%    \stex_path_from_string:cV
+%    }
+%
+%   \begin{syntax} \cs{stex_path_from_string:Nn} \meta{path-variable} \Arg{string} \end{syntax}
+%   turns the \meta{string} into a path by splitting it at |/|-characters
+%   and stores the result in \meta{path-variable}. Also applies
+%   \cs{stex_path_canonicalize:N}.
+% \end{function}
+%
+% \begin{function}{\stex_path_to_string:NN, \stex_path_to_string:N}
+%   The inverse; turns a path into a string and stores it in the second
+% argument variable, or leaves it in the input stream.
+% \end{function}
+%
+% \begin{function}{\stex_path_canonicalize:N}
+%   Canonicalizes the path provided; in particular, resolves |.| and |..|
+%   path segments.
+% \end{function}
+%
+% \begin{function}[pTF]{\stex_path_if_absolute:N}
+%   Checks whether the path provided is \emph{absolute}, i.e. starts
+%   with an empty segment
+% \end{function}
+%
+% \begin{variable}{\c_stex_pwd_seq, \c_stex_pwd_str, \c_stex_mainfile_seq, \c_stex_mainfile_str}
+%   Store the current working directory as path-sequence and string,
+%   respectively, and the (heuristically guessed) full path to the
+%   main file, based on the PWD and |\jobname|.
+% \end{variable}
+%
+% \begin{variable}{\g_stex_currentfile_seq}
+%   The file being currently processed (respecting |\input| etc.)
+% \end{variable}
+%
+% \stextest{
+% \ExplSyntaxOn
+% \def\cpath@print#1{
+%    \stex_path_from_string:Nn \l_tmpb_seq { #1 }
+%    \stex_path_to_string:NN \l_tmpb_seq \l_tmpa_str
+%    \str_use:N \l_tmpa_str
+%  }
+% \ExplSyntaxOff
+% \begin{center}
+% \begin{tabular}{|l|l|l|}\hline
+%   path & canonicalized path & expected\\\hline
+%   aaa & \cpath@print{aaa} & aaa \\
+%   ../../aaa & \cpath@print{../../aaa} &  ../../aaa\\
+%   aaa/bbb & \cpath@print{aaa/bbb} & aaa/bbb \\
+%   aaa/.. & \cpath@print{aaa/..} &\\
+%   ../../aaa/bbb & \cpath@print{../../aaa/bbb} & ../../aaa/bbb\\
+%   ../aaa/../bbb & \cpath@print{../aaa/../bbb} & ../bbb \\
+%   ../aaa/bbb & \cpath@print{../aaa/bbb} &  ../aaa/bbb\\
+%   aaa/bbb/../ddd & \cpath@print{aaa/bbb/../ddd} & aaa/ddd\\
+%   aaa/bbb/./ddd & \cpath@print{aaa/bbb/./ddd} & aaa/bbb/ddd\\
+%   ./ & \cpath@print{./} & \\
+%   aaa/bbb/../.. & \cpath@print{aaa/bbb/../..} & \\\hline
+% \end{tabular}
+% \end{center}
+% }
+%
+%
+%  \subsection{MathHub Archives}
+%
+% \begin{variable}{\mathhub, \c_stex_mathhub_seq, \c_stex_mathhub_str}
+% We determine the path to the local MathHub folder via one of
+% three means, in order of precedence:
+% \begin{enumerate}
+%   \item The |mathhub| package option, or
+%   \item the |\mathhub|-macro, if it has been defined before
+%     the |\usepackage{stex}|-statement, or
+%   \item the |MATHHUB| system variable.
+% \end{enumerate}
+% In all three cases, \cs{c_stex_mathhub_seq} and
+% \cs{c_stex_mathhub_str} are set accordingly.
+% \end{variable}
+%
+% \begin{variable}{\l_stex_current_repository_prop}
+%   Always points to the \emph{current} MathHub repository (if
+%   we currently are in one). Has the fields |id|, |ns| (namespace),
+%   |narr| (narrative namespace; currently not in use) and
+%   |deps| (dependencies; currently not in use).
+% \end{variable}
+%
+% \begin{function}{\stex_set_current_repository:n}
+%   Sets the current repository to the one with the provided ID.
+%   calls \cs{__stex_mathhub_do_manifest:n}, so works whether this
+%   repository's |MANIFEST.MF|-file has already been read or not.
+% \end{function}
+%
+% \begin{function}{\stex_require_repository:n}
+%   Calls \cs{__stex_mathhub_do_manifest:n} iff the corresponding
+%   archive property list does not already exist, and
+%   adds a corresponding definition to the |.sms|-file.
+% \end{function}
+%
+% \begin{function}{\stex_in_repository:nn}
+%   \begin{syntax}\cs{stex_in_repository:nn}\Arg{repository-name}\Arg{code}\end{syntax}
+% Change the current repository to \Arg{repository-name} (or not, if \Arg{repository-name} is
+% empty), and passes its ID on to \Arg{code} as |#1|. Switches back
+% to the previous repository after executing \Arg{code}.
+% \end{function}
+%
+% \begin{function}[EXP]{\mhpath}
+%   \begin{syntax}\cs{mhpath}\Arg{archive-ID}\Arg{filename}\end{syntax}
+% Expands to the full path of file \meta{filename} in repository \meta{archive-ID}.
+% Does not check whether the file or the repository exist. 
+% \end{function}
+%
+% \begin{function}{\inputref,\inputref:nn}
+%   \begin{syntax}\cs{inputref}|[|\meta{archive-ID}|]|\Arg{filename}\end{syntax}
+% \cs{input}s the file \meta{filename} in repository \meta{archive-ID}.
+% \end{function}
+%
+% \begin{function}{\libinput}
+%   \begin{syntax} \cs{libinput}\Arg{filename} \end{syntax}
+%   Inputs \meta{filename}|.tex| from the |lib| folders in the
+%   current archive and the |meta-inf|-archive of the current archive group
+%   (if existent). Throws an error if no file by that name exists in
+%   either folder, includes both if both exist.
+% \end{function}
+%
+% \stextest{
+%  \ExplSyntaxOn
+%  \stex_require_repository:n { Foo/Bar }
+%  id:~\prop_item:cn {c_stex_mathhub_Foo/Bar_manifest_prop} {id}\ \\
+%  narr:~\prop_item:cn {c_stex_mathhub_Foo/Bar_manifest_prop} {narr}\ \\
+%  ns:~\prop_item:cn {c_stex_mathhub_Foo/Bar_manifest_prop} {ns}\ \\
+%  deps:~\prop_item:cn {c_stex_mathhub_Foo/Bar_manifest_prop} {deps}\ \\
+% \stex_require_repository:n { Bar/Foo }
+%  \ExplSyntaxOff
+% }
+%
+%
+%
+% \end{documentation}
+%
+% \begin{implementation}
+%
+% \section{\sTeX-MathHub Implementation}\label{pkg:mathhub:doc:impl}
+%
+%    \begin{macrocode}
+%<*package>
+
+%%%%%%%%%%%%%   mathhub.dtx   %%%%%%%%%%%%%
+
+%<@@=stex_path>
+%    \end{macrocode}
+%
+% Warnings and error messages
+%
+%    \begin{macrocode}
+\msg_new:nnn{stex}{error/norepository}{
+  No~archive~#1~found~in~#2
+}
+\msg_new:nnn{stex}{error/notinarchive}{
+  Not~currently~in~an~archive,~but~\detokenize{#1}~
+  needs~one!
+}
+\msg_new:nnn{stex}{error/nofile}{
+  \detokenize{#1}~could~not~find~file~#2
+}
+%    \end{macrocode}
+%
+% \subsubsection{Generic Path Handling}
+%
+% We treat paths as \LaTeX3-sequences (of the individual
+% path segments, i.e. separated by a /-character) unix-style;
+% i.e. a path is absolute if the sequence starts with an empty 
+% entry.
+%
+% \begin{macro}{\stex_path_from_string:Nn, 
+%    \stex_path_from_string:NV,
+%    \stex_path_from_string:cn,
+%    \stex_path_from_string:cV
+%    }
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_path_from_string:Nn {
+  \str_set:Nx \l_tmpa_str { #2 }
+  \str_if_empty:NTF \l_tmpa_str {
+    \seq_clear:N #1
+  }{
+    \exp_args:NNNo \seq_set_split:Nnn #1 / { \l_tmpa_str }    
+    \sys_if_platform_windows:T{
+      \seq_clear:N \l_tmpa_tl
+      \seq_map_inline:Nn #1 {
+        \seq_set_split:Nnn \l_tmpb_tl \c_backslash_str { ##1 }
+        \seq_concat:NNN \l_tmpa_tl \l_tmpa_tl \l_tmpb_tl
+      }
+      \seq_set_eq:NN #1 \l_tmpa_tl
+    }
+    \stex_path_canonicalize:N #1
+  }
+}
+\cs_generate_variant:Nn \stex_path_from_string:Nn 
+  { NV, cn, cV }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\stex_path_to_string:NN,\stex_path_to_string:N}
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_path_to_string:NN {
+  \exp_args:NNe \str_set:Nn #2 { \seq_use:Nn #1 / }
+}
+
+\cs_new:Nn \stex_path_to_string:N {
+  \seq_use:Nn #1 /
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{variable}{\c_@@_dot_str,\c_@@_up_str}
+%
+% |.| and |..|, respectively.
+%
+%    \begin{macrocode}
+\str_const:Nn \c_@@_dot_str {.}
+\str_const:Nn \c_@@_up_str {..}
+%    \end{macrocode}
+% \end{variable}
+%
+% \begin{macro}{\stex_path_canonicalize:N}
+%
+%  Canonicalizes the path provided; in particular, resolves |.| and |..|
+%  path segments.
+%
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_path_canonicalize:N {
+  \seq_if_empty:NF #1 {
+    \seq_clear:N \l_tmpa_seq
+    \seq_get_left:NN #1 \l_tmpa_tl
+    \str_if_empty:NT \l_tmpa_tl {
+      \seq_put_right:Nn \l_tmpa_seq {}
+    }
+    \seq_map_inline:Nn #1 {
+      \str_set:Nn \l_tmpa_tl { ##1 }
+      \str_if_eq:NNTF \l_tmpa_tl \c_@@_dot_str {} {
+        \str_if_eq:NNTF \l_tmpa_tl \c_@@_up_str {
+          \seq_if_empty:NTF \l_tmpa_seq {
+            \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
+              \c_@@_up_str
+            }
+          }{
+            \seq_get_right:NN \l_tmpa_seq \l_tmpa_tl
+            \str_if_eq:NNTF \l_tmpa_tl \c_@@_up_str {
+              \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
+                \c_@@_up_str
+              }
+            }{
+              \seq_pop_right:NN \l_tmpa_seq \l_tmpb_tl
+            }
+          }
+        }{
+          \str_if_empty:NF \l_tmpa_tl {
+            \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq { \l_tmpa_tl }
+          }
+        }
+      }
+    }
+    \seq_gset_eq:NN #1 \l_tmpa_seq
+  }
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}[pTF]{\stex_path_if_absolute:N}
+%    \begin{macrocode}
+\prg_new_conditional:Nnn \stex_path_if_absolute:N {p, T, F, TF} {
+  \seq_if_empty:NTF #1 {
+    \prg_return_false:
+  }{
+    \seq_get_left:NN #1 \l_tmpa_tl
+    \str_if_empty:NTF \l_tmpa_tl {
+      \prg_return_true:
+    }{
+      \prg_return_false:
+    }
+  }
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsubsection{PWD and kpsewhich}
+%
+% \begin{macro}{\stex_kpsewhich:n}
+%    \begin{macrocode}
+\str_new:N\l_stex_kpsewhich_return_str
+\cs_new_protected:Nn \stex_kpsewhich:n {
+  \sys_get_shell:nnN { kpsewhich ~ #1 } { } \l_tmpa_tl
+  \exp_args:NNo\str_set:Nn\l_stex_kpsewhich_return_str{\l_tmpa_tl}
+  \tl_trim_spaces:N \l_stex_kpsewhich_return_str
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% We determine the PWD
+%
+% \begin{variable}{\c_stex_pwd_seq,\c_stex_pwd_str}
+%    \begin{macrocode}
+\sys_if_platform_windows:TF{
+  \stex_kpsewhich:n{-expand-var~\c_percent_str CD\c_percent_str}
+}{
+  \stex_kpsewhich:n{-var-value~PWD}
+}
+
+\stex_path_from_string:Nn\c_stex_pwd_seq\l_stex_kpsewhich_return_str
+\stex_path_to_string:NN\c_stex_pwd_seq\c_stex_pwd_str
+\stex_debug:nn {mathhub} {PWD:~\str_use:N\c_stex_pwd_str}
+%    \end{macrocode}
+% \end{variable}
+%
+% \subsubsection{File Hooks and Tracking}
+%    \begin{macrocode}
+%<@@=stex_files>
+%    \end{macrocode}
+%
+% We introduce hooks for file inputs that keep track of the
+% absolute paths of files used. This will be useful to keep track
+% of modules, their archives, namespaces etc.
+%
+% Note that the absolute paths are only accurate in |\input|-statements
+% for paths relative to the PWD, so they shouldn't be relied upon
+% in any other setting than for \sTeX-purposes.
+%
+% \begin{variable}{\g_@@_stack}
+%
+% keeps track of file changes
+%
+%    \begin{macrocode}
+\seq_gclear_new:N\g_@@_stack
+%    \end{macrocode}
+% \end{variable}
+%
+% \begin{variable}{\c_stex_mainfile_seq, \c_stex_mainfile_str}
+%    \begin{macrocode}
+\str_set:Nx \c_stex_mainfile_str {\c_stex_pwd_str/\jobname.tex}
+\stex_path_from_string:Nn \c_stex_mainfile_seq 
+  \c_stex_mainfile_str
+%    \end{macrocode}
+% \end{variable}
+%
+% \begin{variable}{\g_stex_currentfile_seq}
+%
+% Hooks for file inputs that push/pop \cs{g_@@_stack} to update
+% \cs{c_stex_mainfile_seq}.
+%
+%    \begin{macrocode}
+\seq_gclear_new:N\g_stex_currentfile_seq
+\AddToHook{file/before}{
+  \stex_path_from_string:Nn\g_stex_currentfile_seq{\CurrentFilePath}
+  \stex_path_if_absolute:NTF\g_stex_currentfile_seq{
+    \exp_args:NNe\seq_put_right:Nn\g_stex_currentfile_seq{\CurrentFile}
+  }{
+    \stex_path_from_string:Nn\g_stex_currentfile_seq{
+      \c_stex_pwd_str/\CurrentFilePath/\CurrentFile
+    }
+  }
+  \seq_gset_eq:NN\g_stex_currentfile_seq\g_stex_currentfile_seq
+  \exp_args:NNo\seq_gpush:Nn\g_@@_stack\g_stex_currentfile_seq
+}
+\AddToHook{file/after}{
+  \seq_if_empty:NF\g_@@_stack{
+    \seq_gpop:NN\g_@@_stack\l_tmpa_seq
+  }
+  \seq_if_empty:NTF\g_@@_stack{
+    \seq_gset_eq:NN\g_stex_currentfile_seq\c_stex_mainfile_seq
+  }{
+    \seq_get:NN\g_@@_stack\l_tmpa_seq
+    \seq_gset_eq:NN\g_stex_currentfile_seq\l_tmpa_seq
+  }
+}
+%    \end{macrocode}
+% \end{variable}
+%
+% \subsection{MathHub Repositories}
+%    \begin{macrocode}
+%<@@=stex_mathhub>
+%    \end{macrocode}
+%
+% \begin{variable}{\mathhub, \c_stex_mathhub_seq, \c_stex_mathhub_str}
+%    \begin{macrocode}
+\str_if_empty:NTF\mathhub{
+  \stex_kpsewhich:n{-var-value~MATHHUB}
+  \str_set_eq:NN\c_stex_mathhub_str\l_stex_kpsewhich_return_str
+  
+  \str_if_empty:NTF\c_stex_mathhub_str{
+    \msg_warning:nn{stex}{warning/nomathhub}
+  }{
+    \stex_debug:nn{mathhub} {MathHub:~\str_use:N\c_stex_mathhub_str}
+    \exp_args:NNo \stex_path_from_string:Nn\c_stex_mathhub_seq\c_stex_mathhub_str
+  }
+}{
+  \stex_path_from_string:Nn \c_stex_mathhub_seq \mathhub
+  \stex_path_if_absolute:NF \c_stex_mathhub_seq {
+    \exp_args:NNx \stex_path_from_string:Nn \c_stex_mathhub_seq {
+      \c_stex_pwd_str/\mathhub
+    }
+  }
+  \stex_path_to_string:NN\c_stex_mathhub_seq\c_stex_mathhub_str
+  \stex_debug:nn{mathhub} {MathHub:~\str_use:N\c_stex_mathhub_str}
+}
+%    \end{macrocode}
+% \end{variable}
+%
+%
+% \begin{macro}{\_@@_do_manifest:n}
+%    \begin{macrocode}
+\cs_new_protected:Nn \_@@_do_manifest:n {
+  \str_set:Nx \l_tmpa_str { #1 }
+  \prop_if_exist:cF {c_stex_mathhub_#1_manifest_prop} {
+    \prop_new:c { c_stex_mathhub_#1_manifest_prop }
+    \seq_set_split:NnV \l_tmpa_seq / \l_tmpa_str
+    \seq_concat:NNN \l_tmpa_seq \c_stex_mathhub_seq \l_tmpa_seq
+    \_@@_find_manifest:N \l_tmpa_seq
+    \seq_if_empty:NTF \l_@@_manifest_file_seq {
+      \msg_error:nnnn{stex}{error/norepository}{#1}{
+        \stex_path_to_string:N \c_stex_mathhub_str
+      }
+    } {
+      \exp_args:No \_@@_parse_manifest:n { \l_tmpa_str }
+    }
+  }
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{variable}{\l_@@_manifest_file_seq}
+%    \begin{macrocode}
+\str_new:N\l_@@_manifest_file_seq
+%    \end{macrocode}
+% \end{variable}
+%
+% \begin{macro}{\_@@_find_manifest:N}
+%
+% Attempts to find the |MANIFEST.MF| in some file path and
+% stores its path in \cs{l_@@_manifest_file_seq}:
+%
+%    \begin{macrocode}
+\cs_new_protected:Nn \_@@_find_manifest:N {
+  \seq_set_eq:NN\l_tmpa_seq #1
+  \bool_set_true:N\l_tmpa_bool
+  \bool_while_do:Nn \l_tmpa_bool {
+    \seq_if_empty:NTF \l_tmpa_seq {
+      \bool_set_false:N\l_tmpa_bool
+    }{
+      \file_if_exist:nTF{
+        \stex_path_to_string:N\l_tmpa_seq/MANIFEST.MF
+      }{
+        \seq_put_right:Nn\l_tmpa_seq{MANIFEST.MF}
+        \bool_set_false:N\l_tmpa_bool
+      }{
+        \file_if_exist:nTF{
+          \stex_path_to_string:N\l_tmpa_seq/META-INF/MANIFEST.MF
+        }{
+          \seq_put_right:Nn\l_tmpa_seq{META-INF}
+          \seq_put_right:Nn\l_tmpa_seq{MANIFEST.MF}
+          \bool_set_false:N\l_tmpa_bool
+        }{
+          \file_if_exist:nTF{
+            \stex_path_to_string:N\l_tmpa_seq/meta-inf/MANIFEST.MF
+          }{
+            \seq_put_right:Nn\l_tmpa_seq{meta-inf}
+            \seq_put_right:Nn\l_tmpa_seq{MANIFEST.MF}
+            \bool_set_false:N\l_tmpa_bool
+          }{
+            \seq_pop_right:NN\l_tmpa_seq\l_tmpa_tl
+          }
+        }
+      }
+    }
+  }
+  \seq_set_eq:NN\l_@@_manifest_file_seq\l_tmpa_seq
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{variable}{\c_@@_manifest_ior}
+%
+%   File variable used for |MANIFEST|-files
+%
+%    \begin{macrocode}
+\ior_new:N \c_@@_manifest_ior
+%    \end{macrocode}
+% \end{variable}
+%
+% \begin{macro}{\_@@_parse_manifest:n}
+%
+% Stores the entries in manifest file in the
+% corresponding property list:
+%
+%    \begin{macrocode}
+\cs_new_protected:Nn \_@@_parse_manifest:n {
+  \seq_set_eq:NN \l_tmpa_seq \l_@@_manifest_file_seq
+  \ior_open:Nn \c_@@_manifest_ior {\stex_path_to_string:N \l_tmpa_seq}
+  \ior_map_inline:Nn \c_@@_manifest_ior {
+    \str_set:Nn \l_tmpa_str {##1}
+    \exp_args:NNoo \seq_set_split:Nnn 
+        \l_tmpb_seq \c_colon_str \l_tmpa_str
+    \seq_pop_left:NNTF \l_tmpb_seq \l_tmpa_tl {
+      \exp_args:NNe \str_set:Nn \l_tmpb_tl { 
+        \exp_args:NNo \seq_use:Nn \l_tmpb_seq \c_colon_str 
+      }
+      \exp_args:No \str_case:nnTF \l_tmpa_tl {
+        {id} {
+          \prop_gput:cno { c_stex_mathhub_#1_manifest_prop } 
+            { id } \l_tmpb_tl
+        }
+        {narration-base} {
+          \prop_gput:cno { c_stex_mathhub_#1_manifest_prop } 
+            { narr } \l_tmpb_tl
+        }
+        {source-base} {
+          \prop_gput:cno { c_stex_mathhub_#1_manifest_prop } 
+            { ns } \l_tmpb_tl
+        }
+        {ns} {
+          \prop_gput:cno { c_stex_mathhub_#1_manifest_prop } 
+            { ns } \l_tmpb_tl
+        }
+        {dependencies} {
+          \prop_gput:cno { c_stex_mathhub_#1_manifest_prop } 
+            { deps } \l_tmpb_tl
+        }
+      }{}{}
+    }{}
+  }
+  \ior_close:N \c_@@_manifest_ior
+}
+%    \end{macrocode}
+% \end{macro}
+% 
+%
+% \begin{macro}{\stex_set_current_repository:n}
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_set_current_repository:n {
+  \stex_require_repository:n { #1 }
+  \prop_set_eq:Nc \l_stex_current_repository_prop { 
+    c_stex_mathhub_#1_manifest_prop 
+  }
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\stex_require_repository:n}
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_require_repository:n {
+  \prop_if_exist:cF { c_stex_mathhub_#1_manifest_prop } {
+    \stex_debug:nn{mathhub}{Opening~archive:~#1}
+    \_@@_do_manifest:n { #1 }
+    \exp_args:Nx \stex_add_to_sms:n {
+      \prop_const_from_keyval:cn { c_stex_mathhub_#1_manifest_prop } {
+        id   = \prop_item:cn { c_stex_mathhub_#1_manifest_prop } {  id  } ,
+        ns   = \prop_item:cn { c_stex_mathhub_#1_manifest_prop } {  ns  } ,
+        narr = \prop_item:cn { c_stex_mathhub_#1_manifest_prop } { narr } ,
+        deps = \prop_item:cn { c_stex_mathhub_#1_manifest_prop } { deps }
+      }
+    }
+  }
+}
+%    \end{macrocode}
+% \end{macro}
+%
+%\begin{variable}{\l_stex_current_repository_prop}
+%
+% Current MathHub repository
+%
+%    \begin{macrocode}
+\prop_new:N \l_stex_current_repository_prop
+
+\_@@_find_manifest:N \c_stex_pwd_seq
+\seq_if_empty:NTF \l_@@_manifest_file_seq {
+  \stex_debug:nn{mathhub}{Not~currently~in~a~MathHub~repository}
+} {
+  \_@@_parse_manifest:n { main }
+  \prop_get:NnN \c_stex_mathhub_main_manifest_prop {id} 
+    \l_tmpa_str
+  \prop_set_eq:cN { c_stex_mathhub_\l_tmpa_str _manifest_prop }
+    \c_stex_mathhub_main_manifest_prop
+  \exp_args:Nx \stex_set_current_repository:n { \l_tmpa_str }
+  \stex_debug:nn{mathhub}{Current~repository:~
+    \prop_item:Nn \l_stex_current_repository_prop {id}
+  }
+}
+%    \end{macrocode}
+% \end{variable}
+%
+% \begin{macro}{\stex_in_repository:nn}
+% Executes the code in the second argument in the context
+% of the repository whose ID is provided as the first argument.
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_in_repository:nn {
+  \str_set:Nx \l_tmpa_str { #1 }
+  \cs_set:Npn \l_tmpa_cs ##1 { #2 }
+  \str_if_empty:NTF \l_tmpa_str {
+    \exp_args:Ne \l_tmpa_cs{
+      \prop_item:Nn \l_stex_current_repository_prop { id }
+    }
+  }{
+    \stex_require_repository:n \l_tmpa_str
+    \str_set:Nx \l_tmpa_str { #1 }
+    \exp_args:Nne \use:nn {
+      \stex_set_current_repository:n \l_tmpa_str
+      \exp_args:Nx \l_tmpa_cs{\l_tmpa_str}
+    }{
+       \stex_set_current_repository:n {
+        \prop_item:Nn \l_stex_current_repository_prop { id }
+       }
+    }
+  }
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\inputref,\inputref:nn}
+%    \begin{macrocode}
+\newif \ifinputref \inputreffalse
+
+\cs_new_protected:Nn \inputref:nn {
+  \stex_in_repository:nn {#1} {
+    \ifinputref
+      \input{ \c_stex_mathhub_str / ##1 / source / #2 }
+    \else
+      \inputreftrue
+      \input{ \c_stex_mathhub_str / ##1 / source / #2 }
+      \inputreffalse
+    \fi
+  }
+}
+\NewDocumentCommand \inputref { O{} m}{
+  \inputref:nn{ #1 }{ #2 }
+}
+%    \end{macrocode}
+% \end{macro}
+%
+%
+% \begin{macro}{\mhpath}
+%    \begin{macrocode}
+  \def \mhpath #1 #2 {
+    \exp_args:Ne \str_if_eq:nnTF{#1}{}{
+      \c_stex_mathhub_str / 
+        \prop_item:Nn \l_stex_current_repository_prop { id }
+        / source / #2
+    }{
+      \c_stex_mathhub_str / #1 / source / #2
+    }
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\libinput}
+%    \begin{macrocode}
+\cs_new_protected:Npn \libinput #1 {
+  \prop_get:NnNF \l_stex_current_repository_prop {id} \l_tmpa_str {
+    \msg_error:nnn{stex}{error/notinarchive}\libinput
+  }
+  \bool_set_false:N \l_tmpa_bool
+  \tl_clear:N \l_tmpa_tl
+  \seq_set_eq:NN \l_tmpa_seq \c_stex_mathhub_seq
+  \seq_set_split:NnV \l_tmpb_seq / \l_tmpa_str
+  \seq_pop_right:NN \l_tmpb_seq \l_tmpa_str
+  \seq_pop_left:NNT \l_tmpb_seq \l_tmpb_str {
+    \seq_put_right:No \l_tmpa_seq \l_tmpb_str
+    \IfFileExists{ \stex_path_to_string:N \l_tmpa_seq 
+      / meta-inf / lib / #1.tex}{
+        \bool_set_true:N \l_tmpa_bool
+        \tl_put_right:Nx \l_tmpa_tl {
+          \exp_not:N \input { \stex_path_to_string:N \l_tmpa_seq 
+          / meta-inf / lib / #1.tex}
+        }
+      }{}
+  }
+  \IfFileExists{ \stex_path_to_string:N \l_tmpa_seq
+    / \l_tmpa_str / lib / #1.tex
+  }{
+    \bool_set_true:N \l_tmpa_bool
+    \tl_put_right:Nx \l_tmpa_tl {
+      \exp_not:N \input { \stex_path_to_string:N \l_tmpa_seq 
+      / \l_tmpa_str / lib / #1.tex}
+    }
+  }{}
+  \bool_if:NF \l_tmpa_bool {
+    \msg_error:nnnn{stex}{error/nofile}\libinput{#1.tex}
+  }
+  \l_tmpa_tl
+}
+%    \end{macrocode}
+% \end{macro}
+%
+%    \begin{macrocode}
+%</package>
+%    \end{macrocode}
+%
+% \end{implementation}
+%
+% \PrintIndex

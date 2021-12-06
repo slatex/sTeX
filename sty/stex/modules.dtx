@@ -1,0 +1,825 @@
+% \iffalse meta-comment
+% An Infrastructure for Semantic Macros and Module Scoping
+% Copyright (c) 2019 Michael Kohlhase, all rights reserved
+%                this file is released under the
+%                LaTeX Project Public License (LPPL)
+% 
+% The original of this file is in the public repository at 
+% http://github.com/sLaTeX/sTeX/
+%
+% TODO update copyright  
+%
+%<*driver>
+\input{../doc/docheader}
+
+\begin{document}
+  \DocInput{\jobname.dtx}
+\end{document}
+%</driver>
+% \fi
+%
+% \title{ \sTeX-Modules
+% 	\thanks{Version {\fileversion} (last revised {\filedate})} 
+% }
+%
+% \author{Michael Kohlhase, Dennis Müller\\
+% 	FAU Erlangen-Nürnberg\\
+% 	\url{http://kwarc.info/}
+% }
+%
+% \maketitle
+%
+% \begin{documentation}\label{pkg:modules:doc}
+%
+% Code related to Modules
+%
+% \section{Macros and Environments}\label{pkg:modules:doc:macros}
+%
+% \begin{variable}{\l_stex_current_module_prop}
+% All information of a module is stored as a property list. 
+% \cs{l_stex_current_module_prop}
+% always points to the current module (if existent).
+%
+% Most importantly, the |content|-field stores all the code
+% to execute on activation; i.e. when this module is being included.
+%
+% Additionally, it stores:
+% \begin{itemize}
+%   \item The \emph{name} in field |name|,
+%   \item the \emph{namespace} in field |ns|,
+%   \item this module's \emph{language} in field |lang|,
+%   \item if a language module that translates some other
+%     modules, the \emph{original} module in field |sig| (for signature),
+%   \item the \emph{metatheory} in field |meta|,
+%   \item the URIs of all \emph{imported modules} in field |imports|,
+%   \item the names of all \emph{declarations} in field |constants|,
+%   \item the \emph{file} this module was declared in in field |file|,
+% \end{itemize}
+% \end{variable}
+%
+% \begin{variable}{\l_stex_all_modules_seq}
+%   Stores full URIs for all
+%   modules currently in scope.
+% \end{variable}
+%
+% \begin{variable}{\g_stex_module_files_prop,\g_stex_modules_in_file_seq}
+%   A property list mapping file paths to the lists of all modules
+%   declared therein. \cs{g_stex_modules_in_file_seq} always points to
+%   the current file(-stream - \cs{input}s are considered the same file).
+% \end{variable}
+%
+% \begin{function}[pTF]{\stex_if_in_module:}
+%   Conditional for whether we are currently in a module
+% \end{function}
+%
+% \begin{function}[pTF]{\stex_if_module_exists:n}
+%   Conditional for whether a module with the provided URI
+%   is already known.
+% \end{function}
+%
+% \begin{function}{\stex_add_to_current_module:n,\STEXexport}
+%   Adds the provided tokens to the |content| field of the current
+%   module.
+% \end{function}
+%
+% \begin{function}{\stex_add_constant_to_current_module:n}
+%   Adds the declaration with the provided name to the |constants|
+%   field of the current module.
+% \end{function}
+%
+% \begin{function}{\stex_add_import_to_current_module:n}
+%   Adds the module with the provided full URI to the |imports|
+%   field of the current module.
+% \end{function}
+%
+% \begin{function}{\stex_modules_compute_namespace:nN}
+%   \begin{syntax} \cs{stex_modules_compute_namespace:nN} 
+%     \Arg{namespace} \Arg{path}
+%   \end{syntax}
+%   Computes the namespace for file \meta{path} in repository
+%   with namespace \meta{namespace} as follows:
+%
+%   If the file is |.../source/sub/file.tex|
+%   and the namespace |http://some.namespace/foo|, then the namespace of
+%   is |http://some.namespace/foo/sub/file|.
+% \end{function}
+%
+% \begin{function}{\stex_modules_current_namespace:}
+%   Computes the current namespace
+% \end{function}
+%
+%\stextest{
+% \ExplSyntaxOn
+% \stex_modules_current_namespace:
+% Namespace~1:\\ \l_stex_modules_ns_str \\
+% Faking~a~repository:\\
+% \stex_set_current_repository:n{Foo/Bar}
+% \seq_pop_right:NN \g_stex_currentfile_seq \testtemp
+% \edef\testtempb{\detokenize{source}}
+% \exp_args:NNo \seq_put_right:Nn \g_stex_currentfile_seq { \testtempb }
+% \edef\testtempb{\detokenize{test}}
+% \exp_args:NNo \seq_put_right:Nn \g_stex_currentfile_seq { \testtempb }
+% \exp_args:NNo \seq_put_right:Nn \g_stex_currentfile_seq { \testtemp }
+% \stex_modules_current_namespace:
+% Namespace~2:\\ \l_stex_modules_ns_str
+% \ExplSyntaxOff
+%}
+%
+% \subsection{The \texttt{module}-environment}
+%
+% \begin{environment}{module}
+%   \begin{syntax} \cs{begin}|{module}[|\meta{options}|]|\Arg{name}\end{syntax}
+% 
+%   Opens a new module with name \meta{name}.
+%
+%   TODO document options.
+% \end{environment}
+%
+% \begin{function}{\stex_module_setup:nn}
+%   \begin{syntax}\cs{stex_module_setup:nn}\Arg{params}\Arg{name}\end{syntax}
+%   Sets up a new module with name \meta{name} and optional parameters
+%   \meta{params}. In particular, sets
+%   \cs{l_stex_current_module_prop} appropriately.
+% \end{function}
+%
+% \begin{function}{\stex_modules_heading:}
+%   Takes care of the module header, if the |showmods| package option
+%   is true. This macro can be overridden for customization.
+% \end{function}
+%
+% \begin{environment}{@module}
+%   \begin{syntax} \cs{begin}|{@module}[|\meta{options}|]|\Arg{name}\end{syntax}
+%
+%   Core functionality of the |module|-environment without a header.
+%
+% \end{environment}
+%
+%\stextest{
+% \ExplSyntaxOn
+% \stex_set_current_repository:n {Foo/Bar}
+% \seq_pop_right:NN \g_stex_currentfile_seq \l_tmpa_tl
+% \seq_put_right:Nx \g_stex_currentfile_seq { \tl_to_str:n{tests} }
+% \seq_put_right:Nx \g_stex_currentfile_seq { \tl_to_str:n{Foo} }
+% \seq_put_right:Nx \g_stex_currentfile_seq { \tl_to_str:n{Bar} }
+% \seq_put_right:Nx \g_stex_currentfile_seq { \tl_to_str:n{source} }
+% \seq_put_right:Nx \g_stex_currentfile_seq { \tl_to_str:n{Foo.tex} }
+% \begin{@module}{Foo}
+%  Module~path:~ 
+%  \prop_item:Nn \l_stex_current_module_prop { ns }?
+%  \prop_item:Nn \l_stex_current_module_prop { name }\\
+%  Language:~\prop_item:Nn \l_stex_current_module_prop { lang }\\
+%  Signature:~\prop_item:Nn \l_stex_current_module_prop { sig }\\
+%  Metatheory:~\prop_item:Nn \l_stex_current_module_prop { meta }\\
+% \end{@module}
+% \ExplSyntaxOff
+%}
+%
+%\stextest{
+% \ExplSyntaxOn
+% \stex_set_current_repository:n {Foo/Bar}
+% \stex_debug:nn{modules}{Test:~\stex_path_to_string:N \g_stex_currentfile_seq }
+% \seq_pop_right:NN \g_stex_currentfile_seq \l_tmpa_tl
+% \seq_put_right:Nx \g_stex_currentfile_seq { \tl_to_str:n{tests} }
+% \seq_put_right:Nx \g_stex_currentfile_seq { \tl_to_str:n{Foo} }
+% \seq_put_right:Nx \g_stex_currentfile_seq { \tl_to_str:n{Bar} }
+% \seq_put_right:Nx \g_stex_currentfile_seq { \tl_to_str:n{source} }
+% \seq_put_right:Nx \g_stex_currentfile_seq { \tl_to_str:n{Foo.tex} }
+% \stex_debug:nn{modules}{Test:~\stex_path_to_string:N \g_stex_currentfile_seq }
+% \begin{module}[title=Foo Bar]{Bar}
+%  Module~path:~ 
+%  \prop_item:Nn \l_stex_current_module_prop { ns }?
+%  \prop_item:Nn \l_stex_current_module_prop { name }\\
+%  Language:~\prop_item:Nn \l_stex_current_module_prop { lang }\\
+%  Signature:~\prop_item:Nn \l_stex_current_module_prop { sig }\\
+%  Metatheory:~\prop_item:Nn \l_stex_current_module_prop { meta }\\
+% \end{module}
+% \ExplSyntaxOff
+%}
+%
+% \begin{function}{\STEXModule}
+%   \begin{syntax} \cs{STEXModule} \Arg{fragment} \end{syntax}
+%   Attempts to find a module whose URI ends with \meta{fragment}
+%   in the current scope and passes the full URI on to
+%   \cs{stex_invoke_module:n}.
+% \end{function}
+%
+% \begin{function}{\stex_invoke_module:n}
+%   Invoked by \cs{STEXModule}. Needs to be followed either
+%   by |!|\meta{macro} or |?|\Arg{symbolname}. In the first case,
+%   it stores the full URI in \meta{macro}; in the second
+%   case, it invokes the symbol \meta{symbolname} in the
+%   selected module.
+% \end{function}
+%
+%\stextest{
+%   \begin{module}{STEXModuleTest1}
+%     \symdecl{foo}
+%   \end{module}
+%   \begin{module}{STEXModuleTest2}
+%     \importmodule{STEXModuleTest1}
+%     \symdecl{foo}
+%   \end{module}
+%   \begin{module}{STEXModuleTest3}
+%     \importmodule{STEXModuleTest2}
+%     \symdecl{foo}
+%     \STEXModule{STEXModuleTest1}!\teststring
+%     \teststring\\
+%     \STEXModule{STEXModuleTest2}!\teststring
+%     \teststring\\
+%     \STEXModule{STEXModuleTest3}!\teststring
+%     \teststring\\
+%     \STEXModule{STEXModuleTest1}?{foo}[\comp{foo1}]\\
+%     \STEXModule{STEXModuleTest2}?{foo}[\comp{foo2}]\\
+%     \STEXModule{STEXModuleTest3}?{foo}[\comp{foo3}]\\
+%   \end{module}
+%}
+%
+% \begin{function}{\stex_activate_module:n}
+%   Activate the module with the provided URI; i.e. executes
+%   all macro code of the module's |content|-field (does
+%   nothing if the module is already activated in the current
+%   context) and adds the module to \cs{l_stex_all_modules_seq}.
+% \end{function}
+%
+% \end{documentation}
+%
+% \begin{implementation}\label{pkg:modules:impl}
+%
+% \section{\sTeX-Modules Implementation}
+%
+%    \begin{macrocode}
+%<*package>
+
+%%%%%%%%%%%%%   modules.dtx   %%%%%%%%%%%%%
+
+%<@@=stex_modules>
+%    \end{macrocode}
+%
+% Warnings and error messages
+%
+%    \begin{macrocode}
+\msg_new:nnn{stex}{error/unknownmodule}{
+  No~module~#1~found
+}
+\msg_new:nnn{stex}{error/syntax}{
+  Syntax~error:~#1
+}
+\msg_new:nnn{stex}{error/siglanguage}{
+  Module~#1~declares~signature~#2,~but~does~not~
+  declare~its~language
+}
+%    \end{macrocode}
+%
+%
+% \begin{variable}{\l_stex_current_module_prop}
+%  The current module:
+%    \begin{macrocode}
+\prop_new:N \l_stex_current_module_prop
+%    \end{macrocode}
+% \end{variable}
+%
+% \begin{variable}{\l_stex_all_modules_seq}
+%   Stores all available modules
+%    \begin{macrocode}
+\seq_new:N \l_stex_all_modules_seq
+%    \end{macrocode}
+% \end{variable}
+%
+% \begin{variable}{\g_stex_modules_in_file_seq,\g_stex_module_files_prop}
+%  All modules sorted by containing file; used e.g. in \cs{importmodule}
+%    \begin{macrocode}
+\seq_new:N \g_stex_modules_in_file_seq
+\prop_new:N \g_stex_module_files_prop
+%    \end{macrocode}
+% \end{variable}
+%
+% \begin{macro}[pTF]{\stex_if_in_module:}
+%    \begin{macrocode}
+\prg_new_conditional:Nnn \stex_if_in_module: {p, T, F, TF} {
+  \prop_if_empty:NTF \l_stex_current_module_prop
+    \prg_return_false: \prg_return_true:
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}[pTF]{\stex_if_module_exists:n}
+%    \begin{macrocode}
+\prg_new_conditional:Nnn \stex_if_module_exists:n {p, T, F, TF} {
+  \prop_if_exist:cTF { c_stex_module_#1_prop }
+    \prg_return_true: \prg_return_false:
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\stex_add_to_current_module:n,\STEXexport}
+%
+% Only allowed within modules:
+%
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_add_to_current_module:n {
+  \prop_get:NnN \l_stex_current_module_prop { content } \l_tmpa_tl
+  \tl_put_right:Nn \l_tmpa_tl { #1 }
+  \prop_put:Nno \l_stex_current_module_prop { content } { \l_tmpa_tl }
+}
+\cs_new_protected:Npn \STEXexport #1 {
+  #1
+  \stex_add_to_current_module:n { #1 }
+  \stex_smsmode_set_codes:
+}
+\stex_deactivate_macro:Nn \STEXexport {module~environments}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\stex_add_constant_to_current_module:n}
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_add_constant_to_current_module:n {
+  \str_set:Nx \l_tmpa_str { #1 }
+  \prop_get:NnN \l_stex_current_module_prop { constants } \l_tmpa_seq
+  \seq_put_right:No \l_tmpa_seq { \l_tmpa_str }
+  \prop_put:Nno \l_stex_current_module_prop { constants } \l_tmpa_seq
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\stex_add_import_to_current_module:n}
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_add_import_to_current_module:n {
+  \str_set:Nx \l_tmpa_str { #1 }
+  \prop_get:NnN \l_stex_current_module_prop { imports } \l_tmpa_seq
+  \seq_put_right:No \l_tmpa_seq { \l_tmpa_str }
+  \prop_put:Nno \l_stex_current_module_prop { imports } \l_tmpa_seq
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\stex_modules_compute_namespace:nN}
+% Computer the appropriate namespace from the top-level namespace
+% of a repository (|#1|) and a file path
+% (|#2|).
+%
+% Stores its return values in:
+% \begin{variable}{\l_stex_modules_ns_str}
+%    \begin{macrocode}
+\str_new:N \l_stex_modules_ns_str
+%    \end{macrocode}
+% \end{variable}
+%
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_modules_compute_namespace:nN {
+  \str_set:Nx \l_tmpa_str { #1 }
+  \seq_set_eq:NN \l_tmpa_seq #2
+  % split off file extension
+  \seq_pop_right:NN \l_tmpa_seq \l_tmpb_str
+  \exp_args:NNno \seq_set_split:Nnn \l_tmpb_seq . \l_tmpb_str
+  \seq_get_left:NN \l_tmpb_seq \l_tmpb_str
+  \seq_put_right:No \l_tmpa_seq \l_tmpb_str
+
+  \bool_set_true:N \l_tmpa_bool
+  \bool_while_do:Nn \l_tmpa_bool {
+    \seq_pop_left:NN \l_tmpa_seq \l_tmpb_str
+    \exp_args:No \str_case:nnTF { \l_tmpb_str } {
+      {source} { \bool_set_false:N \l_tmpa_bool }
+    }{}{
+      \seq_if_empty:NT \l_tmpa_seq {
+        \bool_set_false:N \l_tmpa_bool
+      }
+    }
+  }
+
+  \seq_if_empty:NTF \l_tmpa_seq {
+    \str_set_eq:NN \l_stex_modules_ns_str \l_tmpa_str
+  }{
+    \str_set:Nx \l_stex_modules_ns_str { 
+      \l_tmpa_str/\stex_path_to_string:N \l_tmpa_seq
+    }
+  }
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\stex_modules_current_namespace:}
+%
+% Computes the current namespace based on the current
+% MathHub repository (if existent) and the current file.
+%
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_modules_current_namespace: {
+  \prop_get:NnNTF \l_stex_current_repository_prop { ns } \l_tmpa_str {
+    \stex_modules_compute_namespace:nN \l_tmpa_str \g_stex_currentfile_seq
+  }{
+    % split off file extension
+    \seq_set_eq:NN \l_tmpa_seq \g_stex_currentfile_seq
+    \seq_pop_right:NN \l_tmpa_seq \l_tmpb_str
+    \exp_args:NNno \seq_set_split:Nnn \l_tmpb_seq . \l_tmpb_str
+    \seq_get_left:NN \l_tmpb_seq \l_tmpb_str
+    \seq_put_right:No \l_tmpa_seq \l_tmpb_str
+    \str_set:Nx \l_stex_modules_ns_str { 
+      file:/\stex_path_to_string:N \l_tmpa_seq
+    }
+  }
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsubsection{The module environment}
+%
+% |module| arguments:
+%
+%    \begin{macrocode}
+\keys_define:nn { stex / module } {
+  title         .str_set_x:N  = \l_stex_module_title_str ,
+  ns            .str_set_x:N  = \l_stex_module_ns_str ,
+  lang          .str_set_x:N  = \l_stex_module_lang_str ,
+  sig           .str_set_x:N  = \l_stex_module_sig_str ,
+  creators      .str_set_x:N  = \l_stex_module_creators_str ,
+  contributors  .str_set_x:N  = \l_stex_module_contributors_str ,
+  meta          .str_set_x:N  = \l_stex_module_meta_str
+}
+
+\cs_new_protected:Nn \_@@_args:n {
+  \str_clear:N \l_stex_module_title_str
+  \str_clear:N \l_stex_module_ns_str
+  \str_clear:N \l_stex_module_lang_str
+  \str_clear:N \l_stex_module_sig_str
+  \str_clear:N \l_stex_module_creators_str
+  \str_clear:N \l_stex_module_contributors_str
+  \str_clear:N \l_stex_module_meta_str
+  \keys_set:nn { stex / module } { #1 }
+}
+
+% module parameters here? In the body?
+
+%    \end{macrocode}
+%
+% \begin{macro}{\stex_module_setup:nn}
+% Sets up a new module property list:
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_module_setup:nn {
+  \str_set:Nx \l_stex_module_name_str { #2 }
+  \_@@_args:n { #1 }
+%    \end{macrocode}
+%
+% First, we set up the name and namespace of the module.
+%
+% Are we in a nested module?
+%
+%    \begin{macrocode}
+  \stex_if_in_module:TF {
+    % Nested module
+    \prop_get:NnN \l_stex_current_module_prop
+      { ns } \l_stex_module_ns_str
+    \str_set:Nx \l_stex_module_name_str {
+      \prop_item:Nn \l_stex_current_module_prop
+        { name } / \l_stex_module_name_str
+    }
+  }{
+    % not nested:
+    \str_if_empty:NT \l_stex_module_ns_str {
+      \stex_modules_current_namespace:
+      \str_set_eq:NN \l_stex_module_ns_str \l_stex_modules_ns_str
+      \exp_args:NNNo \seq_set_split:Nnn \l_tmpa_seq
+          / {\l_stex_module_ns_str}
+      \seq_pop_right:NN \l_tmpa_seq \l_tmpa_str
+      \str_if_eq:NNT \l_tmpa_str \l_stex_module_name_str {
+        \str_set:Nx \l_stex_module_ns_str {
+          \stex_path_to_string:N \l_tmpa_seq
+        }
+      }
+    }
+  }
+%    \end{macrocode}
+%
+% Next, we determine the language of the module:
+%
+%    \begin{macrocode}
+  \str_if_empty:NT \l_stex_module_lang_str {
+    \seq_get_right:NN \g_stex_currentfile_seq \l_tmpa_str
+    \seq_set_split:NnV \l_tmpa_seq . \l_tmpa_str
+    \seq_pop_right:NN \l_tmpa_seq \l_tmpa_str % .tex
+    \seq_pop_left:NN \l_tmpa_seq \l_tmpa_str % <filename>
+    \seq_if_empty:NF \l_tmpa_seq { %remaining element should be language
+      \stex_debug:nn{modules} {Language~\l_stex_module_lang_str~
+        inferred~from~file~name}
+      \seq_pop_left:NN \l_tmpa_seq \l_stex_module_lang_str
+    }
+  } 
+
+  \str_if_empty:NF \l_stex_module_lang_str {
+    \prop_get:NVNTF \c_stex_languages_prop \l_stex_module_lang_str 
+      \l_tmpa_str {
+        \ltx@ifpackageloaded{babel}{
+          \exp_args:Nx \selectlanguage { \l_tmpa_str }
+        }{}
+      } {
+        \msg_error:nnn{stex}{error/unknownlanguage}{\l_tmpa_str}
+      }
+  }
+%    \end{macrocode}
+%
+% We check if we need to extend a signature module, and set
+% \cs{l_stex_current_module_prop} accordingly:
+%
+%    \begin{macrocode}
+  \str_if_empty:NTF \l_stex_module_sig_str {
+    \str_clear:N \l_tmpa_str
+    \seq_clear:N \l_tmpa_seq
+    \tl_clear:N \l_tmpa_tl
+    \exp_args:NNx \prop_set_from_keyval:Nn \l_stex_current_module_prop {
+      name      = \l_stex_module_name_str ,
+      ns        = \l_stex_module_ns_str ,
+      imports   = \exp_not:o { \l_tmpa_seq } ,
+      constants = \exp_not:o { \l_tmpa_seq } ,
+      content   = \exp_not:o { \l_tmpa_tl }  ,
+      file      = \exp_not:o { \g_stex_currentfile_seq } ,
+      lang      = \l_stex_module_lang_str ,
+      sig       = \l_stex_module_sig_str ,
+      meta      = \l_stex_module_meta_str
+    }
+  }{
+    \str_if_empty:NT \l_stex_module_lang_str {
+      \msg_error:nnnn{stex}{error/siglanguage}{
+        \l_stex_module_ns_str?\l_stex_module_name_str
+      }{\l_stex_module_sig_str}
+    }
+
+    \seq_set_eq:NN \l_tmpa_seq \g_stex_currentfile_seq
+    \seq_pop_right:NN \l_tmpa_seq \l_tmpa_str
+    \seq_set_split:NnV \l_tmpb_seq . \l_tmpa_str
+    \seq_pop_right:NN \l_tmpb_seq \l_tmpa_str % .tex
+    \seq_pop_left:NN \l_tmpb_seq \l_tmpa_str % <filename>
+    \str_set:Nx \l_tmpa_str {
+      \stex_path_to_string:N \l_tmpa_seq /
+      \l_tmpa_str . \l_stex_module_sig_str .tex
+    }
+    \IfFileExists \l_tmpa_str {
+      \exp_args:No \stex_in_smsmode:nn { \l_tmpa_str } {
+        \seq_clear:N \l_stex_all_modules_seq
+        \prop_clear:N \l_stex_current_module_prop
+        \stex_debug:nn{modules}{Loading~signature~\l_tmpa_str}
+        \input { \l_tmpa_str }
+      }
+    }{
+      \msg_error:nnn{stex}{error/unknownmodule}{for~signature~\l_tmpa_str}
+    }
+    \stex_activate_module:n {
+      \l_stex_module_ns_str ? \l_stex_module_name_str
+    }
+    \prop_set_eq:Nc \l_stex_current_module_prop {
+      c_stex_module_
+      \l_stex_module_ns_str ?
+      \l_stex_module_name_str
+      _prop
+    }
+  }
+%    \end{macrocode}
+%
+% We load the metatheory:
+%
+%    \begin{macrocode}
+  \str_if_empty:NT \l_stex_module_meta_str {
+    \str_set:Nx \l_stex_module_meta_str {
+      \c_stex_metatheory_ns_str ? Metatheory
+    }
+  }
+  \str_if_eq:VnF \l_stex_module_meta_str {NONE} {
+    \exp_args:Nx \stex_add_to_current_module:n { 
+      \stex_activate_module:n {\l_stex_module_meta_str}
+    }
+    \stex_activate_module:n {\l_stex_module_meta_str}
+  }
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{environment}{module}
+%
+% The |module| environment.
+%
+% \begin{macro}{\_@@_begin_module:nn}
+%
+%   implements |\begin{module}|
+%
+%    \begin{macrocode}
+\cs_new_protected:Nn \_@@_begin_module:nn {
+  \stex_reactivate_macro:N \STEXexport
+  \stex_reactivate_macro:N \importmodule
+  \stex_reactivate_macro:N \symdecl
+  \stex_reactivate_macro:N \notation
+  \stex_reactivate_macro:N \symdef
+  \stex_module_setup:nn{#1}{#2}
+
+  \stex_debug:nn{modules}{
+    New~module:\\
+    Namespace:~\l_stex_module_ns_str\\
+    Name:~\l_stex_module_name_str\\
+    Language:~\l_stex_module_lang_str\\
+    Signature:~\l_stex_module_sig_str\\
+    Metatheory:~\l_stex_module_meta_str\\
+    File:~\stex_path_to_string:N \g_stex_currentfile_seq
+  }
+
+  \seq_put_right:Nx \l_stex_all_modules_seq {
+    \l_stex_module_ns_str ? \l_stex_module_name_str
+  }
+
+  \seq_gput_right:Nx  \g_stex_modules_in_file_seq
+      { \l_stex_module_ns_str ? \l_stex_module_name_str }
+  
+  \stex_if_smsmode:TF {
+    \stex_smsmode_set_codes:
+  } {
+    \begin{stex_annotate_env} {theory} {
+      \l_stex_module_ns_str ? \l_stex_module_name_str
+    }
+
+    \stex_annotate_invisible:nnn{header}{} {
+      \stex_annotate:nnn{language}{ \l_stex_module_lang_str }{}
+      \stex_annotate:nnn{signature}{ \l_stex_module_sig_str }{}
+      \str_if_eq:VnF \l_stex_module_meta_str {NONE} {
+        \stex_annotate:nnn{metatheory}{ \l_stex_module_meta_str }{}
+      }
+    }
+  }
+  % TODO: Inherit metatheory for nested modules?
+}
+\iffalse \end{stex_annotate_env} \fi %^^A make syntax highlighting work again
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\_@@_end_module:}
+%
+%   implements |\end{module}|
+%
+%    \begin{macrocode}
+\cs_new_protected:Nn \_@@_end_module: {
+  \str_set:Nx \l_tmpa_str {
+    c_stex_module_
+    \prop_item:Nn \l_stex_current_module_prop { ns } ?
+    \prop_item:Nn \l_stex_current_module_prop { name }
+    _prop
+  }
+  %^^A \prop_new:c { \l_tmpa_str }
+  \prop_gset_eq:cN { \l_tmpa_str } \l_stex_current_module_prop
+  \stex_debug:nn{modules}{Closing~module~\prop_item:Nn \l_stex_current_module_prop { name }}
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{environment}{@module}
+%
+%  The core environment, with no header
+%    
+%    \begin{macrocode}
+\iffalse \begin{stex_annotate_env} \fi %^^A make syntax highlighting work again
+\NewDocumentEnvironment { @module } { O{} m } {
+  \par
+  \_@@_begin_module:nn{#1}{#2}
+} { 
+  \_@@_end_module:
+  \stex_if_smsmode:TF {
+    \exp_args:Nx \stex_add_to_sms:n {
+      \prop_gset_from_keyval:cn {
+        c_stex_module_
+        \prop_item:Nn \l_stex_current_module_prop { ns } ?
+        \prop_item:Nn \l_stex_current_module_prop { name }
+        _prop
+      } {
+        name      = \prop_item:cn { \l_tmpa_str } { name } ,
+        ns        = \prop_item:cn { \l_tmpa_str } { ns } ,
+        imports   = \prop_item:cn { \l_tmpa_str } { imports } ,
+        constants = \prop_item:cn { \l_tmpa_str } { constants } ,
+        content   = \prop_item:cn { \l_tmpa_str } { content } ,
+        file      = \prop_item:cn { \l_tmpa_str } { file } ,
+        lang      = \prop_item:cn { \l_tmpa_str } { lang } ,
+        sig       = \prop_item:cn { \l_tmpa_str } { sig } ,
+        meta      = \prop_item:cn { \l_tmpa_str } { meta }
+      }
+    }
+  }{
+    \end{stex_annotate_env}
+  }
+}
+%    \end{macrocode}
+% \end{environment}
+%
+% \begin{macro}{\stex_modules_heading:}
+%
+%   Code for document headers
+%
+%    \begin{macrocode}
+\cs_if_exist:NTF \thesection {
+  \newcounter{module}[section]
+}{
+  \newcounter{module}
+}
+
+\bool_if:NT \c_stex_showmods_bool {
+  \latexml_if:F { \RequirePackage{mdframed} }
+}
+
+\cs_new_protected:Nn \stex_modules_heading: {
+  \stepcounter{module}
+  \par
+  \bool_if:NT \c_stex_showmods_bool {
+    \noindent{\textbf{Module} ~
+      \cs_if_exist:NT \thesection {\thesection.}
+      \themodule ~ [\l_stex_module_name_str]
+    }
+    % TODO references
+    % \sref@label@id{Module \thesection.\themodule [\module@name]}%
+    \str_if_empty:NTF \l_stex_module_title_str {
+    }{
+      \quad(\l_stex_module_title_str)\hfill
+    }\par
+  }
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% Finally:
+%    \begin{macrocode}
+\NewDocumentEnvironment { module } { O{} m } {
+  \bool_if:NT \c_stex_showmods_bool {
+    \begin{mdframed}
+  }
+  \begin{@module}[#1]{#2}
+  \stex_modules_heading:
+}{
+  \end{@module}
+  \bool_if:NT \c_stex_showmods_bool {
+    \end{mdframed}
+  }
+}
+%    \end{macrocode}
+% \end{environment}
+%
+% \subsubsection{Invoking modules}
+%
+% \begin{macro}{\STEXModule,\stex_invoke_module:n}
+%    \begin{macrocode}
+\NewDocumentCommand \STEXModule { m } {
+  \exp_args:NNx \str_set:Nn \l_tmpa_str { #1 }
+  \int_set:Nn \l_tmpa_int { \str_count:N \l_tmpa_str }
+  \tl_set:Nn \l_tmpa_tl {
+    \msg_error:nnn{stex}{error/unknownmodule}{#1}
+  }
+  \seq_map_inline:Nn \l_stex_all_modules_seq {
+    \str_set:Nn \l_tmpb_str { ##1 }
+    \str_if_eq:eeT { \l_tmpa_str } {
+      \str_range:Nnn \l_tmpb_str { -\l_tmpa_int } { -1 }
+    } {
+      \seq_map_break:n {
+        \tl_set:Nn \l_tmpa_tl {
+          \stex_invoke_module:n { ##1 }
+        }
+      }
+    }
+  }
+  \l_tmpa_tl
+}
+
+\cs_new_protected:Nn \stex_invoke_module:n {
+  \stex_debug:nn{modules}{Invoking~module~#1}
+  \peek_charcode_remove:NTF ! {
+    \_@@_invoke_uri:nN { #1 }
+  } {
+    \peek_charcode_remove:NTF ? {
+      \_@@_invoke_symbol:nn { #1 }
+    } {
+      \msg_error:nnn{stex}{error/syntax}{
+        ?~or~!~expected~after~
+        \c_backslash_str STEXModule{#1}
+      }
+    }
+  }
+}
+
+\cs_new_protected:Nn \_@@_invoke_uri:nN {
+  \str_set:Nn #2 { #1 }
+}
+
+\cs_new_protected:Nn \_@@_invoke_symbol:nn {
+  \stex_invoke_symbol:n{#1?#2}
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\stex_activate_module:n}
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_activate_module:n {
+  \stex_debug:nn{modules}{Activating~module~#1}
+  \exp_args:NNx \seq_if_in:NnF \l_stex_all_modules_seq { #1 } {
+    \seq_put_right:Nx \l_stex_all_modules_seq { #1 }
+    \prop_item:cn { c_stex_module_#1_prop } { content }
+  }
+}
+%    \end{macrocode}
+% \end{macro}
+%
+%    \begin{macrocode}
+%</package>
+%    \end{macrocode}
+%
+% \end{implementation}
+%
+% \PrintIndex
