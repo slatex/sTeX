@@ -6,6 +6,7 @@
 %%
 %% basics.dtx  (with options: `package')
 %% mathhub.dtx  (with options: `package')
+%% references.dtx  (with options: `package')
 %% modules.dtx  (with options: `package')
 %% inheritance.dtx  (with options: `package')
 %% symbols.dtx  (with options: `package')
@@ -128,6 +129,22 @@
   \tl_set:Nn \l__stex_annotate_arg_tl { #1 }
   \tl_if_empty:NT \l__stex_annotate_arg_tl {
     \tl_set_eq:NN \l__stex_annotate_arg_tl \c__stex_annotate_emptyarg_tl
+  }
+}
+\bool_new:N \l_stex_html_do_output_bool
+\bool_set_true:N \l_stex_html_do_output_bool
+\prg_new_conditional:Nnn \stex_if_do_html: {p,T,F,TF} {
+  \bool_if:nTF \l_stex_html_do_output_bool
+    \prg_return_true: \prg_return_false:
+}
+\cs_new_protected:Nn \stex_suppress_html:n {
+  \exp_args:Nne \use:nn {
+    \bool_set_false:N \l_stex_html_do_output_bool
+    #1
+  }{
+    \stex_if_do_html:T {
+      \bool_set_true:N \l_stex_html_do_output_bool
+    }
   }
 }
 \scalatex_if:TF{
@@ -481,6 +498,10 @@
           \prop_gput:cno { c_stex_mathhub_#1_manifest_prop }
             { narr } \l_tmpb_tl
         }
+        {url-base} {
+          \prop_gput:cno { c_stex_mathhub_#1_manifest_prop }
+            { url } \l_tmpb_tl
+        }
         {source-base} {
           \prop_gput:cno { c_stex_mathhub_#1_manifest_prop }
             { ns } \l_tmpb_tl
@@ -613,6 +634,10 @@
   }
   \l_tmpa_tl
 }
+
+%%%%%%%%%%%%%   references.dtx   %%%%%%%%%%%%%
+
+
 
 %%%%%%%%%%%%%   modules.dtx   %%%%%%%%%%%%%
 
@@ -1568,18 +1593,20 @@
       \prop_item:Nn \l_tmpa_prop { module } ?
       \prop_item:Nn \l_tmpa_prop { name }
     }
-    \stex_annotate_invisible:nnn {symdecl} {
-      \prop_item:Nn \l_tmpa_prop { module } ?
-      \prop_item:Nn \l_tmpa_prop { name }
-    } {
-      \stex_annotate_invisible:nnn{type}{}{$\l_stex_symdecl_type_tl$}
-      \stex_annotate_invisible:nnn{args}{}{
-        \prop_item:Nn \l_tmpa_prop { args }
-      }
-      \stex_annotate_invisible:nnn{macroname}{}{#1}
-      \tl_if_empty:NF \l_stex_symdecl_definiens_tl {
-        \stex_annotate_invisible:nnn{definiens}{}
-          {$\l_stex_symdecl_definiens_tl$}
+    \stex_if_do_html:T {
+      \stex_annotate_invisible:nnn {symdecl} {
+        \prop_item:Nn \l_tmpa_prop { module } ?
+        \prop_item:Nn \l_tmpa_prop { name }
+      } {
+        \stex_annotate_invisible:nnn{type}{}{$\l_stex_symdecl_type_tl$}
+        \stex_annotate_invisible:nnn{args}{}{
+          \prop_item:Nn \l_tmpa_prop { args }
+        }
+        \stex_annotate_invisible:nnn{macroname}{}{#1}
+        \tl_if_empty:NF \l_stex_symdecl_definiens_tl {
+          \stex_annotate_invisible:nnn{definiens}{}
+            {$\l_stex_symdecl_definiens_tl$}
+        }
       }
     }
   }
@@ -1949,7 +1976,8 @@
     } \l_tmpa_prop
 
     % HTML annotations
-    \stex_annotate_invisible:nnn { notation }
+    \stex_if_do_html:T {
+      \stex_annotate_invisible:nnn { notation }
       { \prop_item:Nn \l_tmpb_prop { symbol } } {
         \stex_annotate_invisible:nnn { notationfragment }
           { \l__stex_notation_variant_str \c_hash_str \l__stex_notation_lang_str }{}
@@ -1992,6 +2020,7 @@
           } } { \l_tmpa_tl } $
         }
       }
+    }
   }
 }
 \keys_define:nn { stex / symdef } {
@@ -2837,10 +2866,10 @@
 \stex_reactivate_macro:N \notation
 \stex_reactivate_macro:N \symdef
 \ExplSyntaxOff
-
+\csname stex_suppress_html:n\endcsname{
   % is-a (a:A, a \in A, a is an A, etc.)
   \symdecl[args=ai]{isa}
-  \notation[typed]{isa}{#1 \comp: #2}{#1 \comp, #2}
+  \notation[typed]{isa}{#1 \comp{:} #2}{#1 \comp, #2}
   \notation[in]{isa}{#1 \comp\in #2}{#1 \comp, #2}
   \notation[pred]{isa}{#2\comp(#1 \comp)}{#1 \comp, #2}
 
@@ -2904,6 +2933,7 @@
   \symdecl[name=mathematical-structure,args=a]{mathstruct} % TODO
   \notation[angle,prec=nobrackets]{mathstruct}{\comp\langle #1 \comp\rangle}{#1 \comp, #2}
 
+}
   \ExplSyntaxOn
   \stex_add_to_current_module:n{
     \let\nappa\apply
