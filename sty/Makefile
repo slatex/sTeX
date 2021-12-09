@@ -1,6 +1,6 @@
 # recurse into the directories. 
-DISTDIRS = stex compatibility extensions metakeys etc
-MAKEDIRS = $(DISTDIRS)
+MAKEDIRS = stex  extensions metakeys
+DISTDIRS = $(MAKEDIRS) compatibility etc
 
 all package doc: 
 	@for d in $(MAKEDIRS); do (cd $$d && $(MAKE) -$(MAKEFLAGS) $@) || exit $$?; done
