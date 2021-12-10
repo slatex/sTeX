@@ -643,13 +643,19 @@
 \AddToHook{begindocument}{
   \iow_open:Nn \c__stex_refs_refs_iow {\jobname.sref}
 }
+\AddToHook{enddocument}{
+  \iow_close:N \c__stex_refs_refs_iow
+}
 
-\str_set:Nn \g__stex_refs_title_tl {Unnamed Document}
+\str_set:Nn \g__stex_refs_title_tl {Unnamed~Document}
 
 \NewDocumentCommand \STEXreftitle { m } {
   \tl_gset:Nx \g__stex_refs_title_tl { #1 }
 }
+\seq_new:N \g__stex_refs_all_refs_seq
+
 \str_new:N \l_stex_current_docns_str
+
 \cs_new_protected:Nn \stex_get_document_uri: {
   \seq_set_eq:NN \l_tmpa_seq \g_stex_currentfile_seq
   \seq_pop_right:NN \l_tmpa_seq \l_tmpb_str
@@ -751,12 +757,13 @@
   \str_set:Nx \l_tmpa_str {
     \l_stex_current_docns_str\c_hash_str\l_tmpa_str
   }
+  \seq_gput_right:No \g__stex_refs_all_refs_seq \l_tmpa_str
   \stex_if_smsmode:TF {
     \stex_get_document_url:
     \str_gset_eq:cN {sref_url_\l_tmpa_str _str}\l_stex_current_docurl_str
     \str_gset_eq:cN {sref_\l_tmpa_str _type}\c__stex_refs_url_str
   }{
-    \iow_now:Nx \c__stex_refs_refs_iow { \l_tmpa_str~=~\expandafter{\@currentlabel~in~\exp_args:No\unexpanded\g__stex_refs_title_str},}
+    \iow_now:Nx \c__stex_refs_refs_iow { \l_tmpa_str~=~\expandafter{\@currentlabel~in~\exp_args:No\unexpanded\g__stex_refs_title_tl},}
     \exp_after:wN\label\exp_after:wN{sref_\l_tmpa_str}
     \str_gset:cn {sref_\l_tmpa_str _type}\c__stex_refs_ref_str
   }
@@ -764,6 +771,23 @@
 \cs_new_protected:Nn \stex_ref_new_sym_target:n {
   \str_gset_eq:cN {sref_sym_#1_uri} \l_stex_current_docns_str
 }
+\keys_define:nn { stex / sref } {
+  linktext      .tl_set:N  = \l__stex_refs_linktext_tl ,
+  fallback      .tl_set:N  = \l__stex_refs_fallback_tl ,
+  pre           .tl_set:N  = \l__stex_refs_pre_tl ,
+  post          .tl_set:N  = \l__stex_refs_post_tl ,
+  indoc         .str_set_x:N  = \l__stex_refs_repo_str ,
+}
+
+\cs_new_protected:Nn \__stex_refs_args:n {
+  \tl_clear:N \l__stex_refs_linktext_tl
+  \tl_clear:N \l__stex_refs_fallback_tl
+  \tl_clear:N \l__stex_refs_pre_tl
+  \tl_clear:N \l__stex_refs_post_tl
+  \str_clear:N \l__stex_refs_repo_str
+  \keys_set:nn { stex / sref } { #1 }
+}
+
 
 %%%%%%%%%%%%%   modules.dtx   %%%%%%%%%%%%%
 
@@ -1091,13 +1115,13 @@
       \cs_if_exist:NT \thesection {\thesection.}
       \themodule ~ [\l_stex_module_name_str]
     }
-    % TODO references
-    % \sref@label@id{Module \thesection.\themodule [\module@name]}%
     \str_if_empty:NTF \l_stex_module_title_str {
     }{
       \quad(\l_stex_module_title_str)\hfill
     }\par
   }
+  \edef\@currentlabel{Module~\thesection.\themodule~[\l_stex_module_name_str]}
+  % TODO
   \stex_ref_new_doc_target:n \l_stex_module_name_str
 }
 \NewDocumentEnvironment { module } { O{} m } {
