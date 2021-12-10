@@ -10,6 +10,8 @@ all: pack doc
 
 doc: $(DOC)
 
+package:
+
 pack: $(DTX) $(INS)
 	@for i in $(SPATH); do cd $$i; make package; done
 

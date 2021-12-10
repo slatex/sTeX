@@ -11,7 +11,7 @@ doc: $(DOC)
 package: $(DTX) $(INS)
 	$(PDFLATEX) $(INS)
 
-$(DOC): %.pdf: %.dtx package
+$(DOC): %.pdf: %.dtx 
 	$(PDFLATEX) $<
 	biber -q $(basename $<)
 	$(PDFLATEX) $<
