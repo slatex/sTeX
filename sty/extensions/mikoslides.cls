@@ -32,6 +32,7 @@
   \newcounter{paragraph}
   \newcounter{subparagraph}
   \newcounter{Hfootnote}
+  \RequirePackage{omdoc}
 \fi
 \RequirePackage{mikoslides}
 \endinput
