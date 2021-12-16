@@ -6,35 +6,40 @@
 %%
 %% mikoslides.dtx  (with options: `package')
 %% 
-\NeedsTeXFormat{LaTeX2e}[1999/12/01]
-\ProvidesPackage{mikoslides}[2020/12/06 v1.3 MiKo slides Package]
+\ProvidesExplPackage{mikoslides}{2020/12/06}{1.3}{MiKo slides Package}
+\RequirePackage{l3keys2e,expl-keystr-compat}
 
-\RequirePackage{kvoptions}
-\RequirePackage{stex-metakeys}
-\SetupKeyvalOptions{family=mks@sty,prefix=mks@sty@}
-\DeclareStringOption{topsect}
-\DeclareStringOption{defaulttopsect}
-\newif\ifnotes\notestrue
-\DeclareBoolOption{notes}
-\AddToKeyvalOption*{notes}{\notestrue}%\PassOptionsToPackage{notes}{statements}}
-\DeclareComplementaryOption{slides}{notes}
-\AddToKeyvalOption*{slides}{\notesfalse}%\PassOptionsToPackage{nontheorem}{statements}}
-\DeclareBoolOption{sectocframes}
-\DeclareBoolOption{frameimages}
-\DeclareBoolOption{fiboxed}
-\DeclareBoolOption{noproblems}
-\ProcessKeyvalOptions{mks@sty}
-\ifx\mks@sty@topsect\@empty\edef\@@topsect{\mks@sty@defaulttopsect}
-\else\edef\@@topsect{\mks@sty@topsect}\fi
+\keys_define:nn{mikoslides / pkg}{
+  topsect         .str_set_x:N  = \c__mikoslides_topsect_str,
+  defaulttopsect  .str_set_x:N  = \c__mikoslides_defaulttopsec_str,
+  notes           .bool_set:N   = \c__mikoslides_notes_bool ,
+  slides          .code:n       = { \bool_set_false:N \c__mikoslides_notes_bool },
+  sectocframes    .bool_set:N   = \c__mikoslides_sectocframes_bool ,
+  frameimages     .bool_set:N   = \c__mikoslides_frameimages_bool ,
+  fiboxed         .bool_set:N   = \c__mikoslides_fiboxed_bool ,
+  noproblems      .bool_set:N   = \c__mikoslides_noproblems_bool,
+  unknown .code:n      = {
+    \PassOptionsToClass{\CurrentOption}{stex}
+    \PassOptionsToClass{\CurrentOption}{tikzinput}
+  }
+}
+\ProcessKeysOptions{ mikosllides / pkg }
+
+\str_if_empty:NTF \c__mikoslides_topsect_str {
+  \str_set_eq:NN \__mikoslidestopsect \c__mikoslides_defaulttopsec_str
+}{
+  \str_set_eq:NN \__mikoslidestopsect \c__mikoslides_topsect_str
+}
 \RequirePackage{stex-compatibility}
 \RequirePackage{stex-tikzinput}
-\ifmks@sty@notes
-\RequirePackage{a4wide}
-\RequirePackage{marginnote}
-\PassOptionsToPackage{dvipsnames,svgnames}{xcolor}
-\RequirePackage{mdframed}
-\RequirePackage[noxcolor,noamsthm]{beamerarticle}
-\fi
+\bool_if:NT \c__mikoslides_notes_bool {
+  \RequirePackage{a4wide}
+  \RequirePackage{marginnote}
+  \PassOptionsToPackage{dvipsnames,svgnames}{xcolor}
+  \RequirePackage{mdframed}
+  \RequirePackage[noxcolor,noamsthm]{beamerarticle}
+  \RequirePackage[bookmarks,bookmarksopen,bookmarksnumbered,breaklinks,hidelinks]{hyperref}
+}
 \RequirePackage{etoolbox}
 \RequirePackage{amssymb}
 \RequirePackage{amsmath}
@@ -43,12 +48,9 @@
 \RequirePackage{url}
 \RequirePackage{graphicx}
 \RequirePackage{pgf}
-\ifmks@sty@notes
-\RequirePackage[bookmarks,bookmarksopen,bookmarksnumbered,breaklinks,hidelinks]{hyperref}
-\fi
-\ifmks@sty@notes
-\renewcommand\usetheme[2][]{\usepackage[#1]{beamernotestheme#2}}
-\fi
+\bool_if:NT \c__mikoslides_notes_bool {
+  \renewcommand\usetheme[2][]{\usepackage[#1]{beamernotestheme#2}}
+}
 \newcounter{slide}
 \newlength{\slidewidth}\setlength{\slidewidth}{13.5cm}
 \newlength{\slideheight}\setlength{\slideheight}{9cm}
@@ -205,7 +207,7 @@
 \def\symrefemph#1{{\textcolor{cyan}{#1}}}
 \def\compemph#1{{\textcolor{blue}{#1}}}
 \def\titleemph#1{{\textcolor{blue}{#1}}}
-\def\@@lec#1{(\textcolor{green}{#1})}
+\def\__mikoslideslec#1{(\textcolor{green}{#1})}
 \pgfdeclareimage[width=.8em]{miko@small@dbend}{dangerous-bend}
 \def\smalltextwarning{%
   \pgfuseimage{miko@small@dbend}%
@@ -228,17 +230,17 @@
   \begin{picture}(0,0)\put(#1){#2}\end{picture}%
 }%
 \ifmks@sty@sectocframes%
-\ifdefstring\@@topsect{part}{%
+\ifdefstring\__mikoslidestopsect{part}{%
   \newcounter{chapter}\counterwithin*{section}{chapter}}
-{\ifdefstring\@@topsect{chapter}{\newcounter{chapter}\counterwithin*{section}{chapter}}{}}
+{\ifdefstring\__mikoslidestopsect{chapter}{\newcounter{chapter}\counterwithin*{section}{chapter}}{}}
 \fi% ifsectocframes
 \section@level=2
 \def\part@prefix{}
-\ifdefstring{\@@topsect}{part}
+\ifdefstring{\__mikoslidestopsect}{part}
 {\section@level=0%
   \def\thesection{\arabic{chapter}.\arabic{section}}%
   \def\part@prefix{\arabic{chapter}.}}{}
-\ifdefstring{\@@topsect}{chapter}
+\ifdefstring{\__mikoslidestopsect}{chapter}
 {\section@level=1%
   \def\thesection{\arabic{chapter}.\arabic{section}}%
   \def\part@prefix{\arabic{chapter}.}}{}
@@ -254,30 +256,30 @@
   \red{%
     \ifcase\section@level\or
     \stepcounter{part}
-    \def\@@label{\omdoc@part@kw~\Roman{part}}
+    \def\__mikoslideslabel{\omdoc@part@kw~\Roman{part}}
     \def\currentsectionlevel{\omdoc@part@kw}
     \or%
     \stepcounter{chapter}
-    \def\@@label{\omdoc@chapter@kw~\arabic{chapter}}
+    \def\__mikoslideslabel{\omdoc@chapter@kw~\arabic{chapter}}
     \def\currentsectionlevel{\omdoc@chapter@kw}
     \or
     \stepcounter{section}
-    \def\@@label{\part@prefix\arabic{section}}
+    \def\__mikoslideslabel{\part@prefix\arabic{section}}
     \def\currentsectionlevel{\omdoc@section@kw}
     \or
     \stepcounter{subsection}
-    \def\@@label{\part@prefix\arabic{section}.\arabic{subsection}}
+    \def\__mikoslideslabel{\part@prefix\arabic{section}.\arabic{subsection}}
     \def\currentsectionlevel{\omdoc@subsection@kw}
     \or
     \stepcounter{subsubsection}
-    \def\@@label{\part@prefix\arabic{section}.\arabic{subsection}.\arabic{subsubsection}}
+    \def\__mikoslideslabel{\part@prefix\arabic{section}.\arabic{subsection}.\arabic{subsubsection}}
     \def\currentsectionlevel{\omdoc@subsubsection@kw}
     \or
     \stepcounter{mparagraph}
-    \def\@@label{\part@prefix\arabic{section}.\arabic{msubsection}.\arabic{subsubsection}.\arabic{mparagraph}}
+    \def\__mikoslideslabel{\part@prefix\arabic{section}.\arabic{msubsection}.\arabic{subsubsection}.\arabic{mparagraph}}
     \def\currentsectionlevel{\omdoc@paragraph@kw}
     \fi% end ifcase
-    \@@label\sref@label@id\@@label
+    \__mikoslideslabel\sref@label@id\__mikoslideslabel
     \quad #2%
   }%
   \vfill%

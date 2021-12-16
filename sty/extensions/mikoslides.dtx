@@ -9,11 +9,7 @@
 % \fi
 % 
 % \iffalse
-%<cls|package>\NeedsTeXFormat{LaTeX2e}[1999/12/01]
-%<cls>\ProvidesClass{mikoslides}[2020/12/06 v1.3 MiKo slides Class]
-%<package>\ProvidesPackage{mikoslides}[2020/12/06 v1.3 MiKo slides Package]
 %
-
 %<*driver>
 \providecommand\bibfolder{../../lib/bib}
 \input{../../doc/docheader}
@@ -303,52 +299,67 @@
 %
 %    \begin{macrocode}
 %<*cls>
-\RequirePackage{kvoptions}
-\RequirePackage{stex-metakeys}
-\RequirePackage{etoolbox}
-\SetupKeyvalOptions{family=mks@cls,prefix=mks@cls@}
-\DeclareStringOption[article]{class}
-\AddToKeyvalOption*{class}{\PassOptionsToClass{class=\mks@cls@class}{omdoc}
-  \ifdefstring{\mks@cls@class}{book}{\PassOptionsToPackage{defaulttopsect=part}{mikoslides}}{}
-  \ifdefstring{\mks@cls@class}{report}{\PassOptionsToPackage{defaulttopsect=part}{mikoslides}}}{}
-\DeclareBoolOption{notes}
-\DeclareComplementaryOption{slides}{notes}
-\DeclareDefaultOption{%
-  \PassOptionsToClass{\CurrentOption}{omdoc}
-  \PassOptionsToClass{\CurrentOption}{beamer}
-  \PassOptionsToPackage{\CurrentOption}{mikoslides}}
-\ProcessKeyvalOptions{mks@cls}
+%<@@=mikoslides>
+\ProvidesExplClass{mikoslides}{2020/12/06}{1.3}{MiKo slides Class}
+\RequirePackage{l3keys2e,expl-keystr-compat}
+
+\keys_define:nn{mikoslides / cls}{
+  class   .code:n   = {
+    \PassOptionsToClass{\CurrentOption}{omdoc}
+    \str_if_eq:nnT{#1}{book}{
+      \PassOptionsToPackage{defaulttopsec=part}{mikoslides}
+    }
+    \str_if_eq:nnT{#1}{report}{
+      \PassOptionsToPackage{defaulttopsec=part}{mikoslides}
+    }
+  },
+  notes   .bool_set:N  = \c_@@_notes_bool ,
+  slides  .code:n      = { \bool_set_false:N \c_@@_notes_bool },
+  unknown .code:n      = {
+    \PassOptionsToClass{\CurrentOption}{omdoc}
+    \PassOptionsToClass{\CurrentOption}{beamer}
+    \PassOptionsToPackage{\CurrentOption}{mikoslides}}
+  }
+}
+\ProcessKeysOptions{ mikoslides / cls }
+\bool_if:NTF \c_@@_notes_bool {
+  \PassOptionsToPackage{notes=true}{mikoslides}
+}{
+  \PassOptionsToPackage{notes=false}{mikoslides}
+}
 %</cls>
 %    \end{macrocode}
 % now we do the same for the |mikoslides| package. 
 %    \begin{macrocode}
 %<*package>
-%\RequirePackage{stex-base}
-\RequirePackage{kvoptions}
-\RequirePackage{stex-metakeys}
-\SetupKeyvalOptions{family=mks@sty,prefix=mks@sty@}
-\DeclareStringOption{topsect}
-\DeclareStringOption{defaulttopsect}
-\newif\ifnotes\notestrue
-\DeclareBoolOption{notes}
-\AddToKeyvalOption*{notes}{\notestrue}%\PassOptionsToPackage{notes}{statements}}
-\DeclareComplementaryOption{slides}{notes}
-\AddToKeyvalOption*{slides}{\notesfalse}%\PassOptionsToPackage{nontheorem}{statements}}
-\DeclareBoolOption{sectocframes}
-\DeclareBoolOption{frameimages}
-\DeclareBoolOption{fiboxed}
-\DeclareBoolOption{noproblems}
-% \DeclareDefaultOption{
-% \PassOptionsToPackage{\CurrentOption}{stex}
-% \PassOptionsToPackage{\CurrentOption}{smglom}
-% \PassOptionsToPackage{\CurrentOption}{tikzinput}}
-\ProcessKeyvalOptions{mks@sty}
+\ProvidesExplPackage{mikoslides}{2020/12/06}{1.3}{MiKo slides Package}
+\RequirePackage{l3keys2e,expl-keystr-compat}
+
+\keys_define:nn{mikoslides / pkg}{
+  topsect         .str_set_x:N  = \c_@@_topsect_str,
+  defaulttopsect  .str_set_x:N  = \c_@@_defaulttopsec_str,
+  notes           .bool_set:N   = \c_@@_notes_bool ,
+  slides          .code:n       = { \bool_set_false:N \c_@@_notes_bool },
+  sectocframes    .bool_set:N   = \c_@@_sectocframes_bool ,
+  frameimages     .bool_set:N   = \c_@@_frameimages_bool ,
+  fiboxed         .bool_set:N   = \c_@@_fiboxed_bool ,
+  noproblems      .bool_set:N   = \c_@@_noproblems_bool,
+  unknown .code:n      = {
+    \PassOptionsToClass{\CurrentOption}{stex}
+    \PassOptionsToClass{\CurrentOption}{tikzinput}
+  }
+}
+\ProcessKeysOptions{ mikosllides / pkg }
+
 %    \end{macrocode}
 % we give ourselves a macro |\@@topsect| that needs only be evaluated once, so that the
 % |\ifdefstring| conditionals work below.
 %    \begin{macrocode}
-\ifx\mks@sty@topsect\@empty\edef\@@topsect{\mks@sty@defaulttopsect}
-\else\edef\@@topsect{\mks@sty@topsect}\fi
+\str_if_empty:NTF \c_@@_topsect_str {
+  \str_set_eq:NN \@@topsect \c_@@_defaulttopsec_str
+}{
+  \str_set_eq:NN \@@topsect \c_@@_topsect_str
+}
 %</package>
 %    \end{macrocode}
 %
@@ -356,16 +367,16 @@
 % class (and set some counters).
 %    \begin{macrocode}
 %<*cls>
-\ifmks@cls@notes
+\bool_if:NTF \c_@@_notes_bool {
   \LoadClass{omdoc}
-\else
+}{
   \LoadClass[10pt,notheorems,xcolor={dvipsnames,svgnames}]{beamer}
   \newcounter{Item}
   \newcounter{paragraph}
   \newcounter{subparagraph}
   \newcounter{Hfootnote}
   \RequirePackage{omdoc}
-\fi
+}
 %    \end{macrocode}
 % now it only remains to load the |mikoslides| package that does all the rest. 
 %    \begin{macrocode}
@@ -384,13 +395,14 @@
 %<*package>
 \RequirePackage{stex-compatibility}
 \RequirePackage{stex-tikzinput}
-\ifmks@sty@notes
-\RequirePackage{a4wide}
-\RequirePackage{marginnote}
-\PassOptionsToPackage{dvipsnames,svgnames}{xcolor}
-\RequirePackage{mdframed}
-\RequirePackage[noxcolor,noamsthm]{beamerarticle}
-\fi
+\bool_if:NT \c_@@_notes_bool {
+  \RequirePackage{a4wide}
+  \RequirePackage{marginnote}
+  \PassOptionsToPackage{dvipsnames,svgnames}{xcolor}
+  \RequirePackage{mdframed}
+  \RequirePackage[noxcolor,noamsthm]{beamerarticle}
+  \RequirePackage[bookmarks,bookmarksopen,bookmarksnumbered,breaklinks,hidelinks]{hyperref}
+}
 \RequirePackage{etoolbox}
 \RequirePackage{amssymb}
 \RequirePackage{amsmath}
@@ -399,16 +411,6 @@
 \RequirePackage{url}
 \RequirePackage{graphicx}
 \RequirePackage{pgf}
-\ifmks@sty@notes
-\RequirePackage[bookmarks,bookmarksopen,bookmarksnumbered,breaklinks,hidelinks]{hyperref}
-\fi
-%    \end{macrocode}
-%
-% finally, we require the |metakeys| package from \sTeX, so that we can use the
-% |\addmetakey| mechanism.
-%
-%    \begin{macrocode}
-%\RequirePackage{metakeys}
 %    \end{macrocode}
 % 
 % \subsection{Notes and Slides}\label{sec:impl:noteslides}
@@ -419,9 +421,9 @@
 % |beamernotestheme|\meta{theme}|.sty|.\ednote{MK: This is not ideal, but I am not sure
 % that I want to be able to provide the full theme functionality there.}
 %    \begin{macrocode}
-\ifmks@sty@notes
-\renewcommand\usetheme[2][]{\usepackage[#1]{beamernotestheme#2}}
-\fi
+\bool_if:NT \c_@@_notes_bool {
+  \renewcommand\usetheme[2][]{\usepackage[#1]{beamernotestheme#2}}
+}
 %    \end{macrocode}
 % We define the sizes of slides in the notes. Somehow, we cannot get by with the same
 % here. 
@@ -438,11 +440,11 @@
 % no-operation otherwise we declare the |note| environment as a comment via the |comment|
 % package.
 %    \begin{macrocode}
-\ifmks@sty@notes%
-  \renewenvironment{note}{\ignorespaces}{}%
-\else%
-  \excludecomment{note}%
-\fi%
+\bool_if:NTF \c_@@_notes_bool {
+  \renewenvironment{note}{\ignorespaces}{}
+}{
+  \excludecomment{note}
+}
 %    \end{macrocode}
 % \end{environment}
 % 

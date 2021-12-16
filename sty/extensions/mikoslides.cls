@@ -6,34 +6,43 @@
 %%
 %% mikoslides.dtx  (with options: `cls')
 %% 
-\NeedsTeXFormat{LaTeX2e}[1999/12/01]
-\ProvidesClass{mikoslides}[2020/12/06 v1.3 MiKo slides Class]
+\ProvidesExplClass{mikoslides}{2020/12/06}{1.3}{MiKo slides Class}
+\RequirePackage{l3keys2e,expl-keystr-compat}
 
-\RequirePackage{kvoptions}
-\RequirePackage{stex-metakeys}
-\RequirePackage{etoolbox}
-\SetupKeyvalOptions{family=mks@cls,prefix=mks@cls@}
-\DeclareStringOption[article]{class}
-\AddToKeyvalOption*{class}{\PassOptionsToClass{class=\mks@cls@class}{omdoc}
-  \ifdefstring{\mks@cls@class}{book}{\PassOptionsToPackage{defaulttopsect=part}{mikoslides}}{}
-  \ifdefstring{\mks@cls@class}{report}{\PassOptionsToPackage{defaulttopsect=part}{mikoslides}}}{}
-\DeclareBoolOption{notes}
-\DeclareComplementaryOption{slides}{notes}
-\DeclareDefaultOption{%
-  \PassOptionsToClass{\CurrentOption}{omdoc}
-  \PassOptionsToClass{\CurrentOption}{beamer}
-  \PassOptionsToPackage{\CurrentOption}{mikoslides}}
-\ProcessKeyvalOptions{mks@cls}
-\ifmks@cls@notes
+\keys_define:nn{mikoslides / cls}{
+  class   .code:n   = {
+    \PassOptionsToClass{\CurrentOption}{omdoc}
+    \str_if_eq:nnT{#1}{book}{
+      \PassOptionsToPackage{defaulttopsec=part}{mikoslides}
+    }
+    \str_if_eq:nnT{#1}{report}{
+      \PassOptionsToPackage{defaulttopsec=part}{mikoslides}
+    }
+  },
+  notes   .bool_set:N  = \c__mikoslides_notes_bool ,
+  slides  .code:n      = { \bool_set_false:N \c__mikoslides_notes_bool },
+  unknown .code:n      = {
+    \PassOptionsToClass{\CurrentOption}{omdoc}
+    \PassOptionsToClass{\CurrentOption}{beamer}
+    \PassOptionsToPackage{\CurrentOption}{mikoslides}}
+  }
+}
+\ProcessKeysOptions{ mikoslides / cls }
+\bool_if:NTF \c__mikoslides_notes_bool {
+  \PassOptionsToPackage{notes=true}{mikoslides}
+}{
+  \PassOptionsToPackage{notes=false}{mikoslides}
+}
+\bool_if:NTF \c__mikoslides_notes_bool {
   \LoadClass{omdoc}
-\else
+}{
   \LoadClass[10pt,notheorems,xcolor={dvipsnames,svgnames}]{beamer}
   \newcounter{Item}
   \newcounter{paragraph}
   \newcounter{subparagraph}
   \newcounter{Hfootnote}
   \RequirePackage{omdoc}
-\fi
+}
 \RequirePackage{mikoslides}
 \endinput
 %%

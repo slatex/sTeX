@@ -7,9 +7,6 @@
 % The original of this file is in the public repository at 
 % http://github.com/sLaTeX/sTeX/
 %
-%<package|cls>\NeedsTeXFormat{LaTeX2e}[1999/12/01]
-%<package>\ProvidesPackage{omdoc}[2020/10/19 v1.4 OMDoc document Structure]
-%<cls>\ProvidesClass{omdoc}[2020/10/19 v1.4 OMDoc Documents]
 %
 %<*driver>
 \def\bibfolder{../../lib/bib}
@@ -300,53 +297,47 @@
 %   |document| environment and the |omdoc| element corresponds to it, whereas the
 %   package provides the concrete functionality.
 %
+%    \begin{macrocode}
+%<*cls>
+\ProvidesExplClass{omdoc}{2020/10/19}{1.4}{OMDoc Documents}
+\RequirePackage{l3keys2e,expl-keystr-compat}
+%    \end{macrocode}
+%
 % \begin{omgroup}[id=sec:impl:cls:options]{Class Options}
 %   To initialize the |omdoc| class, we declare and process the necessary options using
 %   the |kvoptions| package for  key/value options handling. For
 %   |omdoc.cls| this is quite simple. We have options |report| and |book|, which set the
 %   \DescribeMacro{\omdoc@cls@class}|\omdoc@cls@class| macro and pass on the macro to |omdoc.sty|
 %   for further processing. 
-% 
-%    \begin{macrocode}
-%<*cls>
-\RequirePackage{etoolbox}
-\RequirePackage{kvoptions}
-\SetupKeyvalOptions{family=omdoc@cls,prefix=omdoc@cls@}
-\DeclareStringOption[article]{class}
-\AddToKeyvalOption*{class}{\PassOptionsToPackage{class=\omdoc@cls@class}{omdoc}}
-%    \end{macrocode}
-%
-%
-% the following options are deprecated.
 %
 %    \begin{macrocode}
-\DeclareVoidOption{report}{\def\omdoc@cls@class{report}%
-\ClassWarning{omdoc}{the option 'report' is deprecated, use 'class=report', instead}}
-\DeclareVoidOption{book}{\def\omdoc@cls@class{book}%
-\ClassWarning{omdoc}{the option 'part' is deprecated, use 'class=book', instead}}
-\DeclareVoidOption{bookpart}{\def\omdoc@cls@class{book}%
-\PassOptionsToPackage{topsect=chapter}{omdoc}%
-\ClassWarning{omdoc}{the option 'bookpart' is deprecated, use 'class=book,topsect=chapter', instead}}
-\DeclareBoolOption{minimal}
-%    \end{macrocode}
-% the rest of the options are only passed on to |omdoc.sty| and the class selected by the
-% first options.  We need to load the |etoolbox| package early for |\@xappto|. 
-%    \begin{macrocode}
-\def\@omdoc@cls@docopt{}
-\DeclareDefaultOption{%
-\ifx\@omdoc@cls@docopt\@empty%
-\xdef\@omdoc@cls@docopt{\CurrentOption}%
-\else\xappto\@omdoc@cls@docopt{,\CurrentOption}%
-\fi}%
-\PassOptionsToPackage{\CurrentOption}{omdoc}
-\ProcessKeyvalOptions{omdoc@cls}
-%    \end{macrocode}
-%
-% We load |article.cls|, and the desired packages. For the {\latexml} bindings, we make
-% sure the right packages are loaded.
-%
-%    \begin{macrocode}
-\LoadClass[\@omdoc@cls@docopt]{\omdoc@cls@class}
+\keys_define:nn{ document-structure / pkg }{
+  class       .initial:n    = {article},
+  class       .str_set_x:N  = \c_document_structure_class_str,
+  minimal     .bool_set:N   = \c_document_structure_minimal_bool,
+  report      .code:n       = {
+    \ClassWarning{omdoc}{the option 'report' is deprecated, use 'class=report', instead}
+    \str_set:Nn \c_document_structure_class_str {report}
+  },
+  book        .code:n       = {
+    \ClassWarning{omdoc}{the option 'book' is deprecated, use 'class=book', instead}
+    \str_set:Nn \c_document_structure_class_str {book}
+  },
+  bookpart    .code:n       = {
+    \ClassWarning{omdoc}{the option 'bookpart' is deprecated, use 'class=book,topsect=chapter', instead}
+    \str_set:Nn \c_document_structure_class_str {book}
+    \str_set:Nn \c_document_structure_topsect_str {chapter}
+  },
+  docopt      .str_set_x:N  = \c_document_structure_docopt_str,
+  unknown     .code:n       = {
+    \PassOptionsToPackage{ \CurrentOption }{ omdoc }
+  }
+}
+
+\ProcessKeysOptions{ document-structure / pkg }
+\exp_after:wN\LoadClass\exp_after:wN[\c_document_structure_docopt_str]
+  {\c_document_structure_class_str}
+
 %    \end{macrocode}
 % \end{omgroup}
 %
@@ -355,8 +346,9 @@
 %   Now, -- unless the option |minimal| is defined -- we include the |stex| package 
 %
 %    \begin{macrocode}
-\ifomdoc@cls@minimal\else%
 \RequirePackage{omdoc}
+\bool_if:NF \c_document_structure_minimal_bool {
+\RequirePackage{stex}
 %    \end{macrocode}
 %
 % And define the environments we need.  The top-level one is the |document| environment,
@@ -366,17 +358,22 @@
 %   For the moment we do not use them on the {\LaTeX} level, but the document identifier
 %   is picked up by {\latexml}.\ednote{faking documentkeys for now. @HANG, please implement}
 %    \begin{macrocode}
-\srefaddidkey{document}
-\newcommand\documentkeys[1]{\metasetkeys{document}{#1}}
-\let\orig@document=\document
-\renewcommand{\document}[1][]{\metasetkeys{document}{#1}\orig@document}
+\keys_define:nn { document-structure / document }{
+  id .str_set_x:N = \c_document_structure_document_id_str
+}
+\let\_@@_orig_document=\document
+\renewcommand{\document}[1][]{
+  \keys_set:nn{ document-structure / document }{ #1 }
+  \stex_ref_new_doc_target:n { \c_document_structure_document_id_str }
+  \_@@_orig_document
+}
 %    \end{macrocode}
 % \end{environment}
 %
 % Finally, we end the test for the |minimal| option. 
 % 
 %    \begin{macrocode}
-\fi% \ifomdoc@cls@minimal
+}
 %</cls>
 %    \end{macrocode}
 % \end{omgroup}
@@ -384,49 +381,52 @@
 % 
 % \begin{omgroup}[id=sec:impl:sty]{Implementation: OMDoc Package}
 %
+%    \begin{macrocode}
+%<*package>
+\ProvidesExplPackage{omdoc}{2020/10/19}{1.4}{OMDoc document Structure}
+\RequirePackage{expl-keystr-compat,l3keys2e}
+%    \end{macrocode}
+%
 % \begin{omgroup}[id=sec:impl:options]{Package Options}
 %
 %   We declare some switches which will modify the behavior according to the package
 %   options. Generally, an option |xxx| will just set the appropriate switches to true
 %   (otherwise they stay false).
 %
+%
 %    \begin{macrocode}
-%<*package>
-\RequirePackage{kvoptions}
-\SetupKeyvalOptions{family=omdoc@sty,prefix=omdoc@sty@}
-\DeclareStringOption[article]{class}
-\DeclareBoolOption{showignores}
-\DeclareStringOption[section]{topsect}
-\newcount\section@level
-\DeclareDefaultOption{\PassOptionsToPackage{\CurrentOption}{sref}}
-\ProcessKeyvalOptions{omdoc@sty}
+
+\keys_define:nn{ document-structure / pkg }{
+  class       .str_set_x:N  = \c_document_structure_class_str,
+  topsect     .str_set_x:N  = \c_document_structure_topsect_str,
+%  showignores .bool_set:N   = \c_document_structure_showignores_bool,
+}
+\ProcessKeysOptions{ document-structure / pkg }
+\str_if_empty:NT \c_document_structure_class_str {
+  \str_set:Nn \c_document_structure_class_str {article}
+}
+\str_if_empty:NT \c_document_structure_topsect_str {
+  \str_set:Nn \c_document_structure_topsect_str {section}
+}
 %    \end{macrocode}
 %
 % Then we need to set up the packages by requiring the |sref| package to be loaded.
 %
 %    \begin{macrocode}
-\RequirePackage{stex-metakeys}
-%\RequirePackage{sref}
 \RequirePackage{xspace}
 \RequirePackage{comment}
-%\RequirePackage{pathsuris}
 \@ifpackageloaded{babel}{}{\RequirePackage[base]{babel}}
-
-\def\srefaddidkey#1{\addmetakey{#1}{id}}
-
 %    \end{macrocode}
 %
 % We set up triggers for the other languages, currently only German.
 %
 %    \begin{macrocode}
-\ExplSyntaxOn
 \@ifpackageloaded{babel}{
     \clist_set:Nx \l_tmpa_clist {\bbl@loaded}
     \clist_if_in:NnT \l_tmpa_clist {ngerman}{
       \input{omdoc-ngerman.ldf}
     }
 }{}
-\ExplSyntaxOff
 %\AfterBabelLanguage{ngerman}{\input{omdoc-ngerman.ldf}}
 %    \end{macrocode}
 %
@@ -436,11 +436,26 @@
 % levels passed in via the |topsect| option.
 %
 %    \begin{macrocode}
-\section@level=2
-\ifdefstring{\omdoc@sty@class}{book}{\section@level=0}{}
-\ifdefstring{\omdoc@sty@class}{report}{\section@level=0}{}
-\ifdefstring{\omdoc@sty@topsect}{part}{\section@level=0}{}
-\ifdefstring{\omdoc@sty@topsect}{chapter}{\section@level=1}{}
+\int_new:N \l_document_structure_section_level_int
+\str_case:VnF \c_document_structure_topsect_str {
+  {part}{
+    \int_set:Nn \l_document_structure_section_level_int {0}
+  }
+  {chapter}{
+    \int_set:Nn \l_document_structure_section_level_int {1}
+  }
+}{
+  \str_case:VnF \c_document_structure_class_str {
+    {book}{
+      \int_set:Nn \l_document_structure_section_level_int {0}
+    }
+    {report}{
+      \int_set:Nn \l_document_structure_section_level_int {0}
+    }
+  }{
+    \int_set:Nn \l_document_structure_section_level_int {2}
+  }
+}
 %    \end{macrocode}
 %
 % \end{omgroup}
@@ -466,24 +481,29 @@
 %
 % \begin{macro}{\skipomgroup}
 %    \begin{macrocode}
-\newcommand\skipomgroup{%
-  \ifcase\section@level%
-  \or\stepcounter{chapter}%
-  \or\stepcounter{section}%
-  \or\stepcounter{subsection}%
-  \or\stepcounter{subsubsection}%
-  \or\stepcounter{paragraph}%
-  \or\stepcounter{subparagraph}%
-  \fi}% \ifcase
+\cs_new_protected:Npn \skipomgroup {
+  \ifcase\l_document_structure_section_level_int
+  \or\stepcounter{chapter}
+  \or\stepcounter{section}
+  \or\stepcounter{subsection}
+  \or\stepcounter{subsubsection}
+  \or\stepcounter{paragraph}
+  \or\stepcounter{subparagraph}
+  \fi
+}
 %    \end{macrocode}
 % \end{macro}
 %
 % \begin{environment}{blindomgroup}
-% \begin{macrocode}
+%    \begin{macrocode}
 \newcommand\at@begin@blindomgroup[1]{}
 \newenvironment{blindomgroup}
-{\advance\section@level by 1\at@begin@blindomgroup\setion@level}
-{\advance\section@level by -1}
+{
+  \int_incr:N\l_document_structure_section_level_int
+  \at@begin@blindomgroup\l_document_structure_section_level_int
+}{
+  \int_decr:N\l_document_structure_section_level_int
+}
 %    \end{macrocode}
 % \end{environment}
 %
@@ -491,9 +511,10 @@
 %   convenience macro: |\omgroup@nonum{|\meta{level}|}{|\meta{title}|}| makes an unnumbered
 %   sectioning with title \meta{title} at level \meta{level}.
 %    \begin{macrocode}
-\newcommand\omgroup@nonum[2]{%
-\ifx\hyper@anchor\@undefined\else\phantomsection\fi%
-\addcontentsline{toc}{#1}{#2}\@nameuse{#1}*{#2}}
+\newcommand\omgroup@nonum[2]{
+  \ifx\hyper@anchor\@undefined\else\phantomsection\fi
+  \addcontentsline{toc}{#1}{#2}\@nameuse{#1}*{#2}
+}
 %    \end{macrocode}
 % \end{macro}
 %
@@ -504,14 +525,16 @@
 %   depends on whether the |rdfmeta| package has been loaded. In the end we call
 %   |\sref@label@id| to enable crossreferencing.
 %    \begin{macrocode}
-\newcommand\omgroup@num[2]{%
-\ifx\omgroup@short\@empty% no short title
-\@nameuse{#1}{#2}%
-\else% we have a short title
-\@ifundefined{rdfmeta@sectioning}%
-  {\@nameuse{#1}[\omgroup@short]{#2}}%
-  {\@nameuse{rdfmeta@#1@old}[\omgroup@short]{#2}}%
-\fi%
+\newcommand\omgroup@num[2]{
+  \tl_if_empty:NTF \l_@@_omgroup_short_tl {
+    \@nameuse{#1}{#2}
+  }{
+    \cs_if_exist:NTF\rdfmeta@sectioning{
+      \@nameuse{#1}[\l_@@_omgroup_short_tl]{#2}
+    }{
+      \@nameuse{rdfmeta@#1@old}[\l_@@_omgroup_short_tl]{#2}
+    }
+  }
 %\sref@label@id@arg{\omdoc@sect@name~\@nameuse{the#1}}\omgroup@id
 }
 %    \end{macrocode}
@@ -519,18 +542,31 @@
 %
 % \begin{environment}{omgroup}
 %    \begin{macrocode}
-\def\@true{true}
-\def\@false{false}
-\srefaddidkey{omgroup}
-\addmetakey{omgroup}{date}
-\addmetakey{omgroup}{creators}
-\addmetakey{omgroup}{contributors}
-\addmetakey{omgroup}{srccite}
-\addmetakey{omgroup}{type}
-\addmetakey*{omgroup}{short}
-\addmetakey*{omgroup}{display}
-\addmetakey*{omgroup}{intro}% ignored 
-\addmetakey[false]{omgroup}{loadmodules}[true]
+\keys_define:nn { document-structure / omgroup }{
+  id            .str_set_x:N = \l_@@_omgroup_id_str,
+  date          .str_set_x:N = \l_@@_omgroup_date_str,
+  creators      .clist_set:N = \l_@@_omgroup_creators_clist,
+  contributors  .clist_set:N = \l_@@_omgroup_contributors_clist,
+  srccite       .tl_set:N    = \l_@@_omgroup_srccite_tl,
+  type          .tl_set:N    = \l_@@_omgroup_type_tl,
+  short         .tl_set:N    = \l_@@_omgroup_short_tl,
+  display       .tl_set:N    = \l_@@_omgroup_display_tl,
+  intro         .tl_set:N    = \l_@@_omgroup_intro_tl,
+  loadmodules   .bool_set:N  = \l_@@_omgroup_loadmodules_bool
+}
+\cs_new_protected:Nn \_@@_omgroup_args:n {
+  \str_clear:N \l_@@_omgroup_id_str
+  \str_clear:N \l_@@_omgroup_date_str
+  \clist_clear:N \l_@@_omgroup_creators_clist
+  \clist_clear:N \l_@@_omgroup_contributors_clist
+  \tl_clear:N \l_@@_omgroup_srccite_tl
+  \tl_clear:N \l_@@_omgroup_type_tl
+  \tl_clear:N \l_@@_omgroup_short_tl
+  \tl_clear:N \l_@@_omgroup_display_tl
+  \tl_clear:N \l_@@_omgroup_intro_tl
+  \bool_set_false:N \l_@@_omgroup_loadmodules_bool
+  \keys_set:nn { document-structure / omgroup } { #1 }
+}
 %    \end{macrocode}
 % we define a switch for numbering lines and a hook for the beginning of groups: The
 % \DescribeMacro{\at@begin@omgroup}|\at@begin@omgroup| macro allows customization. It is
@@ -544,17 +580,33 @@
 % own key/value interface for customization.
 %
 %    \begin{macrocode}
-\addmetakey{omdoc@sect}{name}
-\addmetakey[false]{omdoc@sect}{clear}[true]
-\addmetakey{omdoc@sect}{ref}
-\addmetakey[false]{omdoc@sect}{num}[true]
-\newcommand\omdoc@sectioning[3][]{\metasetkeys{omdoc@sect}{#1}%
-\ifx\omdoc@sect@clear\@true\cleardoublepage\fi%
-\if@mainmatter% numbering not overridden by frontmatter, etc.
-\ifx\omdoc@sect@num\@true\omgroup@num{#2}{#3}\else\omgroup@nonum{#2}{#3}\fi%
-\def\current@section@level{\omdoc@sect@name}%
-\else\omgroup@nonum{#2}{#3}%
-\fi}% if@mainmatter
+\keys_define:nn { document-structure / sectioning }{
+  name    .str_set_x:N  = \l_@@_sect_name_str   ,
+  ref     .str_set_x:N  = \l_@@_sect_ref_str    ,
+  clear   .bool_set:N   = \l_@@_sect_clear_bool ,
+  num     .bool_set:N   = \l_@@_sect_num_bool   ,
+}
+\cs_new_protected:Nn \_@@_sect_args:n {
+  \str_clear:N \l_@@_sect_name_str
+  \str_clear:N \l_@@_sect_ref_str
+  \bool_set_false:N \l_@@_sect_clear_bool
+  \bool_set_false:N \l_@@_sect_num_bool
+  \keys_set:nn { document-structure / sectioning } { #1 }
+}
+\newcommand\omdoc@sectioning[3][]{
+  \_@@_sect_args:n {#1 }
+  \bool_if:NT \l_@@_sect_clear_bool { \cleardoublepage }
+  \if@mainmatter% numbering not overridden by frontmatter, etc.
+    \bool_if:NTF \l_@@_sect_num_bool {
+      \omgroup@num{#2}{#3}
+    }{
+      \omgroup@nonum{#2}{#3}
+    }
+    \def\current@section@level{\omdoc@sect@name}
+  \else
+    \omgroup@nonum{#2}{#3}
+  \fi
+}% if@mainmatter
 %    \end{macrocode}
 % and another one, if redefines the |\addtocontentsline| macro of {\LaTeX} to import the
 % respective macros. It takes as an argument a list of module names.
@@ -579,36 +631,43 @@
 % |article.cls|. It also registeres the current level of omgroups in the |\omgroup@level|
 % counter. 
 %    \begin{macrocode}
-\newcount\omgroup@level 
+\int_new:N \l_document_structure_omgroup_level_int
 \newenvironment{omgroup}[2][]% keys, title
-{\metasetkeys{omgroup}{#1}%\sref@target%
-\advance\omgroup@level by 1\relax%
+{
+  \_@@_omgroup_args:n { #1 }%\sref@target%
+  \int_incr:N \l_document_structure_omgroup_level_int
 %    \end{macrocode}
 % If the |loadmodules| key is set on |\begin{omgroup}|, we redefine the |\addcontetsline|
 %   macro that determines how the sectioning commands below construct the entries for the
 %   table of contents.
 %    \begin{macrocode}
-\ifx\omgroup@loadmodules\@true%
-\omgroup@redefine@addtocontents{\@ifundefined{module@id}\used@modules%
-{\@ifundefined{module@\module@id @path}{\used@modules}\module@id}}\fi%
+  \bool_if:NT \l_@@_omgroup_loadmodules_bool {
+    \omgroup@redefine@addtocontents{
+      %\@ifundefined{module@id}\used@modules%
+      %{\@ifundefined{module@\module@id @path}{\used@modules}\module@id}
+    }
+  }
 %    \end{macrocode}
 % now we only need to construct the right sectioning depending on the value of
 % |\section@level|.
 %    \begin{macrocode}
-\advance\section@level by 1\relax%
-\ifcase\section@level%
-\or\omdoc@sectioning[name=\omdoc@part@kw,clear,num]{part}{#2}%
-\or\omdoc@sectioning[name=\omdoc@chapter@kw,clear,num]{chapter}{#2}%
-\or\omdoc@sectioning[name=\omdoc@section@kw,num]{section}{#2}%
-\or\omdoc@sectioning[name=\omdoc@subsection@kw,num]{subsection}{#2}%
-\or\omdoc@sectioning[name=\omdoc@subsubsection@kw,num]{subsubsection}{#2}%
-\or\omdoc@sectioning[name=\omdoc@paragraph@kw,ref=this \omdoc@paragraph@kw]{paragraph}{#2}%
-\or\omdoc@sectioning[name=\omdoc@subparagraph@kw,ref=this \omdoc@subparagraph@kw]{paragraph}{#2}%
-\fi% \ifcase
-\at@begin@omgroup[#1]\section@level{#2}
-\csname stex_ref_new_doc_target:n\endcsname\omgroup@id%
+  \int_incr:N\l_document_structure_section_level_int
+  \ifcase\l_document_structure_section_level_int
+    \or\omdoc@sectioning[name=\omdoc@part@kw,clear,num]{part}{#2}
+    \or\omdoc@sectioning[name=\omdoc@chapter@kw,clear,num]{chapter}{#2}
+    \or\omdoc@sectioning[name=\omdoc@section@kw,num]{section}{#2}
+    \or\omdoc@sectioning[name=\omdoc@subsection@kw,num]{subsection}{#2}
+    \or\omdoc@sectioning[name=\omdoc@subsubsection@kw,num]{subsubsection}{#2}
+    \or\omdoc@sectioning[name=\omdoc@paragraph@kw,ref=this \omdoc@paragraph@kw]{paragraph}{#2}
+    \or\omdoc@sectioning[name=\omdoc@subparagraph@kw,ref=this \omdoc@subparagraph@kw]{paragraph}{#2}
+  \fi
+  \at@begin@omgroup[#1]\l_document_structure_section_level_int{#2}
+  \stex_ref_new_doc_target:n\l_@@_omgroup_id_str
 }% for customization
-{\advance\section@level by -1\advance\omgroup@level by -1}
+{
+  \int_decr:N\l_document_structure_section_level_int
+  \int_decr:N\l_document_structure_omgroup_level_int
+}
 %    \end{macrocode}
 % \end{environment}
 %
@@ -641,12 +700,26 @@
 % we save their behavior (possibly defining it) in |orig@*matter| macros and make them
 % undefined (so that we can define the environments).
 %    \begin{macrocode}
-\ifcsdef{frontmatter}% to redefine if necessary
-  {\cslet{orig@frontmatter}{\frontmatter}\cslet{frontmatter}{\relax}}
-  {\cslet{orig@frontmatter}{\clearpage\@mainmatterfalse\pagenumbering{roman}}}
-\ifcsdef{backmatter}% to redefine if necessary
-  {\cslet{orig@backmatter}{\backmatter}\cslet{backmatter}{\relax}}
-  {\cslet{orig@backmatter}{\clearpage\@mainmatterfalse\pagenumbering{roman}}}
+\cs_if_exist:NTF\frontmatter{
+  \let\_@@_orig_frontmatter\frontmatter
+  \let\frontmatter\relax
+}{
+  \tl_set:Nn\_@@_orig_frontmatter{
+    \clearpage
+    \@mainmatterfalse
+    \pagenumbering{roman}
+  }
+}
+\cs_if_exist:NTF\backmatter{
+  \let\_@@_orig_backmatter\backmatter
+  \let\backmatter\relax
+}{
+  \tl_set:Nn\_@@_orig_backmatter{
+    \clearpage
+    \@mainmatterfalse
+    \pagenumbering{roman}
+  }
+}
 %    \end{macrocode}
 %
 % Using these, we can now define the |frontmatter| and |backmatter| environments
@@ -655,18 +728,34 @@
 %  we use the |\orig@frontmatter| macro defined above and |\mainmatter| if it exists,
 %  otherwise we define it.  
 %    \begin{macrocode}
-\newenvironment{frontmatter}
-{\orig@frontmatter}
-{\ifcsdef{mainmatter}{\mainmatter}{\clearpage\@mainmattertrue\pagenumbering{arabic}}}
+\newenvironment{frontmatter}{
+  \_@@_orig_frontmatter
+}{
+  \cs_if_exist:NTF\mainmatter{
+    \mainmatter
+  }{
+    \clearpage
+    \@mainmattertrue
+    \pagenumbering{arabic}
+  }
+}
 %    \end{macrocode}
 % \end{environment}
 %
 % \begin{environment}{backmatter}
 %   As backmatter is at the end of the document, we do nothing for |\endbackmatter|. 
 %    \begin{macrocode}
-\newenvironment{backmatter}
-{\orig@backmatter}
-{\ifcsdef{mainmatter}{\mainmatter}{\clearpage\@mainmattertrue\pagenumbering{arabic}}}
+\newenvironment{backmatter}{
+  \_@@_orig_backmatter
+}{
+  \cs_if_exist:NTF\mainmatter{
+    \mainmatter
+  }{
+    \clearpage
+    \@mainmattertrue
+    \pagenumbering{arabic}
+  }
+}
 %    \end{macrocode}
 %
 % finally, we make sure that page numbering is arabic and we have main matter as the default
@@ -677,40 +766,34 @@
 % \end{environment}
 % \end{omgroup}
 %
-% \begin{omgroup}[id=sec:impl:ignore]{Ignoring Inputs}
-% \begin{environment}{ignore}
-%    \begin{macrocode}
-\ifomdoc@sty@showignores
-\addmetakey{ignore}{type}
-\addmetakey{ignore}{comment}
-\newenvironment{ignore}[1][]
-{\metasetkeys{ignore}{#1}\textless\ignore@type\textgreater\bgroup\itshape}
-{\egroup\textless/\ignore@type\textgreater}
-\renewenvironment{ignore}{}{}\else\excludecomment{ignore}\fi
-%    \end{macrocode}
-% \end{environment}
-%
 % \begin{macro}{\prematurestop}
 %   We initialize |\afterprematurestop|, and provide 
 %   |\prematurestop@endomgroup| which looks up |\omgroup@level| and recursively ends
 %   enough |{omgroup}|s. 
 %    \begin{macrocode}
 \newcommand\afterprematurestop{}
-\def\prematurestop@endomgroup{\ifnum\omgroup@level=0\else%
-\end{omgroup}\advance\omgroup@level by -1\prematurestop@endomgroup\fi}
-\providecommand\prematurestop{%
-\message{Stopping sTeX processing prematurely}
-\prematurestop@endomgroup\afterprematurestop
-\end{document}}
+\def\prematurestop@endomgroup{
+  \int_compare:nNnF \l_document_structure_omgroup_level_int = 0 {
+    \end{omgroup}
+    \int_decr:N \l_document_structure_omgroup_level_int
+    \prematurestop@endomgroup
+  }
+}
+\providecommand\prematurestop{
+  \message{Stopping sTeX processing prematurely}
+  \prematurestop@endomgroup
+  \afterprematurestop
+  \end{document}
+}
 %    \end{macrocode}
 % \end{macro}
 %
-% \end{omgroup}
-% 
+% \iffalse
 % \begin{omgroup}[id=sec:impl:share]{Structure Sharing}
 %   \ednote{The following is simply copied over from the |latexml| package, which we
 %   eliminated, we should integrate better.}
 %    \begin{macrocode}
+\iffalse
 \providecommand{\lxDocumentID}[1]{}%
 \def\LXMID#1#2{\expandafter\gdef\csname xmarg#1\endcsname{#2}\csname xmarg#1\endcsname}
 \def\LXMRef#1{\csname xmarg#1\endcsname}
@@ -746,15 +829,18 @@
 %    This is the macro that does the actual labeling. Is it called inside |\STRlabel|
 %    \begin{macrocode}
 \def\STRlabeldef#1{\expandafter\gdef\csname STR@#1\endcsname}
+\fi
 %    \end{macrocode}
 % \end{macro}
 % \end{omgroup}
+%\fi
 % 
 % \begin{omgroup}[id=sec:impl:gvars]{Global Variables}
 %
 % \begin{macro}{\setSGvar}
 %   set a global variable
 %    \begin{macrocode}
+\RequirePackage{etoolbox}
 \newcommand\setSGvar[1]{\@namedef{sTeX@Gvar@#1}}
 %    \end{macrocode}
 % \end{macro}
@@ -783,26 +869,6 @@
 %    \end{macrocode}
 % \end{macro}
 %
-% \end{omgroup}
-%
-% \begin{omgroup}[id=sec:impl:colors]{Colors}
-% 
-% \begin{environment}{blue, red, green, magenta}
-%    We will use the following abbreviations for colors from |color.sty|
-%    \begin{macrocode}
-\def\black#1{\textcolor{black}{#1}}
-\def\gray#1{\textcolor{gray}{#1}}
-\def\blue#1{\textcolor{blue}{#1}}
-\def\red#1{\textcolor{red}{#1}}
-\def\green#1{\textcolor{green}{#1}}
-\def\cyan#1{\textcolor{cyan}{#1}}
-\def\magenta#1{\textcolor{magenta}{#1}}
-\def\brown#1{\textcolor{brown}{#1}}
-\def\yellow#1{\textcolor{yellow}{#1}}
-\def\orange#1{\textcolor{orange}{#1}}
-%</package>
-%    \end{macrocode}
-% \end{environment}
 % \end{omgroup}
 % \end{omgroup}
 % \end{omgroup}

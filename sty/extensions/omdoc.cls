@@ -6,37 +6,48 @@
 %%
 %% omdoc.dtx  (with options: `cls')
 %% 
-\NeedsTeXFormat{LaTeX2e}[1999/12/01]
-\ProvidesClass{omdoc}[2020/10/19 v1.4 OMDoc Documents]
-\RequirePackage{etoolbox}
-\RequirePackage{kvoptions}
-\SetupKeyvalOptions{family=omdoc@cls,prefix=omdoc@cls@}
-\DeclareStringOption[article]{class}
-\AddToKeyvalOption*{class}{\PassOptionsToPackage{class=\omdoc@cls@class}{omdoc}}
-\DeclareVoidOption{report}{\def\omdoc@cls@class{report}%
-\ClassWarning{omdoc}{the option 'report' is deprecated, use 'class=report', instead}}
-\DeclareVoidOption{book}{\def\omdoc@cls@class{book}%
-\ClassWarning{omdoc}{the option 'part' is deprecated, use 'class=book', instead}}
-\DeclareVoidOption{bookpart}{\def\omdoc@cls@class{book}%
-\PassOptionsToPackage{topsect=chapter}{omdoc}%
-\ClassWarning{omdoc}{the option 'bookpart' is deprecated, use 'class=book,topsect=chapter', instead}}
-\DeclareBoolOption{minimal}
-\def\@omdoc@cls@docopt{}
-\DeclareDefaultOption{%
-\ifx\@omdoc@cls@docopt\@empty%
-\xdef\@omdoc@cls@docopt{\CurrentOption}%
-\else\xappto\@omdoc@cls@docopt{,\CurrentOption}%
-\fi}%
-\PassOptionsToPackage{\CurrentOption}{omdoc}
-\ProcessKeyvalOptions{omdoc@cls}
-\LoadClass[\@omdoc@cls@docopt]{\omdoc@cls@class}
-\ifomdoc@cls@minimal\else%
+\ProvidesExplClass{omdoc}{2020/10/19}{1.4}{OMDoc Documents}
+\RequirePackage{l3keys2e,expl-keystr-compat}
+\keys_define:nn{ document-structure / pkg }{
+  class       .initial:n    = {article},
+  class       .str_set_x:N  = \c_document_structure_class_str,
+  minimal     .bool_set:N   = \c_document_structure_minimal_bool,
+  report      .code:n       = {
+    \ClassWarning{omdoc}{the option 'report' is deprecated, use 'class=report', instead}
+    \str_set:Nn \c_document_structure_class_str {report}
+  },
+  book        .code:n       = {
+    \ClassWarning{omdoc}{the option 'book' is deprecated, use 'class=book', instead}
+    \str_set:Nn \c_document_structure_class_str {book}
+  },
+  bookpart    .code:n       = {
+    \ClassWarning{omdoc}{the option 'bookpart' is deprecated, use 'class=book,topsect=chapter', instead}
+    \str_set:Nn \c_document_structure_class_str {book}
+    \str_set:Nn \c_document_structure_topsect_str {chapter}
+  },
+  docopt      .str_set_x:N  = \c_document_structure_docopt_str,
+  unknown     .code:n       = {
+    \PassOptionsToPackage{ \CurrentOption }{ omdoc }
+  }
+}
+
+\ProcessKeysOptions{ document-structure / pkg }
+\exp_after:wN\LoadClass\exp_after:wN[\c_document_structure_docopt_str]
+  {\c_document_structure_class_str}
+
 \RequirePackage{omdoc}
-\srefaddidkey{document}
-\newcommand\documentkeys[1]{\metasetkeys{document}{#1}}
-\let\orig@document=\document
-\renewcommand{\document}[1][]{\metasetkeys{document}{#1}\orig@document}
-\fi% \ifomdoc@cls@minimal
+\bool_if:NF \c_document_structure_minimal_bool {
+\RequirePackage{stex}
+\keys_define:nn { document-structure / document }{
+  id .str_set_x:N = \c_document_structure_document_id_str
+}
+\let\_@@_orig_document=\document
+\renewcommand{\document}[1][]{
+  \keys_set:nn{ document-structure / document }{ #1 }
+  \stex_ref_new_doc_target:n { \c_document_structure_document_id_str }
+  \_@@_orig_document
+}
+}
 \endinput
 %%
 %% End of file `omdoc.cls'.
