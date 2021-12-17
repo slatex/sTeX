@@ -8,13 +8,11 @@
 % \fi
 % 
 % \iffalse
-%<package>\NeedsTeXFormat{LaTeX2e}[1999/12/01]
-%<package>\ProvidesPackage{problem}[2019/03/20 v1.3 Semantic Markup for Problems]
 %
 %<*driver>
 \def\bibfolder{../../lib/bib}
 \input{../../doc/docheader}
-\RequirePackage{problem}
+\RequirePackage[hints,solutions,notes]{problem}
 
 \begin{document}
   \DocInput{\jobname.dtx}
@@ -256,31 +254,40 @@
 %
 %    \begin{macrocode}
 %<*package>
-\newif\ifexnotes\exnotesfalse
-\DeclareOption{notes}{\exnotestrue}
-\newif\ifgnotes\gnotesfalse
-\DeclareOption{gnotes}{\gnotestrue}
-\newif\ifhints\hintsfalse
-\DeclareOption{hints}{\hintstrue}
-\newif\ifsolutions\solutionsfalse
-\DeclareOption{solutions}{\solutionstrue}
-\newif\ifpts\ptsfalse
-\DeclareOption{pts}{\ptstrue}
-\newif\ifmin\minfalse
-\DeclareOption{min}{\mintrue}
-\newif\ifboxed\boxedfalse
-\DeclareOption{boxed}{\boxedtrue}
-\ProcessOptions
+%<@@=problems>
+\ProvidesExplPackage{problem}{2019/03/20}{1.3}{Semantic Markup for Problems}
+\RequirePackage{l3keys2e,expl-keystr-compat}
+
+\keys_define:nn { problem / pkg }{
+  notes     .default:n    = { true },
+  notes     .bool_set:N   = \c_@@_notes_bool,
+  gnotes    .default:n    = { true },
+  gnotes    .bool_set:N   = \c_@@_gnotes_bool,
+  hints     .default:n    = { true },
+  hints     .bool_set:N   = \c_@@_hints_bool,
+  solutions .default:n    = { true },
+  solutions .bool_set:N   = \c_@@_solutions_bool,
+  pts       .default:n    = { true },
+  pts       .bool_set:N   = \c_@@_pts_bool,
+  min       .default:n    = { true },
+  min       .bool_set:N   = \c_@@_min_bool,
+  boxed     .default:n    = { true },
+  boxed     .bool_set:N   = \c_@@_boxed_bool
+}
+\def\solutionstrue{
+  \bool_set_true:N \c_@@_solutions_bool
+}
+\def\solutionsfalse{
+  \bool_set_false:N \c_@@_solutions_bool
+}
+
+\ProcessKeysOptions{ problem / pkg }
 %    \end{macrocode}
 %
 % Then we make sure that the necessary packages are loaded (in the right versions).
 %    \begin{macrocode}
-\RequirePackage{stex-metakeys}
-%\RequirePackage{stex}
 \RequirePackage{stex-compatibility}
-\def\srefaddidkey#1{\addmetakey{#1}{id}}
 \RequirePackage{comment}
-%\RequirePackage{babel}
 %    \end{macrocode}
 %
 % The next package relies on the \LaTeX3 kernel, which \latexml only partially
@@ -288,7 +295,7 @@
 % given and we run {\latexml}.
 %
 %    \begin{macrocode}
-\ifboxed\RequirePackage{mdframed}\fi
+\bool_if:NT \c_@@_boxed_bool { \RequirePackage{mdframed} }
 %    \end{macrocode}
 %
 % \begin{macro}{\prob@*@kw}
@@ -307,7 +314,6 @@
 % 
 % For the other languages, we set up triggers
 %    \begin{macrocode}
-\ExplSyntaxOn
 \@ifpackageloaded{babel}{
     \clist_set:Nx \l_tmpa_clist {\bbl@loaded}
     \clist_if_in:NnT \l_tmpa_clist {ngerman}{
@@ -323,7 +329,6 @@
       \input{problem-russian.ldf}
     }
 }{}
-\ExplSyntaxOff
 %    \end{macrocode}
 %
 % \subsection{Problems and Solutions}\label{sec:impl:probsols}
@@ -332,11 +337,21 @@
 % internal macros.
 %
 %    \begin{macrocode}
-\srefaddidkey{problem}%[prefix=prob.]{problem}
-\addmetakey{problem}{pts}
-\addmetakey{problem}{min}
-\addmetakey*{problem}{title}
-\addmetakey{problem}{refnum}
+\keys_define:nn{ problem / problem }{
+  id      .str_set_x:N  = \l_@@_prob_id_str,
+  pts     .tl_set:N     = \l_@@_prob_pts_tl,
+  min     .tl_set:N     = \l_@@_prob_min_tl,
+  title   .tl_set:N     = \l_@@_prob_title_tl,
+  refnum  .int_set:N    = \l_@@_prob_refnum_int
+}
+\cs_new_protected:Nn \_@@_prob_args:n {
+  \str_clear:N \l_@@_prob_id_str
+  \tl_clear:N \l_@@_prob_pts_tl
+  \tl_clear:N \l_@@_prob_min_tl
+  \tl_clear:N \l_@@_prob_title_tl
+  \int_zero_new:N \l_@@_prob_refnum_int
+  \keys_set:nn { problem / problem }{ #1 }
+}
 %    \end{macrocode}
 %
 % Then we set up a counter for problems.
@@ -357,11 +372,17 @@
 % \begin{macro}{\prob@number}
 %   We consolidate the problem number into a reusable internal macro
 %    \begin{macrocode}
-\newcommand\prob@number{%
-\ifx\inclprob@refnum\@empty% if there is no outside refnumb
-\ifx\problem@refnum\@empty\prob@label\theproblem%
-\else\prob@label\problem@refnum\fi%
-\else\prob@label\inclprob@refnum\fi}
+\newcommand\prob@number{
+  \int_if_exist:NTF \l_@@_inclprob_refnum_int {
+    \prob@label{\int_use:N \l_@@_inclprob_refnum_int }
+  }{
+    \int_if_exist:NTF \l_@@_prob_refnum_int {
+      \prob@label{\int_use:N \l_@@_prob_refnum_int }
+    }{
+        \prob@label\theproblem
+    }
+  }
+}
 %    \end{macrocode}
 % \end{macro}
 % 
@@ -371,9 +392,16 @@
 %   second and third go around the title, if one is given.
 %    \begin{macrocode}
 \newcommand\prob@title[3]{%
-\ifx\inclprob@title\@empty% if there is no outside title
-\ifx\problem@title\@empty{#1}\else{#2\problem@title{#3}}\fi
-\else{#2}\inclprob@title{#3}\fi}% else show the outside title
+  \tl_if_exist:NTF \l_@@_inclprob_title_tl {
+    #2 \l_@@_inclprob_title_tl #3
+  }{
+    \tl_if_exist:NTF \l_@@_prob_title_tl {
+      #2 \l_@@_prob_title_tl #3
+    }{
+      #1
+    }
+  }
+}
 %    \end{macrocode}
 % \end{macro}
 % 
@@ -383,8 +411,9 @@
 %   We consolidate the problem header line into a separate internal macro that can be
 %   reused in various settings. 
 %    \begin{macrocode}
-\def\prob@heading{\prob@problem@kw~\prob@number\prob@title{ }{ (}{)\strut}%
-\sref@label@id{\prob@problem@kw~\prob@number}{}%
+\def\prob@heading{
+  \prob@problem@kw~\prob@number\prob@title{ }{ (}{)\strut}
+  %\sref@label@id{\prob@problem@kw~\prob@number}{}
 }
 %    \end{macrocode}
 % \end{macro}
@@ -395,24 +424,43 @@
 % are set.
 % \begin{environment}{problem}
 %    \begin{macrocode}
-\newenvironment{problem}[1][]{\metasetkeys{problem}{#1}%\sref@target%
-\@in@omtexttrue% we are in a statement (for inline definitions)
-\stepcounter{problem}\record@problem%
-\def\current@section@level{\prob@problem@kw}%
-\par\noindent\textbf\prob@heading\show@pts\show@min\\\ignorespacesandpars
+\newenvironment{problem}[1][]{
+  \_@@_prob_args:n{#1}%\sref@target%
+  \@in@omtexttrue% we are in a statement (for inline definitions)
+  \stepcounter{problem}\record@problem
+  \def\current@section@level{\prob@problem@kw}
+  \par\noindent\textbf\prob@heading\show@pts\show@min\\\ignorespacesandpars
 }%
 {\smallskip}
-\ifboxed\if@latexml\else\surroundwithmdframed{problem}\fi\fi
+\bool_if:NT \c_@@_boxed_bool {
+  \surroundwithmdframed{problem}
+}
 %    \end{macrocode}
 % \end{environment}
 % 
 % \begin{macro}{\record@problem}
 %   This macro records information about the problems in the |*.aux| file. 
 %    \begin{macrocode}
-\def\record@problem{\protected@write\@auxout{}%
-{\string\@problem{\prob@number}%
-{\ifx\inclprob@pts\@empty\problem@pts\else\inclprob@pts\fi}%
-{\ifx\inclprob@min\@empty\problem@min\else\inclprob@min\fi}}}
+\def\record@problem{
+  \protected@write\@auxout{}
+  {
+    \string\@problem{\prob@number}
+    {
+      \tl_if_exist:NTF \l_@@_inclprob_pts_tl {
+        \l_@@_inclprob_pts_tl
+      }{
+        \l_@@_prob_pts_tl
+      }
+    }%
+    {
+      \tl_if_exist:NTF \l_@@_inclprob_min_tl {
+        \l_@@_inclprob_min_tl
+      }{
+        \l_@@_prob_min_tl
+      }
+    }
+  }
+}
 %    \end{macrocode}
 % \end{macro}
 %
@@ -430,20 +478,36 @@
 % that we need to define first.
 % 
 %    \begin{macrocode}
-\srefaddidkey{soln}
-\addmetakey{soln}{for}
-\addmetakey{soln}{height}
-\addmetakey{soln}{creators}
-\addmetakey{soln}{contributors}
-\addmetakey{soln}{srccite}
-%    \begin{macrocode}
+\keys_define:nn { problem / solution }{
+  id            .str_set_x:N  = \l_@@_solution_id_str ,
+  for           .tl_set:N     = \l_@@_solution_for_tl ,
+  height        .dim_set:N    = \l_@@_solution_height_dim ,
+  creators      .clist_set:N  = \l_@@_solution_creators_clist ,
+  contributors  .clist_set:N  = \l_@@_solution_contributors_clist ,
+  srccite       .tl_set:N     = \l_@@_solution_srccite_tl
+}
+\cs_new_protected:Nn \_@@_solution_args:n {
+  \str_clear:N \l_@@_solution_id_str
+  \tl_clear:N \l_@@_solution_for_tl
+  \tl_clear:N \l_@@_solution_srccite_tl
+  \clist_clear:N \l_@@_solution_creators_clist
+  \clist_clear:N \l_@@_solution_contributors_clist
+  \dim_zero:N \l_@@_solution_height_dim
+  \keys_set:nn { problem / solution }{ #1 }
+}
+%    \end{macrocode}
 % the next step is to define a helper macro that does what is needed to start a solution. 
 %    \begin{macrocode}
-\newcommand\@startsolution[1][]{\metasetkeys{soln}{#1}%
-\@in@omtexttrue% we are in a statement.
-\ifboxed\else\hrule\fi\smallskip\noindent{\textbf\prob@solution@kw:\enspace}\begin{small}%
-\def\current@section@level{\prob@solution@kw}%
-\ignorespacesandpars}
+\newcommand\@startsolution[1][]{
+  \_@@_solution_args:n { #1 }
+  \@in@omtexttrue% we are in a statement.
+  \bool_if:NF \c_@@_boxed_bool { \hrule }
+  \smallskip\noindent
+  {\textbf\prob@solution@kw :\enspace}
+  \begin{small}
+  \def\current@section@level{\prob@solution@kw}
+  \ignorespacesandpars
+}
 %    \end{macrocode}
 %
 % \begin{macro}{\startsolutions}
@@ -451,9 +515,17 @@
 % package. Note that we use the |\@startsolution| macro in the start codes, that parses
 % the optional argument. 
 %    \begin{macrocode}
-\newcommand\startsolutions{\specialcomment{solution}{\@startsolution}%
-{\ifboxed\else\hrule\medskip\fi\end{small}}%
-\ifboxed\if@latexml\else\surroundwithmdframed{solution}\fi\fi}
+\newcommand\startsolutions{
+  \specialcomment{solution}{\@startsolution}{
+    \bool_if:NF \c_@@_boxed_bool {
+      \hrule\medskip
+    }
+    \end{small}%
+  }
+  \bool_if:NT \c_@@_boxed_bool {
+    \surroundwithmdframed{solution}
+  }
+}
 %    \end{macrocode}
 % \end{macro}
 % 
@@ -466,80 +538,133 @@
 % so it only remains to start/stop solutions depending on what option was specified.
 %
 %    \begin{macrocode}
-\ifsolutions\startsolutions\else\stopsolutions\fi
+\bool_if:NTF \c_@@_solutions_bool {
+  \startsolutions
+}{
+  \stopsolutions
+}
 %    \end{macrocode}
 %
 % \begin{environment}{exnote}
 %    \begin{macrocode}
-\ifexnotes
-\newenvironment{exnote}[1][]%
-{\par\smallskip\hrule\smallskip\noindent\textbf{\prob@note@kw: }\small}
-{\smallskip\hrule}
-\else%ifexnotes
-\excludecomment{exnote}
-\fi%ifexnotes
+\bool_if:NTF \c_@@_notes_bool {
+  \newenvironment{exnote}[1][]{
+    \par\smallskip\hrule\smallskip
+    \noindent\textbf{\prob@note@kw : }\small
+  }{
+    \smallskip\hrule
+  }
+}{
+  \excludecomment{exnote}
+}
 %    \end{macrocode}
 % \end{environment}
 % 
 % \begin{environment}{hint}
 %    \begin{macrocode}
-\ifhints
-\newenvironment{hint}[1][]%
-{\par\smallskip\hrule\smallskip\noindent\textbf{\prob@hint@kw: }\small}
-{\smallskip\hrule}
-\newenvironment{exhint}[1][]%
-{\par\smallskip\hrule\smallskip\noindent\textbf{\prob@hint@kw: }\small}
-{\smallskip\hrule}
-\else%ifhints
-\excludecomment{hint}
-\excludecomment{exhint}
-\fi%ifhints
+\bool_if:NTF \c_@@_notes_bool {
+  \newenvironment{hint}[1][]{
+    \par\smallskip\hrule\smallskip
+    \noindent\textbf{\prob@hint@kw : }\small
+  }{
+    \smallskip\hrule
+  }
+  \newenvironment{exhint}[1][]{
+    \par\smallskip\hrule\smallskip
+    \noindent\textbf{\prob@hint@kw : }\small
+  }{
+    \smallskip\hrule
+  }
+}{
+  \excludecomment{hint}
+  \excludecomment{exhint}
+}
 %    \end{macrocode}
 % \end{environment}
 % 
 % \begin{environment}{gnote}
 %    \begin{macrocode}
-\ifgnotes
-\newenvironment{gnote}[1][]%
-{\par\smallskip\hrule\smallskip\noindent\textbf{\prob@gnote@kw: }\small}
-{\smallskip\hrule}
-\else%ifgnotes
-\excludecomment{gnote}
-\fi%ifgnotes
+\bool_if:NTF \c_@@_notes_bool {
+  \newenvironment{gnote}[1][]{
+    \par\smallskip\hrule\smallskip
+    \noindent\textbf{\prob@gnote@kw : }\small
+  }{
+    \smallskip\hrule
+  }
+}{
+  \excludecomment{gnote}
+}
 %    \end{macrocode}
 % \end{environment}
 % 
-
 % \subsection{Multiple Choice Blocks}\label{sec:impl:mcq}
 %
 % \begin{environment}{mcb}
 %   \ednote{MK: maybe import something better here from a dedicated MC package}
 %    \begin{macrocode}
-\newenvironment{mcb}
-{\begin{enumerate}}
-{\end{enumerate}}
+\newenvironment{mcb}{
+  \begin{enumerate}
+}{
+  \end{enumerate}
+}
 %    \end{macrocode}
 % \end{environment}
 % we define the keys for the |mcc| macro
 %    \begin{macrocode} 
-\srefaddidkey{mcc}
-\addmetakey{mcc}{feedback}
-\addmetakey[T]{mcc}{T}
-\addmetakey[F]{mcc}{F}
-\addmetakey[Yes]{mcc}{Ttext}
-\addmetakey[No]{mcc}{Ftext}
+\cs_new_protected:Nn \_@@_do_yes_param:Nn {
+  \exp_args:Nx \str_if_eq:nnTF { \str_lowercase:n{ #2 } }{ yes }{
+    \bool_set_true:N #1
+  }{
+    \bool_set_false:N #1
+  }
+}
+\keys_define:nn { problem / mcc }{
+  id        .str_set_x:N  = \l_@@_mcc_id_str ,
+  feedback  .tl_set:N     = \l_@@_mcc_feedback_tl ,
+  T         .default:n    = { true } ,
+  T         .bool_set:N   = \l_@@_mcc_t_bool ,
+  F         .default:n    = { true } ,
+  F         .bool_set:N   = \l_@@_mcc_f_bool ,
+  Ttext     .code:n       = {
+    \_@@_do_yes_param:Nn \l_@@_mcc_Ttext_bool { #1 }
+  } ,
+  Ftext     .code:n       = {
+    \_@@_do_yes_param:Nn \l_@@_mcc_Ftext_bool { #1 }
+  }
+}
+\cs_new_protected:Nn \l_@@_mcc_args:n {
+  \str_clear:N \l_@@_mcc_id_str
+  \tl_clear:N \l_@@_mcc_feedback_tl
+  \bool_set_true:N \l_@@_mcc_t_bool
+  \bool_set_true:N \l_@@_mcc_f_bool
+  \bool_set_true:N \l_@@_mcc_Ttext_bool
+  \bool_set_false:N \l_@@_mcc_Ftext_bool
+  \keys_set:nn { problem / mcc }{ #1 }
+}
 %    \end{macrocode}
 %
 % \begin{macro}{\mcc}
 %    \begin{macrocode}
-\newcommand\mcc[2][]{%
-\metasetkeys{mcc}{#1}%
-\item #2%
-\ifsolutions\\%
-\ifcsstring{mcc@T}{T}{}{\mcc@Ttext}%
-\ifcsstring{mcc@F}{F}{}{\mcc@Ftext}%
-\ifx\mcc@feedback\@empty!\else, \mcc@feedback\fi%
-\fi} %solutions
+\newcommand\mcc[2][]{
+  \l_@@_mcc_args:n{ #1 }
+  \item #2
+  \bool_if:NT \c_@@_solutions_bool {
+    \\
+    \bool_if:NT \l_@@_mcc_t_bool {
+      % TODO!
+      % \ifcsstring{mcc@T}{T}{}{\mcc@Ttext}%
+    }
+    \bool_if:NT \l_@@_mcc_f_bool {
+      % TODO!
+      % \ifcsstring{mcc@F}{F}{}{\mcc@Ftext}%
+    }
+    \tl_if_empty:NTF \l_@@_mcc_feedback_tl {
+      !
+    }{
+      \l_@@_mcc_feedback_tl
+    }
+  }
+} %solutions
 %    \end{macrocode}
 % \end{macro}
 % 
@@ -550,14 +675,38 @@
 %   some internal macros first that overwrite the local points. Importantly, it resets the
 %   |inclprob| keys after the input. 
 %    \begin{macrocode}
-\addmetakey{inclprob}{pts}
-\addmetakey{inclprob}{min}
-\addmetakey*{inclprob}{title}
-\addmetakey{inclprob}{refnum}
-\newcommand\includeproblem[2][]{\metasetkeys{inclprob}{#1}%
-\edef\temp@path{#2}%
-\if@iswindows@\path@to@windows\temp@path\fi%
-\input{\temp@path}\clear@inclprob@keys}
+
+\keys_define:nn{ problem / inclproblem }{
+ % id      .str_set_x:N  = \l_@@_inclprob_id_str,
+  pts     .tl_set:N     = \l_@@_inclprob_pts_tl,
+  min     .tl_set:N     = \l_@@_inclprob_min_tl,
+  title   .tl_set:N     = \l_@@_inclprob_title_tl,
+  refnum  .int_set:N    = \l_@@_inclprob_refnum_int
+}
+\cs_new_protected:Nn \_@@_inclprob_args:n {
+%  \str_clear:N \l_@@_prob_id_str
+  \tl_clear:N \l_@@_inclprob_pts_tl
+  \tl_clear:N \l_@@_inclprob_min_tl
+  \tl_clear:N \l_@@_inclprob_title_tl
+  \int_zero_new:N \l_@@_inclprob_refnum_int
+  \keys_set:nn { problem / inclproblem }{ #1 }
+}
+
+\cs_new_protected:Nn \_@@_inclprob_clear: {
+%  \str_clear:N \l_@@_prob_id_str
+  \let\l_@@_inclprob_pts_tl\undefined
+  \let\l_@@_inclprob_min_tl\undefined
+  \let\l_@@_inclprob_title_tl\undefined
+  \let\l_@@_inclprob_refnum_int\undefined
+}
+
+\newcommand\includeproblem[2][]{
+  \_@@_inclprob_args:n{ #1 }
+  \edef\temp@path{#2}
+  \if@iswindows@\path@to@windows\temp@path\fi %TODO ?
+  \input{\temp@path}
+  \_@@_inclprob:clear:
+}
 %    \end{macrocode}
 % \end{macro}
 %
@@ -567,15 +716,29 @@
 % therefore assume authors can deal with it. 
 %
 %    \begin{macrocode}
-\AtEndDocument{\ifpts\message{Total: \arabic{pts} points}\fi
-\ifmin\message{Total: \arabic{min} minutes}\fi}
+\AddToHook{enddocument}{
+  \bool_if:NT \c_@@_pts_bool {
+    \message{Total:~\arabic{pts}~points}
+  }
+  \bool_if:NT \c_@@_min_bool {
+    \message{Total:~\arabic{min}~minutes}
+  }
+}
 %    \end{macrocode}
 %
 % The margin pars are reader-visible, so we need to translate
 % 
 %    \begin{macrocode}
-\def\pts#1{\ifpts\marginpar{#1 \prob@pt@kw}\fi}
-\def\min#1{\ifmin\marginpar{#1 \prob@min@kw}\fi}
+\def\pts#1{
+  \bool_if:NT \c_@@_pts_bool {
+    \marginpar{#1~\prob@pt@kw}
+  }
+}
+\def\min#1{
+  \bool_if:NT \c_@@_min_bool {
+    \marginpar{#1~\prob@min@kw}
+  }
+}
 %    \end{macrocode}
 %
 % \begin{macro}{\show@pts}
@@ -584,30 +747,47 @@
 %   then we show them in the margin.
 %    \begin{macrocode}
 \newcounter{pts}
-\def\show@pts{\ifx\inclprob@pts\@empty%
-\ifx\problem@pts\@empty\else%
-\ifpts\marginpar{\problem@pts\;\prob@pt@kw\smallskip}\addtocounter{pts}{\problem@pts}\fi%
-\fi\else% inclprob@pts nonempty
-\ifpts\marginpar{\inclprob@pts\;\prob@pt@kw\smallskip}\addtocounter{pts}{\inclprob@pts}\fi%
-\fi}
+\def\show@pts{
+  \tl_if_exist:NTF \l_@@_inclprob_pts_tl {
+    \bool_if:NT \c_@@_pts_bool {
+      \marginpar{\l_@@_inclprob_pts_tl;\prob@pt@kw\smallskip}
+      \addtocounter{pts}{\l_@@_inclprob_pts_tl}
+    }
+  }{
+    \tl_if_exist:NT \l_@@_prob_pts_tl {
+      \bool_if:NT \c_@@_pts_bool {
+        \marginpar{\l_@@_prob_pts_tl;\prob@pt@kw\smallskip}
+        \addtocounter{pts}{\l_@@_prob_pts_tl}
+      }
+    }
+  }
+}
 %    \end{macrocode}
 % \end{macro}
 % and now the same for the minutes
 % \begin{macro}{\show@min}
 %    \begin{macrocode}
 \newcounter{min}
-\def\show@min{\ifx\inclprob@min\@empty%
-\ifx\problem@min\@empty\else%
-\ifmin\marginpar{\problem@min\;min}\addtocounter{min}{\problem@min}\fi%
-\fi\else%
-\ifmin\marginpar{\inclprob@min\;min}\addtocounter{min}{\inclprob@min}\fi
-\fi}
+\def\show@min{
+  \tl_if_exist:NTF \l_@@_inclprob_min_tl {
+    \bool_if:NT \c_@@_min_bool {
+      \marginpar{\l_@@_inclprob_pts_tl;min}
+      \addtocounter{min}{\l_@@_inclprob_min_tl}
+    }
+  }{
+    \tl_if_exist:NT \l_@@_prob_min_tl {
+      \bool_if:NT \c_@@_min_bool {
+        \marginpar{\l_@@_prob_min_tl;min}
+        \addtocounter{min}{\l_@@_prob_min_tl}
+      }
+    }
+  }
+}
 %</package>
 %    \end{macrocode}
 % \end{macro}
 % \end{implementation}
 \endinput
-% \iffalse
 % LocalWords:  GPL structuresharing STR dtx pts keyval xcomment CPERL DefKeyVal iffalse
 %%% Local Variables: 
 %%% mode: doctex
