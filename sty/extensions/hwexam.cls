@@ -6,8 +6,8 @@
 %%
 %% hwexam.dtx  (with options: `cls')
 %% 
-\NeedsTeXFormat{LaTeX2e}[1999/12/01]
-\ProvidesClass{hwexam}[2019/03/20 v1.1 assignment and exam documents]
+\ProvidesExplClass{hwexam}{2019/03/20}{1.1}{homework assignments and exams}
+\RequirePackage{l3keys2e,expl-keystr-compat}
 \DeclareOption*{
   \PassOptionsToClass{\CurrentOption}{omdoc}
   \PassOptionsToPackage{\CurrentOption}{stex}
