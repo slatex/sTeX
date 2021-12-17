@@ -9,7 +9,6 @@
 \ProvidesExplClass{omdoc}{2020/10/19}{1.4}{OMDoc Documents}
 \RequirePackage{l3keys2e,expl-keystr-compat}
 \keys_define:nn{ document-structure / pkg }{
-  class       .initial:n    = {article},
   class       .str_set_x:N  = \c_document_structure_class_str,
   minimal     .bool_set:N   = \c_document_structure_minimal_bool,
   report      .code:n       = {
@@ -30,14 +29,16 @@
     \PassOptionsToPackage{ \CurrentOption }{ omdoc }
   }
 }
-
 \ProcessKeysOptions{ document-structure / pkg }
+\str_if_empty:NT \c_document_structure_class_str {
+  \str_set:Nn \c_document_structure_class_str {article}
+}
 \exp_after:wN\LoadClass\exp_after:wN[\c_document_structure_docopt_str]
   {\c_document_structure_class_str}
 
 \RequirePackage{omdoc}
 \bool_if:NF \c_document_structure_minimal_bool {
-\RequirePackage{stex}
+\RequirePackage{stex-compatibility}
 \keys_define:nn { document-structure / document }{
   id .str_set_x:N = \c_document_structure_document_id_str
 }

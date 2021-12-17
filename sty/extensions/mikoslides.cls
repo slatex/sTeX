@@ -24,7 +24,7 @@
   unknown .code:n      = {
     \PassOptionsToClass{\CurrentOption}{omdoc}
     \PassOptionsToClass{\CurrentOption}{beamer}
-    \PassOptionsToPackage{\CurrentOption}{mikoslides}}
+    \PassOptionsToPackage{\CurrentOption}{mikoslides}
   }
 }
 \ProcessKeysOptions{ mikoslides / cls }
