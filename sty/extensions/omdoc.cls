@@ -42,11 +42,11 @@
 \keys_define:nn { document-structure / document }{
   id .str_set_x:N = \c_document_structure_document_id_str
 }
-\let\_@@_orig_document=\document
+\let\__document_structure_orig_document=\document
 \renewcommand{\document}[1][]{
   \keys_set:nn{ document-structure / document }{ #1 }
   \stex_ref_new_doc_target:n { \c_document_structure_document_id_str }
-  \_@@_orig_document
+  \__document_structure_orig_document
 }
 }
 \endinput
