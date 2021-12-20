@@ -28,163 +28,258 @@
 \newcommand\correction@sum@kw{Sum}%
 \newcommand\correction@grade@kw{grade}%
 \newcommand\correction@forgrading@kw{To be used for grading, do not write here}
-\AfterBabelLanguage{ngerman}{\input{hwexam-ngerman.ldf}}
-\AfterBabelLanguage{finnish}{\input{hwexam-finnish.ldf}}
-\AfterBabelLanguage{french}{\input{hwexam-french.ldf}}
-\AfterBabelLanguage{russian}{\input{hwexam-russian.ldf}}
+\@ifpackageloaded{babel}{}{\RequirePackage[base]{babel}}
+
+\clist_set:Nx \l_tmpa_clist {\bbl@loaded}
+\clist_if_in:NnT \l_tmpa_clist {ngerman}{
+  \input{hwexam-ngerman.ldf}
+}
+\clist_if_in:NnT \l_tmpa_clist {finnish}{
+  \input{hwexam-finnish.ldf}
+}
+\clist_if_in:NnT \l_tmpa_clist {french}{
+  \input{hwexam-french.ldf}
+}
+\clist_if_in:NnT \l_tmpa_clist {russian}{
+  \input{hwexam-russian.ldf}
+}
 \newcounter{assignment}
 \numberproblemsin{assignment}
 \renewcommand\prob@label[1]{\arabic{assignment}.#1}
-\srefaddidkey{assig}
-\addmetakey{assig}{number}
-\addmetakey*{assig}{title}
-\addmetakey{assig}{type}
-\addmetakey{assig}{given}
-\addmetakey{assig}{due}
-\addmetakey[false]{assig}{loadmodules}[true]
-\newcommand\given@due[2]{%
-\ifx \inclassig@given\@empty
-\ifx \assig@given\@empty
-\ifx \inclassig@due\@empty
-\ifx \assig@due\@empty% all empty do nothing
-\else #1%
-\fi
-\else #1%
-\fi
-\else #1%
-\fi
-\else #1%
-\fi
-\ifx\inclassig@given\@empty
-\ifx\assig@given\@empty% do nothing
-\else \hwexam@given@kw\xspace \assig@given%
-\fi
-\else \hwexam@given@kw\xspace \inclassig@given%
-\fi
-\ifx \inclassig@due\@empty
-\ifx \assig@due\@empty% do nothing
+\keys_define:nn { hwexam / assignment } {
+id  .str_set_x:N = \l__hwexam_assign_id_str,
+number  .int_set:N  = \l__hwexam_assign_number_int,
+title  .tl_set:N  = \l__hwexam_assign_title_tl,
+type  .tl_set:N  = \l__hwexam_assign_type_tl,
+given .tl_set:N  = \l__hwexam_assign_given_tl,
+due .tl_set:N  = \l__hwexam_assign_due_tl,
+loadmodules .code:n  = {
+\bool_set_true:N \l__hwexam_assign_loadmodules_bool
+}
+}
+\cs_new_protected:Nn \__hwexam_assignment_args:n {
+\str_clear:N \l__hwexam_assign_id_str
+\int_set:Nn \l__hwexam_assign_number_int {-1}
+\tl_clear:N \l__hwexam_assign_title_tl
+\tl_clear:N \l__hwexam_assign_type_tl
+\tl_clear:N \l__hwexam_assign_given_tl
+\tl_clear:N \l__hwexam_assign_due_tl
+\bool_set_false:N \l__hwexam_assign_loadmodules_bool
+\keys_set:nn { hwexam / assignment }{ #1 }
+}
+\newcommand\given@due[2]{
+\bool_lazy_all:nF {
+{\tl_if_empty_p:V \l__hwexam_inclassign_given_tl}
+{\tl_if_empty_p:V \l__hwexam_assign_given_tl}
+{\tl_if_empty_p:V \l__hwexam_inclassign_due_tl}
+{\tl_if_empty_p:V \l__hwexam_assign_due_tl}
+}{ #1 }
+
+\tl_if_empty:NTF \l__hwexam_inclassign_given_tl {
+\tl_if_empty:NF \l__hwexam_assign_given_tl {
+\hwexam@given@kw\xspace\l__hwexam_assign_given_tl
+}
+}{
+\hwexam@given@kw\xspace\l__hwexam_inclassign_given_tl
+}
+
+\bool_lazy_or:nnF {
+\bool_lazy_and_p:nn {
+\tl_if_empty_p:V \l__hwexam_inclassign_due_tl
+}{
+\tl_if_empty_p:V \l__hwexam_assign_due_tl
+}
+}{
+\bool_lazy_and_p:nn {
+\tl_if_empty_p:V \l__hwexam_inclassign_due_tl
+}{
+\tl_if_empty_p:V \l__hwexam_assign_due_tl
+}
+}{ ,~ }
+
+\tl_if_empty:NTF \l__hwexam_inclassign_due_tl {
+\tl_if_empty:NF \l__hwexam_assign_due_tl {
+\hwexam@due@kw\xspace \l__hwexam_assign_due_tl
+}
+}{
+\hwexam@due@kw\xspace \l__hwexam_inclassign_due_tl
+}
+
+\bool_lazy_all:nF {
+{ \tl_if_empty_p:V \l__hwexam_inclassign_given_tl }
+{ \tl_if_empty_p:V \l__hwexam_assign_given_tl }
+{ \tl_if_empty_p:V \l__hwexam_inclassign_due_tl }
+{ \tl_if_empty_p:V \l__hwexam_assign_due_tl }
+}{ #2 }
+}
+\newcommand\assignment@title[3]{
+\tl_if_empty:NTF \l__hwexam_inclassign_title_tl {
+\tl_if_empty:NTF \l__hwexam_assign_title_tl {
+#1
+}{
+#2\l__hwexam_assign_title_tl#3
+}
+}{
+#2\l__hwexam_inclassign_title_tl#3
+}
+}
+\newcommand\assignment@number{
+\int_compare:nNnTF \l__hwexam_inclassign_number_int = {-1} {
+\int_compare:nNnF \l__hwexam_assign_number_int = {-1} {
+\int_use:N \l__hwexam_assign_number_int
+}
+}{
+\int_use:N \l__hwexam_inclassign_number_int
+}
+}
+\newenvironment{assignment}[1][]{
+\__hwexam_assignment_args:n { #1 } 
+\let\__hwexamnum\l__hwexam_assign_number_int
+\int_compare:nNnF \l__hwexam_assign_number_int = {-1} {
+\stepcounter{assignment}
+}{
+\setcounter{assignment}{\int_use:N\__hwexamnum}
+}
+\setcounter{problem}{0}
+\def\current@section@level{\document@hwexamtype}
+\begin{@assignment}
+}{
+\end{@assignment}
+}
+\def\__hwexamasstitle{
+\protect\document@hwexamtype~\arabic{assignment}
+\assignment@title{}{\;(}{)\;} -- \given@due{}{}
+}
+\ifmultiple
+\newenvironment{@assignment}{
+\bool_if:NTF \l__hwexam_assign_loadmodules_bool {
+\begin{omgroup}[loadmodules]{\__hwexamasstitle}
+}{
+\begin{omgroup}{\__hwexamasstitle}
+}
+}{
+\end{omgroup}
+}
 \else
-\ifx \inclassig@given\@empty
-\ifx \assig@given\@empty% do nothing
-\else ,~%
-\fi
-\else ,~%
-\fi
-\fi
-\else
-\ifx \inclassig@given\@empty
-\ifx \assig@given\@empty% do nothing
-\else ,~%
-\fi
-\else ,~%
-\fi
-\fi
-\ifx \inclassig@due\@empty
-\ifx \assig@due\@empty% do nothing
-\else \hwexam@due@kw\xspace \assig@due%
-\fi
-\else \hwexam@due@kw\xspace \inclassig@due%
-\fi
-\ifx \inclassig@given\@empty
-\ifx \assig@given\@empty
-\ifx \inclassig@due\@empty
-\ifx \assig@due\@empty% all empty do nothing
-\else #2%
-\fi
-\else #2%
-\fi
-\else #2%
-\fi
-\else #2%
+\newenvironment{@assignment}{
+\begin{center}\bf
+\Large\@title\strut\\
+\document@hwexamtype~\arabic{assignment}\assignment@title{\;}{:\;}{\\}
+\large\given@due{--\;}{\;--}
+\end{center}
+}{}
+\fi% multiple
+\keys_define:nn { hwexam / inclassignment } {
+number  .int_set:N  = \l__hwexam_inclassign_number_int,
+title  .tl_set:N  = \l__hwexam_inclassign_title_tl,
+type  .tl_set:N  = \l__hwexam_inclassign_type_tl,
+given .tl_set:N  = \l__hwexam_inclassign_given_tl,
+due .tl_set:N  = \l__hwexam_inclassign_due_tl,
+mhrepos  .str_set_x:N = \l__hwexam_inclassign_mhrepos_str
+}
+\cs_new_protected:Nn \__hwexam_inclassignment_args:n {
+\int_set:Nn \l__hwexam_inclassign_number_int {-1}
+\tl_clear:N \l__hwexam_inclassign_title_tl
+\tl_clear:N \l__hwexam_inclassign_type_tl
+\tl_clear:N \l__hwexam_inclassign_given_tl
+\tl_clear:N \l__hwexam_inclassign_due_tl
+\str_clear:N \l__hwexam_inclassign_mhrepos_str
+\keys_set:nn { hwexam / inclassignment }{ #1 }
+}
+\__hwexam_inclassignment_args:n {}
+
+\newcommand\inputassignment[2][]{
+\__hwexam_inclassignment_args:n { #1 }
+\str_if_empty:NTF \l__hwexam_inclassign_mhrepos_str {
+\input{#2}
+}{
+\stex_in_repository:nn{\l__hwexam_inclassign_mhrepos_str}{
+\input{\mhpath{\l__hwexam_inclassign_mhrepos_str}{#2}}
+}
+}
+\__hwexam_inclassignment_args:n {}
+}
+\newcommand\includeassignment[2][]{
+\newpage
+\inputassignment[#1]{#2}
+}
+\newcommand\quizheading[1]{
+\def\@tas{#1}
+\large\noindent NAME:~\hspace{8cm}  MAILBOX:\\[2ex]
+\ifx\@tas\@empty\else
+\noindent TA:~\@for\@I:=\@tas\do{{\Large$\Box$}\@I\hspace*{1em}}\\[2ex]
 \fi
 }
-\newcommand\assignment@title[3]
-{\ifx\inclassig@title\@empty% if there is no outside title
-\ifx\assig@title\@empty{#1}\else{#2\assig@title{#3}}\fi
-\else{#2}\inclassig@title{#3}\fi}% else show the outside title
-\newcommand\assignment@number%
-{\ifx\inclassig@number\@empty% if there is no outside number
-\ifx\assig@number\@empty\else\assig@number\fi
-\else\inclassig@number\fi}% else show the outside number
-\newenvironment{assignment}[1][]{\metasetkeys{assig}{#1}\sref@target%
-\edef\__hwexamnum{\assignment@number}%
-\ifx\__hwexamnum\@empty\stepcounter{assignment}\else\setcounter{assignment}{\__hwexamnum}\fi%
-\setcounter{problem}{0}%
-\def\current@section@level{\document@hwexamtype}%
-\sref@label@id{\document@hwexamtype \thesection}%
-\begin{@assignment}}
-{\end{@assignment}}
-\def\__hwexamasstitle{\protect\document@hwexamtype~\arabic{assignment}%
-\assignment@title{}{\;(}{)\;} -- \given@due{}{}}
-\ifmultiple
-\newenvironment{@assignment}%
-{\ifx\assig@loadmodules\@true
-\begin{omgroup}[loadmodules]{\__hwexamasstitle}
-\else
-\begin{omgroup}{\__hwexamasstitle}
-\fi}
-{\end{omgroup}}
-\else
-\newenvironment{@assignment}
-{\begin{center}\bf
-\Large\@title\strut\\
-\document@hwexamtype~\arabic{assignment}\assignment@title{\;}{:\;}{\\}%
-\large\given@due{--\;}{\;--}
-\end{center}}
-{}
-\fi% multiple
-\addmetakey{inclassig}{number}
-\addmetakey*{inclassig}{title}
-\addmetakey{inclassig}{type}
-\addmetakey{inclassig}{given}
-\addmetakey{inclassig}{due}
-\addmetakey{inclassig}{mhrepos}
-\clear@inclassig@keys%initially
-\newcommand\inputassignment[2][]{\metasetkeys{inclassig}{#1}%
-\edef\temp@path{#2}
-\if@iswindows@\path@to@windows\temp@path\fi
-\input{\temp@path}\clear@inclassig@keys}
-\newcommand\includeassignment[2][]{\newpage\inputassignment[#1]{#2}}
-\addmetakey{quizheading}{tas}
-\newcommand\quizheading[1]{\def\@tas{#1}%
-\large\noindent NAME: \hspace{8cm}  MAILBOX:\\[2ex]%
-\ifx\@tas\@empty\else%
-\noindent TA: \@for\@I:=\@tas\do{{\Large$\Box$}\@I\hspace*{1em}}\\[2ex]\fi}
-\addmetakey{testheading}{min}
-\addmetakey{testheading}{duration}
-\addmetakey{testheading}{reqpts}
-\newenvironment{testheading}[1][]{\metasetkeys{testheading}{#1}
-{\noindent\large{}Name: \hfill Matriculation Number:\hspace*{2cm}\strut\\[1ex]
-\begin{center}\Large\textbf{\@title}\\[1ex]\large\@date\\[3ex]\end{center}
-{\textbf{You have
-\ifx\testheading@duration\@empty\testheading@min minutes\else\testheading@duration\fi
-(sharp) for the test}};\\ Write the solutions to the sheet.}\par\noindent
-
-\newcount\check@time\check@time=\testheading@min
-\advance\check@time by -\theassignment@totalmin
-The estimated time for solving this exam is {\theassignment@totalmin} minutes,
-leaving you {\the\check@time} minutes for revising your exam.
-
-\newcount\bonus@pts\bonus@pts=\theassignment@totalpts
-\advance\bonus@pts by -\testheading@reqpts
-You can reach {\theassignment@totalpts} points if you solve all problems. You will only need
-{\testheading@reqpts} points for a perfect score, i.e.\ {\the\bonus@pts} points are
-bonus points. \vfill
+\keys_define:nn { hwexam / testheading } {
+min  .tl_set:N  = \l__hwexam_testheading_min_tl,
+duration .tl_set:N  = \__hwexam_testheading_duration_tl,
+reqpts .tl_set:N  = \l__hwexam_testheading_reqpts_tl
+}
+\cs_new_protected:Nn \__hwexam_testheading_args:n {
+\tl_clear:N \l__hwexam_testheading_min_tl
+\tl_clear:N \l__hwexam_testheading_duration_tl
+\tl_clear:N \l__hwexam_testheading_reqpts_tl
+\keys_set:nn { hwexam / testheading }{ #1 }
+}
+\newenvironment{testheading}[1][]{
+\__hwexam_testheading_args:n{ #1 }
+\noindent\large{}Name:~\hfill
+Matriculation Number:\hspace*{2cm}\strut\\[1ex]
 \begin{center}
-  {\Large\em
-  Different problems test different skills and knowledge, so do not get stuck on
-  one problem.}\vfill\par\resizebox{\textwidth}{!}{\correction@table}\\[3ex]
-\end{center}}
-{\newpage}
+\Large\textbf{\@title}\\[1ex]
+\large\@date\\[3ex]
+\end{center}
+\textbf{You~have~
+\tl_if_empty:NTF \l__hwexam_testheading_duration_tl {
+\l__hwexam_testheading_min_tl~minutes
+}{
+\l__hwexam_testheading_duration_tl
+}~
+(sharp)~for~the~test
+};\\
+Write~the~solutions~to~the~sheet.
+\par\noindent
+\newcount\check@time\check@time=\l__hwexam_testheading_min_tl
+\advance\check@time by -\theassignment@totalmin
+The~estimated~time~for~solving~this~exam~is~
+{\theassignment@totalmin}~minutes,~
+leaving~you~{\the\check@time}~minutes~for~revising~
+your~exam.
+
+\par\noindent
+\newcount\bonus@pts\bonus@pts=\theassignment@totalpts
+\advance\bonus@pts by -\l__hwexam_testheading_reqpts_tl
+You~can~reach~{\theassignment@totalpts}~points~if~you~
+solve~all~problems.~You~will~only~need~
+{\l__hwexam_testheading_reqpts_tl}~points~for~a~perfect~score,~
+i.e.\ {\the\bonus@pts}~points~are~bonus~points.
+\vfill
+\begin{center}
+   {
+\Large\em You~have~ample~time,~so~take~it~slow~
+   and~avoid~rushing~to~mistakes!\\[2ex]
+   Different~problems~test~different~skills~and~
+knowledge,~so~do~not~get~stuck~on~one~problem.
+}
+\vfill\par\resizebox{\textwidth}{!}{\correction@table}\\[3ex]
+\end{center}
+}{
+\newpage
+}
 \newcommand\testspace[1]{\iftest\vspace*{#1}\fi}
 \newcommand\testnewpage{\iftest\newpage\fi}
 \newcommand\testemptypage[1][]{\iftest\begin{center}\hwexam@testemptypage@kw\end{center}\vfill\eject\else\fi}
-\renewcommand\@problem[3]{\stepcounter{assignment@probs}
-\def\__hwexampts{#2}\ifx\__hwexampts\@empty\else\addtocounter{assignment@totalpts}{#2}\fi
-\def\__hwexammin{#3}\ifx\__hwexammin\@empty\else\addtocounter{assignment@totalmin}{#3}\fi
+\renewcommand\@problem[3]{
+\stepcounter{assignment@probs}
+\def\__problemspts{#2}
+\ifx\__problemspts\@empty\else
+\addtocounter{assignment@totalpts}{#2}
+\fi
+\def\__problemsmin{#3}\ifx\__problemsmin\@empty\else\addtocounter{assignment@totalmin}{#3}\fi
 \xdef\correction@probs{\correction@probs & #1}%
 \xdef\correction@pts{\correction@pts & #2}
-\xdef\correction@reached{\correction@reached &}}
+\xdef\correction@reached{\correction@reached &}
+}
 \newcounter{assignment@probs}
 \newcounter{assignment@totalpts}
 \newcounter{assignment@totalmin}
@@ -193,7 +288,8 @@ bonus points. \vfill
 \def\correction@reached{\correction@reached@kw}%
 \def\after@correction@table{}%
 \stepcounter{assignment@probs}
-\newcommand\correction@table{\resizebox{\textwidth}{!}{%
+\newcommand\correction@table{
+\resizebox{\textwidth}{!}{%
 \begin{tabular}{|l|*{\theassignment@probs}{c|}|l|}\hline%
 &\multicolumn{\theassignment@probs}{c||}%|
 {\footnotesize\correction@forgrading@kw} &\\\hline
