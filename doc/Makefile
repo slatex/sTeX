@@ -1,4 +1,4 @@
-STY = stex extensions metakeys
+STY = stex extensions
 SPATH = $(STY:%=../sty/%)
 DTX =  $(shell ls $(SPATH:%=%/*.dtx))
 INS =  $(shell ls $(SPATH:%=%/*.ins))

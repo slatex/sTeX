@@ -25,8 +25,11 @@
 \RequirePackage{amstext}
 \RequirePackage{amsmath}
 \newcommand\assig@default@type{\hwexam@assignment@kw}
-\addmetakey[\assig@default@type]{document}{hwexamtype}
 \def\document@hwexamtype{\assig@default@type}
+\keys_define:nn { document-structure / document }{
+id .str_set_x:N = \c_document_structure_document_id_str,
+hwexamtype .tl_set:N = \document@hwexamtype
+}
 \endinput
 %%
 %% End of file `hwexam.cls'.

@@ -1,5 +1,5 @@
 # recurse into the directories. 
-MAKEDIRS = stex  extensions metakeys
+MAKEDIRS = stex  extensions
 DISTDIRS = $(MAKEDIRS) compatibility etc
 
 all package doc: 

@@ -9,12 +9,8 @@
 % \fi
 % 
 % \iffalse
-%<package>\NeedsTeXFormat{LaTeX2e}[1999/12/01]
-%<package>\ProvidesPackage{sproof}[2019/03/20 v1.1 Semantic Markup for Proofs]
-%
 %<*driver>
 \def\bibfolder{../../lib/bib}
-\RequirePackage{sproof}
 \input{../../doc/docheader}
 
 \begin{document}
@@ -39,30 +35,15 @@
 % 
 % \GetFileInfo{sproof.sty}
 % 
-% \MakeShortVerb{\|}
-%\def\scsys#1{{{\sc #1}}\index{#1@{\sc #1}}}
-% \def\xml{\scsys{Xml}}
-% \def\mathml{\scsys{MathML}}
-% \def\omdoc{\scsys{OMDoc}}
-% \def\openmath{\scsys{OpenMath}}
-% \def\latexml{\scsys{LaTeXML}}
-% \def\perl{\scsys{Perl}}
-% \def\cmathml{Content-{\sc MathML}\index{Content {\sc MathML}}\index{MathML@{\sc MathML}!content}}
-% \def\activemath{\scsys{ActiveMath}}
-% \def\twin#1#2{\index{#1!#2}\index{#2!#1}}
-% \def\twintoo#1#2{{#1 #2}\twin{#1}{#2}}
-% \def\atwin#1#2#3{\index{#1!#2!#3}\index{#3!#2 (#1)}}
-% \def\atwintoo#1#2#3{{#1 #2 #3}\atwin{#1}{#2}{#3}}
-% \title{{\texttt{sproof.sty}}: Structural Markup for Proofs\thanks{Version {\fileversion} (last revised
+% \title{\sTeX-Proofs: Structural Markup for Proofs\thanks{Version {\fileversion} (last revised
 %        {\filedate})}}
-%    \author{Michael Kohlhase\\
+%    \author{Michael Kohlhase, Dennis Müller\\
 %            FAU Erlangen-N\"urnberg\\
 %            \url{http://kwarc.info/kohlhase}}
 % \maketitle
 %
 % \begin{documentation}
 %
-%   \begin{abstract}
 %   The |sproof| package is part of the {\stex} collection, a version of {\TeX/\LaTeX} that
 %   allows to markup {\TeX/\LaTeX} documents semantically without leaving the document
 %   format, essentially turning {\TeX/\LaTeX} into a document format for mathematical
@@ -71,7 +52,6 @@
 %   This package supplies macros and environment that allow to annotate the structure of
 %   mathematical proofs in {\stex} files. This structure can be used by MKM systems for
 %   added-value services, either directly from the \sTeX sources, or after translation.
-% \end{abstract}
 %
 % \newpage\tableofcontents\newpage
 %
@@ -365,31 +345,42 @@
 %
 %    \begin{macrocode}
 %<*package>
-% \DeclareOption*{\PassOptionsToPackage{\CurrentOption}{sref}}
-\ProcessOptions
+%<@@=stex_sproof>
+
+%%%%%%%%%%%%%   sproof.dtx   %%%%%%%%%%%%%
+
 %    \end{macrocode}
 %
-% Then we make sure that the |sref| package is loaded~\cite{Kohlhase:sref}.
-%    \begin{macrocode}
-\RequirePackage{stex-metakeys}
-\RequirePackage{etoolbox}
-\RequirePackage[base]{babel}
-%    \end{macrocode}
 %
 % \subsection{Proofs}\label{sec:impl:proofs}
 % 
 % We first define some keys for the |proof| environment.
 %    \begin{macrocode}
-\srefaddidkey{spf}
-\addmetakey*{spf}{display}
-\addmetakey{spf}{for}
-\addmetakey{spf}{from}
-\addmetakey*[\sproof@box]{spf}{proofend}
-\addmetakey{spf}{type}
-\addmetakey*{spf}{title}
-\addmetakey{spf}{continues}
-\addmetakey{spf}{functions}
-\addmetakey{spf}{method}
+\keys_define:nn { stex / spf } {
+  id          .str_set_x:N  = \l_@@_spf_id_str,
+  display     .tl_set:N     = \l_@@_spf_display_tl,
+  for         .tl_set:N     = \l_@@_spf_for_tl ,
+  from        .tl_set:N     = \l_@@_spf_from_tl ,
+  proofend    .tl_set:N     = \l_@@_spf_proofend_tl,
+  type        .tl_set:N     = \l_@@_spf_type_tl,
+  title       .tl_set:N     = \l_@@_spf_title_tl,
+  continues   .tl_set:N     = \l_@@_spf_continues_tl,
+  functions   .tl_set:N     = \l_@@_spf_functions_tl,
+  method      .tl_set:N     = \l_@@_spf_method_tl
+}
+\cs_new_protected:Nn \_@@_spf_args:n {
+	\str_clear:N \l_@@_spf_id_str
+	\tl_clear:N \l_@@_spf_display_tl
+	\tl_clear:N \l_@@_spf_for_tl
+	\tl_clear:N \l_@@_spf_from_tl
+	\tl_set:Nn \l_@@_spf_proofend_tl {\sproof@box}
+	\tl_clear:N \l_@@_spf_type_tl
+	\tl_clear:N \l_@@_spf_title_tl
+	\tl_clear:N \l_@@_spf_continues_tl
+	\tl_clear:N \l_@@_spf_functions_tl
+	\tl_clear:N \l_@@_spf_method_tl
+	\keys_set:nn { stex / spf }{ #1 }
+}
 %    \end{macrocode}
 %
 % \begin{macro}{\spf@flow}
@@ -418,22 +409,23 @@
 %   |\count\count10| with 1. In the end call for this environment, we just decrease the
 %   proof depth counter by 1 again.
 %    \begin{macrocode}
-\newenvironment{pst@with@label}[1]{%
-  \edef\pst@label{#1}%
-  \advance\count10 by 1%
-  \count\count10=1%
-}{%
-  \advance\count10 by -1%
-}%
+\newcount\count_ten
+\newenvironment{pst@with@label}[1]{
+  \edef\pst@label{#1}
+  \advance\count_ten by 1\relax
+  \count_ten=1
+}{
+  \advance\count_ten by -1\relax
+}
 %    \end{macrocode}
 % \end{environment}
 %
 % \begin{macro}{\the@pst@label}
 % |\the@pst@label| evaluates to the current step label.
 %    \begin{macrocode}
-\def\the@pst@label{%
-  \pst@make@label\pst@label{\number\count\count10}\pstlabel@postfix%
-}%
+\def\the@pst@label{
+  \pst@make@label\pst@label{\number\count_ten}\l_@@_pstlabel_postfix_tl
+}
 %    \end{macrocode}
 %\end{macro}
 %
@@ -443,28 +435,37 @@
 % from \textbf{P.1.2.3} to \textbf{Pr-1-2-3\dag}. |\setpstlabelstyledefault| will set the
 % labeling style back to default.
 %    \begin{macrocode}
-\addmetakey[P]{pstlabel}{prefix}[]
-\addmetakey[.]{pstlabel}{delimiter}[]
-\addmetakey[]{pstlabel}{postfix}[]
-\metasetkeys{pstlabel}{}% initialization
-\newrobustcmd\setpstlabelstyle[1]{%
-  \metasetkeys{pstlabel}{#1}%
-}%
+\keys_define:nn { stex / pstlabel }{
+  prefix      .tl_set:N   = \l_@@_pstlabel_prefix_tl,
+  delimiter   .tl_set:N   = \l_@@_pstlabel_delimiter_tl,
+  postfix     .tl_set:N   = \l_@@_pstlabel_postfix_tl
+}
+\cs_new_protected:Nn \_@@_pstlabel_args:n {
+  \tl_set:Nn \l_@@_pstlabel_prefix_tl {P}
+  \tl_set:Nn \l_@@_pstlabel_delimiter_tl {.}
+  \tl_clear:N \l_@@_pstlabel_postfix_tl
+}
+\_@@_pstlabel_args:n {}
+\newrobustcmd\setpstlabelstyle[1]{
+  \_@@_pstlabel_args:n {#1}
+}
 \newrobustcmd\setpstlabelstyledefault{%
-  \metasetkeys{pstlabel}{prefix=P,delimiter=.,postfix=}%
-}%
+  \_@@_pstlabel_args:n{prefix=P,delimiter=.,postfix={}}
+}
 %    \end{macrocode}
 %\end{macro}
 %
 % \begin{macro}{\pstlabelstyle}
 % |\pstlabelstyle| just sets the |\pst@make@label| macro according to the style.
 %    \begin{macrocode}
-\def\pst@make@label@long#1#2{\@for\@I:=#1\do{\expandafter\@I\pstlabel@delimiter}#2}
+\ExplSyntaxOff
+\def\pst@make@label@long#1#2{\@for\@I:=#1\do{\expandafter\expandafter\expandafter\@I\csname l_@@_pstlabel_delimiter_tl\endcsname}#2}
 \def\pst@make@label@angles#1#2{\ensuremath{\@for\@I:=#1\do{\rangle}}#2}
 \def\pst@make@label@short#1#2{#2}
 \def\pst@make@label@empty#1#2{}
+\ExplSyntaxOn
 \def\pstlabelstyle#1{%
-  \def\pst@make@label{\@nameuse{pst@make@label@#1}}%
+  \def\pst@make@label{\use:c{pst@make@label@#1}}%
 }%
 \pstlabelstyle{long}%
 %    \end{macrocode}
@@ -483,17 +484,16 @@
 %    This macro places a little box at the end of the line if there is space, or at the
 %    end of the next line if there isn't
 %    \begin{macrocode}
-\def\sproof@box{%
-  \hbox{\vrule\vbox{\hrule width 6 pt\vskip 6pt\hrule}\vrule}%
-}%
-\def\spf@proofend{\sproof@box}%
-\def\sproofend{%
-  \ifx\spf@proofend\@empty%
-  \else%
-    \hfil\null\nobreak\hfill\spf@proofend\par\smallskip%
-  \fi%
-}%
-\def\sProofEndSymbol#1{\def\sproof@box{#1}}%
+\def\sproof@box{
+  \hbox{\vrule\vbox{\hrule width 6 pt\vskip 6pt\hrule}\vrule}
+}
+\def\spf@proofend{\sproof@box}
+\def\sproofend{
+  \tl_if_empty:NF \l_@@_spf_proofend_tl {
+    \hfil\null\nobreak\hfill\l_@@_spf_proofend_tl\par\smallskip
+  }
+}
+\def\sProofEndSymbol#1{\def\sproof@box{#1}}
 %    \end{macrocode}
 % \end{macro}
 %
@@ -507,23 +507,40 @@
 %
 % For the other languages, we set up triggers
 %    \begin{macrocode}
-\AfterBabelLanguage{ngerman}{\input{sproof-ngerman.ldf}}
-\AfterBabelLanguage{finnish}{\input{sproof-finnish.ldf}}
-\AfterBabelLanguage{french}{\input{sproof-french.ldf}}
-\AfterBabelLanguage{russian}{\input{sproof-russian.ldf}}
+
+\clist_set:Nx \l_tmpa_clist {\bbl@loaded}
+\clist_if_in:NnT \l_tmpa_clist {ngerman}{
+  \input{sproof-ngerman.ldf}
+}
+\clist_if_in:NnT \l_tmpa_clist {finnish}{
+  \input{sproof-finnish.ldf}
+}
+\clist_if_in:NnT \l_tmpa_clist {french}{
+  \input{sproof-french.ldf}
+}
+\clist_if_in:NnT \l_tmpa_clist {russian}{
+  \input{sproof-russian.ldf}
+}
+
 %    \end{macrocode}
 %
 % \begin{macro}{spfsketch}
 %    \begin{macrocode}
-\newrobustcmd\spfsketch[2][]{%
-  \metasetkeys{spf}{#1}%
-  \sref@target%
-  \ifx\spf@display\spf@flow%
-  \else%
-	  {\titleemph{\ifx\spf@type\@empty\spf@proofsketch@kw\else\spf@type\fi}:}
-  \fi{ #2}%
-  \sref@label@id{this \ifx\spf@type\@empty\spf@proofsketch@kw\else\spf@type\fi}\sproofend%
-}%
+\newrobustcmd\spfsketch[2][]{
+  \_@@_spf_args:n{#1}
+  \tl_if_eq:NNF \l_@@_spf_display_tl\spf@flow{
+    \titleemph{
+      \tl_if_empty:NTF \l_@@_spf_type_tl {
+        \spf@proofsketch@kw
+      }{
+        \l_@@_spf_type_tl
+      }
+    }:
+  }
+  {~#2}
+  %\sref@label@id{this \ifx\spf@type\@empty\spf@proofsketch@kw\else\spf@type\fi}
+  \sproofend
+}
 %    \end{macrocode}
 % \end{macro}
 %
@@ -532,16 +549,23 @@
 %   really be more like a tabular with an ensuremath in it. or invoke text on the last
 %   column}\ednote{document above}
 %    \begin{macrocode}
-\newenvironment{spfeq}[2][]{%
-  \metasetkeys{spf}{#1}\sref@target%
-  \ifx\spf@display\spf@flow%
-  \else%
-    {\titleemph{\ifx\spf@type\@empty\spf@proof@kw\else\spf@type\fi}:} #2%
-  \fi% display=flow
-  \begin{displaymath}\begin{array}{rcll}%
-}{%
-  \end{array}\end{displaymath}%
-}%
+\newenvironment{spfeq}[2][]{
+  \_@@_spf_args:n{#1}
+  %\sref@target
+  \tl_if_eq:NNF \l_@@_spf_display_tl\spf@flow{
+    \titleemph{
+      \tl_if_empty:NTF \l_@@_spf_type_tl {
+        \spf@proof@kw
+      }{
+        \l_@@_spf_type_tl
+      }
+    }:
+  }
+  {~#2}
+  \begin{displaymath}\begin{array}{rcll}
+}{
+  \end{array}\end{displaymath}
+}
 %    \end{macrocode}
 % \end{macro}
 %
@@ -550,33 +574,44 @@
 %    up the description environment that will take the proof steps. At the end of the
 %    proof, we position the proof end into the last line.
 %    \begin{macrocode}
-\newenvironment{spf@proof}[2][]{%
-  \metasetkeys{spf}{#1}%
-  \sref@target%
-  \count10=10%
-  \par\noindent%
-  \ifx\spf@display\spf@flow%
-  \else%
-    \titleemph{\ifx\spf@type\@empty\spf@proof@kw\else\spf@type\fi}:%
-  \fi{ #2}%
-  \sref@label@id{this \ifx\spf@type\@empty\spf@proof@kw\else\spf@type\fi}%
-  \def\pst@label{}%
+\newenvironment{spf@proof}[2][]{
+  \_@@_spf_args:n{#1}
+  %\sref@target
+  \count_ten=10
+  \par\noindent
+  \tl_if_eq:NNF \l_@@_spf_display_tl\spf@flow{
+    \titleemph{
+      \tl_if_empty:NTF \l_@@_spf_type_tl {
+        \spf@proof@kw
+      }{
+        \l_@@_spf_type_tl
+      }
+    }:
+  }
+  {~#2}
+  %\sref@label@id{this \ifx\spf@type\@empty\spf@proof@kw\else\spf@type\fi}
+  \def\pst@label{}
   \newcount\pst@count% initialize the labeling mechanism
-  \begin{description}\begin{pst@with@label}{\pstlabel@prefix}%
-}{%
-  \end{pst@with@label}\end{description}%
-}%
-\newenvironment{sproof}[2][]{\begin{spf@proof}[#1]{#2}}{\sproofend\end{spf@proof}}%
-\newenvironment{sProof}[2][]{\begin{spf@proof}[#1]{#2}}{\end{spf@proof}}%
+  \begin{description}\begin{pst@with@label}{\l_@@_pstlabel_prefix_tl}
+}{
+  \end{pst@with@label}\end{description}
+}
+\newenvironment{sproof}[2][]{\begin{spf@proof}[#1]{#2}}{\sproofend\end{spf@proof}}
+\newenvironment{sProof}[2][]{\begin{spf@proof}[#1]{#2}}{\end{spf@proof}}
 %    \end{macrocode}
 % \end{environment}
 % 
 % \begin{macro}{\spfidea}
 %    \begin{macrocode}
-\newrobustcmd\spfidea[2][]{%
-  \metasetkeys{spf}{#1}%
-  \titleemph{\ifx\spf@type\@empty{Proof Idea}\else\spf@type\fi:} #2\sproofend%
-}%
+\newrobustcmd\spfidea[2][]{
+  \_@@_spf_args:n{#1}
+  \titleemph{
+    \tl_if_empty:NTF \l_@@_spf_type_tl {Proof~Idea}{
+      \l_@@_spf_type_tl
+    }:
+  }~#2
+  \sproofend
+}
 %    \end{macrocode}
 % \end{macro}
 %
@@ -588,29 +623,33 @@
 % \begin{environment}{spfstep}
 % \ednote{MK: labeling of steps does not work yet.}
 %    \begin{macrocode}
-\newenvironment{spfstep}[1][]{%
-  \metasetkeys{spf}{#1}%
-  \@in@omtexttrue%
-  \ifx\spf@display\spf@flow%
-  \else%
-    \item[\the@pst@label]%
-  \fi%
-  \ifx\spf@title\@empty\else{(\titleemph{\spf@title})\enspace}\fi%
-  \sref@label@id{\pst@label}\ignorespacesandpars%
-}{%
-  \next@pst@label\@in@omtextfalse\ignorespacesandpars%
-}%
+\newenvironment{spfstep}[1][]{
+  \_@@_spf_args:n{#1}
+  \@in@omtexttrue
+  \tl_if_eq:NNF \l_@@_spf_display_tl\spf@flow{
+    \item[\the@pst@label]
+  }
+  \tl_if_empty:NF \l_@@_spf_title_tl {
+    {(\titleemph{\l_@@_spf_title_tl})\enspace}
+  }
+  %\sref@label@id{\pst@label}
+  \ignorespacesandpars
+}{
+  \next@pst@label\ignorespacesandpars
+}
 %    \end{macrocode}
 % \end{environment}
 %
 % \begin{environment}{sproofcomment}
 %    \begin{macrocode}
-\newenvironment{sproofcomment}[1][]{%
-  \metasetkeys{spf}{#1}%
-  \ifx\spf@display\spf@flow\else\item[\the@pst@label]\fi%
-}{%
-  \next@pst@label%
-}%
+\newenvironment{sproofcomment}[1][]{
+  \_@@_spf_args:n{#1}
+  \tl_if_eq:NNF \l_@@_spf_display_tl\spf@flow{
+    \item[\the@pst@label]
+  }
+}{
+  \next@pst@label
+}
 %    \end{macrocode}
 % \end{environment}
 %
@@ -620,20 +659,18 @@
 % \begin{environment}{subproof}
 %   In the |subproof| environment, a new (lower-level) proproofof environment is started.
 %    \begin{macrocode}
-\newenvironment{subproof}[2][]{%
-  \metasetkeys{spf}{#1}%
-  \def\@test{#2}%
-  \ifx\@test\empty%
-  \else%
-    \ifx\spf@display\spf@flow {#2}%
-    \else%
-      \item[\the@pst@label]{#2} %
-    \fi%
-  \fi%
-  \begin{pst@with@label}{\pst@label,\number\count\count10}%
-}{%
-  \end{pst@with@label}\next@pst@label%
-}%
+\newenvironment{subproof}[2][]{
+  \_@@_spf_args:n{#1}
+  \def\@test{#2}
+  \ifx\@test\empty\else
+    \tl_if_eq:NNF \l_@@_spf_display_tl\spf@flow{
+      \item[\the@pst@label]
+    }{#2}
+  \fi
+  \begin{pst@with@label}{\pst@label,\number\count_ten}
+}{
+  \end{pst@with@label}\next@pst@label
+}
 %    \end{macrocode}
 % \end{environment}
 %
@@ -641,16 +678,16 @@
 %   In the |pfcases| environment, the start text is displayed as the first comment of the
 %   proof.
 %    \begin{macrocode}
-\newenvironment{spfcases}[2][]{%
-  \def\@test{#1}%
-  \ifx\@test\empty%
-    \begin{subproof}[method=by-cases]{#2}%
-  \else%
-    \begin{subproof}[#1,method=by-cases]{#2}%
-  \fi%
-}{%
-  \end{subproof}%
-}%
+\newenvironment{spfcases}[2][]{
+  \def\@test{#1}
+  \ifx\@test\empty
+    \begin{subproof}[method=by-cases]{#2}
+  \else
+    \begin{subproof}[#1,method=by-cases]{#2}
+  \fi
+}{
+  \end{subproof}
+}
 %    \end{macrocode}
 % \end{environment}
 %
@@ -658,41 +695,41 @@
 %    In the |pfcase| environment, the start text is displayed specification of the case
 %    after the |\item|
 %    \begin{macrocode}
-\newenvironment{spfcase}[2][]{%
-  \metasetkeys{spf}{#1}%
-  \ifx\spf@display\spf@flow\else\item[\the@pst@label]\fi%
-  \def\@test{#2}%
-  \ifx\@test\@empty%
-  \else%
-    {\titleemph{#2}: }% need blank here
-  \fi% 
-  \begin{pst@with@label}{\pst@label,\number\count\count10}
-}{%
-  \ifx\spf@display\spf@flow%
-  \else%
-    \sproofend%
-  \fi%
-  \end{pst@with@label}%
-  \next@pst@label%
-}%
+\newenvironment{spfcase}[2][]{
+  \_@@_spf_args:n{#1}
+  \tl_if_eq:NNF \l_@@_spf_display_tl\spf@flow{
+    \item[\the@pst@label]
+  }
+  \def\@test{#2}
+  \ifx\@test\@empty
+  \else
+    {\titleemph{#2}:~}
+  \fi
+  \begin{pst@with@label}{\pst@label,\number\count_ten}
+}{
+  \tl_if_eq:NNF \l_@@_spf_display_tl\spf@flow{
+    \sproofend
+  }
+  \end{pst@with@label}
+  \next@pst@label
+}
 %    \end{macrocode}
 % \end{environment}
 %
 % \begin{environment}{spfcase}
 %    similar to |spfcase|, takes a third argument. 
 %    \begin{macrocode}
-\newrobustcmd\spfcasesketch[3][]{%
-  \metasetkeys{spf}{#1}%
-  \ifx\spf@display\spf@flow%
-  \else%
-    \item[\the@pst@label]%
-  \fi%
-  \def\@test{#2}%
-  \ifx\@test\@empty%
-  \else%
-    {\titleemph{#2}: }%
-  \fi#3%
-  \next@pst@label%
+\newrobustcmd\spfcasesketch[3][]{
+  \_@@_spf_args:n{#1}
+  \tl_if_eq:NNF \l_@@_spf_display_tl\spf@flow{
+    \item[\the@pst@label]
+  }
+  \def\@test{#2}
+  \ifx\@test\@empty
+  \else
+    {\titleemph{#2}:~}
+  \fi#3
+  \next@pst@label
 }%
 %    \end{macrocode}
 % \end{environment}
@@ -703,10 +740,12 @@
 % encountered. Here this is very simple, we just define an internal macro with the value,
 % so that we can use it later.
 %    \begin{macrocode}
-\srefaddidkey{just}
-\addmetakey{just}{method}
-\addmetakey{just}{premises}
-\addmetakey{just}{args}
+\keys_define:nn { stex / just }{
+  id        .str_set_x:N  = \l_@@_just_id_str,
+  method    .tl_set:N     = \l_@@_just_method_tl,
+  premises  .tl_set:N     = \l_@@_just_premises_tl,
+  args      .tl_set:N     = \l_@@_just_args_tl
+}
 %    \end{macrocode}
 %
 % The next three environments and macros are purely semantic, so we ignore the keyval

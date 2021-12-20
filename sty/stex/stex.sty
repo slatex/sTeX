@@ -13,6 +13,7 @@
 %% terms.dtx  (with options: `package')
 %% features.dtx  (with options: `package')
 %% statements.dtx  (with options: `package')
+%% sproof.dtx  (with options: `package')
 %% others.dtx  (with options: `package')
 %% metatheory.dtx  (with options: `package')
 %% 
@@ -29,7 +30,8 @@
   lang      .clist_set:N  = \c_stex_languages_clist ,
   mathhub   .tl_set_x:N   = \mathhub ,
   sms       .bool_set:N   = \c_stex_persist_mode_bool ,
-  image     .bool_set:N   = \c_tikzinput_image_bool
+  image     .bool_set:N   = \c_tikzinput_image_bool,
+  unknown   .code:n       = {}
 }
 \ProcessKeysOptions { stex }
 \protected\def\stex{%
@@ -2945,6 +2947,15 @@
 
 %%%%%%%%%%%%%   features.dtx   %%%%%%%%%%%%%
 
+\protected\def\ignorespacesandpars{
+  \begingroup\catcode13=10\relax
+  \@ifnextchar\par{
+    \endgroup\expandafter\ignorespacesandpars\@gobble
+  }{
+    \endgroup
+  }
+}
+
 
 \NewDocumentEnvironment{symboldoc}{ m }{
   \seq_set_split:Nnn \l_tmpa_seq , { #1 }
@@ -3143,6 +3154,281 @@
   \end{stex_annotate_env}
 }
 \stex_statements_patch:nn{example}{example}
+\keys_define:nn { stex / omtext} {
+  id      .str_set_x:N   = \l_stex_omtext_id_str ,
+  title   .tl_set:N   = \l_stex_omtext_title_tl ,
+  type    .tl_set_x:N   = \l_stex_omtext_type_tl ,
+  for     .tl_set_x:N   = \l_stex_omtext_for_tl ,
+  from    .tl_set_x:N   = \l_stex_omtext_from_tl ,
+  start   .tl_set:N   = \l_stex_omtext_start_tl ,
+}
+\cs_new_protected:Nn \stex_omtext_args:n {
+  \tl_clear:N \l_stex_omtext_title_tl
+  \tl_clear:N \l_stex_omtext_start_tl
+  \keys_set:nn { stex / omtext }{ #1 }
+}
+\newif\if@in@omtext\@in@omtextfalse
+\NewDocumentEnvironment {omtext} { O{} } {
+  \stex_omtext_args:n { #1 }
+  \tl_if_empty:NTF \l_stex_omtext_start_tl {
+    \tl_if_empty:NF \l_stex_omtext_title_tl {
+      \titleemph{\l_stex_omtext_title_tl}:~
+    }
+  }{
+    \titleemph{\l_stex_omtext_start_tl}~
+  }
+  \@in@omtexttrue
+
+  \stex_ref_new_doc_target:n \l_stex_omtext_id_str
+  \stex_smsmode_set_codes:
+  \ignorespacesandpars
+}{}
+
+%%%%%%%%%%%%%   sproof.dtx   %%%%%%%%%%%%%
+
+\keys_define:nn { stex / spf } {
+  id          .str_set_x:N  = \l__stex_sproof_spf_id_str,
+  display     .tl_set:N     = \l__stex_sproof_spf_display_tl,
+  for         .tl_set:N     = \l__stex_sproof_spf_for_tl ,
+  from        .tl_set:N     = \l__stex_sproof_spf_from_tl ,
+  proofend    .tl_set:N     = \l__stex_sproof_spf_proofend_tl,
+  type        .tl_set:N     = \l__stex_sproof_spf_type_tl,
+  title       .tl_set:N     = \l__stex_sproof_spf_title_tl,
+  continues   .tl_set:N     = \l__stex_sproof_spf_continues_tl,
+  functions   .tl_set:N     = \l__stex_sproof_spf_functions_tl,
+  method      .tl_set:N     = \l__stex_sproof_spf_method_tl
+}
+\cs_new_protected:Nn \__stex_sproof_spf_args:n {
+\str_clear:N \l__stex_sproof_spf_id_str
+\tl_clear:N \l__stex_sproof_spf_display_tl
+\tl_clear:N \l__stex_sproof_spf_for_tl
+\tl_clear:N \l__stex_sproof_spf_from_tl
+\tl_set:Nn \l__stex_sproof_spf_proofend_tl {\sproof@box}
+\tl_clear:N \l__stex_sproof_spf_type_tl
+\tl_clear:N \l__stex_sproof_spf_title_tl
+\tl_clear:N \l__stex_sproof_spf_continues_tl
+\tl_clear:N \l__stex_sproof_spf_functions_tl
+\tl_clear:N \l__stex_sproof_spf_method_tl
+\keys_set:nn { stex / spf }{ #1 }
+}
+\def\spf@flow{flow}
+\newcount\count_ten
+\newenvironment{pst@with@label}[1]{
+  \edef\pst@label{#1}
+  \advance\count_ten by 1\relax
+  \count_ten=1
+}{
+  \advance\count_ten by -1\relax
+}
+\def\the@pst@label{
+  \pst@make@label\pst@label{\number\count_ten}\l__stex_sproof_pstlabel_postfix_tl
+}
+\keys_define:nn { stex / pstlabel }{
+  prefix      .tl_set:N   = \l__stex_sproof_pstlabel_prefix_tl,
+  delimiter   .tl_set:N   = \l__stex_sproof_pstlabel_delimiter_tl,
+  postfix     .tl_set:N   = \l__stex_sproof_pstlabel_postfix_tl
+}
+\cs_new_protected:Nn \__stex_sproof_pstlabel_args:n {
+  \tl_set:Nn \l__stex_sproof_pstlabel_prefix_tl {P}
+  \tl_set:Nn \l__stex_sproof_pstlabel_delimiter_tl {.}
+  \tl_clear:N \l__stex_sproof_pstlabel_postfix_tl
+}
+\__stex_sproof_pstlabel_args:n {}
+\newrobustcmd\setpstlabelstyle[1]{
+  \__stex_sproof_pstlabel_args:n {#1}
+}
+\newrobustcmd\setpstlabelstyledefault{%
+  \__stex_sproof_pstlabel_args:n{prefix=P,delimiter=.,postfix={}}
+}
+\ExplSyntaxOff
+\def\pst@make@label@long#1#2{\@for\@I:=#1\do{\expandafter\expandafter\expandafter\@I\csname l__stex_sproof_pstlabel_delimiter_tl\endcsname}#2}
+\def\pst@make@label@angles#1#2{\ensuremath{\@for\@I:=#1\do{\rangle}}#2}
+\def\pst@make@label@short#1#2{#2}
+\def\pst@make@label@empty#1#2{}
+\ExplSyntaxOn
+\def\pstlabelstyle#1{%
+  \def\pst@make@label{\use:c{pst@make@label@#1}}%
+}%
+\pstlabelstyle{long}%
+\def\next@pst@label{%
+  \global\advance\count\count10 by 1%
+}%
+\def\sproof@box{
+  \hbox{\vrule\vbox{\hrule width 6 pt\vskip 6pt\hrule}\vrule}
+}
+\def\spf@proofend{\sproof@box}
+\def\sproofend{
+  \tl_if_empty:NF \l__stex_sproof_spf_proofend_tl {
+    \hfil\null\nobreak\hfill\l__stex_sproof_spf_proofend_tl\par\smallskip
+  }
+}
+\def\sProofEndSymbol#1{\def\sproof@box{#1}}
+\def\spf@proofsketch@kw{Proof Sketch}
+\def\spf@proof@kw{Proof}
+\def\spf@step@kw{Step}
+
+\clist_set:Nx \l_tmpa_clist {\bbl@loaded}
+\clist_if_in:NnT \l_tmpa_clist {ngerman}{
+  \input{sproof-ngerman.ldf}
+}
+\clist_if_in:NnT \l_tmpa_clist {finnish}{
+  \input{sproof-finnish.ldf}
+}
+\clist_if_in:NnT \l_tmpa_clist {french}{
+  \input{sproof-french.ldf}
+}
+\clist_if_in:NnT \l_tmpa_clist {russian}{
+  \input{sproof-russian.ldf}
+}
+
+\newrobustcmd\spfsketch[2][]{
+  \__stex_sproof_spf_args:n{#1}
+  \tl_if_eq:NNF \l__stex_sproof_spf_display_tl\spf@flow{
+    \titleemph{
+      \tl_if_empty:NTF \l__stex_sproof_spf_type_tl {
+        \spf@proofsketch@kw
+      }{
+        \l__stex_sproof_spf_type_tl
+      }
+    }:
+  }
+  {~#2}
+  %\sref@label@id{this \ifx\spf@type\@empty\spf@proofsketch@kw\else\spf@type\fi}
+  \sproofend
+}
+\newenvironment{spfeq}[2][]{
+  \__stex_sproof_spf_args:n{#1}
+  %\sref@target
+  \tl_if_eq:NNF \l__stex_sproof_spf_display_tl\spf@flow{
+    \titleemph{
+      \tl_if_empty:NTF \l__stex_sproof_spf_type_tl {
+        \spf@proof@kw
+      }{
+        \l__stex_sproof_spf_type_tl
+      }
+    }:
+  }
+  {~#2}
+  \begin{displaymath}\begin{array}{rcll}
+}{
+  \end{array}\end{displaymath}
+}
+\newenvironment{spf@proof}[2][]{
+  \__stex_sproof_spf_args:n{#1}
+  %\sref@target
+  \count_ten=10
+  \par\noindent
+  \tl_if_eq:NNF \l__stex_sproof_spf_display_tl\spf@flow{
+    \titleemph{
+      \tl_if_empty:NTF \l__stex_sproof_spf_type_tl {
+        \spf@proof@kw
+      }{
+        \l__stex_sproof_spf_type_tl
+      }
+    }:
+  }
+  {~#2}
+  %\sref@label@id{this \ifx\spf@type\@empty\spf@proof@kw\else\spf@type\fi}
+  \def\pst@label{}
+  \newcount\pst@count% initialize the labeling mechanism
+  \begin{description}\begin{pst@with@label}{\l__stex_sproof_pstlabel_prefix_tl}
+}{
+  \end{pst@with@label}\end{description}
+}
+\newenvironment{sproof}[2][]{\begin{spf@proof}[#1]{#2}}{\sproofend\end{spf@proof}}
+\newenvironment{sProof}[2][]{\begin{spf@proof}[#1]{#2}}{\end{spf@proof}}
+\newrobustcmd\spfidea[2][]{
+  \__stex_sproof_spf_args:n{#1}
+  \titleemph{
+    \tl_if_empty:NTF \l__stex_sproof_spf_type_tl {Proof~Idea}{
+      \l__stex_sproof_spf_type_tl
+    }:
+  }~#2
+  \sproofend
+}
+\newenvironment{spfstep}[1][]{
+  \__stex_sproof_spf_args:n{#1}
+  \@in@omtexttrue
+  \tl_if_eq:NNF \l__stex_sproof_spf_display_tl\spf@flow{
+    \item[\the@pst@label]
+  }
+  \tl_if_empty:NF \l__stex_sproof_spf_title_tl {
+    {(\titleemph{\l__stex_sproof_spf_title_tl})\enspace}
+  }
+  %\sref@label@id{\pst@label}
+  \ignorespacesandpars
+}{
+  \next@pst@label\ignorespacesandpars
+}
+\newenvironment{sproofcomment}[1][]{
+  \__stex_sproof_spf_args:n{#1}
+  \tl_if_eq:NNF \l__stex_sproof_spf_display_tl\spf@flow{
+    \item[\the@pst@label]
+  }
+}{
+  \next@pst@label
+}
+\newenvironment{subproof}[2][]{
+  \__stex_sproof_spf_args:n{#1}
+  \def\@test{#2}
+  \ifx\@test\empty\else
+    \tl_if_eq:NNF \l__stex_sproof_spf_display_tl\spf@flow{
+      \item[\the@pst@label]
+    }{#2}
+  \fi
+  \begin{pst@with@label}{\pst@label,\number\count_ten}
+}{
+  \end{pst@with@label}\next@pst@label
+}
+\newenvironment{spfcases}[2][]{
+  \def\@test{#1}
+  \ifx\@test\empty
+    \begin{subproof}[method=by-cases]{#2}
+  \else
+    \begin{subproof}[#1,method=by-cases]{#2}
+  \fi
+}{
+  \end{subproof}
+}
+\newenvironment{spfcase}[2][]{
+  \__stex_sproof_spf_args:n{#1}
+  \tl_if_eq:NNF \l__stex_sproof_spf_display_tl\spf@flow{
+    \item[\the@pst@label]
+  }
+  \def\@test{#2}
+  \ifx\@test\@empty
+  \else
+    {\titleemph{#2}:~}
+  \fi
+  \begin{pst@with@label}{\pst@label,\number\count_ten}
+}{
+  \tl_if_eq:NNF \l__stex_sproof_spf_display_tl\spf@flow{
+    \sproofend
+  }
+  \end{pst@with@label}
+  \next@pst@label
+}
+\newrobustcmd\spfcasesketch[3][]{
+  \__stex_sproof_spf_args:n{#1}
+  \tl_if_eq:NNF \l__stex_sproof_spf_display_tl\spf@flow{
+    \item[\the@pst@label]
+  }
+  \def\@test{#2}
+  \ifx\@test\@empty
+  \else
+    {\titleemph{#2}:~}
+  \fi#3
+  \next@pst@label
+}%
+\keys_define:nn { stex / just }{
+  id        .str_set_x:N  = \l__stex_sproof_just_id_str,
+  method    .tl_set:N     = \l__stex_sproof_just_method_tl,
+  premises  .tl_set:N     = \l__stex_sproof_just_premises_tl,
+  args      .tl_set:N     = \l__stex_sproof_just_args_tl
+}
+\newenvironment{justification}[1][]{}{}
+\newrobustcmd\premise[2][]{#2}
+\newrobustcmd\justarg[2][]{#2}
 
 %%%%%%%%%%%%%   others.dtx   %%%%%%%%%%%%%
 
