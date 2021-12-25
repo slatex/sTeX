@@ -203,7 +203,7 @@
     \str_gset_eq:cN {sref_url_\l_tmpa_str _str}\l_stex_current_docurl_str
     \str_gset_eq:cN {sref_\l_tmpa_str _type}\c_@@_url_str
   }{
-    \iow_now:Nx \c_@@_refs_iow { \l_tmpa_str~=~\expandafter{\@currentlabel~in~\exp_args:No\unexpanded\g_@@_title_tl},}
+    \iow_now:Nx \c_@@_refs_iow { \l_tmpa_str~=~\expandafter{\@currentlabel\iffalse}{\fi~in~\exp_args:No\unexpanded\g_@@_title_tl},}
     \exp_after:wN\label\exp_after:wN{sref_\l_tmpa_str}
     \str_gset:cn {sref_\l_tmpa_str _type}\c_@@_ref_str
   }
@@ -219,6 +219,7 @@
 % \subsection{Using References}
 %
 %    \begin{macrocode}
+\str_new:N \l_@@_indocument_str
 \keys_define:nn { stex / sref } {
   linktext      .tl_set:N  = \l_@@_linktext_tl ,
   fallback      .tl_set:N  = \l_@@_fallback_tl ,
@@ -227,6 +228,8 @@
   %indoc         .str_set_x:N  = \l_@@_repo_str ,
 }
 
+
+
 \cs_new_protected:Nn \_@@_args:n {
   \tl_clear:N \l_@@_linktext_tl
   \tl_clear:N \l_@@_fallback_tl
@@ -234,6 +237,44 @@
   \tl_clear:N \l_@@_post_tl
   \str_clear:N \l_@@_repo_str
   \keys_set:nn { stex / sref } { #1 }
+}
+
+\NewDocumentCommand \sref { O{} m}{
+  \_@@_args:n { #1 }
+  \str_if_empty:NTF \l_@@_indocument_str {
+    \str_set:Nn \l_tmpa_str { #2 }
+    \int_set:Nn \l_tmpa_int { \str_count:N \l_tmpa_str }
+    \tl_set:Nn \l_tmpa_tl {
+      \l_@@_fallback_tl
+    }
+    \seq_map_inline:Nn \g_@@_all_refs_seq {
+      \str_set:Nn \l_tmpb_str { ##1 }
+      \str_if_eq:eeT { \l_tmpa_str } {
+        \str_range:Nnn \l_tmpb_str { -\l_tmpa_int }{ -1 }
+      } {
+        \seq_map_break:n {
+          \tl_set:Nn \l_tmpa_tl {
+            % doc uri in \l_tmpb_str
+            \str_set:Nx \l_tmpa_str {sref_url_\l_tmpb_str _type}
+            \str_if_eq:NNTF \l_tmpa_str \c_@@_ref_str {
+              % reference
+              \l_@@_pre_tl\ref{sref_\l_tmpb_str}\l_@@_post_tl
+            }{
+              % URL
+              \@ifpackageloaded{hyperref}{
+                \ex_args:Nx \href{\use:c{sref_url_\l_tmpb_str _str}}{\l_@@_fallback_tl}
+              }{
+                \l_@@_fallback_tl
+              }
+            }
+          }
+        }
+      }
+    }
+    \l_tmpa_tl
+  }{
+    % TODO
+  }
 }
 
 %    \end{macrocode}
