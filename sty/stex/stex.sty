@@ -624,7 +624,6 @@
 
 %%%%%%%%%%%%%   references.dtx   %%%%%%%%%%%%%
 
-\RequirePackage{hyperref}
 
 \iow_new:N \c__stex_refs_refs_iow
 \AddToHook{begindocument}{
@@ -763,7 +762,7 @@
   fallback      .tl_set:N  = \l__stex_refs_fallback_tl ,
   pre           .tl_set:N  = \l__stex_refs_pre_tl ,
   post          .tl_set:N  = \l__stex_refs_post_tl ,
-  indoc         .str_set_x:N  = \l__stex_refs_repo_str ,
+  %indoc         .str_set_x:N  = \l__stex_refs_repo_str ,
 }
 
 \cs_new_protected:Nn \__stex_refs_args:n {
@@ -1850,7 +1849,7 @@
 \keys_define:nn { stex / notation } {
   lang    .tl_set_x:N = \l__stex_notation_lang_str ,
   variant .tl_set_x:N = \l__stex_notation_variant_str ,
-  prec    .tl_set_x:N = \l__stex_notation_prec_str ,
+  prec    .str_set_x:N = \l__stex_notation_prec_str ,
   op      .tl_set:N   = \l__stex_notation_op_tl ,
   unknown .code:n     = \str_set:Nx
       \l__stex_notation_variant_str \l_keys_key_str
@@ -2330,12 +2329,19 @@
 \tl_set:Nn \l__stex_terms_left_bracket_str (
 \tl_set:Nn \l__stex_terms_right_bracket_str )
 \cs_new_protected:Nn \__stex_terms_maybe_brackets:nn {
-  \int_compare:nNnTF { #1 } > \l__stex_terms_downprec {
-    \bool_if:NTF \l_stex_inparray_bool { #2 }{
-      \dobrackets { #2 }
-    }
-  }{ #2 }
+  \bool_if:NTF \l__stex_terms_brackets_done_bool {
+    \bool_set_false:N \l__stex_terms_brackets_done_bool
+    #2
+  } {
+    \int_compare:nNnTF { #1 } > \l__stex_terms_downprec {
+      \bool_if:NTF \l_stex_inparray_bool { #2 }{
+        \stex_debug:nn{dobrackets}{Here! \number#1 > \number\l__stex_terms_downprec; \detokenize{#2}}
+        \dobrackets { #2 }
+      }
+    }{ #2 }
+  }
 }
+\bool_new:N \l__stex_terms_brackets_done_bool
 \cs_new_protected:Npn \dobrackets #1 {
   %\ThisStyle{\if D\m@switch
   %    \exp_args:Nnx \use:nn
@@ -2343,8 +2349,17 @@
   %    { \exp_not:N\right\l__stex_terms_right_bracket_str }
   %  \else
       \exp_args:Nnx \use:nn
-      { \l__stex_terms_left_bracket_str #1 }
-      { \l__stex_terms_right_bracket_str }
+      {
+        \bool_set_true:N \l__stex_terms_brackets_done_bool
+        \int_set:Nn \l__stex_terms_downprec \infprec
+        \l__stex_terms_left_bracket_str
+        #1
+      }
+      {
+        \bool_set_false:N \l__stex_terms_brackets_done_bool
+        \l__stex_terms_right_bracket_str
+        \int_set:Nn \l__stex_terms_downprec { \int_use:N \l__stex_terms_downprec }
+      }
   %\fi}
 }
 \cs_new_protected:Npn \withbrackets #1 #2 #3 {
@@ -2410,17 +2425,16 @@
     { \int_set:Nn \exp_not:N \l__stex_terms_downprec { \int_use:N \l__stex_terms_downprec } }
 }
 \cs_new_protected:Nn \_stex_term_math_assoc_arg:nnnn {
-  \seq_set_split:Nnn \l_tmpa_seq , { #4 }
-  \int_compare:nNnTF { \seq_count:N \l_tmpa_seq } < 2 {
+  \clist_set:Nn \l_tmpa_clist{ #4 }
+  \int_compare:nNnTF { \clist_count:N \l_tmpa_clist } < 2 {
     \tl_set:Nn \l_tmpa_tl { #4 }
   }{
     \cs_set:Npn \l_tmpa_cs ##1 ##2 { #3 }
-    \seq_reverse:N \l_tmpa_seq
-    \seq_pop_left:NN \l_tmpa_seq \l_tmpb_tl
-    \tl_set:No \l_tmpa_tl { \l_tmpb_tl }
+    \clist_reverse:N \l_tmpa_clist
+    \clist_pop:NN \l_tmpa_clist \l_tmpa_tl
 
-    \seq_map_inline:Nn \l_tmpa_seq {
-      \exp_args:NNo \tl_set:No \l_tmpa_tl {
+    \clist_map_inline:Nn \l_tmpa_clist {
+      \exp_args:NNNo \exp_args:NNo \tl_set:No \l_tmpa_tl {
         \exp_args:Nno
         \l_tmpa_cs { ##1 } \l_tmpa_tl
       }

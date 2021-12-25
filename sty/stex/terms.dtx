@@ -381,17 +381,24 @@
 %
 %    \begin{macrocode}
 \cs_new_protected:Nn \_@@_maybe_brackets:nn {
-  \int_compare:nNnTF { #1 } > \l_@@_downprec {
-    \bool_if:NTF \l_stex_inparray_bool { #2 }{
-      \dobrackets { #2 }
-    }
-  }{ #2 }
+  \bool_if:NTF \l_@@_brackets_done_bool {
+    \bool_set_false:N \l_@@_brackets_done_bool
+    #2
+  } {
+    \int_compare:nNnTF { #1 } > \l_@@_downprec {
+      \bool_if:NTF \l_stex_inparray_bool { #2 }{
+        \stex_debug:nn{dobrackets}{Here! \number#1 > \number\l_@@_downprec; \detokenize{#2}}
+        \dobrackets { #2 }
+      }
+    }{ #2 }
+  }
 }
 %    \end{macrocode}
 % \end{macro}
 %
 % \begin{macro}{\dobrackets}
 %    \begin{macrocode}
+\bool_new:N \l_@@_brackets_done_bool
 %\RequirePackage{scalerel}
 \cs_new_protected:Npn \dobrackets #1 {
   %\ThisStyle{\if D\m@switch
@@ -400,8 +407,17 @@
   %    { \exp_not:N\right\l_@@_right_bracket_str }
   %  \else
       \exp_args:Nnx \use:nn
-      { \l_@@_left_bracket_str #1 } 
-      { \l_@@_right_bracket_str }
+      { 
+        \bool_set_true:N \l_@@_brackets_done_bool
+        \int_set:Nn \l_@@_downprec \infprec
+        \l_@@_left_bracket_str 
+        #1
+      } 
+      {
+        \bool_set_false:N \l_@@_brackets_done_bool
+        \l_@@_right_bracket_str 
+        \int_set:Nn \l_@@_downprec { \int_use:N \l_@@_downprec }
+      }
   %\fi}
 }
 %    \end{macrocode}
@@ -505,17 +521,16 @@
 % \begin{macro}{\_stex_term_math_assoc_arg:nnnn}
 %    \begin{macrocode}
 \cs_new_protected:Nn \_stex_term_math_assoc_arg:nnnn {
-  \seq_set_split:Nnn \l_tmpa_seq , { #4 }
-  \int_compare:nNnTF { \seq_count:N \l_tmpa_seq } < 2 {
+  \clist_set:Nn \l_tmpa_clist{ #4 }
+  \int_compare:nNnTF { \clist_count:N \l_tmpa_clist } < 2 {
     \tl_set:Nn \l_tmpa_tl { #4 }
   }{
     \cs_set:Npn \l_tmpa_cs ##1 ##2 { #3 }
-    \seq_reverse:N \l_tmpa_seq
-    \seq_pop_left:NN \l_tmpa_seq \l_tmpb_tl
-    \tl_set:No \l_tmpa_tl { \l_tmpb_tl }
+    \clist_reverse:N \l_tmpa_clist
+    \clist_pop:NN \l_tmpa_clist \l_tmpa_tl
 
-    \seq_map_inline:Nn \l_tmpa_seq {
-      \exp_args:NNo \tl_set:No \l_tmpa_tl {
+    \clist_map_inline:Nn \l_tmpa_clist {
+      \exp_args:NNNo \exp_args:NNo \tl_set:No \l_tmpa_tl {
         \exp_args:Nno 
         \l_tmpa_cs { ##1 } \l_tmpa_tl 
       }
