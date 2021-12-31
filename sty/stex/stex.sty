@@ -564,7 +564,7 @@
 }
 \newif \ifinputref \inputreffalse
 
-\cs_new_protected:Nn \inputref:nn {
+\cs_new_protected:Nn \stex_inputref:nn {
   \stex_in_repository:nn {#1} {
     \ifinputref
       \input{ \c_stex_mathhub_str / ##1 / source / #2 }
@@ -576,7 +576,16 @@
   }
 }
 \NewDocumentCommand \inputref { O{} m}{
-  \inputref:nn{ #1 }{ #2 }
+  \stex_inputref:nn{ #1 }{ #2 }
+}
+
+\cs_new_protected:Nn \stex_mhbibresource:nn {
+  \stex_in_repository:nn {#1} {
+    \addbibresource{ \c_stex_mathhub_str / ##1 / #2 }
+  }
+}
+\newcommand\addmhbibresource[2][]{
+  \stex_mhbibresource:nn{ #1 }{ #2 }
 }
   \def \mhpath #1 #2 {
     \exp_args:Ne \str_if_eq:nnTF{#1}{}{
@@ -2266,6 +2275,9 @@
 \msg_new:nnn{stex}{error/notationarg}{
   Error~in~parsing~notation~#1
 }
+\msg_new:nnn{stex}{error/noop}{
+  Symbol~#1~has~no~operator~notation~for~notation~#2
+}
 
 \keys_define:nn { stex / terms } {
   lang    .tl_set_x:N = \l__stex_terms_lang_str ,
@@ -2294,7 +2306,15 @@
     \peek_charcode:NTF [ {
       \__stex_terms_invoke_op:nw { #1 }
     }{
-      \__stex_terms_invoke_op:nw { #1 } []
+      \peek_charcode_remove:NTF ! {
+        \peek_charcode:NTF [ {
+          \__stex_terms_invoke_op_custom:nw
+        }{
+          % TODO throw error
+        }
+      }{
+        \__stex_terms_invoke_op:nw { #1 } []
+      }
     }
   }{
     \peek_charcode_remove:NTF * {
@@ -2308,6 +2328,11 @@
     }
   }
 }
+\cs_new_protected:Npn \__stex_terms_invoke_op_custom:nw  #1 [#2] {
+  \_stex_term_oms:nnn {#1 \c_hash_str\c_hash_str}{#1}{
+    \stex_highlight_term:nn{#1}{#2}
+  }
+}
 \cs_new_protected:Npn \__stex_terms_invoke_op:nw  #1 [#2] {
   \__stex_terms_args:n { #2 }
   \cs_if_exist:cTF {
@@ -2318,7 +2343,7 @@
       \l__stex_terms_variant_str \c_hash_str \l__stex_terms_lang_str _cs
     \endcsname
   }{
-    % TODO throw error
+    \msg_error:nnnn{stex}{error/noop}{#1}{\l__stex_terms_variant_str \c_hash_str \l__stex_terms_lang_str}
   }
 }
 \cs_new_protected:Npn \__stex_terms_invoke_math:nw  #1 [#2] {

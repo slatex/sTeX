@@ -148,7 +148,7 @@
 %
 %   $\bar*[\text{some }]a[\text{ and some }]b[\text{ and also some }]c[\text{ here}]$.
 %
-%   $\bar![\mathtt{bar}]$
+%   $\bar!![\mathtt{bar}]$
 %
 %   \bar*{a}*{b}[or just some ]c
 %
@@ -213,6 +213,9 @@
 \msg_new:nnn{stex}{error/notationarg}{
   Error~in~parsing~notation~#1
 }
+\msg_new:nnn{stex}{error/noop}{
+  Symbol~#1~has~no~operator~notation~for~notation~#2
+}
 
 %    \end{macrocode}
 % \subsection{Symbol Invokations}
@@ -259,7 +262,15 @@
     \peek_charcode:NTF [ {
       \_@@_invoke_op:nw { #1 }
     }{
-      \_@@_invoke_op:nw { #1 } []
+      \peek_charcode_remove:NTF ! {
+        \peek_charcode:NTF [ {
+          \_@@_invoke_op_custom:nw
+        }{
+          % TODO throw error
+        }
+      }{
+        \_@@_invoke_op:nw { #1 } []
+      }
     }
   }{
     \peek_charcode_remove:NTF * {
@@ -271,6 +282,15 @@
         \_@@_invoke_math:nw { #1 } []
       }
     }
+  }
+}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\_@@_invoke_op_custom:nw}
+%    \begin{macrocode}
+\cs_new_protected:Npn \_@@_invoke_op_custom:nw  #1 [#2] {
+  \_stex_term_oms:nnn {#1 \c_hash_str\c_hash_str}{#1}{
+    \stex_highlight_term:nn{#1}{#2}
   }
 }
 %    \end{macrocode}
@@ -289,7 +309,7 @@
       \l_@@_variant_str \c_hash_str \l_@@_lang_str _cs
     \endcsname
   }{
-    % TODO throw error
+    \msg_error:nnnn{stex}{error/noop}{#1}{\l_@@_variant_str \c_hash_str \l_@@_lang_str}
   }
 }
 %    \end{macrocode}
