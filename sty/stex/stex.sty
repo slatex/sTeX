@@ -906,16 +906,19 @@
     }
   }
 
-  \seq_if_empty:NTF \l_tmpa_seq {
+  \stex_path_to_string:NN \l_tmpa_seq \l_stex_modules_subpath_str
+  \str_if_empty:NTF \l_stex_modules_subpath_str {
     \str_set_eq:NN \l_stex_modules_ns_str \l_tmpa_str
   }{
     \str_set:Nx \l_stex_modules_ns_str {
-      \l_tmpa_str/\stex_path_to_string:N \l_tmpa_seq
+      \l_tmpa_str/\l_stex_modules_subpath_str
     }
   }
 }
 \str_new:N \l_stex_modules_ns_str
+\str_new:N \l_stex_modules_subpath_str
 \cs_new_protected:Nn \stex_modules_current_namespace: {
+  \str_clear:N \l_stex_modules_subpath_str
   \prop_get:NnNTF \l_stex_current_repository_prop { ns } \l_tmpa_str {
     \stex_modules_compute_namespace:nN \l_tmpa_str \g_stex_currentfile_seq
   }{
@@ -1403,30 +1406,39 @@
 \cs_new_protected:Nn \stex_import_module_uri:nn {
   \str_set:Nx \l__stex_importmodule_archive_str { #1 }
   \str_set:Nn \l__stex_importmodule_path_str { #2 }
-  \str_if_empty:NT \l__stex_importmodule_archive_str {
-    \prop_if_empty:NF \l_stex_current_repository_prop {
-      \prop_get:NnN \l_stex_current_repository_prop { id } \l__stex_importmodule_archive_str
-    }
-  }
 
   \exp_args:NNNo \seq_set_split:Nnn \l_tmpb_seq ? { \l__stex_importmodule_path_str }
   \seq_pop_right:NN \l_tmpb_seq \l__stex_importmodule_name_str
   \str_set:Nx \l__stex_importmodule_path_str { \seq_use:Nn \l_tmpb_seq ? }
 
-  \str_if_empty:NTF \l__stex_importmodule_archive_str {
-    \stex_modules_current_namespace:
-    \str_if_empty:NF \l__stex_importmodule_path_str {
-      \str_set:Nx \l_stex_module_ns_str {
-        \l_stex_module_ns_str / \l__stex_importmodule_path_str
+  \stex_modules_current_namespace:
+  \bool_lazy_all:nTF {
+    {\str_if_empty_p:N \l__stex_importmodule_archive_str}
+    {\str_if_empty_p:N \l__stex_importmodule_path_str}
+    {\stex_if_module_exists_p:n { \l_stex_module_ns_str ? \l__stex_importmodule_name_str } }
+  }{
+    \str_set_eq:NN \l__stex_importmodule_path_str \l_stex_modules_subpath_str
+    \str_set_eq:NN \l_stex_module_ns
+  }{
+    \str_if_empty:NT \l__stex_importmodule_archive_str {
+      \prop_if_empty:NF \l_stex_current_repository_prop {
+        \prop_get:NnN \l_stex_current_repository_prop { id } \l__stex_importmodule_archive_str
       }
     }
-  }{
-    \stex_require_repository:n \l__stex_importmodule_archive_str
-    \prop_get:cnN { c_stex_mathhub_\l__stex_importmodule_archive_str _manifest_prop } { ns }
-      \l_stex_module_ns_str
-    \str_if_empty:NF \l__stex_importmodule_path_str {
-      \str_set:Nx \l_stex_module_ns_str {
-        \l_stex_module_ns_str / \l__stex_importmodule_path_str
+    \str_if_empty:NTF \l__stex_importmodule_archive_str {
+      \str_if_empty:NF \l__stex_importmodule_path_str {
+        \str_set:Nx \l_stex_module_ns_str {
+          \l_stex_module_ns_str / \l__stex_importmodule_path_str
+        }
+      }
+    }{
+      \stex_require_repository:n \l__stex_importmodule_archive_str
+      \prop_get:cnN { c_stex_mathhub_\l__stex_importmodule_archive_str _manifest_prop } { ns }
+        \l_stex_module_ns_str
+      \str_if_empty:NF \l__stex_importmodule_path_str {
+        \str_set:Nx \l_stex_module_ns_str {
+          \l_stex_module_ns_str / \l__stex_importmodule_path_str
+        }
       }
     }
   }
@@ -3301,6 +3313,7 @@
   \stex_smsmode_set_codes:
   \ignorespacesandpars
 }{}
+
 
 %%%%%%%%%%%%%   sproof.dtx   %%%%%%%%%%%%%
 
