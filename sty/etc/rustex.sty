@@ -1,0 +1,68 @@
+\ProvidesPackage{rustex}[2022/01/11]
+\RequirePackage{xspace}
+
+\ifcsname if@rustex\endcsname\else
+	\expandafter\newif\csname if@rustex\endcsname
+	\@rustexfalse
+\fi
+
+\if@rustex\else
+	\def\rustex@directHTML#1{}
+	% usage: plain HTML as argument, e.g.
+	% \rustex@directHTML{<div>foo</div>}
+	
+	\def\rustex@annotateHTML#1{}
+	\def\rustex@annotateHTMLEnd{}
+	% usage: First argument: attributes and styles
+	% attribute names may contain URL prefixes
+	% styles should be prefixed with style:
+	% second argument: The stuff that gets annotated
+	% e.g.
+	%\rustex@annotateHTML{rustex:mycolor="grey" style:fontsize="150\%"}hello\rustex@annotateHTMLEnd
+
+	\def\rustex@addNamespaceAbbrev#1#2{}
+	% e.g. \rustex@addNamespaceAbbrev{stex}{http://kwarc.info/ns/sTeX}
+\fi
+
+\ifcsname ExplSyntaxOn\endcsname
+	\ExplSyntaxOn
+		\prg_new_conditional:Nnn \rustex_if: {p, T, F, TF} {
+			\if@rustex
+				\prg_return_true:
+			\else:
+				\prg_return_false:
+			\fi:
+		}
+		\cs_new_protected:Npn\rustex_direct_HTML:n #1 {
+			\rustex_if:T {\cs:w rustex@directHTML\cs_end:{#1}}
+		}
+		\cs_new_protected:Npn\rustex_annotate_HTML_begin:n #1 {
+			\rustex_if:T {\cs:w rustex@annotateHTML\cs_end:{#1}}
+		}
+		\cs_new_protected:Nn\rustex_annotate_HTML_end: {
+			\rustex_if:T {\cs:w rustex@annotateHTMLEnd\cs_end:}
+		}
+		\cs_new_protected:Npn\rustex_annotate_HTML:nn #1 #2 {
+			\rustex_if:TF {
+				\rustex_annotate_HTML_begin:n{#1}
+					#2
+				\rustex_annotate_HTML_end:
+			}{#2}
+		}
+		\cs_new_protected:Npn\rustex_add_Namespace:nn #1 #2 {
+			\rustex_if:T {
+				\cs:w rustex@addNamespaceAbbrev\cs_end:{#1}{#2}
+			}
+		}
+	\ExplSyntaxOff
+\fi
+
+\protected\def\RusTeX{%
+  \@ifundefined{texorpdfstring}%
+  {\let\texorpdfstring\@firstoftwo}%
+  {}%
+  \texorpdfstring{Rus\TeX}{RusTeX}\xspace%
+}
+\let\rustex\RusTeX
+
+\def\rustexBREAK{}
