@@ -664,11 +664,11 @@
 %    \end{macrocode}
 % \end{macro}
 %
-% \begin{macro}{\inputref,\stex_inputref:nn}
+% \begin{macro}{\inputref,\stex_inputref:nn,\mhinput\stex_mhinput:nn}
 %    \begin{macrocode}
 \newif \ifinputref \inputreffalse
 
-\cs_new_protected:Nn \stex_inputref:nn {
+\cs_new_protected:Nn \stex_mhinput:nn {
   \stex_in_repository:nn {#1} {
     \ifinputref
       \input{ \c_stex_mathhub_str / ##1 / source / #2 }
@@ -679,6 +679,31 @@
     \fi
   }
 }
+\NewDocumentCommand \mhinput { O{} m}{
+  \stex_mhinput:nn{ #1 }{ #2 }
+}
+
+\cs_new_protected:Nn \stex_inputref:nn {
+  \stex_in_repository:nn {#1} {
+    \bool_lazy_any:nTF {
+      {\rustex_if_p:} {\latexml_if_p:}
+    } {
+      \str_clear:N \l_tmpa_str
+      \prop_get:NnNF \l_stex_current_repository_prop { narr } \l_tmpa_str {
+        \prop_get:NnNF \l_stex_current_repository_prop { ns } \l_tmpa_str {}
+      }
+      \stex_annotate_invisible:nnn{inputref}{
+        \l_tmpa_str / #2
+      }{}
+    }{
+      \begingroup
+        \inputreftrue
+        \input{ \c_stex_mathhub_str / ##1 / source / #2 }
+      \endgroup
+    }
+  }
+}
+
 \NewDocumentCommand \inputref { O{} m}{
   \stex_inputref:nn{ #1 }{ #2 }
 }
@@ -741,7 +766,7 @@
     }
   }{}
   \bool_if:NF \l_tmpa_bool {
-    \msg_error:nnnx{stex}{error/nofile}\libinput{#1.tex}
+    \msg_error:nnxx{stex}{error/nofile}{\exp_not:N\libinput}{#1.tex}
   }
   \l_tmpa_tl
 }
