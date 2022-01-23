@@ -3103,46 +3103,6 @@
 
 
 \def\titleemph#1{\textbf{#1}}
-\NewDocumentEnvironment{symboldoc}{ m }{
-  \seq_set_split:Nnn \l_tmpa_seq , { #1 }
-  \seq_clear:N \l_tmpb_seq
-  \seq_map_inline:Nn \l_tmpa_seq {
-    \str_if_eq:nnF{ ##1 }{}{
-      \stex_get_symbol:n { ##1 }
-      \exp_args:NNo \seq_put_right:Nn \l_tmpb_seq {
-        \l_stex_get_symbol_uri_str
-      }
-    }
-  }
-  \par
-  \exp_args:Nnnx
-  \begin{stex_annotate_env}{symboldoc}{\seq_use:Nn \l_tmpb_seq {,}}
-}{
-  \end{stex_annotate_env}
-}
-\seq_new:N \g_stex_statements_patched_seq
-
-\cs_new_protected:Nn \stex_statements_set_patched:n {
-  \seq_put_right:Nn \g_stex_statements_patched_seq {#1}
-}
-
-\cs_new_protected:Nn \stex_statements_patch:nn {
-  \seq_if_in:NnF \g_stex_statements_patched_seq {#1} {
-    \AddToHook{begindocument}{
-      \cs_if_exist:cTF{end#1}{
-        \AddToHook{env/#1/before}[stex]{\use:c{__stex_statements_#2_begin:n}{}}
-        \AddToHook{env/#1/after}[stex]{\use:c{__stex_statements_#2_end:}}
-      }{
-        \NewDocumentEnvironment{#1}{O{}}{
-          \titleemph{\stex_capitalize:n #1}~
-          \use:c{__stex_statements_#2_begin:n}{}
-        }{
-          \use:c{__stex_statements_#2_end:}
-        }
-      }
-    }
-  }
-}
 \keys_define:nn {stex / definiendum }{
   post    .tl_set:N     = \l__stex_statements_definiendum_post_tl,
   root    .str_set_x:N  = \l__stex_statements_definiendum_root_str,
@@ -3179,7 +3139,6 @@
   }
 }
 \stex_deactivate_macro:Nn \definiendum {definition~environments}
-
 \NewDocumentCommand \definame { O{} m } {
   \__stex_statements_definiendum_args:n { #1 }
   % TODO: root
@@ -3201,28 +3160,76 @@
 }
 \stex_deactivate_macro:Nn \definame {definition~environments}
 
-\cs_new_protected:Nn \__stex_statements_defi_begin:n {
-  \stex_reactivate_macro:N \definiendum
-  \stex_reactivate_macro:N \definame
-  \seq_set_split:Nnn \l_tmpa_seq , { #1 }
-  \seq_clear:N \l_tmpb_seq
-  \seq_map_inline:Nn \l_tmpa_seq {
-    \str_if_eq:nnF{ ##1 }{}{
-      \stex_get_symbol:n { ##1 }
-      \exp_args:NNo \seq_put_right:Nn \l_tmpb_seq {
-        \l_stex_get_symbol_uri_str
-      }
-    }
-  }
-  \stex_smsmode_set_codes:
-  \exp_args:Nnnx
-  \begin{stex_annotate_env}{definition}{\seq_use:Nn \l_tmpb_seq {,}}
+\keys_define:nn {stex / sdefinition }{
+  type    .str_set_x:N  = \sdefinitiontype,
+  id      .str_set_x:N  = \sdefinitionid,
+  title   .tl_set:N     = \sdefinitiontitle
+}
+\cs_new_protected:Nn \__stex_statements_sdefinition_args:n {
+  \str_clear:N \sdefinitiontype
+  \str_clear:N \sdefinitionid
+  \tl_clear:N \sdefinitiontitle
+  \keys_set:nn { stex / sdefinition }{ #1 }
 }
 
-\cs_new_protected:Nn \__stex_statements_defi_end: {
-  \end{stex_annotate_env}
+\NewDocumentEnvironment{sdefinition}{O{}}{
+  \__stex_statements_sdefinition_args:n{ #1 }
+  \stex_reactivate_macro:N \definiendum
+  \stex_reactivate_macro:N \definame
+  \stex_ref_new_doc_target:n \sdefinitionid
+  \stex_smsmode_set_codes:
+  \clist_set:No \l_tmpa_clist \sdefinitiontype
+  \tl_clear:N \l_tmpa_tl
+  \clist_map_inline:Nn \l_tmpa_clist {
+    \tl_if_exist:cT {__stex_statements_sdefinition_##1_start:}{
+      \tl_set:Nn \l_tmpa_tl {\use:c{__stex_statements_sdefinition_##1_start:}}
+    }
+  }
+  \tl_if_empty:NTF \l_tmpa_tl {
+    \__stex_statements_sdefinition_start:
+  }{
+    \l_tmpa_tl
+  }
+  \stex_if_smsmode:F {
+    \exp_args:Nnnx
+    \begin{stex_annotate_env}{definition}{}
+    \str_if_empty:NF \sdefinitiontype {
+      \stex_annotate_invisible:nnn{type}{\sdefinitiontype}{}
+    }
+  }
+}{
+  \stex_if_smsmode:F {
+    \end{stex_annotate_env}
+  }
+  \clist_set:No \l_tmpa_clist \sdefinitiontype
+  \tl_clear:N \l_tmpa_tl
+  \clist_map_inline:Nn \l_tmpa_clist {
+    \tl_if_exist:cT {__stex_statements_sdefinition_##1_end:}{
+      \tl_set:Nn \l_tmpa_tl {\use:c{__stex_statements_sdefinition_##1_end:}}
+    }
+  }
+  \tl_if_empty:NTF \l_tmpa_tl {
+    \__stex_statements_sdefinition_end:
+  }{
+    \l_tmpa_tl
+  }
 }
-\stex_statements_patch:nn{definition}{defi}
+\cs_new_protected:Nn \__stex_statements_sdefinition_start: {
+  \titleemph{Definition\tl_if_empty:NF \sdefinitiontitle {
+    ~(\sdefinitiontitle)
+  }~}
+}
+\cs_new_protected:Nn \__stex_statements_sdefinition_end: {}
+
+\newcommand\stexpatchdefinition[3][] {
+    \str_if_empty:nTF{#1}{
+      \tl_set:Nn \__stex_statements_sdefinition_start: { #2 }
+      \tl_set:Nn \__stex_statements_sdefinition_end: { #3 }
+    }{
+      \exp_after:wN \tl_set:Nn \csname __stex_statements_sdefinition_#1_start:\endcsname{ #2 }
+      \exp_after:wN \tl_set:Nn \csname __stex_statements_sdefinition_#1_end:\endcsname{ #3 }
+    }
+}
 \NewDocumentCommand \inlinedef { m } {
   \begingroup
   \stex_reactivate_macro:N \definiendum
@@ -3231,147 +3238,258 @@
   #1
   \endgroup
 }
-\cs_new_protected:Nn \__stex_statements_assertion_begin:n {
-  \seq_set_split:Nnn \l_tmpa_seq , { #1 }
-  \seq_clear:N \l_tmpb_seq
-  \seq_map_inline:Nn \l_tmpa_seq {
-    \str_if_eq:nnF{ ##1 }{}{
-      \stex_get_symbol:n { ##1 }
-      \exp_args:NNo \seq_put_right:Nn \l_tmpb_seq {
-        \l_stex_get_symbol_uri_str
-      }
-    }
-  }
-  \stex_smsmode_set_codes:
-  \exp_args:Nnnx
-  \begin{stex_annotate_env}{assertion}{\seq_use:Nn \l_tmpb_seq {,}}
+
+\keys_define:nn {stex / sassertion }{
+  type    .str_set_x:N  = \sassertiontype,
+  id      .str_set_x:N  = \sassertionid,
+  title   .tl_set:N     = \sassertiontitle
+}
+\cs_new_protected:Nn \__stex_statements_sassertion_args:n {
+  \str_clear:N \sassertiontype
+  \str_clear:N \sassertionid
+  \tl_clear:N \sassertiontitle
+  \keys_set:nn { stex / sassertion }{ #1 }
 }
 
-\cs_new_protected:Nn \__stex_statements_assertion_end: {
-  \end{stex_annotate_env}
+\NewDocumentEnvironment{sassertion}{O{}}{
+  \__stex_statements_sassertion_args:n{ #1 }
+  \stex_ref_new_doc_target:n \sassertionid
+  \stex_smsmode_set_codes:
+  \clist_set:No \l_tmpa_clist \sassertiontype
+  \tl_clear:N \l_tmpa_tl
+  \clist_map_inline:Nn \l_tmpa_clist {
+    \tl_if_exist:cT {__stex_statements_sassertion_##1_start:}{
+      \tl_set:Nn \l_tmpa_tl {\use:c{__stex_statements_sassertion_##1_start:}}
+    }
+  }
+  \tl_if_empty:NTF \l_tmpa_tl {
+    \__stex_statements_sassertion_start:
+  }{
+    \l_tmpa_tl
+  }
+  \stex_if_smsmode:F {
+    \exp_args:Nnnx
+    \begin{stex_annotate_env}{assertion}{}
+    \str_if_empty:NF \sassertiontype {
+      \stex_annotate_invisible:nnn{type}{\sassertiontype}{}
+    }
+  }
+}{
+  \stex_if_smsmode:F {
+    \end{stex_annotate_env}
+  }
+  \clist_set:No \l_tmpa_clist \sassertiontype
+  \tl_clear:N \l_tmpa_tl
+  \clist_map_inline:Nn \l_tmpa_clist {
+    \tl_if_exist:cT {__stex_statements_sassertion_##1_end:}{
+      \tl_set:Nn \l_tmpa_tl {\use:c{__stex_statements_sassertion_##1_end:}}
+    }
+  }
+  \tl_if_empty:NTF \l_tmpa_tl {
+    \__stex_statements_sassertion_end:
+  }{
+    \l_tmpa_tl
+  }
 }
-\stex_statements_patch:nn{assertion}{assertion}
+
+\cs_new_protected:Nn \__stex_statements_sassertion_start: {
+  \titleemph{Assertion~\tl_if_empty:NF \sassertiontitle {
+    (\sassertiontitle)
+  }~}
+}
+\cs_new_protected:Nn \__stex_statements_sassertion_end: {}
+
+\newcommand\stexpatchassertion[3][] {
+    \str_if_empty:nTF{#1}{
+      \tl_set:Nn \__stex_statements_sassertion_start: { #2 }
+      \tl_set:Nn \__stex_statements_sassertion_end: { #3 }
+    }{
+      \exp_after:wN \tl_set:Nn \csname __stex_statements_sassertion_#1_start:\endcsname{ #2 }
+      \exp_after:wN \tl_set:Nn \csname __stex_statements_sassertion_#1_end:\endcsname{ #3 }
+    }
+}
 \NewDocumentCommand \inlineass { m } {
   \begingroup
   \stex_ref_new_doc_target:n{}
   #1
   \endgroup
 }
-\cs_new_protected:Nn \__stex_statements_theorem_begin:n {
-  \seq_set_split:Nnn \l_tmpa_seq , { #1 }
-  \seq_clear:N \l_tmpb_seq
-  \seq_map_inline:Nn \l_tmpa_seq {
-    \str_if_eq:nnF{ ##1 }{}{
-      \stex_get_symbol:n { ##1 }
-      \exp_args:NNo \seq_put_right:Nn \l_tmpb_seq {
-        \l_stex_get_symbol_uri_str
-      }
-    }
-  }
-  \stex_smsmode_set_codes:
-  \exp_args:Nnnx
-  \begin{stex_annotate_env}{assertion}{\seq_use:Nn \l_tmpb_seq {,}}
+
+\keys_define:nn {stex / sexample }{
+  type    .str_set_x:N  = \exampletype,
+  id      .str_set_x:N  = \sexampleid,
+  title   .tl_set:N  = \sexampletitle,
+  for     .clist_set:N   = \sexamplefor,
+}
+\cs_new_protected:Nn \__stex_statements_sexample_args:n {
+  \str_clear:N \sexampletype
+  \str_clear:N \sexampleid
+  \tl_clear:N \sexampletitle
+  \clist_clear:N \sexamplefor
+  \keys_set:nn { stex / sexample }{ #1 }
 }
 
-\cs_new_protected:Nn \__stex_statements_theorem_end: {
-  \end{stex_annotate_env}
-}
-\stex_statements_patch:nn{theorem}{theorem}
-\cs_new_protected:Nn \__stex_statements_lemma_begin:n {
-  \seq_set_split:Nnn \l_tmpa_seq , { #1 }
-  \seq_clear:N \l_tmpb_seq
-  \seq_map_inline:Nn \l_tmpa_seq {
-\str_if_eq:nnF{ ##1 }{}{
-      \stex_get_symbol:n { ##1 }
-      \exp_args:NNo \seq_put_right:Nn \l_tmpb_seq {
-        \l_stex_get_symbol_uri_str
-      }
+\NewDocumentEnvironment{sexample}{O{}}{
+  \__stex_statements_sexample_args:n{ #1 }
+  \stex_ref_new_doc_target:n \sexampleid
+  \stex_smsmode_set_codes:
+  \clist_set:No \l_tmpa_clist \sexampletype
+  \tl_clear:N \l_tmpa_tl
+  \clist_map_inline:Nn \l_tmpa_clist {
+    \tl_if_exist:cT {__stex_statements_sexample_##1_start:}{
+      \tl_set:Nn \l_tmpa_tl {\use:c{__stex_statements_sexample_##1_start:}}
     }
   }
-  \stex_smsmode_set_codes:
-  \exp_args:Nnnx
-  \begin{stex_annotate_env}{assertion}{\seq_use:Nn \l_tmpb_seq {,}}
-}
-
-\cs_new_protected:Nn \__stex_statements_lemma_end: {
-  \end{stex_annotate_env}
-}
-\stex_statements_patch:nn{lemma}{lemma}
-\cs_new_protected:Nn \__stex_statements_axiom_begin:n {
-  \seq_set_split:Nnn \l_tmpa_seq , { #1 }
-  \seq_clear:N \l_tmpb_seq
-  \seq_map_inline:Nn \l_tmpa_seq {   
-    \str_if_eq:nnF{ ##1 }{}{
-      \stex_get_symbol:n { ##1 }
-      \exp_args:NNo \seq_put_right:Nn \l_tmpb_seq {
-        \l_stex_get_symbol_uri_str
+  \tl_if_empty:NTF \l_tmpa_tl {
+    \__stex_statements_sexample_start:
+  }{
+    \l_tmpa_tl
+  }
+  \stex_if_smsmode:F {
+    \seq_clear:N \l_tmpa_seq
+    \clist_map_inline:Nn \sexamplefor {
+      \str_if_eq:nnF{ ##1 }{}{
+        \stex_get_symbol:n { ##1 }
+        \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
+          \l_stex_get_symbol_uri_str
+        }
       }
     }
-  }
-  \stex_smsmode_set_codes:
-  \exp_args:Nnnx
-  \begin{stex_annotate_env}{assertion}{\seq_use:Nn \l_tmpb_seq {,}}
-}
-
-\cs_new_protected:Nn \__stex_statements_axiom_end: {
-  \end{stex_annotate_env}
-}
-\stex_statements_patch:nn{axiom}{axiom}
-\cs_new_protected:Nn \__stex_statements_example_begin:n {
-  \seq_set_split:Nnn \l_tmpa_seq , { #1 }
-  \seq_clear:N \l_tmpb_seq
-  \seq_map_inline:Nn \l_tmpa_seq {
-   \str_if_eq:nnF{ ##1 }{}{
-      \stex_get_symbol:n { ##1 }
-      \exp_args:NNo \seq_put_right:Nn \l_tmpb_seq {
-        \l_stex_get_symbol_uri_str
-      }
+    \exp_args:Nnnx
+    \begin{stex_annotate_env}{example}{\seq_use:Nn \l_tmpa_seq {,}}
+    \str_if_empty:NF \sexampletype {
+      \stex_annotate_invisible:nnn{type}{\sexampletype}{}
     }
   }
-  \stex_smsmode_set_codes:
-  \exp_args:Nnnx
-  \begin{stex_annotate_env}{example}{\seq_use:Nn \l_tmpb_seq {,}}
+}{
+  \stex_if_smsmode:F {
+    \end{stex_annotate_env}
+  }
+  \clist_set:No \l_tmpa_clist \sexampletype
+  \tl_clear:N \l_tmpa_tl
+  \clist_map_inline:Nn \l_tmpa_clist {
+    \tl_if_exist:cT {__stex_statements_sexample_##1_end:}{
+      \tl_set:Nn \l_tmpa_tl {\use:c{__stex_statements_sexample_##1_end:}}
+    }
+  }
+  \tl_if_empty:NTF \l_tmpa_tl {
+    \__stex_statements_sexample_end:
+  }{
+    \l_tmpa_tl
+  }
 }
 
-\cs_new_protected:Nn \__stex_statements_example_end: {
-  \end{stex_annotate_env}
+\cs_new_protected:Nn \__stex_statements_sexample_start: {
+  \titleemph{Example~\tl_if_empty:NF \sexampletitle {
+    (\sexampletitle)
+  }~}
 }
-\stex_statements_patch:nn{example}{example}
+\cs_new_protected:Nn \__stex_statements_sexample_end: {}
+
+\newcommand\stexpatchexample[3][] {
+    \str_if_empty:nTF{#1}{
+      \tl_set:Nn \__stex_statements_sexample_start: { #2 }
+      \tl_set:Nn \__stex_statements_sexample_end: { #3 }
+    }{
+      \exp_after:wN \tl_set:Nn \csname __stex_statements_sexample_#1_start:\endcsname{ #2 }
+      \exp_after:wN \tl_set:Nn \csname __stex_statements_sexample_#1_end:\endcsname{ #3 }
+    }
+}
 \NewDocumentCommand \inlineex { m } {
   \begingroup
   \stex_ref_new_doc_target:n{}
   #1
   \endgroup
 }
-\keys_define:nn { stex / omtext} {
-  id      .str_set_x:N   = \l_stex_omtext_id_str ,
-  title   .tl_set:N   = \l_stex_omtext_title_tl ,
-  type    .tl_set_x:N   = \l_stex_omtext_type_tl ,
-  for     .tl_set_x:N   = \l_stex_omtext_for_tl ,
-  from    .tl_set_x:N   = \l_stex_omtext_from_tl ,
-  start   .tl_set:N   = \l_stex_omtext_start_tl ,
+\keys_define:nn { stex / sparagraph} {
+  id      .str_set_x:N   = \sparagraphid ,
+  title   .tl_set:N      = \l_stex_sparagraph_title_tl ,
+  type    .str_set_x:N   = \sparagraphtype ,
+  for     .str_set_x:N   = \sparagraphfor ,
+  from    .tl_set_x:N    = \sparagraphfrom ,
+  start   .tl_set:N      = \l_stex_sparagraph_start_tl ,
 }
-\cs_new_protected:Nn \stex_omtext_args:n {
-  \tl_clear:N \l_stex_omtext_title_tl
-  \tl_clear:N \l_stex_omtext_start_tl
-  \keys_set:nn { stex / omtext }{ #1 }
+
+\cs_new_protected:Nn \stex_sparagraph_args:n {
+  \tl_clear:N \l_stex_sparagraph_title_tl
+  \tl_clear:N \sparagraphfrom
+  \tl_clear:N \l_stex_sparagraph_start_tl
+  \str_clear:N \sparagraphid
+  \str_clear:N \sparagraphtype
+  \str_clear:N \sparagraphfor
+  \keys_set:nn { stex / sparagraph }{ #1 }
 }
 \newif\if@in@omtext\@in@omtextfalse
-\NewDocumentEnvironment {omtext} { O{} } {
-  \stex_omtext_args:n { #1 }
-  \tl_if_empty:NTF \l_stex_omtext_start_tl {
-    \tl_if_empty:NF \l_stex_omtext_title_tl {
-      \titleemph{\l_stex_omtext_title_tl}:~
-    }
+
+\NewDocumentEnvironment {sparagraph} { O{} } {
+  \stex_sparagraph_args:n { #1 }
+  \tl_if_empty:NTF \l_stex_sparagraph_start_tl {
+    \tl_set_eq:NN \sparagraphtitle \l_stex_sparagraph_title_tl
   }{
-    \titleemph{\l_stex_omtext_start_tl}~
+    \tl_set_eq:NN \sparagraphtitle \l_stex_sparagraph_start_tl
   }
   \@in@omtexttrue
-
-  \stex_ref_new_doc_target:n \l_stex_omtext_id_str
+  \stex_ref_new_doc_target:n \sparagraphid
   \stex_smsmode_set_codes:
+  \clist_set:No \l_tmpa_clist \sparagraphtype
+  \tl_clear:N \l_tmpa_tl
+  \clist_map_inline:Nn \l_tmpa_clist {
+    \tl_if_exist:cT {__stex_statements_sparagraph_##1_start:}{
+      \tl_set:Nn \l_tmpa_tl {\use:c{__stex_statements_sparagraph_##1_start:}}
+    }
+  }
+  \tl_if_empty:NTF \l_tmpa_tl {
+    \__stex_statements_sparagraph_start:
+  }{
+    \l_tmpa_tl
+  }
+  \stex_if_smsmode:F {
+    \exp_args:Nnnx
+    \begin{stex_annotate_env}{paragraph}{}
+    \str_if_empty:NF \sparagraphtype {
+      \stex_annotate_invisible:nnn{type}{\sparagraphtype}{}
+    }
+  }
   \ignorespacesandpars
 }{}
+
+\cs_new_protected:Nn \__stex_statements_sparagraph_start: {
+  \tl_if_empty:NTF \l_stex_sparagraph_start_tl {
+    \tl_if_empty:NF \l_stex_sparagraph_title_tl {
+      \titleemph{\l_stex_sparagraph_title_tl}:~
+    }
+  }{
+    \titleemph{\l_stex_sparagraph_start_tl}~
+  }
+}
+\cs_new_protected:Nn \__stex_statements_sparagraph_end: {}
+
+\newcommand\stexpatchparagraph[3][] {
+    \str_if_empty:nTF{#1}{
+      \tl_set:Nn \__stex_statements_sparagraph_start: { #2 }
+      \tl_set:Nn \__stex_statements_sparagraph_end: { #3 }
+    }{
+      \exp_after:wN \tl_set:Nn \csname __stex_statements_sparagraph_#1_start:\endcsname{ #2 }
+      \exp_after:wN \tl_set:Nn \csname __stex_statements_sparagraph_#1_end:\endcsname{ #3 }
+    }
+}
+\NewDocumentEnvironment{symboldoc}{ m }{
+  \seq_set_split:Nnn \l_tmpa_seq , { #1 }
+  \seq_clear:N \l_tmpb_seq
+  \seq_map_inline:Nn \l_tmpa_seq {
+    \str_if_eq:nnF{ ##1 }{}{
+      \stex_get_symbol:n { ##1 }
+      \exp_args:NNo \seq_put_right:Nn \l_tmpb_seq {
+        \l_stex_get_symbol_uri_str
+      }
+    }
+  }
+  \par
+  \exp_args:Nnnx
+  \begin{stex_annotate_env}{symboldoc}{\seq_use:Nn \l_tmpb_seq {,}}
+}{
+  \end{stex_annotate_env}
+}
 
 
 %%%%%%%%%%%%%   sproof.dtx   %%%%%%%%%%%%%
