@@ -23,8 +23,8 @@
 \RequirePackage{expl3,l3keys2e,ltxcmds}
 \ProvidesExplPackage{stex}{2021/08/01}{1.9}{bla}
 \RequirePackage{expl-keystr-compat}
-\RequirePackage{morewrites}
-\RequirePackage{amsmath}
+
+
 \keys_define:nn { stex } {
   debug     .clist_set:N  = \c_stex_debug_clist ,
   showmods  .bool_set:N   = \c_stex_showmods_bool ,
@@ -885,12 +885,12 @@
   Module~#1~declares~signature~#2,~but~does~not~
   declare~its~language
 }
-\prop_new:N \l_stex_current_module_prop
+\str_new:N \l_stex_current_module_str
 \seq_new:N \l_stex_all_modules_seq
-\seq_new:N \g_stex_modules_in_file_seq
-\prop_new:N \g_stex_module_files_prop
+^^A\seq_new:N \g_stex_modules_in_file_seq
+^^A\prop_new:N \g_stex_module_files_prop
 \prg_new_conditional:Nnn \stex_if_in_module: {p, T, F, TF} {
-  \prop_if_empty:NTF \l_stex_current_module_prop
+  \str_if_empty:NTF \l_stex_current_module_str
     \prg_return_false: \prg_return_true:
 }
 \prg_new_conditional:Nnn \stex_if_module_exists:n {p, T, F, TF} {
@@ -898,9 +898,9 @@
     \prg_return_true: \prg_return_false:
 }
 \cs_new_protected:Nn \stex_add_to_current_module:n {
-  \prop_get:NnN \l_stex_current_module_prop { content } \l_tmpa_tl
+  \prop_get:cnN {c_stex_module_\l_stex_current_module_str _prop} { content } \l_tmpa_tl
   \tl_put_right:Nn \l_tmpa_tl { #1 }
-  \prop_put:Nno \l_stex_current_module_prop { content } { \l_tmpa_tl }
+  \prop_gput:cno {c_stex_module_\l_stex_current_module_str _prop} { content } { \l_tmpa_tl }
 }
 \cs_new_protected:Npn \STEXexport {
   \begingroup
@@ -917,15 +917,15 @@
 \stex_deactivate_macro:Nn \STEXexport {module~environments}
 \cs_new_protected:Nn \stex_add_constant_to_current_module:n {
   \str_set:Nx \l_tmpa_str { #1 }
-  \prop_get:NnN \l_stex_current_module_prop { constants } \l_tmpa_seq
+  \prop_get:cnN {c_stex_module_\l_stex_current_module_str _prop} { constants } \l_tmpa_seq
   \seq_put_right:No \l_tmpa_seq { \l_tmpa_str }
-  \prop_put:Nno \l_stex_current_module_prop { constants } \l_tmpa_seq
+  \prop_gput:cno {c_stex_module_\l_stex_current_module_str _prop} { constants } \l_tmpa_seq
 }
 \cs_new_protected:Nn \stex_add_import_to_current_module:n {
   \str_set:Nx \l_tmpa_str { #1 }
-  \prop_get:NnN \l_stex_current_module_prop { imports } \l_tmpa_seq
+  \prop_get:cnN {c_stex_module_\l_stex_current_module_str _prop} { imports } \l_tmpa_seq
   \seq_put_right:No \l_tmpa_seq { \l_tmpa_str }
-  \prop_put:Nno \l_stex_current_module_prop { imports } \l_tmpa_seq
+  \prop_gput:cno {c_stex_module_\l_stex_current_module_str _prop} { imports } \l_tmpa_seq
 }
 \cs_new_protected:Nn \stex_modules_compute_namespace:nN {
   \str_set:Nx \l_tmpa_str { #1 }
@@ -1004,10 +1004,10 @@
   \__stex_modules_args:n { #1 }
   \stex_if_in_module:TF {
     % Nested module
-    \prop_get:NnN \l_stex_current_module_prop
+    \prop_get:cnN {c_stex_module_\l_stex_current_module_str _prop}
       { ns } \l_stex_module_ns_str
     \str_set:Nx \l_stex_module_name_str {
-      \prop_item:Nn \l_stex_current_module_prop
+      \prop_item:cn {c_stex_module_\l_stex_current_module_str _prop}
         { name } / \l_stex_module_name_str
     }
   }{
@@ -1051,7 +1051,9 @@
     \str_clear:N \l_tmpa_str
     \seq_clear:N \l_tmpa_seq
     \tl_clear:N \l_tmpa_tl
-    \exp_args:NNx \prop_set_from_keyval:Nn \l_stex_current_module_prop {
+    \exp_args:Nnx \prop_gset_from_keyval:cn {
+      c_stex_module_\l_stex_module_ns_str?\l_stex_module_name_str _prop
+    } {
       name      = \l_stex_module_name_str ,
       ns        = \l_stex_module_ns_str ,
       imports   = \exp_not:o { \l_tmpa_seq } ,
@@ -1061,6 +1063,18 @@
       lang      = \l_stex_module_lang_str ,
       sig       = \l_stex_module_sig_str ,
       meta      = \l_stex_module_meta_str
+    }
+    \str_set:Nx\l_stex_current_module_str{\l_stex_module_ns_str?\l_stex_module_name_str}
+    \str_if_empty:NT \l_stex_module_meta_str {
+      \str_set:Nx \l_stex_module_meta_str {
+        \c_stex_metatheory_ns_str ? Metatheory
+      }
+    }
+    \str_if_eq:VnF \l_stex_module_meta_str {NONE} {
+      \exp_args:Nx \stex_add_to_current_module:n {
+        \stex_activate_module:n {\l_stex_module_meta_str}
+      }
+      \stex_activate_module:n {\l_stex_module_meta_str}
     }
   }{
     \str_if_empty:NT \l_stex_module_lang_str {
@@ -1081,7 +1095,7 @@
     \IfFileExists \l_tmpa_str {
       \exp_args:No \stex_in_smsmode:nn { \l_tmpa_str } {
         \seq_clear:N \l_stex_all_modules_seq
-        \prop_clear:N \l_stex_current_module_prop
+        %\prop_clear:N \l_stex_current_module_prop
         \stex_debug:nn{modules}{Loading~signature~\l_tmpa_str}
         \input { \l_tmpa_str }
       }
@@ -1091,23 +1105,13 @@
     \stex_activate_module:n {
       \l_stex_module_ns_str ? \l_stex_module_name_str
     }
-    \prop_set_eq:Nc \l_stex_current_module_prop {
-      c_stex_module_
-      \l_stex_module_ns_str ?
-      \l_stex_module_name_str
-      _prop
-    }
-  }
-  \str_if_empty:NT \l_stex_module_meta_str {
-    \str_set:Nx \l_stex_module_meta_str {
-      \c_stex_metatheory_ns_str ? Metatheory
-    }
-  }
-  \str_if_eq:VnF \l_stex_module_meta_str {NONE} {
-    \exp_args:Nx \stex_add_to_current_module:n {
-      \stex_activate_module:n {\l_stex_module_meta_str}
-    }
-    \stex_activate_module:n {\l_stex_module_meta_str}
+    %\prop_set_eq:Nc \l_stex_current_module_prop {
+    %  c_stex_module_
+    %  \l_stex_module_ns_str ?
+    %  \l_stex_module_name_str
+    %  _prop
+    %}
+    \str_set:Nx\l_stex_current_module_str{\l_stex_module_ns_str?\l_stex_module_name_str}
   }
 }
 \cs_new_protected:Nn \__stex_modules_begin_module:nn {
@@ -1132,8 +1136,6 @@
     \l_stex_module_ns_str ? \l_stex_module_name_str
   }
 
-  \seq_gput_right:Nx  \g_stex_modules_in_file_seq
-      { \l_stex_module_ns_str ? \l_stex_module_name_str }
 
   \stex_if_smsmode:TF {
     \stex_smsmode_set_codes:
@@ -1154,15 +1156,8 @@
 }
 \iffalse \end{stex_annotate_env} \fi %^^A make syntax highlighting work again
 \cs_new_protected:Nn \__stex_modules_end_module: {
-  \str_set:Nx \l_tmpa_str {
-    c_stex_module_
-    \prop_item:Nn \l_stex_current_module_prop { ns } ?
-    \prop_item:Nn \l_stex_current_module_prop { name }
-    _prop
-  }
   %^^A \prop_new:c { \l_tmpa_str }
-  \prop_gset_eq:cN { \l_tmpa_str } \l_stex_current_module_prop
-  \stex_debug:nn{modules}{Closing~module~\prop_item:Nn \l_stex_current_module_prop { name }}
+  \stex_debug:nn{modules}{Closing~module~\prop_item:cn {c_stex_module_\l_stex_current_module_str _prop} { name }}
 }
 \iffalse \begin{stex_annotate_env} \fi %^^A make syntax highlighting work again
 \NewDocumentEnvironment { @module } { O{} m } {
@@ -1171,24 +1166,6 @@
 } {
   \__stex_modules_end_module:
   \stex_if_smsmode:TF {
-    \exp_args:Nx \stex_add_to_sms:n {
-      \prop_gset_from_keyval:cn {
-        c_stex_module_
-        \prop_item:Nn \l_stex_current_module_prop { ns } ?
-        \prop_item:Nn \l_stex_current_module_prop { name }
-        _prop
-      } {
-        name      = \prop_item:cn { \l_tmpa_str } { name } ,
-        ns        = \prop_item:cn { \l_tmpa_str } { ns } ,
-        imports   = \prop_item:cn { \l_tmpa_str } { imports } ,
-        constants = \prop_item:cn { \l_tmpa_str } { constants } ,
-        content   = \prop_item:cn { \l_tmpa_str } { content } ,
-        file      = \prop_item:cn { \l_tmpa_str } { file } ,
-        lang      = \prop_item:cn { \l_tmpa_str } { lang } ,
-        sig       = \prop_item:cn { \l_tmpa_str } { sig } ,
-        meta      = \prop_item:cn { \l_tmpa_str } { meta }
-      }
-    }
   }{
     \end{stex_annotate_env}
   }
@@ -1586,11 +1563,9 @@
       }
     }
 
-    \seq_set_eq:NN \l_tmpa_seq \g_stex_modules_in_file_seq
-    \seq_clear:N \g_stex_modules_in_file_seq
       \exp_args:No \stex_in_smsmode:nn { \g__stex_importmodule_file_str } {
         \seq_clear:N \l_stex_all_modules_seq
-        \prop_clear:N \l_stex_current_module_prop
+        \str_clear:N \l_stex_current_module_str
         \str_set:Nx \l_tmpb_str { #2 }
         \str_if_empty:NF \l_tmpb_str {
           \stex_set_current_repository:n { #2 }
@@ -1599,9 +1574,6 @@
         \input { \g__stex_importmodule_file_str }
       }
 
-    \prop_gput:Noo \g_stex_module_files_prop
-    \g__stex_importmodule_file_str \g_stex_modules_in_file_seq
-    \seq_set_eq:NN \g_stex_modules_in_file_seq \l_tmpa_seq
 
     \stex_if_module_exists:nF { #1 ? #4 } {
       \msg_error:nnx{stex}{error/unknownmodule}{
@@ -1699,8 +1671,8 @@
   }
 
   \prop_if_exist:cT { g_stex_symdecl_
-    \prop_item:Nn \l_stex_current_module_prop {ns} ?
-    \prop_item:Nn \l_stex_current_module_prop {name} ?
+    \prop_item:cn {c_stex_module_\l_stex_current_module_str _prop} {ns} ?
+    \prop_item:cn {c_stex_module_\l_stex_current_module_str _prop} {name} ?
       \l_stex_symdecl_name_str
     _prop
   }{
@@ -1709,8 +1681,8 @@
 
   \prop_clear:N \l_tmpa_prop
   \prop_put:Nnx \l_tmpa_prop { module } {
-    \prop_item:Nn \l_stex_current_module_prop {ns} ?
-    \prop_item:Nn \l_stex_current_module_prop {name}
+    \prop_item:cn {c_stex_module_\l_stex_current_module_str _prop} {ns} ?
+    \prop_item:cn {c_stex_module_\l_stex_current_module_str _prop} {name}
   }
   \seq_clear:N \l_tmpa_seq
   \prop_put:Nno \l_tmpa_prop { notations } \l_tmpa_seq
@@ -1742,8 +1714,8 @@
     }{
       \msg_set:nnn{stex}{error/wrongargs}{
         args~value~in~symbol~declaration~for~
-        \prop_item:Nn \l_stex_current_module_prop {ns} ?
-        \prop_item:Nn \l_stex_current_module_prop {name} ?
+        \prop_item:Cn {c_stex_module_\l_stex_current_module_str _prop} {ns} ?
+        \prop_item:Cn {c_stex_module_\l_stex_current_module_str _prop} {name} ?
         \l_stex_symdecl_name_str ~
         needs~to~be~
         i,~a,~b~or~B,~but~##1~given
@@ -1905,13 +1877,13 @@
   \str_set:Nn \l_tmpa_str { #1 }
   \bool_set_false:N \l_tmpa_bool
   \stex_if_in_module:T {
-    \prop_get:NnN \l_stex_current_module_prop
+    \prop_get:cnN {c_stex_module_\l_stex_current_module_str _prop}
     { constants } \l_tmpa_seq
     \exp_args:NNo \seq_if_in:NnT \l_tmpa_seq { \l_tmpa_str } {
       \bool_set_true:N \l_tmpa_bool
       \str_set:Nx \l_stex_get_symbol_uri_str {
-        \prop_item:Nn \l_stex_current_module_prop { ns } ?
-        \prop_item:Nn \l_stex_current_module_prop { name } ? #1
+        \prop_item:cn {c_stex_module_\l_stex_current_module_str _prop} { ns } ?
+        \prop_item:cn {c_stex_module_\l_stex_current_module_str _prop} { name } ? #1
       }
     }
   }
