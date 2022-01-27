@@ -71,7 +71,7 @@
 %   called by \cs{symdecl} and \cs{symdef}.
 %
 %   Ultimately stores the symbol \meta{URI} in the property
-%   list |\g_stex_symdecl_|\meta{URI}|_prop| with fields:
+%   list |\l_stex_symdecl_|\meta{URI}|_prop| with fields:
 %   \begin{itemize}
 %     \item |name| (string),
 %     \item |module| (string),
@@ -254,9 +254,8 @@
     \str_set:Nx \l_stex_symdecl_name_str { #1 }
   }
 
-  \prop_if_exist:cT { g_stex_symdecl_ 
-    \prop_item:cn {c_stex_module_\l_stex_current_module_str _prop} {ns} ?
-    \prop_item:cn {c_stex_module_\l_stex_current_module_str _prop} {name} ?
+  \prop_if_exist:cT { l_stex_symdecl_ 
+      \l_stex_current_module_str ?
       \l_stex_symdecl_name_str
     _prop
   }{
@@ -264,12 +263,8 @@
   }
 
   \prop_clear:N \l_tmpa_prop
-  \prop_put:Nnx \l_tmpa_prop { module } {
-    \prop_item:cn {c_stex_module_\l_stex_current_module_str _prop} {ns} ?
-    \prop_item:cn {c_stex_module_\l_stex_current_module_str _prop} {name}
-  }
+  \prop_put:Nnx \l_tmpa_prop { module } { \l_stex_current_module_str }
   \seq_clear:N \l_tmpa_seq
-  \prop_put:Nno \l_tmpa_prop { notations } \l_tmpa_seq
   \prop_put:Nno \l_tmpa_prop { name } \l_stex_symdecl_name_str
   \prop_put:Nno \l_tmpa_prop { local } \l_stex_symdecl_local_bool
   \prop_put:Nno \l_tmpa_prop { type } \l_stex_symdecl_type_tl
@@ -298,8 +293,7 @@
     }{
       \msg_set:nnn{stex}{error/wrongargs}{
         args~value~in~symbol~declaration~for~
-        \prop_item:Cn {c_stex_module_\l_stex_current_module_str _prop} {ns} ?
-        \prop_item:Cn {c_stex_module_\l_stex_current_module_str _prop} {name} ?
+        \l_stex_current_module_str ?
         \l_stex_symdecl_name_str ~
         needs~to~be~
         i,~a,~b~or~B,~but~##1~given
@@ -333,15 +327,13 @@
 
   \bool_if:NT \l_stex_symdecl_make_macro_bool {
     \tl_set:cx { #1 } { \stex_invoke_symbol:n {
-      \prop_item:Nn \l_tmpa_prop { module } ?
-        \prop_item:Nn \l_tmpa_prop { name }
+      \l_stex_current_module_str ? \l_stex_symdecl_name_str
     } }
 
     \bool_if:NF \l_stex_symdecl_local_bool {
       \exp_args:Nx \stex_add_to_current_module:n {
-        \tl_set:cx { #1 } { \stex_invoke_symbol:n {
-          \prop_item:Nn \l_tmpa_prop { module } ?
-            \prop_item:Nn \l_tmpa_prop { name }
+        \tl_set:cn { #1 } { \stex_invoke_symbol:n {
+          \l_stex_current_module_str ? \l_stex_symdecl_name_str
         } }
       }
     }
@@ -352,15 +344,16 @@
   \bool_if:NF \l_stex_symdecl_local_bool {
     \exp_args:Nx \stex_add_to_current_module:n {
       \seq_put_right:Nn \exp_not:N \l_stex_all_symbols_seq {
-        \prop_item:Nn \l_tmpa_prop { module } ?
-        \prop_item:Nn \l_tmpa_prop { name }
+        \l_stex_current_module_str ? \l_stex_symdecl_name_str
       }
+    }
+    \exp_args:Nx \stex_add_field_to_current_module:n {
+      \l_stex_current_module_str ? \l_stex_symdecl_name_str
     }
   }
 
   \stex_debug:nn{symbols}{New~symbol:~
-    \prop_item:Nn \l_tmpa_prop { module } ?
-      \prop_item:Nn \l_tmpa_prop { name }^^J
+    \l_stex_current_module_str ? \l_stex_symdecl_name_str^^J
     Type:~\exp_not:o { \l_stex_symdecl_type_tl }^^J
     Args:~\prop_item:Nn \l_tmpa_prop { args }
   }
@@ -368,52 +361,75 @@
   % circular dependencies require this:
 
   \prop_if_exist:cF {
-    g_stex_symdecl_ 
-    \prop_item:Nn \l_tmpa_prop { module } ?
-    \prop_item:Nn \l_tmpa_prop { name }
+    l_stex_symdecl_ 
+    \l_stex_current_module_str ? \l_stex_symdecl_name_str
     _prop 
   } {
-    \prop_gset_eq:cN {
-      g_stex_symdecl_ 
-      \prop_item:Nn \l_tmpa_prop { module } ?
-      \prop_item:Nn \l_tmpa_prop { name }
+    \prop_set_eq:cN {
+      l_stex_symdecl_ 
+      \l_stex_current_module_str ? \l_stex_symdecl_name_str
       _prop 
     } \l_tmpa_prop
   }
 
+  \seq_clear:c {
+    l_stex_symdecl_ 
+    \l_stex_current_module_str ? \l_stex_symdecl_name_str
+    _notations
+  }
+
+  \bool_if:NF \l_stex_symdecl_local_bool {
+    \exp_args:Nx
+    \stex_add_to_current_module:n {
+      \seq_clear:c {
+        l_stex_symdecl_ 
+        \l_stex_current_module_str ? \l_stex_symdecl_name_str
+        _notations
+      }
+      \prop_set_from_keyval:cn {
+        l_stex_symdecl_ 
+        \l_stex_current_module_str ? \l_stex_symdecl_name_str
+        _prop 
+      } {
+        name      = \prop_item:Nn \l_tmpa_prop { name }       ,
+        module    = \prop_item:Nn \l_tmpa_prop { module }     ,
+        local     = \prop_item:Nn \l_tmpa_prop { local }      ,
+        type      = \prop_item:Nn \l_tmpa_prop { type }       ,
+        args      = \prop_item:Nn \l_tmpa_prop { args }       ,
+        arity     = \prop_item:Nn \l_tmpa_prop { arity }      ,
+        assocs    = \prop_item:Nn \l_tmpa_prop { assocs }
+      }
+    }
+  }
+
   \stex_if_smsmode:TF {
     \bool_if:NF \l_stex_symdecl_local_bool {
-      \exp_args:Nx \stex_add_to_sms:n {
-        \prop_gset_from_keyval:cn {
-          g_stex_symdecl_ 
-          \prop_item:Nn \l_tmpa_prop { module } ?
-          \prop_item:Nn \l_tmpa_prop { name }
-          _prop 
-        } {
-          name      = \prop_item:Nn \l_tmpa_prop { name }       ,
-          module    = \prop_item:Nn \l_tmpa_prop { module }     ,
-          notations = \prop_item:Nn \l_tmpa_prop { notations }  ,
-          local     = \prop_item:Nn \l_tmpa_prop { local }      ,
-          type      = \prop_item:Nn \l_tmpa_prop { type }       ,
-          args      = \prop_item:Nn \l_tmpa_prop { args }       ,
-          arity     = \prop_item:Nn \l_tmpa_prop { arity }      ,
-          assocs    = \prop_item:Nn \l_tmpa_prop { assocs }
-        }
-        \seq_put_right:Nn \exp_not:N \l_stex_all_symbols_seq {
-          \prop_item:Nn \l_tmpa_prop { module } ?
-          \prop_item:Nn \l_tmpa_prop { name }
-        }
-      }
+%      \exp_args:Nx \stex_add_to_sms:n {
+%        \prop_set_from_keyval:cn {
+%          l_stex_symdecl_ 
+%          \l_stex_current_module_str ? \l_stex_symdecl_name_str
+%          _prop 
+%        } {
+%          name      = \prop_item:Nn \l_tmpa_prop { name }       ,
+%          module    = \prop_item:Nn \l_tmpa_prop { module }     ,
+%          local     = \prop_item:Nn \l_tmpa_prop { local }      ,
+%          type      = \prop_item:Nn \l_tmpa_prop { type }       ,
+%          args      = \prop_item:Nn \l_tmpa_prop { args }       ,
+%          arity     = \prop_item:Nn \l_tmpa_prop { arity }      ,
+%          assocs    = \prop_item:Nn \l_tmpa_prop { assocs }
+%        }
+%        \seq_put_right:Nn \exp_not:N \l_stex_all_symbols_seq {
+%          \l_stex_current_module_str ? \l_stex_symdecl_name_str
+%        }
+%      }
     }
   }{
     \exp_args:NNx \seq_put_right:Nn \l_stex_all_symbols_seq {
-      \prop_item:Nn \l_tmpa_prop { module } ?
-      \prop_item:Nn \l_tmpa_prop { name }
+      \l_stex_current_module_str ? \l_stex_symdecl_name_str
     }
     \stex_if_do_html:T {
       \stex_annotate_invisible:nnn {symdecl} {
-        \prop_item:Nn \l_tmpa_prop { module } ?
-        \prop_item:Nn \l_tmpa_prop { name }
+        \l_stex_current_module_str ? \l_stex_symdecl_name_str
       } {
         \tl_if_empty:NF \l_stex_symdecl_type_tl {\stex_annotate_invisible:nnn{type}{}{$\l_stex_symdecl_type_tl$}}
         \stex_annotate_invisible:nnn{args}{}{
@@ -468,13 +484,10 @@
   \str_set:Nn \l_tmpa_str { #1 }
   \bool_set_false:N \l_tmpa_bool
   \stex_if_in_module:T {
-    \prop_get:cnN {c_stex_module_\l_stex_current_module_str _prop} 
-    { constants } \l_tmpa_seq
-    \exp_args:NNo \seq_if_in:NnT \l_tmpa_seq { \l_tmpa_str } {
+    \exp_args:Nno \seq_if_in:cnT {c_stex_module_\l_stex_current_module_str _constants} { \l_tmpa_str } {
       \bool_set_true:N \l_tmpa_bool
       \str_set:Nx \l_stex_get_symbol_uri_str {
-        \prop_item:cn {c_stex_module_\l_stex_current_module_str _prop} { ns } ?
-        \prop_item:cn {c_stex_module_\l_stex_current_module_str _prop} { name } ? #1
+        \l_stex_current_module_str ? #1
       }
     }
   }
@@ -533,11 +546,13 @@
 %
 %    \begin{macrocode}
 \keys_define:nn { stex / notation } {
-  lang    .tl_set_x:N = \l_@@_lang_str ,
-  variant .tl_set_x:N = \l_@@_variant_str ,
+  lang    .tl_set_x:N  = \l_@@_lang_str ,
+  variant .tl_set_x:N  = \l_@@_variant_str ,
   prec    .str_set_x:N = \l_@@_prec_str ,
-  op      .tl_set:N   = \l_@@_op_tl ,
-  unknown .code:n     = \str_set:Nx 
+  op      .tl_set:N    = \l_@@_op_tl ,
+  primary .bool_set:N  = \l_@@_primary_bool ,
+  primary .default:n   = {true} ,
+  unknown .code:n      = \str_set:Nx 
       \l_@@_variant_str \l_keys_key_str
 }
 
@@ -546,6 +561,7 @@
   \str_clear:N \l_@@_variant_str
   \str_clear:N \l_@@_prec_str
   \tl_clear:N \l_@@_op_tl
+  \bool_set_false:N \l_@@_primary_bool
   
   \keys_set:nn { stex / notation } { #1 }
 }
@@ -568,8 +584,9 @@
 % \begin{macro}{\stex_notation_do:nn}
 %    \begin{macrocode}
 \cs_new_protected:Nn \stex_notation_do:nn {
+  \let\l_stex_current_symbol_str\relax
   \prop_set_eq:Nc \l_tmpa_prop {
-    g_stex_symdecl_ #1 _prop 
+    l_stex_symdecl_ #1 _prop 
   }
   
   \prop_clear:N \l_tmpb_prop
@@ -640,7 +657,7 @@
   \int_compare:nNnTF \l_tmpa_str = 0 {
     \exp_args:NNe
     \cs_set:Npn \l_@@_macrocode_cs {
-      \_stex_term_math_oms:nnnn { #1 } 
+      \_stex_term_math_oms:nnnn { \l_stex_current_symbol_str } 
         { \l_@@_variant_str \c_hash_str \l_@@_lang_str }
         { \prop_item:Nn \l_tmpb_prop { opprec } } 
         { \exp_not:n { #2 } }
@@ -653,7 +670,7 @@
       {
       \cs_generate_from_arg_count:NNnn \l_@@_macrocode_cs
       \cs_set:Npn \l_tmpa_str } { {
-        \_stex_term_math_omb:nnnn { #1 } 
+        \_stex_term_math_omb:nnnn { \l_stex_current_symbol_str } 
           { \l_@@_variant_str \c_hash_str \l_@@_lang_str }
           { \prop_item:Nn \l_tmpb_prop { opprec } } 
           { \exp_not:n { #2 } }
@@ -664,7 +681,7 @@
         {
         \cs_generate_from_arg_count:NNnn \l_@@_macrocode_cs
         \cs_set:Npn \l_tmpa_str } { {
-          \_stex_term_math_omb:nnnn { #1 } 
+          \_stex_term_math_omb:nnnn { \l_stex_current_symbol_str } 
             { \l_@@_variant_str \c_hash_str \l_@@_lang_str }
             { \prop_item:Nn \l_tmpb_prop { opprec } } 
             { \exp_not:n { #2 } }
@@ -674,7 +691,7 @@
         {
         \cs_generate_from_arg_count:NNnn \l_@@_macrocode_cs
         \cs_set:Npn \l_tmpa_str } { {
-          \_stex_term_math_oma:nnnn { #1 } 
+          \_stex_term_math_oma:nnnn { \l_stex_current_symbol_str } 
             { \l_@@_variant_str \c_hash_str \l_@@_lang_str }
             { \prop_item:Nn \l_tmpb_prop { opprec } } 
             { \exp_not:n { #2 } }
@@ -761,14 +778,14 @@
       \l_@@_variant_str \c_hash_str \l_@@_lang_str
       _cs
     }
-    \cs_gset:Npn \l_tmpb_str } { {
+    \cs_set:Npn \l_tmpb_str } { {
       \exp_after:wN \exp_after:wN \exp_after:wN
       \exp_not:n \exp_after:wN \exp_after:wN \exp_after:wN 
       { \exp_after:wN \l_@@_macrocode_cs \l_tmpa_tl }
   } }
 
   \tl_if_empty:NF \l_@@_op_tl {
-    \cs_gset:cpx {
+    \cs_set:cpx {
       stex_op_notation_ \l_tmpa_str \c_hash_str
       \l_@@_variant_str \c_hash_str \l_@@_lang_str
       _cs
@@ -782,7 +799,40 @@
     }
   }
 
+  \exp_args:Ne
+  \stex_add_to_current_module:n {
+    \cs_generate_from_arg_count:cNnn {
+      stex_notation_ \l_tmpa_str \c_hash_str 
+      \l_@@_variant_str \c_hash_str \l_@@_lang_str
+      _cs
+    } \cs_set:Npn {\l_tmpb_str} { {
+        \exp_after:wN \exp_after:wN \exp_after:wN
+        \exp_not:n \exp_after:wN \exp_after:wN \exp_after:wN 
+        { \exp_after:wN \l_@@_macrocode_cs \l_tmpa_tl }
+    } }
+    \tl_if_empty:NF \l_@@_op_tl {
+      \cs_set:cpn {
+        stex_op_notation_ \l_tmpa_str \c_hash_str
+        \l_@@_variant_str \c_hash_str \l_@@_lang_str
+        _cs
+      } {
+        \_stex_term_oms:nnn {
+          \l_tmpa_str \c_hash_str \l_@@_variant_str \c_hash_str
+          \l_@@_lang_str
+        }{
+          \l_tmpa_str
+        }{ \comp{ \exp_args:No \exp_not:n { \l_@@_op_tl } } }
+      }
+    }
+  }
 
+  \seq_put_right:cx {
+    l_stex_symdecl_ 
+      \prop_item:Nn \l_tmpb_prop { symbol }
+    _notations
+  } {
+    \l_@@_variant_str \c_hash_str \l_@@_lang_str
+  }
 
   \stex_debug:nn{symbols}{
     Notation~\l_@@_variant_str \c_hash_str \l_@@_lang_str
@@ -798,51 +848,47 @@
     }
   }
 
-  \prop_gset_eq:cN {
-    g_stex_notation_ \l_tmpa_str \c_hash_str \l_@@_variant_str
+  \prop_set_eq:cN {
+    l_stex_notation_ \l_tmpa_str \c_hash_str \l_@@_variant_str
       \c_hash_str \l_@@_lang_str _prop
   } \l_tmpb_prop
   
-  \exp_args:Nx
+  \exp_args:Ne
   \stex_add_to_current_module:n {
-    \prop_get:cnN {
-      g_stex_symdecl_ 
+    \seq_put_right:cn {
+      l_stex_symdecl_ 
         \prop_item:Nn \l_tmpb_prop { symbol }
-      _prop 
-    } { notations } \exp_not:N \l_tmpa_seq
-    \seq_put_right:Nn \exp_not:N \l_tmpa_seq {
+      _notations
+    } {
       \l_@@_variant_str \c_hash_str \l_@@_lang_str
     }
-    \prop_put:cno {
-      g_stex_symdecl_ 
-        \prop_item:Nn \l_tmpb_prop { symbol }
-      _prop
-    } { notations } \exp_not:N \l_tmpa_seq
+    \prop_set_from_keyval:cn {
+      l_stex_notation_ \l_tmpa_str \c_hash_str \l_@@_variant_str
+        \c_hash_str \l_@@_lang_str _prop
+    } {
+      symbol    = \prop_item:Nn \l_tmpb_prop { symbol }     ,
+      language  = \prop_item:Nn \l_tmpb_prop { language }   ,
+      variant   = \prop_item:Nn \l_tmpb_prop { variant }    ,
+      opprec    = \prop_item:Nn \l_tmpb_prop { opprec }     ,
+      argprecs  = \prop_item:Nn \l_tmpb_prop { argprecs }   ,
+    }
   }
 
   \stex_if_smsmode:TF {
     \stex_smsmode_set_codes:
-    \exp_args:Nx \stex_add_to_sms:n {
-      \prop_gset_from_keyval:cn {
-        g_stex_notation_ \l_tmpa_str \c_hash_str \l_@@_variant_str
-          \c_hash_str \l_@@_lang_str _prop
-      } {
-        symbol    = \prop_item:Nn \l_tmpb_prop { symbol }     ,
-        language  = \prop_item:Nn \l_tmpb_prop { language }   ,
-        variant   = \prop_item:Nn \l_tmpb_prop { variant }    ,
-        opprec    = \prop_item:Nn \l_tmpb_prop { opprec }     ,
-        argprecs  = \prop_item:Nn \l_tmpb_prop { argprecs }   ,
-      }
-    }
+%    \exp_args:Nx \stex_add_to_sms:n {
+%      \prop_set_from_keyval:cn {
+%        l_stex_notation_ \l_tmpa_str \c_hash_str \l_@@_variant_str
+%          \c_hash_str \l_@@_lang_str _prop
+%      } {
+%        symbol    = \prop_item:Nn \l_tmpb_prop { symbol }     ,
+%        language  = \prop_item:Nn \l_tmpb_prop { language }   ,
+%        variant   = \prop_item:Nn \l_tmpb_prop { variant }    ,
+%        opprec    = \prop_item:Nn \l_tmpb_prop { opprec }     ,
+%        argprecs  = \prop_item:Nn \l_tmpb_prop { argprecs }   ,
+%      }
+%    }
   }{
-    \prop_get:NnN \l_tmpa_prop { notations } \l_tmpa_seq
-    \seq_put_right:Nx \l_tmpa_seq {
-      \l_@@_variant_str \c_hash_str \l_@@_lang_str
-    }
-    \prop_put:Nno \l_tmpa_prop { notations } \l_tmpa_seq
-    \prop_set_eq:cN {
-      g_stex_symdecl_ \l_tmpa_str _prop 
-    } \l_tmpa_prop
 
     % HTML annotations
     \stex_if_do_html:T {
@@ -929,9 +975,8 @@
   \_@@_symdef_args:n { #1 }
   \bool_set_true:N \l_stex_symdecl_make_macro_bool
   \stex_symdecl_do:n { #2 }
-  \exp_args:Nx \stex_notation_do:nn { 
-    \prop_item:Nn \l_tmpa_prop { module } ?
-    \prop_item:Nn \l_tmpa_prop { name }
+  \exp_args:Nx \stex_notation_do:nn {
+    \l_stex_current_module_str ? \l_stex_symdecl_name_str
   }
 }
 \stex_deactivate_macro:Nn \symdef {module~environments}

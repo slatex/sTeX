@@ -269,6 +269,10 @@
   Module~#1~declares~signature~#2,~but~does~not~
   declare~its~language
 }
+
+\msg_new:nnn{stex}{error/conclictingmodules}{
+  Comflicting~imports~for~module~#1
+}
 %    \end{macrocode}
 %
 %
@@ -285,14 +289,6 @@
 \seq_new:N \l_stex_all_modules_seq
 %    \end{macrocode}
 % \end{variable}
-%
-%^^A \begin{variable}{\g_stex_modules_in_file_seq,\g_stex_module_files_prop}
-%^^A  All modules sorted by containing file; used e.g. in \cs{importmodule}
-%^^A    \begin{macrocode}
-^^A\seq_new:N \g_stex_modules_in_file_seq
-^^A\prop_new:N \g_stex_module_files_prop
-%^^A    \end{macrocode}
-%^^A \end{variable}
 %
 % \begin{macro}[pTF]{\stex_if_in_module:}
 %    \begin{macrocode}
@@ -318,9 +314,7 @@
 %
 %    \begin{macrocode}
 \cs_new_protected:Nn \stex_add_to_current_module:n {
-  \prop_get:cnN {c_stex_module_\l_stex_current_module_str _prop} { content } \l_tmpa_tl
-  \tl_put_right:Nn \l_tmpa_tl { #1 }
-  \prop_gput:cno {c_stex_module_\l_stex_current_module_str _prop} { content } { \l_tmpa_tl }
+  \tl_gput_right:cn {c_stex_module_\l_stex_current_module_str _code} { #1 }
 }
 \cs_new_protected:Npn \STEXexport {
   \begingroup
@@ -342,9 +336,31 @@
 %    \begin{macrocode}
 \cs_new_protected:Nn \stex_add_constant_to_current_module:n {
   \str_set:Nx \l_tmpa_str { #1 }
-  \prop_get:cnN {c_stex_module_\l_stex_current_module_str _prop} { constants } \l_tmpa_seq
-  \seq_put_right:No \l_tmpa_seq { \l_tmpa_str }
-  \prop_gput:cno {c_stex_module_\l_stex_current_module_str _prop} { constants } \l_tmpa_seq
+  \seq_gput_right:co {c_stex_module_\l_stex_current_module_str _constants} { \l_tmpa_str }
+}
+
+\cs_new_protected:Nn \stex_add_field_to_current_module:n {
+  \str_set:Nx \l_tmpa_str { #1 }
+  \seq_gput_right:co {c_stex_module_\l_stex_current_module_str _fields} { \l_tmpa_str }
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\stex_collect_imports:nn}
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_collect_imports:nn {
+  \seq_clear:N \l_stex_collect_imports_seq
+  \_@@_collect_imports:n {#1}
+}
+\cs_new_protected:Nn \_@@_collect_imports:n {
+  \seq_map_inline:cn {c_stex_module_#1_imports} {
+    \seq_if_in:NnF \l_stex_collect_imports_seq { ##1 } {
+      \_@@_collect_imports:n { ##1 }
+    }
+  }
+  \seq_if_in:NnF \l_stex_collect_imports_seq { #1 } {
+    \seq_put_right:Nn \l_stex_collect_imports_seq { #1 }
+  }
 }
 %    \end{macrocode}
 % \end{macro}
@@ -353,15 +369,16 @@
 %    \begin{macrocode}
 \cs_new_protected:Nn \stex_add_import_to_current_module:n {
   \str_set:Nx \l_tmpa_str { #1 }
-  \prop_get:cnN {c_stex_module_\l_stex_current_module_str _prop} { imports } \l_tmpa_seq
-  \seq_put_right:No \l_tmpa_seq { \l_tmpa_str }
-  \prop_gput:cno {c_stex_module_\l_stex_current_module_str _prop} { imports } \l_tmpa_seq
+  \exp_args:Nno
+  \seq_if_in:cnF{c_stex_module_\l_stex_current_module_str _imports}\l_tmpa_str{
+    \seq_gput_right:co{c_stex_module_\l_stex_current_module_str _imports}\l_tmpa_str
+  }
 }
 %    \end{macrocode}
 % \end{macro}
 %
 % \begin{macro}{\stex_modules_compute_namespace:nN}
-% Computer the appropriate namespace from the top-level namespace
+% Computes the appropriate namespace from the top-level namespace
 % of a repository (|#1|) and a file path
 % (|#2|).
 %
@@ -535,23 +552,20 @@
 %
 %    \begin{macrocode}
   \str_if_empty:NTF \l_stex_module_sig_str {
-    \str_clear:N \l_tmpa_str
-    \seq_clear:N \l_tmpa_seq
-    \tl_clear:N \l_tmpa_tl
     \exp_args:Nnx \prop_gset_from_keyval:cn {
       c_stex_module_\l_stex_module_ns_str?\l_stex_module_name_str _prop
     } {
       name      = \l_stex_module_name_str ,
       ns        = \l_stex_module_ns_str ,
-      imports   = \exp_not:o { \l_tmpa_seq } ,
-      constants = \exp_not:o { \l_tmpa_seq } ,
-      content   = \exp_not:o { \l_tmpa_tl }  ,
       file      = \exp_not:o { \g_stex_currentfile_seq } ,
       lang      = \l_stex_module_lang_str ,
       sig       = \l_stex_module_sig_str ,
-      fields    = \exp_not:o { \l_tmpa_seq } ,
       meta      = \l_stex_module_meta_str
     }
+    \seq_clear:c {c_stex_module_\l_stex_module_ns_str?\l_stex_module_name_str _imports}
+    \seq_clear:c {c_stex_module_\l_stex_module_ns_str?\l_stex_module_name_str _fields}
+    \seq_clear:c {c_stex_module_\l_stex_module_ns_str?\l_stex_module_name_str _constants}
+    \tl_clear:c {c_stex_module_\l_stex_module_ns_str?\l_stex_module_name_str _code}
     \str_set:Nx\l_stex_current_module_str{\l_stex_module_ns_str?\l_stex_module_name_str}
 %    \end{macrocode}
 %
@@ -564,10 +578,14 @@
       }
     }
     \str_if_eq:VnF \l_stex_module_meta_str {NONE} {
+      \bool_set_true:N \l_stex_in_meta_bool
       \exp_args:Nx \stex_add_to_current_module:n { 
+        \bool_set_true:N \l_stex_in_meta_bool
         \stex_activate_module:n {\l_stex_module_meta_str}
+        \bool_set_false:N \l_stex_in_meta_bool
       }
       \stex_activate_module:n {\l_stex_module_meta_str}
+      \bool_set_false:N \l_stex_in_meta_bool
     }
   }{
     \str_if_empty:NT \l_stex_module_lang_str {
@@ -705,9 +723,6 @@
 %      } {
 %        name      = \prop_item:cn { \l_tmpa_str } { name } ,
 %        ns        = \prop_item:cn { \l_tmpa_str } { ns } ,
-%        imports   = \prop_item:cn { \l_tmpa_str } { imports } ,
-%        constants = \prop_item:cn { \l_tmpa_str } { constants } ,
-%        content   = \prop_item:cn { \l_tmpa_str } { content } ,
 %        file      = \prop_item:cn { \l_tmpa_str } { file } ,
 %        lang      = \prop_item:cn { \l_tmpa_str } { lang } ,
 %        sig       = \prop_item:cn { \l_tmpa_str } { sig } ,
@@ -826,11 +841,16 @@
 %
 % \begin{macro}{\stex_activate_module:n}
 %    \begin{macrocode}
+\bool_new:N \l_stex_in_meta_bool
+\bool_set_false:N \l_stex_in_meta_bool
 \cs_new_protected:Nn \stex_activate_module:n {
   \stex_debug:nn{modules}{Activating~module~#1}
+  \seq_if_in:NnT \l_stex_implicit_morphisms_seq { #1 }{
+    \msg_error:nnn{stex}{error/conclictingmodules}{ #1 }
+  }
   \exp_args:NNx \seq_if_in:NnF \l_stex_all_modules_seq { #1 } {
     \seq_put_right:Nx \l_stex_all_modules_seq { #1 }
-    \prop_item:cn { c_stex_module_#1_prop } { content }
+    \use:c{ c_stex_module_#1_code }
   }
 }
 %    \end{macrocode}

@@ -319,15 +319,16 @@
 %    \begin{macrocode}
 \cs_new_protected:Npn \_@@_invoke_math:nw  #1 [#2] {
   \_@@_args:n { #2 }
-  \prop_set_eq:Nc \l_tmpa_prop {
-    g_stex_symdecl_ #1 _prop 
-  }
-  \prop_get:NnN \l_tmpa_prop { notations } \l_tmpa_seq
-  \seq_if_empty:NTF \l_tmpa_seq {
-    \msg_error:nnxn{stex}{error/nonotation}{#1}{s}
+  \seq_if_empty:cTF {
+    l_stex_symdecl_ #1 _notations 
   } {
-    \seq_if_in:NxTF \l_tmpa_seq
+    \msg_error:nnxx{stex}{error/nonotation}{#1}{s}
+  } {
+    \seq_if_in:cxTF {
+      l_stex_symdecl_ #1 _notations
+    }
       { \l_@@_variant_str \c_hash_str \l_@@_lang_str }{
+      \str_set:Nn \l_stex_current_symbol_str { #1 }
       \use:c{
         stex_notation_ #1 \c_hash_str
         \l_@@_variant_str \c_hash_str \l_@@_lang_str
@@ -336,7 +337,10 @@
     }{
       \str_if_empty:NTF \l_@@_variant_str {
         \str_if_empty:NTF \l_@@_lang_str {
-          \seq_get_left:NN \l_tmpa_seq \l_tmpa_str
+          \seq_get_left:cN {
+            l_stex_symdecl_ #1 _notations
+          } \l_tmpa_str
+          \str_set:Nn \l_stex_current_symbol_str { #1 }
           \use:c{
             stex_notation_ #1 \c_hash_str \l_tmpa_str
             _cs
@@ -364,7 +368,7 @@
     \stex_term_custom:nn { #1 } { }
   }{
     \prop_set_eq:Nc \l_tmpa_prop {
-      g_stex_symdecl_ #1 _prop 
+      l_stex_symdecl_ #1 _prop 
     }
     \prop_get:NnN \l_tmpa_prop { args } \l_tmpa_str
     \exp_args:Nnx \stex_term_custom:nn { #1 } { \l_tmpa_str }
@@ -728,7 +732,7 @@
   \stex_symname_args:n { #1 }
   \stex_get_symbol:n { #2 }
   \str_set:Nx \l_tmpa_str {
-    \prop_item:cn { g_stex_symdecl_ \l_stex_get_symbol_uri_str _prop } { name }
+    \prop_item:cn { l_stex_symdecl_ \l_stex_get_symbol_uri_str _prop } { name }
   }
   \exp_args:NNno \str_replace_all:Nnn \l_tmpa_str {-} {~}
   
@@ -753,15 +757,15 @@
 % \begin{macro}{\stex_highlight_term:nn}
 %    \begin{macrocode}
 
-\str_new:N \l_@@_highlight_uri_str
+\str_new:N \l_stex_current_symbol_str
 \cs_new_protected:Nn \stex_highlight_term:nn {
   \exp_args:Nnx
   \use:nn {
-    \str_set:Nx \l_@@_highlight_uri_str { #1 }
+    \str_set:Nx \l_stex_current_symbol_str { #1 }
     #2
   } {
-    \str_set:Nx \exp_not:N \l_@@_highlight_uri_str 
-      { \l_@@_highlight_uri_str }
+    \str_set:Nx \exp_not:N \l_stex_current_symbol_str
+      { \l_stex_current_symbol_str }
   }
 }
 
@@ -782,11 +786,11 @@
 % \begin{macro}{\comp,\compemph@uri,\compemph,\defemph,\defemph@uri,\symrefemph,\symrefemph@uri}
 %    \begin{macrocode}
 \cs_new_protected:Npn \comp #1 {
-  \str_if_empty:NF \l_@@_highlight_uri_str {
+  \str_if_empty:NF \l_stex_current_symbol_str {
     \rustex_if:TF {
-      \stex_annotate:nnn { comp }{ \l_@@_highlight_uri_str }{ #1 }
+      \stex_annotate:nnn { comp }{ \l_stex_current_symbol_str }{ #1 }
     }{
-      \exp_args:Nnx \compemph@uri { #1 } { \l_@@_highlight_uri_str }
+      \exp_args:Nnx \compemph@uri { #1 } { \l_stex_current_symbol_str }
     }
   }
 }
