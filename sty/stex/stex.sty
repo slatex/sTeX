@@ -775,7 +775,7 @@
     \bool_set_true:N \l_tmpa_bool
     \bool_while_do:Nn \l_tmpa_bool {
       \cs_if_exist:cTF {
-        sref_\l_stex_current_docns_str\c_hash_str REF_\int_use:N \l_tmpa_int _type
+        sref_\l_stex_current_docns_str?? REF_\int_use:N \l_tmpa_int _type
       }{
         \int_incr:N \l_tmpa_int
       }{
@@ -785,7 +785,7 @@
     }
   }
   \str_set:Nx \l_tmpa_str {
-    \l_stex_current_docns_str\c_hash_str\l_tmpa_str
+    \l_stex_current_docns_str??\l_tmpa_str
   }
   \seq_gput_right:No \g__stex_refs_all_refs_seq \l_tmpa_str
   \stex_if_smsmode:TF {
@@ -795,8 +795,15 @@
   }{
     \iow_now:Nx \c__stex_refs_refs_iow { \l_tmpa_str~=~\expandafter{\@currentlabel\iffalse}{\fi~in~\exp_args:No\unexpanded\g__stex_refs_title_tl},}
     \exp_args:Nx\label{sref_\l_tmpa_str}
+
+    \exp_args:NNNx\immediate\write\@auxout{\stexauxadddocref{\l_tmpa_str}}
     \str_gset:cx {sref_\l_tmpa_str _type}\c__stex_refs_ref_str
   }
+}
+\cs_new_protected:Npn \stexauxadddocref #1 {
+  \str_set:Nx \l_tmpa_str {#1}
+  \str_gset_eq:cN{sref_\l_tmpa_str _type}\c__stex_refs_ref_str
+  \seq_gput_right:Nx \g__stex_refs_all_refs_seq {\l_tmpa_str}
 }
 \cs_new_protected:Nn \stex_ref_new_sym_target:n {
   \str_gset_eq:cN {sref_sym_#1_uri} \l_stex_current_docns_str
@@ -921,7 +928,7 @@
   \str_set:Nx \l_tmpa_str { #1 }
   \seq_gput_right:co {c_stex_module_\l_stex_current_module_str _fields} { \l_tmpa_str }
 }
-\cs_new_protected:Nn \stex_collect_imports:nn {
+\cs_new_protected:Nn \stex_collect_imports:n {
   \seq_clear:N \l_stex_collect_imports_seq
   \__stex_modules_collect_imports:n {#1}
 }
@@ -1447,49 +1454,49 @@
   }
 }
 \cs_new_protected:Nn \stex_import_module_uri:nn {
-  \str_set:Nx \l__stex_importmodule_archive_str { #1 }
-  \str_set:Nn \l__stex_importmodule_path_str { #2 }
+  \str_set:Nx \l_stex_import_archive_str { #1 }
+  \str_set:Nn \l_stex_import_path_str { #2 }
 
-  \exp_args:NNNo \seq_set_split:Nnn \l_tmpb_seq ? { \l__stex_importmodule_path_str }
-  \seq_pop_right:NN \l_tmpb_seq \l__stex_importmodule_name_str
-  \str_set:Nx \l__stex_importmodule_path_str { \seq_use:Nn \l_tmpb_seq ? }
+  \exp_args:NNNo \seq_set_split:Nnn \l_tmpb_seq ? { \l_stex_import_path_str }
+  \seq_pop_right:NN \l_tmpb_seq \l_stex_import_name_str
+  \str_set:Nx \l_stex_import_path_str { \seq_use:Nn \l_tmpb_seq ? }
 
   \stex_modules_current_namespace:
   \bool_lazy_all:nTF {
-    {\str_if_empty_p:N \l__stex_importmodule_archive_str}
-    {\str_if_empty_p:N \l__stex_importmodule_path_str}
-    {\stex_if_module_exists_p:n { \l_stex_module_ns_str ? \l__stex_importmodule_name_str } }
+    {\str_if_empty_p:N \l_stex_import_archive_str}
+    {\str_if_empty_p:N \l_stex_import_path_str}
+    {\stex_if_module_exists_p:n { \l_stex_module_ns_str ? \l_stex_import_name_str } }
   }{
-    \str_set_eq:NN \l__stex_importmodule_path_str \l_stex_modules_subpath_str
-    \str_set_eq:NN \l_stex_module_ns
+    \str_set_eq:NN \l_stex_import_path_str \l_stex_modules_subpath_str
+    \str_set_eq:NN \l_stex_import_ns_str \l_stex_module_ns_str
   }{
-    \str_if_empty:NT \l__stex_importmodule_archive_str {
+    \str_if_empty:NT \l_stex_import_archive_str {
       \prop_if_empty:NF \l_stex_current_repository_prop {
-        \prop_get:NnN \l_stex_current_repository_prop { id } \l__stex_importmodule_archive_str
+        \prop_get:NnN \l_stex_current_repository_prop { id } \l_stex_import_archive_str
       }
     }
-    \str_if_empty:NTF \l__stex_importmodule_archive_str {
-      \str_if_empty:NF \l__stex_importmodule_path_str {
-        \str_set:Nx \l_stex_module_ns_str {
-          \l_stex_module_ns_str / \l__stex_importmodule_path_str
+    \str_if_empty:NTF \l_stex_import_archive_str {
+      \str_if_empty:NF \l_stex_import_path_str {
+        \str_set:Nx \l_stex_import_ns_str {
+          \l_stex_module_ns_str / \l_stex_import_path_str
         }
       }
     }{
-      \stex_require_repository:n \l__stex_importmodule_archive_str
-      \prop_get:cnN { c_stex_mathhub_\l__stex_importmodule_archive_str _manifest_prop } { ns }
-        \l_stex_module_ns_str
-      \str_if_empty:NF \l__stex_importmodule_path_str {
-        \str_set:Nx \l_stex_module_ns_str {
-          \l_stex_module_ns_str / \l__stex_importmodule_path_str
+      \stex_require_repository:n \l_stex_import_archive_str
+      \prop_get:cnN { c_stex_mathhub_\l_stex_import_archive_str _manifest_prop } { ns }
+        \l_stex_import_ns_str
+      \str_if_empty:NF \l_stex_import_path_str {
+        \str_set:Nx \l_stex_import_ns_str {
+          \l_stex_import_ns_str / \l_stex_import_path_str
         }
       }
     }
   }
 }
-\str_new:N \l__stex_importmodule_name_str
-\str_new:N \l__stex_importmodule_archive_str
-\str_new:N \l__stex_importmodule_path_str
-\str_new:N \g__stex_importmodule_file_str
+\str_new:N \l_stex_import_name_str
+\str_new:N \l_stex_import_archive_str
+\str_new:N \l_stex_import_path_str
+\str_new:N \l_stex_import_ns_str
 \cs_new_protected:Nn \stex_import_require_module:nnnn {
   \exp_args:Nx \stex_if_module_exists:nF { #1 ? #4 } {
 
@@ -1607,22 +1614,22 @@
 \NewDocumentCommand \importmodule { O{} m } {
   \stex_import_module_uri:nn { #1 } { #2 }
   \stex_debug:nn{modules}{Importing~module:~
-    \l_stex_module_ns_str ? \l__stex_importmodule_name_str
+    \l_stex_import_ns_str ? \l_stex_import_name_str
   }
   \stex_if_smsmode:F {
     \stex_import_require_module:nnnn
-    { \l_stex_module_ns_str } { \l__stex_importmodule_archive_str }
-    { \l__stex_importmodule_path_str } { \l__stex_importmodule_name_str }
+    { \l_stex_import_ns_str } { \l_stex_import_archive_str }
+    { \l_stex_import_path_str } { \l_stex_import_name_str }
     \stex_annotate_invisible:nnn
-      {import} {\l_stex_module_ns_str ? \l__stex_importmodule_name_str} {}
+      {import} {\l_stex_import_ns_str ? \l_stex_import_name_str} {}
   }
   \exp_args:Nx \stex_add_to_current_module:n {
     \stex_import_require_module:nnnn
-    { \l_stex_module_ns_str } { \l__stex_importmodule_archive_str }
-    { \l__stex_importmodule_path_str } { \l__stex_importmodule_name_str }
+    { \l_stex_import_ns_str } { \l_stex_import_archive_str }
+    { \l_stex_import_path_str } { \l_stex_import_name_str }
   }
   \exp_args:Nx \stex_add_import_to_current_module:n {
-    \l_stex_module_ns_str ? \l__stex_importmodule_name_str
+    \l_stex_import_ns_str ? \l_stex_import_name_str
   }
   \stex_smsmode_set_codes:
 }
@@ -1631,10 +1638,10 @@
   \stex_if_smsmode:F {
     \stex_import_module_uri:nn { #1 } { #2 }
     \stex_import_require_module:nnnn
-    { \l_stex_module_ns_str } { \l__stex_importmodule_archive_str }
-    { \l__stex_importmodule_path_str } { \l__stex_importmodule_name_str }
+    { \l_stex_import_ns_str } { \l_stex_import_archive_str }
+    { \l_stex_import_path_str } { \l_stex_import_name_str }
     \stex_annotate_invisible:nnn
-      {usemodule} {\l_stex_module_ns_str ? \l__stex_importmodule_name_str} {}
+      {usemodule} {\l_stex_import_ns_str ? \l_stex_import_name_str} {}
   }
   \stex_smsmode_set_codes:
 }
@@ -2755,7 +2762,7 @@
 }
 
 \cs_new_protected:Npn \compemph #1 {
-    \textcolor{blue}{#1}
+    #1
 }
 
 \cs_new_protected:Npn \defemph@uri #1 #2 {
@@ -2815,6 +2822,33 @@
 
 %%%%%%%%%%%%%   features.dtx   %%%%%%%%%%%%%
 
+
+
+\NewDocumentEnvironment {clonemodule} { O{} m m}{
+  \stex_import_module_uri:nn { #1 } { #2 }
+  \stex_deactivate_macro:Nn \symdecl {module~environments}
+  \stex_deactivate_macro:Nn \symdef {module~environments}
+  \stex_reactivate_macro:N \assign
+  \stex_reactivate_macro:N \renamedecl
+  \str_set_eq:NN \l__stex_features_module_str \l_stex_current_module_str
+
+  \str_set:Nx \l__stex_features_clonemodule_name { #3 }
+  \stex_import_require_module:nnnn
+    { \l_stex_import_ns_str } { \l_stex_import_archive_str }
+    { \l_stex_import_path_str } { \l_stex_import_name_str }
+  \str_set:Nx \l_stex_current_module_str { \l_stex_import_ns_str ? \l_stex_import_name_str }
+}{
+  % todo
+}
+
+\NewDocumentCommand \assign { m m }{
+  % todo
+}
+\NewDocumentCommand \renamedecl { O{} m m}{
+  % todo
+}
+\stex_deactivate_macro:Nn \assign {clonemodules}
+\stex_deactivate_macro:Nn \renamedecl {clonemodules}
 
 \seq_new:N \l_stex_implicit_morphisms_seq
 \NewDocumentCommand \implicitmorphism { O{} m m}{
