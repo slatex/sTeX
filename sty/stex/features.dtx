@@ -103,6 +103,95 @@
 % \subsection{Imports with modification}
 %
 %    \begin{macrocode}
+\cs_new_protected:Nn \stex_get_symbol_in_clonemodule:n {
+  \tl_if_head_eq_catcode:nNTF { #1 } \relax {
+    \_@@_get_symbol_from_cs:n { #1 }
+  }{
+    % argument is a string
+    % is it a command name?
+    \cs_if_exist:cTF { #1 }{
+      \cs_set_eq:Nc \l_tmpa_tl { #1 }
+      \str_set:Nx \l_tmpa_str { \cs_argument_spec:N \l_tmpa_tl }
+      \str_if_empty:NTF \l_tmpa_str {
+        \exp_args:Nx \cs_if_eq:NNTF {
+          \tl_head:N \l_tmpa_tl
+        } \stex_invoke_symbol:n {
+          \exp_args:No \_@@_get_symbol_from_cs:n { \use:c { #1 } }
+        }{
+          \_@@_get_symbol_from_string:n { #1 }
+        }
+      } {
+        \_@@_get_symbol_from_string:n { #1 }
+      }
+    }{
+      % argument is not a command name
+      \_@@_get_symbol_from_string:n { #1 }
+      % \l_stex_all_symbols_seq
+    }
+  }
+}
+
+\cs_new_protected:Nn \_@@_get_symbol_from_string:n {
+  \str_set:Nn \l_tmpa_str { #1 }
+  \bool_set_false:N \l_tmpa_bool
+  \bool_if:NF \l_tmpa_bool {
+    \tl_set:Nn \l_tmpa_tl {
+      \msg_set:nnn{stex}{error/unknownsymbol}{
+        No~symbol~#1~found!
+      }
+      \msg_error:nn{stex}{error/unknownsymbol}
+    }
+    \str_set:Nn \l_tmpa_str { #1 }
+    \int_set:Nn \l_tmpa_int { \str_count:N \l_tmpa_str }
+    \seq_map_inline:Nn \l_@@_clonemodule_fields_seq {
+      \str_set:Nn \l_tmpb_str { ##1 }
+      \str_if_eq:eeT { \l_tmpa_str } {
+        \str_range:Nnn \l_tmpb_str { -\l_tmpa_int } { -1 }
+      } {
+        \seq_map_break:n {
+          \tl_set:Nn \l_tmpa_tl {
+            \str_set:Nn \l_stex_get_symbol_uri_str {
+              ##1
+            }
+            \_@@_get_symbol_check:
+          }
+        }
+      }
+    }
+    \l_tmpa_tl
+  }
+}
+
+\cs_new_protected:Nn \_@@_get_symbol_from_cs:n {
+  \exp_args:NNx \tl_set:Nn \l_tmpa_tl 
+    { \tl_tail:N \l_tmpa_tl }
+  \tl_if_single:NTF \l_tmpa_tl {
+    \exp_args:No \tl_if_head_is_group:nTF \l_tmpa_tl {
+      \exp_after:wN \str_set:Nn \exp_after:wN
+        \l_stex_get_symbol_uri_str \l_tmpa_tl
+      \_@@_get_symbol_check:
+    }{
+      % TODO
+      % tail is not a single group
+    }
+  }{
+    % TODO
+    % tail is not a single group
+  }
+}
+
+\cs_new_protected:Nn \_@@_get_symbol_check: {
+  \exp_args:NNno \seq_set_split:Nnn \l_tmpa_seq {?} \l_stex_get_symbol_uri_str
+  \int_compare:nNnTF {\seq_count:N \l_tmpa_seq} = 3 {
+    \seq_pop_right:NN \l_tmpa_seq \l_tmpb_str
+    \str_set:Nx \l_tmpa_str {\seq_use:Nn \l_tmpa_seq ?}
+    \seq_if_in:NoF \l_@@_clonemodule_modules_seq {
+      % TODO error
+    }
+  }{
+    % TODO error
+  }
+}
 
 \NewDocumentEnvironment {clonemodule} { O{} m m}{
   \stex_import_module_uri:nn { #1 } { #2 }
@@ -110,25 +199,110 @@
   \stex_deactivate_macro:Nn \symdef {module~environments}
   \stex_reactivate_macro:N \assign
   \stex_reactivate_macro:N \renamedecl
-  \str_set_eq:NN \l_@@_module_str \l_stex_current_module_str
-
-  \str_set:Nx \l_@@_clonemodule_name { #3 }
+  \stex_reactivate_macro:N \donotclone
+  \let\notation\notation_in_clonemodules:
+  %\stex_module_setup:nn {}{ #3 }
   \stex_import_require_module:nnnn 
     { \l_stex_import_ns_str } { \l_stex_import_archive_str } 
     { \l_stex_import_path_str } { \l_stex_import_name_str }
-  \str_set:Nx \l_stex_current_module_str { \l_stex_import_ns_str ? \l_stex_import_name_str }
+  \stex_collect_imports:n {\l_stex_import_ns_str ?\l_stex_import_name_str }
+  \seq_set_eq:NN \l_@@_clonemodule_modules_seq \l_stex_collect_imports_seq
+  \seq_clear:N \l_@@_clonemodule_fields_seq
+  \seq_map_inline:Nn \l_@@_clonemodule_modules_seq {
+    \seq_map_inline:cn {c_stex_module_##1_constants}{
+      \exp_args:NNx \seq_put_right:Nn \l_@@_clonemodule_fields_seq {
+        ##1 ? ####1
+      }
+    }
+  }
+  \stex_debug:nn{clonemodule}{cloning~module~{\l_stex_import_ns_str ?\l_stex_import_name_str}
+    as~\l_stex_current_module_str?#3}
+  \stex_debug:nn{clonemodule}{fields:\seq_use:Nn \l_@@_clonemodule_fields_seq {,~}}
+  % todo
 }{
   % todo
 }
 
-\NewDocumentCommand \assign { m m }{
-  % todo
+\NewDocumentCommand \donotclone { O{} m}{
+  \stex_import_module_uri:nn { #1 } { #2 }
+  \stex_collect_imports:n {\l_stex_import_ns_str ?\l_stex_import_name_str }
+  % TODO add to structure somehow
+  \seq_map_inline:Nn \l_stex_collect_imports_seq {
+    \seq_remove_all:Nn \l_@@_clonemodule_modules_seq { ##1 }
+    \seq_map_inline:cn {c_stex_module_##1_constants}{
+      \seq_remove_all:Nn \l_@@_clonemodule_fields_seq { ##1 ? ####1 }
+      \bool_lazy_any_p:nT {
+        { \cs_if_exist_p:c {l_@@_clonemodule_##1?####1_name_str}}
+        { \cs_if_exist_p:c {l_@@_clonemodule_##1?####1_macroname_str}}
+        { \cs_if_exist_p:c {l_@@_clonemodule_##1?####1_def_tl}}
+      }{
+        % TODO throw error
+      }
+    }
+  }
 }
+
+\NewDocumentCommand \assign { m m }{
+  \stex_get_symbol_in_clonemodule:n {#1}
+  \stex_debug:nn{assign}{defining~{\l_stex_get_symbol_uri_str}~as~\detokenize{#2}}
+  \tl_set:cn {l_@@_clonemodule_##1?####1_def_tl}{#2}
+}
+
+\keys_define:nn { stex / renamedecl } {
+  name        .str_set_x:N  = \l_stex_renamedecl_name_str
+}
+\cs_new_protected:Nn \_@@_renamedecl_args:n {
+  \str_clear:N \l_stex_renamedecl_name_str
+  
+  \keys_set:nn { stex / renamedecl } { #1 }
+}
+
 \NewDocumentCommand \renamedecl { O{} m m}{
+  \_@@_renamedecl_args:n { #1 }
+  \stex_get_symbol_in_clonemodule:n {#2}
+  \stex_debug:nn{renamedecl}{renaming~{\l_stex_get_symbol_uri_str}~to~#3}
+  \str_set:cx {l_@@_clonemodule_\l_stex_get_symbol_uri_str _macroname_str}{#3}
+  \str_if_empty:NTF \l_stex_renamedecl_name_str {
+    \tl_set:cx { #3 }{ \stex_invoke_symbol:n {
+      \l_stex_get_symbol_uri_str
+    } }
+  } {
+    \str_set:cx {l_@@_clonemodule_\l_stex_get_symbol_uri_str _name_str}{\l_stex_renamedecl_name_str}
+    \stex_debug:nn{renamedecl}{@~\l_stex_current_module_str ? \l_stex_renamedecl_name_str}
+    \prop_set_eq:cc {l_stex_symdecl_ 
+      \l_stex_current_module_str ? \l_stex_renamedecl_name_str
+      _prop
+    }{l_stex_symdecl_ \l_stex_get_symbol_uri_str _prop}
+    \seq_set_eq:cc {l_stex_symdecl_ 
+      \l_stex_current_module_str ? \l_stex_renamedecl_name_str
+      _notations
+    }{l_stex_symdecl_ \l_stex_get_symbol_uri_str _notations}
+    \prop_put:cnx {l_stex_symdecl_ 
+      \l_stex_current_module_str ? \l_stex_renamedecl_name_str
+      _prop
+    }{ name }{ \l_stex_renamedecl_name_str }
+    \prop_put:cnx {l_stex_symdecl_ 
+      \l_stex_current_module_str ? \l_stex_renamedecl_name_str
+      _prop
+    }{ module }{ \l_stex_current_module_str }
+    \exp_args:NNx \seq_put_left:Nn \l_@@_clonemodule_fields_seq {
+      \l_stex_current_module_str ? \l_stex_renamedecl_name_str
+    }
+    \tl_set:cx { #3 }{ \stex_invoke_symbol:n {
+      \l_stex_current_module_str ? \l_stex_renamedecl_name_str
+    } }
+  }
+}
+\NewDocumentCommand \notation_in_clonemodules: { O{} m } {
+  \_stex_notation_args:n { #1 }
+  \tl_clear:N \l_stex_symdecl_definiens_tl
+  \stex_get_symbol_in_clonemodule:n { #2 }
+  \stex_notation_do:nn { \l_stex_get_symbol_uri_str }
   % todo
 }
 \stex_deactivate_macro:Nn \assign {clonemodules}
 \stex_deactivate_macro:Nn \renamedecl {clonemodules}
+\stex_deactivate_macro:Nn \donotclone {clonemodules}
 
 
 %    \end{macrocode}
