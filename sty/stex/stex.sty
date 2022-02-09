@@ -271,13 +271,20 @@
 \cs_new_protected:Nn \stex_reactivate_macro:N {
   \exp_after:wN\let\exp_after:wN#1\csname \detokenize{#1} - orig\endcsname
 }
+\tl_new:N \l__stex_aftergroup_tl
 \cs_new_protected:Nn \stex_do_aftergroup:n {
-  \tl_gset:Nn \l__stex_aftergroup_tl { #1 }
-  \aftergroup\__stex_aftergroup_do:
+  \int_compare:nNnTF \l_stex_module_group_depth_int = \currentgrouplevel {
+    #1
+  }{
+    #1
+    \expandafter \tl_gset:Nn \expandafter \l__stex_aftergroup_tl \expandafter { \l__stex_aftergroup_tl #1 }
+    \aftergroup\__stex_aftergroup_do:
+  }
 }
 \cs_new_protected:Nn \__stex_aftergroup_do: {
   \int_compare:nNnTF \l_stex_module_group_depth_int = \currentgrouplevel {
     \l__stex_aftergroup_tl
+    \tl_clear:N \l__stex_aftergroup_tl
   }{
     \l__stex_aftergroup_tl
     \aftergroup\__stex_aftergroup_do:
@@ -1803,9 +1810,11 @@
   % semantic macro
 
   \bool_if:NT \l_stex_symdecl_make_macro_bool {
-    \tl_set:cx { #1 } { \stex_invoke_symbol:n {
-      \l_stex_current_module_str ? \l_stex_symdecl_name_str
-    } }
+    \exp_args:Nx \stex_do_aftergroup:n {
+      \tl_set:cn { #1 } { \stex_invoke_symbol:n {
+        \l_stex_current_module_str ? \l_stex_symdecl_name_str
+      }}
+    }
 
     \bool_if:NF \l_stex_symdecl_local_bool {
       \exp_args:Nx \stex_add_to_current_module:n {
@@ -1879,8 +1888,10 @@
     \bool_if:NF \l_stex_symdecl_local_bool {
     }
   }{
-    \exp_args:NNx \seq_put_right:Nn \l_stex_all_symbols_seq {
-      \l_stex_current_module_str ? \l_stex_symdecl_name_str
+    \exp_args:Nx \stex_do_aftergroup:n {
+        \seq_put_right:Nn \exp_not:N \l_stex_all_symbols_seq {
+        \l_stex_current_module_str ? \l_stex_symdecl_name_str
+      }
     }
     \stex_if_do_html:T {
       \stex_annotate_invisible:nnn {symdecl} {
@@ -3707,11 +3718,7 @@
       \tl_set:Nn \l_tmpa_tl {\use:c{__stex_statements_sassertion_##1_end:}}
     }
   }
-  \exp_args:Nx \stex_do_aftergroup:n {
-    \str_if_empty:NF \sassertionname {
-      \symdecl*{\sassertionname}
-    }
-  }
+  \str_if_empty:NF \sassertionname { \symdecl*{\sassertionname} }
   \tl_if_empty:NTF \l_tmpa_tl {
     \__stex_statements_sassertion_end:
   }{
@@ -3893,11 +3900,7 @@
       \tl_set:Nn \l_tmpa_tl {\use:c{__stex_statements_sparagraph_##1_end:}}
     }
   }
-  \exp_args:Nx \stex_do_aftergroup:n {
-    \str_if_empty:NF \sparagraphname {
-      \symdecl*{\sparagraphname}
-    }
-  }
+  \str_if_empty:NF \sparagraphname { \symdecl*{\sparagraphname} }
   \tl_if_empty:NTF \l_tmpa_tl {
     \__stex_statements_sparagraph_end:
   }{
