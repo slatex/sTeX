@@ -265,11 +265,18 @@
 \cs_new_protected:Nn \stex_deactivate_macro:Nn {
   \exp_after:wN\let\csname \detokenize{#1} - orig\endcsname#1
   \def#1{
-    \msg_error:nnxx{stex}{error/deactivated-macro}{#1}{#2}
+    \msg_error:nnnn{stex}{error/deactivated-macro}{#1}{#2}
   }
 }
 \cs_new_protected:Nn \stex_reactivate_macro:N {
   \exp_after:wN\let\exp_after:wN#1\csname \detokenize{#1} - orig\endcsname
+}
+\cs_new_protected:Nn \stex_do_aftergroup:n {
+  \tl_gset:Nn \l__stex_aftergroup_tl { #1 }
+  \aftergroup\__stex_aftergroup_do:
+}
+\cs_new_protected:Nn \__stex_aftergroup_do: {
+  \l__stex_aftergroup_tl
 }
 
 %%%%%%%%%%%%%   mathhub.dtx   %%%%%%%%%%%%%
@@ -2936,10 +2943,12 @@
   \stex_import_module_uri:nn { #1 } { #2 }
   \stex_deactivate_macro:Nn \symdecl {module~environments}
   \stex_deactivate_macro:Nn \symdef {module~environments}
+  \stex_deactivate_macro:Nn \notation {module~environments}
   \stex_reactivate_macro:N \assign
   \stex_reactivate_macro:N \renamedecl
   \stex_reactivate_macro:N \donotclone
-  \let\notation\notation_in_clonemodules:
+  \str_set:Nx \l_stex_current_clonemodule_name_str {#3}
+  %\let\notation\notation_in_clonemodules:
   %\stex_module_setup:nn {}{ #3 }
   \stex_import_require_module:nnnn
     { \l_stex_import_ns_str } { \l_stex_import_archive_str }
@@ -2954,18 +2963,120 @@
       }
     }
   }
+  \seq_clear:N \l_tmpa_seq
+  \exp_args:NNx \prop_set_from_keyval:Nn \l_stex_current_clonemodule_prop {
+    name      = \l_stex_current_clonemodule_name_str ,
+    module    = \l_stex_current_module_str ,
+    from      = \l_stex_import_ns_str ?\l_stex_import_name_str ,
+    includes  = \l_tmpa_seq ,
+    fields    = \l_tmpa_seq
+  }
   \stex_debug:nn{clonemodule}{cloning~module~{\l_stex_import_ns_str ?\l_stex_import_name_str}
-    as~\l_stex_current_module_str?#3}
+    as~\l_stex_current_module_str?\l_stex_current_clonemodule_name_str}
   \stex_debug:nn{clonemodule}{fields:\seq_use:Nn \l__stex_features_clonemodule_fields_seq {,~}}
   % todo
+
+  \stex_if_smsmode:TF {
+    \stex_smsmode_set_codes:
+  } {
+    \begin{stex_annotate_env} {structure} {
+      \l_stex_current_module_str?\l_stex_current_clonemodule_name_str
+    }
+    \stex_annotate_invisible:nnn{from}{\l_stex_import_ns_str ?\l_stex_import_name_str}{}
+  }
+  \bool_set_eq:NN \l__stex_features_oldhtml_bool \l_stex_html_do_output_bool
+  \bool_set_false:N \l_stex_html_do_output_bool
 }{
-  % todo
+  \bool_set_eq:NN \l_stex_html_do_output_bool \l__stex_features_oldhtml_bool
+  \tl_clear:N \l_tmpa_tl
+  \prop_get:NnN \l_stex_current_clonemodule_prop {fields} \l_tmpa_seq
+  \seq_map_inline:Nn \l__stex_features_clonemodule_modules_seq {
+    \seq_map_inline:cn {c_stex_module_##1_constants}{\stex_annotate:nnn{assignment} {##1?####1} {
+      \str_if_exist:cTF {l__stex_features_clonemodule_##1?####1_name_str} {
+        \tl_put_right:Nx \l_tmpa_tl {
+          \prop_set_from_keyval:cn {
+            l_stex_symdecl_\l_stex_current_module_str ? \use:c{l__stex_features_clonemodule_##1?####1_name_str}_prop
+          }{
+            \exp_after:wN \prop_to_keyval:N \csname
+              l_stex_symdecl_\l_stex_current_module_str ? \use:c{l__stex_features_clonemodule_##1?####1_name_str}_prop
+            \endcsname
+          }
+          \seq_clear:c {
+            l_stex_symdecl_
+            \l_stex_current_module_str ? \use:c{l__stex_features_clonemodule_##1?####1_name_str}
+            _notations
+          }
+        }
+        \stex_annotate_invisible:nnn{alias}{\use:c{l__stex_features_clonemodule_##1?####1_name_str}}{}
+        \seq_put_right:Nx \l_tmpa_seq {\l_stex_current_module_str ? \use:c{l__stex_features_clonemodule_##1?####1_name_str}}
+        \str_if_exist:cT {l__stex_features_clonemodule_##1?####1_macroname_str} {
+          \stex_annotate_invisible:nnn{macroname}{\use:c{l__stex_features_clonemodule_##1?####1_macroname_str}}{}
+          \tl_put_right:Nx \l_tmpa_tl {
+            \tl_set:cx {\use:c{l__stex_features_clonemodule_##1?####1_macroname_str}}{
+              \stex_invoke_symbol:n {
+                \l_stex_current_module_str ? \use:c{l__stex_features_clonemodule_##1?####1_name_str}
+              }
+            }
+          }
+        }
+      }{
+        \prop_set_eq:Nc \l_tmpa_prop {l_stex_symdecl_ ##1?####1 _prop}
+        \prop_put:Nnx \l_tmpa_prop { name }{ \l_stex_current_clonemodule_name_str / ####1 }
+        \prop_put:Nnx \l_tmpa_prop { module }{ \l_stex_current_module_str }
+        \tl_put_right:Nx \l_tmpa_tl {
+          \prop_set_from_keyval:cn {
+            l_stex_symdecl_\l_stex_current_module_str ? \l_stex_current_clonemodule_name_str / ####1_prop
+          }{
+            \prop_to_keyval:N \l_tmpa_prop
+          }
+          \seq_clear:c {
+            l_stex_symdecl_
+            \l_stex_current_module_str ? \l_stex_current_clonemodule_name_str / ####1
+            _notations
+          }
+        }
+        \seq_put_right:Nx \l_tmpa_seq {\l_stex_current_module_str ? \l_stex_current_clonemodule_name_str / ####1 }
+        \str_if_exist:cT {l__stex_features_clonemodule_##1?####1_macroname_str} {
+          \stex_annotate_invisible:nnn{macroname}{\use:c{l__stex_features_clonemodule_##1?####1_macroname_str}}{}
+          \tl_put_right:Nx \l_tmpa_tl {
+            \tl_set:cx {\use:c{l__stex_features_clonemodule_##1?####1_macroname_str}}{
+              \stex_invoke_symbol:n {
+                \l_stex_current_module_str ? \l_stex_current_clonemodule_name_str / ####1
+              }
+            }
+          }
+        }
+      }
+      \tl_if_exist:cT {l__stex_features_clonemodule_##1?####1_def_tl}{
+        \stex_annotate_invisible:nnn{definiens}{}{$\use:c{l__stex_features_clonemodule_##1?####1_def_tl}$}
+      }
+      % todo notations
+    }}
+  }
+  \prop_put:Nno \l_stex_current_clonemodule_prop {fields} \l_tmpa_seq
+  \tl_put_left:Nx \l_tmpa_tl {
+    \prop_set_from_keyval:cn {
+      l_stex_clonemodule_ \l_stex_current_module_str?\l_stex_current_clonemodule_name_str _prop
+    }{
+      \prop_to_keyval:N \l_stex_current_clonemodule_prop
+    }
+  }
+  \exp_args:No \stex_add_to_current_module:n \l_tmpa_tl
+  \stex_debug:nn{clonemodule}{result:\meaning \l_tmpa_tl}
+  \exp_args:Nx \stex_do_aftergroup:n { \stex_if_smsmode:TF {
+      \exp_args:No \exp_not:n \l_tmpa_tl
+    }{ \stex_do_aftergroup:n {
+      \exp_args:No \exp_not:n \l_tmpa_tl
+    } }
+  }
+  \stex_if_smsmode:F {
+    \end{stex_annotate_env}
+  }
 }
 
 \NewDocumentCommand \donotclone { O{} m}{
   \stex_import_module_uri:nn { #1 } { #2 }
   \stex_collect_imports:n {\l_stex_import_ns_str ?\l_stex_import_name_str }
-  % TODO add to structure somehow
   \seq_map_inline:Nn \l_stex_collect_imports_seq {
     \seq_remove_all:Nn \l__stex_features_clonemodule_modules_seq { ##1 }
     \seq_map_inline:cn {c_stex_module_##1_constants}{
@@ -2979,6 +3090,10 @@
       }
     }
   }
+
+  \prop_get:NnN \l_stex_current_clonemodule_prop { includes } \l_tmpa_seq
+  \seq_put_right:Nx \l_tmpa_seq {\l_stex_import_ns_str ?\l_stex_import_name_str }
+  \prop_put:Nnx \l_stex_current_clonemodule_prop {includes} \l_tmpa_seq
 }
 
 \NewDocumentCommand \assign { m m }{
@@ -3031,13 +3146,6 @@
       \l_stex_current_module_str ? \l_stex_renamedecl_name_str
     } }
   }
-}
-\NewDocumentCommand \notation_in_clonemodules: { O{} m } {
-  \_stex_notation_args:n { #1 }
-  \tl_clear:N \l_stex_symdecl_definiens_tl
-  \stex_get_symbol_in_clonemodule:n { #2 }
-  \stex_notation_do:nn { \l_stex_get_symbol_uri_str }
-  % todo
 }
 \stex_deactivate_macro:Nn \assign {clonemodules}
 \stex_deactivate_macro:Nn \renamedecl {clonemodules}
