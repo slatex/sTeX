@@ -192,28 +192,25 @@
     \seq_pop_right:NN \l_tmpa_seq \l_tmpb_str
     \str_set:Nx \l_tmpa_str {\seq_use:Nn \l_tmpa_seq ?}
     \seq_if_in:NoF \l_@@_copymodule_modules_seq \l_tmpa_str {
-      \msg_error:nnxx{stex}{error/copymodule/notallowed}{\l_stex_get_symbol_uri_str}{\l_stex_current_copymodule_name_str}
+      \msg_error:nnxx{stex}{error/copymodule/notallowed}{\l_stex_get_symbol_uri_str}{
+        \l_stex_current_copymodule_name_str\\Allowed:~\seq_use:Nn \l_@@_copymodule_modules_seq {,~}
+        }
     }
   }{
-    \msg_error:nnxx{stex}{error/copymodule/notallowed}{\l_stex_get_symbol_uri_str}{\l_stex_current_copymodule_name_str}
+    \msg_error:nnxx{stex}{error/copymodule/notallowed}{\l_stex_get_symbol_uri_str}{
+      \l_stex_current_copymodule_name_str~(inexplicably)
+    }
   }
 }
 
 \cs_new_protected:Nn \stex_copymodule_start:nnnn {
   \stex_import_module_uri:nn { #1 } { #2 }
-  \stex_deactivate_macro:Nn \symdecl {module~environments}
-  \stex_deactivate_macro:Nn \symdef {module~environments}
-  \stex_deactivate_macro:Nn \notation {module~environments}
-  \stex_reactivate_macro:N \assign
-  \stex_reactivate_macro:N \renamedecl
-  \stex_reactivate_macro:N \donotcopy
   \str_set:Nx \l_stex_current_copymodule_name_str {#3}
   \stex_import_require_module:nnnn 
     { \l_stex_import_ns_str } { \l_stex_import_archive_str } 
     { \l_stex_import_path_str } { \l_stex_import_name_str }
   \stex_collect_imports:n {\l_stex_import_ns_str ?\l_stex_import_name_str }
   \seq_set_eq:NN \l_@@_copymodule_modules_seq \l_stex_collect_imports_seq
-  \seq_put_left:Nx \l_@@_copymodule_modules_seq {\l_stex_import_ns_str ?\l_stex_import_name_str }
   \seq_clear:N \l_@@_copymodule_fields_seq
   \seq_map_inline:Nn \l_@@_copymodule_modules_seq {
     \seq_map_inline:cn {c_stex_module_##1_constants}{
@@ -232,6 +229,7 @@
   }
   \stex_debug:nn{copymodule}{#4~for~module~{\l_stex_import_ns_str ?\l_stex_import_name_str}
     as~\l_stex_current_module_str?\l_stex_current_copymodule_name_str}
+    \stex_debug:nn{copymodule}{modules:\seq_use:Nn \l_@@_copymodule_modules_seq {,~}}
   \stex_debug:nn{copymodule}{fields:\seq_use:Nn \l_@@_copymodule_fields_seq {,~}}
   \stex_if_smsmode:TF {
     \stex_smsmode_set_codes:
@@ -245,12 +243,13 @@
   \bool_set_false:N \l_stex_html_do_output_bool
 }
 \cs_new_protected:Nn \stex_copymodule_end:n {
+  \def \l_tmpa_cs ##1 ##2 {#1}
   \bool_set_eq:NN \l_stex_html_do_output_bool \l_@@_oldhtml_bool
   \tl_clear:N \l_tmpa_tl
   \prop_get:NnN \l_stex_current_copymodule_prop {fields} \l_tmpa_seq
   \seq_map_inline:Nn \l_@@_copymodule_modules_seq {
     \seq_map_inline:cn {c_stex_module_##1_constants}{\stex_annotate:nnn{assignment} {##1?####1} {
-      #1
+      \l_tmpa_cs{##1}{####1}
       \str_if_exist:cTF {l_@@_copymodule_##1?####1_name_str} {
         \tl_put_right:Nx \l_tmpa_tl {
           \prop_set_from_keyval:cn {
@@ -332,19 +331,31 @@
 
 \NewDocumentEnvironment {copymodule} { O{} m m}{
   \stex_copymodule_start:nnnn { #1 }{ #2 }{ #3 }{ structure }
+  \stex_deactivate_macro:Nn \symdecl {module~environments}
+  \stex_deactivate_macro:Nn \symdef {module~environments}
+  \stex_deactivate_macro:Nn \notation {module~environments}
+  \stex_reactivate_macro:N \assign
+  \stex_reactivate_macro:N \renamedecl
+  \stex_reactivate_macro:N \donotcopy
 }{
   \stex_copymodule_end:n {}
 }
 
 \NewDocumentEnvironment {interpretmodule} { O{} m m}{
   \stex_copymodule_start:nnnn { #1 }{ #2 }{ #3 }{ realization }
+  \stex_deactivate_macro:Nn \symdecl {module~environments}
+  \stex_deactivate_macro:Nn \symdef {module~environments}
+  \stex_deactivate_macro:Nn \notation {module~environments}
+  \stex_reactivate_macro:N \assign
+  \stex_reactivate_macro:N \renamedecl
+  \stex_reactivate_macro:N \donotcopy
 }{
   \stex_copymodule_end:n {
     \tl_if_exist:cF {
-      l_@@_copymodule_########1?################1_def_tl
+      l_@@_copymodule_##1?##2_def_tl
     }{
       \msg_error:nnxx{stex}{error/interpretmodule/nodefiniens}{
-        ########1?################1
+        ##1?##2
       }{\l_stex_current_copymodule_name_str}
     }
   }
@@ -375,7 +386,7 @@
 \NewDocumentCommand \assign { m m }{
   \stex_get_symbol_in_copymodule:n {#1}
   \stex_debug:nn{assign}{defining~{\l_stex_get_symbol_uri_str}~as~\detokenize{#2}}
-  \tl_set:cn {l_@@_copymodule_##1?####1_def_tl}{#2}
+  \tl_set:cn {l_@@_copymodule_\l_stex_get_symbol_uri_str _def_tl}{#2}
 }
 
 \keys_define:nn { stex / renamedecl } {
