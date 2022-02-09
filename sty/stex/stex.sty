@@ -2910,6 +2910,12 @@
 
 %%%%%%%%%%%%%   features.dtx   %%%%%%%%%%%%%
 
+\msg_new:nnn{stex}{error/copymodule/notallowed}{
+  Symbol~#1~can~not~be~assigned~in~copymodule~#2
+}
+\msg_new:nnn{stex}{error/interpretmodule/nodefiniens}{
+  Symbol~#1~not~assigned~in~interpretmodule~#2
+}
 
 \cs_new_protected:Nn \stex_get_symbol_in_copymodule:n {
   \tl_if_head_eq_catcode:nNTF { #1 } \relax {
@@ -2993,15 +2999,15 @@
   \int_compare:nNnTF {\seq_count:N \l_tmpa_seq} = 3 {
     \seq_pop_right:NN \l_tmpa_seq \l_tmpb_str
     \str_set:Nx \l_tmpa_str {\seq_use:Nn \l_tmpa_seq ?}
-    \seq_if_in:NoF \l__stex_features_copymodule_modules_seq {
-      % TODO error
+    \seq_if_in:NoF \l__stex_features_copymodule_modules_seq \l_tmpa_str {
+      \msg_error:nnxx{stex}{error/copymodule/notallowed}{\l_stex_get_symbol_uri_str}{\l_stex_current_copymodule_name_str}
     }
   }{
-    % TODO error
+    \msg_error:nnxx{stex}{error/copymodule/notallowed}{\l_stex_get_symbol_uri_str}{\l_stex_current_copymodule_name_str}
   }
 }
 
-\NewDocumentEnvironment {copymodule} { O{} m m}{
+\cs_new_protected:Nn \stex_copymodule_start:nnnn {
   \stex_import_module_uri:nn { #1 } { #2 }
   \stex_deactivate_macro:Nn \symdecl {module~environments}
   \stex_deactivate_macro:Nn \symdef {module~environments}
@@ -3010,13 +3016,12 @@
   \stex_reactivate_macro:N \renamedecl
   \stex_reactivate_macro:N \donotcopy
   \str_set:Nx \l_stex_current_copymodule_name_str {#3}
-  %\let\notation\notation_in_copymodules:
-  %\stex_module_setup:nn {}{ #3 }
   \stex_import_require_module:nnnn
     { \l_stex_import_ns_str } { \l_stex_import_archive_str }
     { \l_stex_import_path_str } { \l_stex_import_name_str }
   \stex_collect_imports:n {\l_stex_import_ns_str ?\l_stex_import_name_str }
   \seq_set_eq:NN \l__stex_features_copymodule_modules_seq \l_stex_collect_imports_seq
+  \seq_put_left:Nx \l__stex_features_copymodule_modules_seq {\l_stex_import_ns_str ?\l_stex_import_name_str }
   \seq_clear:N \l__stex_features_copymodule_fields_seq
   \seq_map_inline:Nn \l__stex_features_copymodule_modules_seq {
     \seq_map_inline:cn {c_stex_module_##1_constants}{
@@ -3033,27 +3038,27 @@
     includes  = \l_tmpa_seq ,
     fields    = \l_tmpa_seq
   }
-  \stex_debug:nn{copymodule}{cloning~module~{\l_stex_import_ns_str ?\l_stex_import_name_str}
+  \stex_debug:nn{copymodule}{#4~for~module~{\l_stex_import_ns_str ?\l_stex_import_name_str}
     as~\l_stex_current_module_str?\l_stex_current_copymodule_name_str}
   \stex_debug:nn{copymodule}{fields:\seq_use:Nn \l__stex_features_copymodule_fields_seq {,~}}
-  % todo
-
   \stex_if_smsmode:TF {
     \stex_smsmode_set_codes:
   } {
-    \begin{stex_annotate_env} {structure} {
+    \begin{stex_annotate_env} {#4} {
       \l_stex_current_module_str?\l_stex_current_copymodule_name_str
     }
     \stex_annotate_invisible:nnn{from}{\l_stex_import_ns_str ?\l_stex_import_name_str}{}
   }
   \bool_set_eq:NN \l__stex_features_oldhtml_bool \l_stex_html_do_output_bool
   \bool_set_false:N \l_stex_html_do_output_bool
-}{
+}
+\cs_new_protected:Nn \stex_copymodule_end:n {
   \bool_set_eq:NN \l_stex_html_do_output_bool \l__stex_features_oldhtml_bool
   \tl_clear:N \l_tmpa_tl
   \prop_get:NnN \l_stex_current_copymodule_prop {fields} \l_tmpa_seq
   \seq_map_inline:Nn \l__stex_features_copymodule_modules_seq {
     \seq_map_inline:cn {c_stex_module_##1_constants}{\stex_annotate:nnn{assignment} {##1?####1} {
+      #1
       \str_if_exist:cTF {l__stex_features_copymodule_##1?####1_name_str} {
         \tl_put_right:Nx \l_tmpa_tl {
           \prop_set_from_keyval:cn {
@@ -3130,6 +3135,26 @@
   }
   \stex_if_smsmode:F {
     \end{stex_annotate_env}
+  }
+}
+
+\NewDocumentEnvironment {copymodule} { O{} m m}{
+  \stex_copymodule_start:nnnn { #1 }{ #2 }{ #3 }{ structure }
+}{
+  \stex_copymodule_end:n {}
+}
+
+\NewDocumentEnvironment {interpretmodule} { O{} m m}{
+  \stex_copymodule_start:nnnn { #1 }{ #2 }{ #3 }{ realization }
+}{
+  \stex_copymodule_end:n {
+    \tl_if_exist:cF {
+      l__stex_features_copymodule_########1?################1_def_tl
+    }{
+      \msg_error:nnxx{stex}{error/interpretmodule/nodefiniens}{
+        ########1?################1
+      }{\l_stex_current_copymodule_name_str}
+    }
   }
 }
 
@@ -3756,8 +3781,8 @@
 \keys_define:nn {stex / sexample }{
   type    .str_set_x:N  = \exampletype,
   id      .str_set_x:N  = \sexampleid,
-  title   .tl_set:N  = \sexampletitle,
-  for     .clist_set:N   = \sexamplefor,
+  title   .tl_set:N     = \sexampletitle,
+  for     .clist_set:N  = \sexamplefor,
 }
 \cs_new_protected:Nn \__stex_statements_sexample_args:n {
   \str_clear:N \sexampletype
