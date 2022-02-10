@@ -849,7 +849,19 @@
   \seq_gput_right:Nx \g__stex_refs_all_refs_seq {\l_tmpa_str}
 }
 \cs_new_protected:Nn \stex_ref_new_sym_target:n {
-  \str_gset_eq:cN {sref_sym_#1_uri} \l_stex_current_docns_str
+  \stex_get_document_uri:
+  \stex_if_smsmode:TF {
+    \stex_get_document_url:
+    \str_gset_eq:cN {sref_sym_url_#1_str}\l_stex_current_docurl_str
+    \str_gset_eq:cN {sref_sym_#1_type}\c__stex_refs_url_str
+
+  }{
+    \iow_now:Nx \c__stex_refs_refs_iow { \l_tmpa_str~=~\expandafter{\@currentlabel\iffalse}{\fi~in~\exp_args:No\unexpanded\g__stex_refs_title_tl},}
+    \exp_args:Nx\label{sref_sym_#1}
+
+    \exp_args:NNNx\immediate\write\@auxout{\stexauxadddocref{sym_#1}}
+    \str_gset:cx {sref_sym_#1_type}\c__stex_refs_ref_str
+  }
 }
 \str_new:N \l__stex_refs_indocument_str
 \keys_define:nn { stex / sref } {
@@ -917,6 +929,44 @@
   }{
     % TODO
   }
+}
+
+\NewDocumentCommand \srefsym { O{} m}{
+  \stex_get_symbol:n { #2 }
+  \__stex_refs_args:n { #1 }
+  \str_if_empty:NTF \l__stex_refs_indocument_str {
+    \tl_set:Nn \l_tmpa_tl {
+      \l__stex_refs_fallback_tl
+    }
+    \tl_if_exist:cT{sref_sym_\l_stex_get_symbol_uri_str _type}{
+      \tl_set:Nn \l_tmpa_tl {
+        % doc uri in \l_tmpb_str
+        \str_set:Nx \l_tmpa_str {\use:c{sref_sym_\l_stex_get_symbol_uri_str _type}}
+        \str_if_eq:NNTF \l_tmpa_str \c__stex_refs_ref_str {
+          % reference
+          \cs_if_exist:cTF{autoref}{
+            \l__stex_refs_pre_tl\autoref{sref_sym_\l_stex_get_symbol_uri_str}\l__stex_refs_post_tl
+          }{
+            \l__stex_refs_pre_tl\ref{sref_sym_\l_stex_get_symbol_uri_str}\l__stex_refs_post_tl
+          }
+        }{
+          % URL
+          \if_bool:N \c__stex_refs_hyperref_bool {
+            \exp_args:Nx \href{\use:c{sref_sym_url_\l_stex_get_symbol_uri_str _str}}{\l__stex_refs_fallback_tl}
+          }{
+            \l__stex_refs_fallback_tl
+          }
+        }
+      }
+    }
+    \l_tmpa_tl
+  }{
+    % TODO
+  }
+}
+
+\cs_new_protected:Npn \srefsymuri #1 #2 {
+  \hyperref[sref_sym_#1]{#2}
 }
 
 
