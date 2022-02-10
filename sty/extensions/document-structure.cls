@@ -1,32 +1,32 @@
 %%
-%% This is file `omdoc.cls',
+%% This is file `document-structure.cls',
 %% generated with the docstrip utility.
 %%
 %% The original source files were:
 %%
-%% omdoc.dtx  (with options: `cls')
+%% document-structure.dtx  (with options: `cls')
 %% 
-\ProvidesExplClass{omdoc}{2020/10/19}{1.4}{OMDoc Documents}
+\ProvidesExplClass{document-structure}{2022/02/10}{3.0}{Modular Document Structure Class}
 \RequirePackage{l3keys2e,expl-keystr-compat}
 \keys_define:nn{ document-structure / pkg }{
   class       .str_set_x:N  = \c_document_structure_class_str,
   minimal     .bool_set:N   = \c_document_structure_minimal_bool,
   report      .code:n       = {
-    \ClassWarning{omdoc}{the option 'report' is deprecated, use 'class=report', instead}
+    \ClassWarning{document-structure}{the option 'report' is deprecated, use 'class=report', instead}
     \str_set:Nn \c_document_structure_class_str {report}
   },
   book        .code:n       = {
-    \ClassWarning{omdoc}{the option 'book' is deprecated, use 'class=book', instead}
+    \ClassWarning{document-structure}{the option 'book' is deprecated, use 'class=book', instead}
     \str_set:Nn \c_document_structure_class_str {book}
   },
   bookpart    .code:n       = {
-    \ClassWarning{omdoc}{the option 'bookpart' is deprecated, use 'class=book,topsect=chapter', instead}
+    \ClassWarning{document-structure}{the option 'bookpart' is deprecated, use 'class=book,topsect=chapter', instead}
     \str_set:Nn \c_document_structure_class_str {book}
     \str_set:Nn \c_document_structure_topsect_str {chapter}
   },
   docopt      .str_set_x:N  = \c_document_structure_docopt_str,
   unknown     .code:n       = {
-    \PassOptionsToPackage{ \CurrentOption }{ omdoc }
+    \PassOptionsToPackage{ \CurrentOption }{ document-structure }
   }
 }
 \ProcessKeysOptions{ document-structure / pkg }
@@ -36,9 +36,8 @@
 \exp_after:wN\LoadClass\exp_after:wN[\c_document_structure_docopt_str]
   {\c_document_structure_class_str}
 
-\RequirePackage{omdoc}
+\RequirePackage{document-structure}
 \bool_if:NF \c_document_structure_minimal_bool {
-\RequirePackage{stex-compatibility}
 \keys_define:nn { document-structure / document }{
   id .str_set_x:N = \c_document_structure_document_id_str
 }
@@ -51,4 +50,4 @@
 }
 \endinput
 %%
-%% End of file `omdoc.cls'.
+%% End of file `document-structure.cls'.
