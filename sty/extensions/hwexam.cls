@@ -15,7 +15,7 @@
   \PassOptionsToPackage{\CurrentOption}{tikzinput}
 }
 \ProcessOptions
-\LoadClass{omdoc}
+\LoadClass{document-structure}
 \RequirePackage{stex}
 \RequirePackage{hwexam}
 \RequirePackage{tikzinput}
