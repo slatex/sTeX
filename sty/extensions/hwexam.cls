@@ -9,7 +9,7 @@
 \ProvidesExplClass{hwexam}{2019/03/20}{1.1}{homework assignments and exams}
 \RequirePackage{l3keys2e,expl-keystr-compat}
 \DeclareOption*{
-  \PassOptionsToClass{\CurrentOption}{omdoc}
+  \PassOptionsToClass{\CurrentOption}{document-structure}
   \PassOptionsToPackage{\CurrentOption}{stex}
   \PassOptionsToPackage{\CurrentOption}{hwexam}
   \PassOptionsToPackage{\CurrentOption}{tikzinput}

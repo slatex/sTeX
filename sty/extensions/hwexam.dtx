@@ -178,7 +178,7 @@
 \ProvidesExplClass{hwexam}{2019/03/20}{1.1}{homework assignments and exams}
 \RequirePackage{l3keys2e,expl-keystr-compat}
 \DeclareOption*{
-  \PassOptionsToClass{\CurrentOption}{omdoc}
+  \PassOptionsToClass{\CurrentOption}{document-structure}
   \PassOptionsToPackage{\CurrentOption}{stex}
   \PassOptionsToPackage{\CurrentOption}{hwexam}
   \PassOptionsToPackage{\CurrentOption}{tikzinput}
@@ -248,12 +248,13 @@
 \newcommand\hwexam@given@kw{Given}
 \newcommand\hwexam@due@kw{Due}
 \newcommand\hwexam@testemptypage@kw{This~page~was~intentionally~left~
-	blank~for~extra~space}%
-\newcommand\correction@probs@kw{prob.}%
-\newcommand\correction@pts@kw{total}%
-\newcommand\correction@reached@kw{reached}%
-\newcommand\correction@sum@kw{Sum}%
-\newcommand\correction@grade@kw{grade}%
+	blank~for~extra~space}
+	\def\hwexam@minutes@kw{minutes}
+\newcommand\correction@probs@kw{prob.}
+\newcommand\correction@pts@kw{total}
+\newcommand\correction@reached@kw{reached}
+\newcommand\correction@sum@kw{Sum}
+\newcommand\correction@grade@kw{grade}
 \newcommand\correction@forgrading@kw{To~be~used~for~grading,~do~not~write~here}
 %    \end{macrocode}
 % \end{macro}
@@ -436,16 +437,16 @@
 % In the multi-assignment case we just use the |omdoc| environment for suitable
 % sectioning. 
 %    \begin{macrocode}
-\def\@@asstitle{
+\def\ass@title{
 	\protect\document@hwexamtype~\arabic{assignment}
 	\assignment@title{}{\;(}{)\;} -- \given@due{}{}
 }
 \ifmultiple 
 	\newenvironment{@assignment}{
 		\bool_if:NTF \l_@@_assign_loadmodules_bool {
-			\begin{omgroup}[loadmodules]{\@@asstitle}
+			\begin{omgroup}[loadmodules]{\ass@title}
 		}{
-			\begin{omgroup}{\@@asstitle}
+			\begin{omgroup}{\ass@title}
 		}
 	}{
 		\end{omgroup}
@@ -528,61 +529,47 @@
 % 
 % \begin{macro}{\testheading}
 %    \begin{macrocode}
+
+\def\hwexamheader{\input{hwexam-default.header}}
+
+\def\hwexamminutes{
+	\tl_if_empty:NTF \testheading@duration {
+		{\testheading@min}~\hwexam@minutes@kw
+	}{
+		\testheading@duration
+	}
+}
+
 \keys_define:nn { hwexam / testheading } {
-	min 		.tl_set:N 	= \l_@@_testheading_min_tl,
-	duration	.tl_set:N 	= \_@@_testheading_duration_tl,
-	reqpts		.tl_set:N 	= \l_@@_testheading_reqpts_tl 
-	tools		.tl_set:N 	= \l_@@_testheading_tools_tl 
+	min 		.tl_set:N 	= \testheading@min,
+	duration	.tl_set:N 	= \testheading@duration,
+	reqpts		.tl_set:N 	= \testheading@reqpts,
+	tools		.tl_set:N 	= \testheading@tools 
 }
 \cs_new_protected:Nn \_@@_testheading_args:n {
-	\tl_clear:N \l_@@_testheading_min_tl
-	\tl_clear:N \l_@@_testheading_duration_tl
-	\tl_clear:N \l_@@_testheading_reqpts_tl
-	\tl_clear:N \l_@@_testheading_tools_tl
+	\tl_clear:N \testheading@min
+	\tl_clear:N \testheading@duration
+	\tl_clear:N \testheading@reqpts
+	\tl_clear:N \testheading@tools
 	\keys_set:nn { hwexam / testheading }{ #1 }
 }
 \newenvironment{testheading}[1][]{
 	\_@@_testheading_args:n{ #1 }
-	\noindent\large{}Name:~\hfill
-	Matriculation Number:\hspace*{2cm}\strut\\[1ex]
-	\begin{center}
-		\Large\textbf{\@title}\\[1ex]
-		\large\@date\\[3ex]
-	\end{center}  
-	\textbf{You~have~
-		\tl_if_empty:NTF \l_@@_testheading_duration_tl {
-			{\l_@@_testheading_min_tl}~minutes
-		}{
-			{\l_@@_testheading_duration_tl}
-		}~
-		(sharp)~for~the~test
-	};\\
-	Write~the~solutions~to~the~sheet.
-	\par\noindent
-	\newcount\check@time\check@time=\l_@@_testheading_min_tl
+	\newcount\check@time\check@time=\testheading@min
 	\advance\check@time by -\theassignment@totalmin
-	The~estimated~time~for~solving~this~exam~is~
-	{\theassignment@totalmin}~minutes,~ 
-	leaving~you~{\the\check@time}~minutes~for~revising~
-	your~exam.
-
-	\par\noindent
-	\newcount\bonus@pts\bonus@pts=\theassignment@totalpts
-	\advance\bonus@pts by -\l_@@_testheading_reqpts_tl
-	You~can~reach~{\theassignment@totalpts}~points~if~you~
-	solve~all~problems.~You~will~only~need~
-	{\l_@@_testheading_reqpts_tl}~points~for~a~perfect~score,~
-	i.e.\ {\the\bonus@pts}~points~are~bonus~points.
-	\vfill
-	\begin{center}
-  	{ 
-		\Large\em You~have~ample~time,~so~take~it~slow~
-	  	and~avoid~rushing~to~mistakes!\\[2ex]
-  		Different~problems~test~different~skills~and~
-		knowledge,~so~do~not~get~stuck~on~one~problem.
+	\newif\if@bonuspoints
+	\tl_if_empty:NTF \testheading@reqpts {
+		\@bonuspointsfalse
+	}{
+		\newcount\bonus@pts
+		\bonus@pts=\theassignment@totalpts
+		\advance\bonus@pts by -\testheading@reqpts
+		\edef\bonus@pts{\the\bonus@pts}
+		\@bonuspointstrue
 	}
-	\vfill\par\resizebox{\textwidth}{!}{\correction@table}\\[3ex]
-	\end{center}
+	\edef\check@time{\the\check@time}
+
+	\makeatletter\hwexamheader\makeatother
 }{
 	\newpage
 }
@@ -633,10 +620,9 @@
 \newcounter{assignment@probs}
 \newcounter{assignment@totalpts}
 \newcounter{assignment@totalmin}
-\def\correction@probs{\correction@probs@kw}%
-\def\correction@pts{\correction@pts@kw}%
-\def\correction@reached{\correction@reached@kw}%
-\def\after@correction@table{}%
+\def\correction@probs{\correction@probs@kw}
+\def\correction@pts{\correction@pts@kw}
+\def\correction@reached{\correction@reached@kw}
 \stepcounter{assignment@probs}
 \newcommand\correction@table{
 	\resizebox{\textwidth}{!}{%
@@ -646,8 +632,7 @@
 \correction@probs & \correction@sum@kw & \correction@grade@kw\\\hline
 \correction@pts &\theassignment@totalpts & \\\hline
 \correction@reached & & \\[.7cm]\hline
-\end{tabular}}
-\ifx\after@correction@table\@empty\else\strut\par\noindent\after@correction@table\fi}
+\end{tabular}}}
 %</package>
 %    \end{macrocode}
 % \end{macro}
