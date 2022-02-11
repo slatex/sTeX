@@ -130,6 +130,9 @@
 %
 % \begin{macro}{definame}
 %    \begin{macrocode}
+
+\cs_new:Nn \stex_capitalize:n { \uppercase{#1} }
+
 \NewDocumentCommand \definame { O{} m } {
   \_@@_definiendum_args:n { #1 }
   % TODO: root
@@ -150,6 +153,43 @@
   }
 }
 \stex_deactivate_macro:Nn \definame {definition~environments}
+
+\NewDocumentCommand \Definame { O{} m } {
+  \__stex_statements_definiendum_args:n { #1 }
+  \stex_get_symbol:n { #2 }
+  \str_set:Nx \l_tmpa_str {
+    \prop_item:cn { l_stex_symdecl_ \l_stex_get_symbol_uri_str _prop } { name }
+  }
+  \exp_args:NNno \str_replace_all:Nnn \l_tmpa_str {-} {~}
+  \stex_ref_new_sym_target:n \l_stex_get_symbol_uri_str
+  \rustex_if:TF {
+    \stex_annotate:nnn { definiendum } { \l_stex_get_symbol_uri_str } { 
+      \l_tmpa_str\l__stex_statements_definiendum_post_tl
+     }
+  } {
+    \defemph@uri {
+      \exp_after:wN \stex_capitalize:n \l_tmpa_str\l__stex_statements_definiendum_post_tl
+    } { \l_stex_get_symbol_uri_str }
+  }
+}
+\stex_deactivate_macro:Nn \Definame {definition~environments}
+
+\NewDocumentCommand \Symname { O{} m }{
+  \stex_symname_args:n { #1 }
+  \stex_get_symbol:n { #2 }
+  \str_set:Nx \l_tmpa_str {
+    \prop_item:cn { l_stex_symdecl_ \l_stex_get_symbol_uri_str _prop } { name }
+  }
+  \exp_args:NNno \str_replace_all:Nnn \l_tmpa_str {-} {~}
+  \let\compemph_uri_prev:\compemph@uri
+  \let\compemph@uri\symrefemph@uri
+  \exp_args:NNx \use:nn
+  \stex_invoke_symbol:n { { \l_stex_get_symbol_uri_str }![
+    \exp_after:wN \stex_capitalize:n \l_tmpa_str
+      \l_stex_symname_post_str
+  ] }
+  \let\compemph@uri\compemph_uri_prev:
+}
 %    \end{macrocode}
 % \end{macro}
 %
@@ -172,6 +212,7 @@
   \_@@_sdefinition_args:n{ #1 }
   \stex_reactivate_macro:N \definiendum
   \stex_reactivate_macro:N \definame
+  \stex_reactivate_macro:N \Definame
   \stex_smsmode_set_codes:
   \stex_if_smsmode:F {
     \exp_args:Nnnx
@@ -340,10 +381,29 @@
 % \begin{macro}{\inlineass}
 % inline:
 %    \begin{macrocode}
-\NewDocumentCommand \inlineass { m } {
+\keys_define:nn {stex / inlineass }{
+  type    .str_set_x:N  = \sassertiontype,
+  id      .str_set_x:N  = \sassertionid,
+  name    .str_set_x:N  = \sassertionname
+}
+\cs_new_protected:Nn \_@@_inlineass_args:n {
+  \str_clear:N \sassertiontype
+  \str_clear:N \sassertionid
+  \str_clear:N \sassertionname
+  \tl_clear:N \sassertiontitle
+  \keys_set:nn { stex / inlineass }{ #1 }
+}
+\NewDocumentCommand \inlineass { O{} m } {
   \begingroup
-  \stex_ref_new_doc_target:n{}
-  #1
+  \_@@_inlineass_args:n{ #1 }
+  \stex_ref_new_doc_target:n \sassertionid
+  \stex_annotate:nnn{assertion}{}{
+    \str_if_empty:NF \sassertiontype {
+      \stex_annotate_invisible:nnn{type}{\sassertiontype}{}
+    }
+    #1
+  }
+  \str_if_empty:NF \sassertionname { \symdecl*{\sassertionname} }
   \endgroup
 }
 %    \end{macrocode}

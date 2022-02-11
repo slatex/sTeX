@@ -218,6 +218,9 @@
 \msg_new:nnn{stex}{error/nofile}{
   \detokenize{#1}~could~not~find~file~#2
 }
+\msg_new:nnn{stex}{error/twofiles}{
+  \detokenize{#1}~found~two~candidates~for~#2
+}
 %    \end{macrocode}
 %
 % \subsubsection{Generic Path Handling}
@@ -797,6 +800,51 @@
   }{}
   \bool_if:NF \l_tmpa_bool {
     \msg_error:nnxx{stex}{error/nofile}{\exp_not:N\libinput}{#1.tex}
+  }
+  \l_tmpa_tl
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\libusepackage}
+%    \begin{macrocode}
+\cs_new_protected:Npn \libusepackage #1 {
+  \prop_if_exist:NF \l_stex_current_repository_prop {
+    \msg_error:nnn{stex}{error/notinarchive}\libusepackage
+  } 
+  \prop_get:NnNF \l_stex_current_repository_prop {id} \l_tmpa_str {
+    \msg_error:nnn{stex}{error/notinarchive}\libusepackage
+  }
+  \bool_set_false:N \l_libusepackage_bool
+  \tl_clear:N \l_tmpa_tl
+  \seq_set_eq:NN \l_tmpa_seq \c_stex_mathhub_seq
+  \seq_set_split:NnV \l_tmpb_seq / \l_tmpa_str
+  \seq_pop_right:NN \l_tmpb_seq \l_tmpa_str
+  \seq_pop_left:NNT \l_tmpb_seq \l_tmpb_str {
+    \seq_put_right:No \l_tmpa_seq \l_tmpb_str
+    \IfFileExists{ \stex_path_to_string:N \l_tmpa_seq 
+      / meta-inf / lib / #1.sty}{
+        \bool_set_true:N \l_libusepackage_bool
+        \tl_put_right:Nx \l_tmpa_tl {
+          \exp_not:N \usepackage { \stex_path_to_string:N \l_tmpa_seq 
+          / meta-inf / lib / #1.sty}
+        }
+      }{}
+  }
+  \IfFileExists{ \stex_path_to_string:N \l_tmpa_seq
+    / \l_tmpa_str / lib / #1.sty
+  }{
+    \bool_if:NT \l_libusepackage_bool {
+      \msg_error:nnxx{stex}{error/twofiles}{\exp_not:N\libusepackage}{#1.sty}
+    }
+    \bool_set_true:N \l_libusepackage_bool
+    \tl_put_right:Nx \l_tmpa_tl {
+      \exp_not:N \usepackage { \stex_path_to_string:N \l_tmpa_seq 
+      / \l_tmpa_str / lib / #1.sty}
+    }
+  }{}
+  \bool_if:NF \l_libusepackage_bool {
+    \msg_error:nnxx{stex}{error/nofile}{\exp_not:N\libusepackage}{#1.sty}
   }
   \l_tmpa_tl
 }
