@@ -67,6 +67,7 @@
   pts     .tl_set:N     = \l__problems_prob_pts_tl,
   min     .tl_set:N     = \l__problems_prob_min_tl,
   title   .tl_set:N     = \l__problems_prob_title_tl,
+  type    .tl_set:N     = \l__problems_prob_type_tl,
   refnum  .int_set:N    = \l__problems_prob_refnum_int
 }
 \cs_new_protected:Nn \__problems_prob_args:n {
@@ -74,6 +75,7 @@
   \tl_clear:N \l__problems_prob_pts_tl
   \tl_clear:N \l__problems_prob_min_tl
   \tl_clear:N \l__problems_prob_title_tl
+  \tl_clear:N \l__problems_prob_type_tl
   \int_zero_new:N \l__problems_prob_refnum_int
   \keys_set:nn { problem / problem }{ #1 }
   \int_compare:nNnT \l__problems_prob_refnum_int = 0 {
@@ -106,17 +108,71 @@
   }
 }
 \def\prob@heading{
-  \prob@problem@kw~\prob@number\prob@title{~}{~(}{)\strut}
+  {\prob@problem@kw}~\prob@number\prob@title{~}{~(}{)\strut}
   %\sref@label@id{\prob@problem@kw~\prob@number}{}
 }
-\newenvironment{problem}[1][]{
+\newenvironment{sproblem}[1][]{
   \__problems_prob_args:n{#1}%\sref@target%
   \@in@omtexttrue% we are in a statement (for inline definitions)
   \stepcounter{problem}\record@problem
   \def\current@section@level{\prob@problem@kw}
+  \tl_if_exist:NTF \l__problems_inclprob_type_tl {
+    \tl_set_eq:NN \sproblemtype \l__problems_inclprob_type_tl
+  }{
+    \tl_set_eq:NN \sproblemtype \l__problems_prob_type_tl
+  }
+  \str_if_exist:NTF \l__problems_inclprob_id_str {
+    \str_set_eq:NN \sproblemid \l__problems_inclprob_id_str
+  }{
+    \str_set_eq:NN \sproblemid \l__problems_prob_id_str
+  }
+
+  \clist_set:No \l_tmpa_clist \sproblemtype
+  \tl_clear:N \l_tmpa_tl
+  \clist_map_inline:Nn \l_tmpa_clist {
+    \tl_if_exist:cT {__problems_sproblem_##1_start:}{
+      \tl_set:Nn \l_tmpa_tl {\use:c{__problems_sproblem_##1_start:}}
+    }
+  }
+  \tl_if_empty:NTF \l_tmpa_tl {
+    \__problems_sproblem_start:
+  }{
+    \l_tmpa_tl
+  }
+  \stex_ref_new_doc_target:n \sproblemid
+}{
+  \clist_set:No \l_tmpa_clist \sproblemtype
+  \tl_clear:N \l_tmpa_tl
+  \clist_map_inline:Nn \l_tmpa_clist {
+    \tl_if_exist:cT {__problems_sproblem_##1_end:}{
+      \tl_set:Nn \l_tmpa_tl {\use:c{__problems_sproblem_##1_end:}}
+    }
+  }
+  \tl_if_empty:NTF \l_tmpa_tl {
+    \__problems_sproblem_end:
+  }{
+    \l_tmpa_tl
+  }
+
+  \smallskip
+}
+
+\cs_new_protected:Nn \__problems_sproblem_start: {
   \par\noindent\textbf\prob@heading\show@pts\show@min\\\ignorespacesandpars
-}%
-{\smallskip}
+}
+\cs_new_protected:Nn \__problems_sproblem_end: {\par\smallskip}
+
+\newcommand\stexpatchproblem[3][] {
+    \str_set:Nx \l_tmpa_str{ #1 }
+    \str_if_empty:NTF \l_tmpa_str {
+      \tl_set:Nn \__problems_sproblem_start: { #2 }
+      \tl_set:Nn \__problems_sproblem_end: { #3 }
+    }{
+      \exp_after:wN \tl_set:Nn \csname __problems_sproblem_#1_start:\endcsname{ #2 }
+      \exp_after:wN \tl_set:Nn \csname __problems_sproblem_#1_end:\endcsname{ #3 }
+    }
+}
+
 \bool_if:NT \c__problems_boxed_bool {
   \surroundwithmdframed{problem}
 }
@@ -279,17 +335,20 @@
 } %solutions
 
 \keys_define:nn{ problem / inclproblem }{
- % id      .str_set_x:N  = \l__problems_inclprob_id_str,
+  id      .str_set_x:N  = \l__problems_inclprob_id_str,
   pts     .tl_set:N     = \l__problems_inclprob_pts_tl,
   min     .tl_set:N     = \l__problems_inclprob_min_tl,
   title   .tl_set:N     = \l__problems_inclprob_title_tl,
   refnum  .int_set:N    = \l__problems_inclprob_refnum_int,
+  type    .tl_set:N     = \l__problems_inclprob_type_tl,
   mhrepos .str_set_x:N  = \l__problems_inclprob_mhrepos_str
 }
 \cs_new_protected:Nn \__problems_inclprob_args:n {
+  \str_clear:N \l__problems_prob_id_str
   \tl_clear:N \l__problems_inclprob_pts_tl
   \tl_clear:N \l__problems_inclprob_min_tl
   \tl_clear:N \l__problems_inclprob_title_tl
+  \tl_clear:N \l__problems_inclprob_type_tl
   \int_zero_new:N \l__problems_inclprob_refnum_int
   \str_clear:N \l__problems_inclprob_mhrepos_str
   \keys_set:nn { problem / inclproblem }{ #1 }
@@ -302,15 +361,20 @@
   \tl_if_empty:NT \l__problems_inclprob_title_tl {
     \let\l__problems_inclprob_title_tl\undefined
   }
+  \tl_if_empty:NT \l__problems_inclprob_type_tl {
+    \let\l__problems_inclprob_type_tl\undefined
+  }
   \int_compare:nNnT \l__problems_inclprob_refnum_int = 0 {
     \let\l__problems_inclprob_refnum_int\undefined
   }
 }
 
 \cs_new_protected:Nn \__problems_inclprob_clear: {
+  \let\l__problems_inclprob_id_str\undefined
   \let\l__problems_inclprob_pts_tl\undefined
   \let\l__problems_inclprob_min_tl\undefined
   \let\l__problems_inclprob_title_tl\undefined
+  \let\l__problems_inclprob_type_tl\undefined
   \let\l__problems_inclprob_refnum_int\undefined
   \let\l__problems_inclprob_mhrepos_str\undefined
 }
