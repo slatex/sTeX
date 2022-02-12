@@ -9,3 +9,4 @@
 \ProcessKeysOptions{ mikoslides / cls }
 
 \LoadClass{notesslides}
+\RequirePackage{mikoconvenience}
