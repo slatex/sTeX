@@ -173,14 +173,14 @@
 % \seq_put_right:Nx \g_stex_currentfile_seq { \tl_to_str:n{Bar} }
 % \seq_put_right:Nx \g_stex_currentfile_seq { \tl_to_str:n{source} }
 % \seq_put_right:Nx \g_stex_currentfile_seq { \tl_to_str:n{Foo.tex} }
-% \begin{@module}{Foo}
+% \begin{smodule}{Foo}
 %  Module~path:~ 
 %  \prop_item:cn {c_stex_module_\l_stex_current_module_str _prop} { ns }?
 %  \prop_item:cn {c_stex_module_\l_stex_current_module_str _prop} { name }\\
 %  Language:~\prop_item:cn {c_stex_module_\l_stex_current_module_str _prop} { lang }\\
 %  Signature:~\prop_item:cn {c_stex_module_\l_stex_current_module_str _prop} { sig }\\
 %  Metatheory:~\prop_item:cn {c_stex_module_\l_stex_current_module_str _prop} { meta }\\
-% \end{@module}
+% \end{smodule}
 % \ExplSyntaxOff
 %}
 %
@@ -195,14 +195,14 @@
 % \seq_put_right:Nx \g_stex_currentfile_seq { \tl_to_str:n{source} }
 % \seq_put_right:Nx \g_stex_currentfile_seq { \tl_to_str:n{Foo.tex} }
 % \stex_debug:nn{modules}{Test:~\stex_path_to_string:N \g_stex_currentfile_seq }
-% \begin{module}[title=Foo Bar]{Bar}
+% \begin{smodule}[title=Foo Bar]{Bar}
 %  Module~path:~ 
 %  \prop_item:cn {c_stex_module_\l_stex_current_module_str _prop} { ns }?
 %  \prop_item:cn {c_stex_module_\l_stex_current_module_str _prop} { name }\\
 %  Language:~\prop_item:cn {c_stex_module_\l_stex_current_module_str _prop} { lang }\\
 %  Signature:~\prop_item:cn {c_stex_module_\l_stex_current_module_str _prop} { sig }\\
 %  Metatheory:~\prop_item:cn {c_stex_module_\l_stex_current_module_str _prop} { meta }\\
-% \end{module}
+% \end{smodule}
 % \ExplSyntaxOff
 %}
 %
@@ -222,14 +222,14 @@
 % \end{function}
 %
 %\stextest{
-%   \begin{module}{STEXModuleTest1}
+%   \begin{smodule}{STEXModuleTest1}
 %     \symdecl{foo}
-%   \end{module}
-%   \begin{module}{STEXModuleTest2}
+%   \end{smodule}
+%   \begin{smodule}{STEXModuleTest2}
 %     \importmodule{STEXModuleTest1}
 %     \symdecl{foo}
-%   \end{module}
-%   \begin{module}{STEXModuleTest3}
+%   \end{smodule}
+%   \begin{smodule}{STEXModuleTest3}
 %     \importmodule{STEXModuleTest2}
 %     \symdecl{foo}
 %     \STEXModule{STEXModuleTest1}!\teststring
@@ -241,7 +241,7 @@
 %     \STEXModule{STEXModuleTest1}?{foo}[\comp{foo1}]\\
 %     \STEXModule{STEXModuleTest2}?{foo}[\comp{foo2}]\\
 %     \STEXModule{STEXModuleTest3}?{foo}[\comp{foo3}]\\
-%   \end{module}
+%   \end{smodule}
 %}
 %
 % \begin{function}{\stex_activate_module:n}
@@ -279,8 +279,8 @@
   declare~its~language
 }
 
-\msg_new:nnn{stex}{error/conclictingmodules}{
-  Comflicting~imports~for~module~#1
+\msg_new:nnn{stex}{error/conflictingmodules}{
+  Conflicting~imports~for~module~#1
 }
 %    \end{macrocode}
 %
@@ -466,7 +466,9 @@
 %
 %    \begin{macrocode}
 \keys_define:nn { stex / module } {
-  title         .str_set_x:N  = \l_stex_module_title_str ,
+  title         .tl_set:N     = \smoduletitle ,
+  type          .str_set_x:N  = \smoduletype ,
+  id            .str_set_x:N  = \smoduleid ,
   ns            .str_set_x:N  = \l_stex_module_ns_str ,
   lang          .str_set_x:N  = \l_stex_module_lang_str ,
   sig           .str_set_x:N  = \l_stex_module_sig_str ,
@@ -477,7 +479,9 @@
 }
 
 \cs_new_protected:Nn \_@@_args:n {
-  \str_clear:N \l_stex_module_title_str
+  \str_clear:N \smoduletitle
+  \str_clear:N \smoduletype
+  \str_clear:N \smoduleid
   \str_clear:N \l_stex_module_ns_str
   \str_clear:N \l_stex_module_lang_str
   \str_clear:N \l_stex_module_sig_str
@@ -638,19 +642,18 @@
 %
 % The |module| environment.
 %
-% \begin{macro}{\_@@_begin_module:nn}
+% \begin{macro}{\_@@_begin_module:}
 %
-%   implements |\begin{module}|
+%   implements |\begin{smodule}|
 %
 %    \begin{macrocode}
 \int_new:N \l_stex_module_group_depth_int
-\cs_new_protected:Nn \_@@_begin_module:nn {
+\cs_new_protected:Nn \_@@_begin_module: {
   \stex_reactivate_macro:N \STEXexport
   \stex_reactivate_macro:N \importmodule
   \stex_reactivate_macro:N \symdecl
   \stex_reactivate_macro:N \notation
   \stex_reactivate_macro:N \symdef
-  \stex_module_setup:nn{#1}{#2}
 
   \stex_debug:nn{modules}{
     New~module:\\
@@ -683,6 +686,9 @@
       \str_if_eq:VnF \l_stex_module_meta_str {NONE} {
         \stex_annotate:nnn{metatheory}{ \l_stex_module_meta_str }{}
       }
+      \str_if_empty:NF \smoduletype {
+        \stex_annotate:nnn{type}{\smoduletype}{}
+      }
     }
   }
   \int_set:Nn \l_stex_module_group_depth_int {\currentgrouplevel}
@@ -711,16 +717,31 @@
 %    \end{macrocode}
 % \end{macro}
 %
-% \begin{environment}{@module}
+% \begin{environment}{smodule}
 %
 %  The core environment, with no header
 %    
 %    \begin{macrocode}
 \iffalse \begin{stex_annotate_env} \fi %^^A make syntax highlighting work again
-\NewDocumentEnvironment { @module } { O{} m } {
+\NewDocumentEnvironment { smodule } { O{} m } {
+  \stex_module_setup:nn{#1}{#2}
   \par
-  \_@@_begin_module:nn{#1}{#2}
-} { 
+  \stex_if_smsmode:F{
+    \tl_clear:N \l_tmpa_tl
+    \clist_map_inline:Nn \smoduletype {
+      \tl_if_exist:cT {_@@_smodule_##1_start:}{
+        \tl_set:Nn \l_tmpa_tl {\use:c{_@@_smodule_##1_start:}}
+      }
+    }
+    \tl_if_empty:NTF \l_tmpa_tl {
+      \_@@_smodule_start:
+    }{
+      \l_tmpa_tl
+    }
+  }
+  \_@@_begin_module:
+  \stex_ref_new_doc_target:n \smoduleid
+} {
   \_@@_end_module:
   \stex_if_smsmode:TF {
 %    \exp_args:Nx \stex_add_to_sms:n {
@@ -740,61 +761,38 @@
 %    }
   }{
     \end{stex_annotate_env}
+    \clist_set:No \l_tmpa_clist \smoduletype
+    \tl_clear:N \l_tmpa_tl
+    \clist_map_inline:Nn \l_tmpa_clist {
+      \tl_if_exist:cT {_@@_smodule_##1_end:}{
+        \tl_set:Nn \l_tmpa_tl {\use:c{_@@_smodule_##1_end:}}
+      }
+    }
+    \tl_if_empty:NTF \l_tmpa_tl {
+      \_@@_smodule_end:
+    }{
+      \l_tmpa_tl
+    }
   }
 }
+
+\cs_new_protected:Nn \_@@_smodule_start: {}
+\cs_new_protected:Nn \_@@_smodule_end: {}
+
+\newcommand\stexpatchmodule[3][] {
+    \str_set:Nx \l_tmpa_str{ #1 }
+    \str_if_empty:NTF \l_tmpa_str {
+      \tl_set:Nn \_@@_smodule_start: { #2 }
+      \tl_set:Nn \_@@_smodule_end: { #3 }
+    }{
+      \exp_after:wN \tl_set:Nn \csname _@@_smodule_#1_start:\endcsname{ #2 }
+      \exp_after:wN \tl_set:Nn \csname _@@_smodule_#1_end:\endcsname{ #3 }
+    }
+}
+
 %    \end{macrocode}
 % \end{environment}
 %
-% \begin{macro}{\stex_modules_heading:}
-%
-%   Code for document headers
-%
-%    \begin{macrocode}
-\cs_if_exist:NTF \thesection {
-  \newcounter{module}[section]
-}{
-  \newcounter{module}
-}
-
-\bool_if:NT \c_stex_showmods_bool {
-  \latexml_if:F { \RequirePackage{mdframed} }
-}
-
-\cs_new_protected:Nn \stex_modules_heading: {
-  \stepcounter{module}
-  \par
-  \bool_if:NT \c_stex_showmods_bool {
-    \noindent{\textbf{Module} ~
-      \cs_if_exist:NT \thesection {\thesection.}
-      \themodule ~ [\l_stex_module_name_str]
-    }
-    \str_if_empty:NTF \l_stex_module_title_str {
-    }{
-      \quad(\l_stex_module_title_str)\hfill
-    }\par
-  }
-  \edef\@currentlabel{Module~\thesection.\themodule~[\l_stex_module_name_str]}
-  % TODO 
-  \stex_ref_new_doc_target:n \l_stex_module_name_str
-}
-%    \end{macrocode}
-% \end{macro}
-%
-% Finally:
-%    \begin{macrocode}
-\NewDocumentEnvironment { module } { O{} m } {
-  \bool_if:NT \c_stex_showmods_bool {
-    \begin{mdframed}
-  }
-  \begin{@module}[#1]{#2}
-  \stex_modules_heading:
-}{
-  \end{@module}
-  \bool_if:NT \c_stex_showmods_bool {
-    \end{mdframed}
-  }
-}
-%    \end{macrocode}
 % \end{environment}
 %
 % \subsubsection{Invoking modules}
@@ -855,7 +853,7 @@
 \cs_new_protected:Nn \stex_activate_module:n {
   \stex_debug:nn{modules}{Activating~module~#1}
   \seq_if_in:NnT \l_stex_implicit_morphisms_seq { #1 }{
-    \msg_error:nnn{stex}{error/conclictingmodules}{ #1 }
+    \msg_error:nnn{stex}{error/conflictingmodules}{ #1 }
   }
   \exp_args:NNx \seq_if_in:NnF \l_stex_all_modules_seq { #1 } {
     \seq_put_right:Nx \l_stex_all_modules_seq { #1 }
