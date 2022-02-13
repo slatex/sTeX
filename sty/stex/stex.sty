@@ -1209,7 +1209,7 @@
     }
   }
 
-  \str_if_empty:NF \l_stex_module_lang_str {
+  \stex_if_smsmode:F { \str_if_empty:NF \l_stex_module_lang_str {
     \prop_get:NVNTF \c_stex_languages_prop \l_stex_module_lang_str
       \l_tmpa_str {
         \ltx@ifpackageloaded{babel}{
@@ -1218,7 +1218,7 @@
       } {
         \msg_error:nnx{stex}{error/unknownlanguage}{\l_tmpa_str}
       }
-  }
+  }}
   \str_if_empty:NTF \l_stex_module_sig_str {
     \exp_args:Nnx \prop_gset_from_keyval:cn {
       c_stex_module_\l_stex_module_ns_str?\l_stex_module_name_str _prop
@@ -1268,6 +1268,7 @@
     }
     \IfFileExists \l_tmpa_str {
       \exp_args:No \stex_in_smsmode:nn { \l_tmpa_str } {
+        \str_clear:N \l_stex_current_module_str
         \seq_clear:N \l_stex_all_modules_seq
         \stex_debug:nn{modules}{Loading~signature~\l_tmpa_str}
         \input { \l_tmpa_str }
@@ -1448,6 +1449,7 @@
   \makeatother
   \ExplSyntaxOn
   \ExplSyntaxOff
+  \rustexBREAK
 }
 
 \tl_set:Nn \g_stex_smsmode_allowedmacros_escape_tl {
@@ -1456,12 +1458,19 @@
   \notation
   \symdecl
   \STEXexport
+  \inlineass
+  \inlinedef
+  \inlineex
 }
 
 \exp_args:NNx \seq_set_from_clist:Nn \g_stex_smsmode_allowedenvs_seq {
   \tl_to_str:n {
     module,
-    @module
+    @module,
+    sdefinition,
+    sexample,
+    sassertion,
+    sparagraph
   }
 }
 \bool_new:N \g__stex_smsmode_bool
@@ -3776,11 +3785,15 @@
 \keys_define:nn {stex / sdefinition }{
   type    .str_set_x:N  = \sdefinitiontype,
   id      .str_set_x:N  = \sdefinitionid,
+  name    .str_set_x:N  = \sdefinitionname,
+  for     .clist_set:N  = \l__stex_statements_sdefinition_for_clist ,
   title   .tl_set:N     = \sdefinitiontitle
 }
 \cs_new_protected:Nn \__stex_statements_sdefinition_args:n {
   \str_clear:N \sdefinitiontype
   \str_clear:N \sdefinitionid
+  \str_clear:N \sdefinitionname
+  \clist_clear:N \l__stex_statements_sdefinition_for_clist
   \tl_clear:N \sdefinitiontitle
   \keys_set:nn { stex / sdefinition }{ #1 }
 }
@@ -3791,9 +3804,21 @@
   \stex_reactivate_macro:N \definame
   \stex_reactivate_macro:N \Definame
   \stex_smsmode_set_codes:
-  \stex_if_smsmode:F {
+  \stex_if_smsmode:TF {
+    \stex_smsmode_set_codes:
+  } {
+    \seq_clear:N \l_tmpa_seq
+    \seq_clear:N
+    \clist_map_inline:Nn \l__stex_statements_sdefinition_for_clist {
+      \str_if_eq:nnF{ ##1 }{}{
+        \stex_get_symbol:n { ##1 }
+        \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
+          \l_stex_get_symbol_uri_str
+        }
+      }
+    }
     \exp_args:Nnnx
-    \begin{stex_annotate_env}{definition}{}
+    \begin{stex_annotate_env}{definition}{\seq_use:Nn \l_tmpa_seq {,}}
     \str_if_empty:NF \sdefinitiontype {
       \stex_annotate_invisible:nnn{type}{\sdefinitiontype}{}
     }
@@ -3819,6 +3844,7 @@
       \tl_set:Nn \l_tmpa_tl {\use:c{__stex_statements_sdefinition_##1_end:}}
     }
   }
+  \str_if_empty:NF \sdefinitionname { \symdecl*{\sdefinitionname} }
   \tl_if_empty:NTF \l_tmpa_tl {
     \__stex_statements_sdefinition_end:
   }{
@@ -3845,12 +3871,47 @@
       \exp_after:wN \tl_set:Nn \csname __stex_statements_sdefinition_#1_end:\endcsname{ #3 }
     }
 }
-\NewDocumentCommand \inlinedef { m } {
+\keys_define:nn {stex / inlinedef }{
+  type    .str_set_x:N  = \sdefinitiontype,
+  id      .str_set_x:N  = \sdefinitionid,
+  for     .clist_set:N  = \l__stex_statements_sdefinition_for_clist ,
+  name    .str_set_x:N  = \sdefinitionname
+}
+\cs_new_protected:Nn \__stex_statements_inlinedef_args:n {
+  \str_clear:N \sdefinitiontype
+  \str_clear:N \sdefinitionid
+  \str_clear:N \sdefinitionname
+  \clist_clear:N \l__stex_statements_sdefinition_for_clist
+  \keys_set:nn { stex / inlinedef }{ #1 }
+}
+\NewDocumentCommand \inlinedef { O{} m } {
   \begingroup
+  \__stex_statements_inlinedef_args:n{ #1 }
+  \stex_ref_new_doc_target:n \definitionid
   \stex_reactivate_macro:N \definiendum
   \stex_reactivate_macro:N \definame
-  \stex_ref_new_doc_target:n{}
-  #1
+  \stex_if_smsmode:TF{
+    \stex_smsmode_set_codes:
+    \str_if_empty:NF \sdefinitionname { \symdecl*{\sdefinitionname} }
+  }{
+    \seq_clear:N \l_tmpa_seq
+    \clist_map_inline:Nn \l__stex_statements_sdefinition_for_clist {
+      \str_if_eq:nnF{ ##1 }{}{
+        \stex_get_symbol:n { ##1 }
+        \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
+          \l_stex_get_symbol_uri_str
+        }
+      }
+    }
+    \exp_args:Nnx
+    \stex_annotate:nnn{definition}{\seq_use:Nn \l_tmpa_seq {,}}{
+      \str_if_empty:NF \sdefinitiontype {
+        \stex_annotate_invisible:nnn{type}{\sdefinitiontype}{}
+      }
+      #2
+      \str_if_empty:NF \sdefinitionname { \symdecl*{\sdefinitionname} }
+    }
+  }
   \endgroup
 }
 
@@ -3858,12 +3919,14 @@
   type    .str_set_x:N  = \sassertiontype,
   id      .str_set_x:N  = \sassertionid,
   title   .tl_set:N     = \sassertiontitle ,
+  for     .clist_set:N  = \l__stex_statements_sassertion_for_clist ,
   name    .str_set_x:N  = \sassertionname
 }
 \cs_new_protected:Nn \__stex_statements_sassertion_args:n {
   \str_clear:N \sassertiontype
   \str_clear:N \sassertionid
   \str_clear:N \sassertionname
+  \clist_clear:N \l__stex_statements_sassertion_for_clist
   \tl_clear:N \sassertiontitle
   \keys_set:nn { stex / sassertion }{ #1 }
 }
@@ -3872,9 +3935,20 @@
 \NewDocumentEnvironment{sassertion}{O{}}{
   \__stex_statements_sassertion_args:n{ #1 }
   \stex_smsmode_set_codes:
-  \stex_if_smsmode:F {
+  \stex_if_smsmode:TF {
+    \stex_smsmode_set_codes:
+  } {
+    \seq_clear:N \l_tmpa_seq
+    \clist_map_inline:Nn \l__stex_statements_sassertion_for_clist {
+      \str_if_eq:nnF{ ##1 }{}{
+        \stex_get_symbol:n { ##1 }
+        \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
+          \l_stex_get_symbol_uri_str
+        }
+      }
+    }
     \exp_args:Nnnx
-    \begin{stex_annotate_env}{assertion}{}
+    \begin{stex_annotate_env}{assertion}{\seq_use:Nn \l_tmpa_seq {,}}
     \str_if_empty:NF \sassertiontype {
       \stex_annotate_invisible:nnn{type}{\sassertiontype}{}
     }
@@ -3931,26 +4005,42 @@
 \keys_define:nn {stex / inlineass }{
   type    .str_set_x:N  = \sassertiontype,
   id      .str_set_x:N  = \sassertionid,
+  for     .clist_set:N  = \l__stex_statements_sassertion_for_clist ,
   name    .str_set_x:N  = \sassertionname
 }
 \cs_new_protected:Nn \__stex_statements_inlineass_args:n {
   \str_clear:N \sassertiontype
   \str_clear:N \sassertionid
   \str_clear:N \sassertionname
-  \tl_clear:N \sassertiontitle
+  \clist_clear:N \l__stex_statements_sassertion_for_clist
   \keys_set:nn { stex / inlineass }{ #1 }
 }
 \NewDocumentCommand \inlineass { O{} m } {
   \begingroup
   \__stex_statements_inlineass_args:n{ #1 }
   \stex_ref_new_doc_target:n \sassertionid
-  \stex_annotate:nnn{assertion}{}{
-    \str_if_empty:NF \sassertiontype {
-      \stex_annotate_invisible:nnn{type}{\sassertiontype}{}
+  \stex_if_smsmode:TF{
+    \stex_smsmode_set_codes:
+    \str_if_empty:NF \sassertionname { \symdecl*{\sassertionname} }
+  }{
+    \seq_clear:N \l_tmpa_seq
+    \clist_map_inline:Nn \l__stex_statements_sassertion_for_clist {
+      \str_if_eq:nnF{ ##1 }{}{
+        \stex_get_symbol:n { ##1 }
+        \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
+          \l_stex_get_symbol_uri_str
+        }
+      }
     }
-    #1
+    \exp_args:Nnx
+    \stex_annotate:nnn{assertion}{\seq_use:Nn \l_tmpa_seq {,}}{
+      \str_if_empty:NF \sassertiontype {
+        \stex_annotate_invisible:nnn{type}{\sassertiontype}{}
+      }
+      #2
+      \str_if_empty:NF \sassertionname { \symdecl*{\sassertionname} }
+    }
   }
-  \str_if_empty:NF \sassertionname { \symdecl*{\sassertionname} }
   \endgroup
 }
 
@@ -3958,22 +4048,24 @@
   type    .str_set_x:N  = \exampletype,
   id      .str_set_x:N  = \sexampleid,
   title   .tl_set:N     = \sexampletitle,
-  for     .clist_set:N  = \sexamplefor,
+  for     .clist_set:N  = \l__stex_statements_sexample_for_clist,
 }
 \cs_new_protected:Nn \__stex_statements_sexample_args:n {
   \str_clear:N \sexampletype
   \str_clear:N \sexampleid
   \tl_clear:N \sexampletitle
-  \clist_clear:N \sexamplefor
+  \clist_clear:N \l__stex_statements_sexample_for_clist
   \keys_set:nn { stex / sexample }{ #1 }
 }
 
 \NewDocumentEnvironment{sexample}{O{}}{
   \__stex_statements_sexample_args:n{ #1 }
   \stex_smsmode_set_codes:
-  \stex_if_smsmode:F {
+  \stex_if_smsmode:TF {
+    \stex_smsmode_set_codes:
+  } {
     \seq_clear:N \l_tmpa_seq
-    \clist_map_inline:Nn \sexamplefor {
+    \clist_map_inline:Nn \l__stex_statements_sexample_for_clist {
       \str_if_eq:nnF{ ##1 }{}{
         \stex_get_symbol:n { ##1 }
         \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
@@ -4035,18 +4127,54 @@
       \exp_after:wN \tl_set:Nn \csname __stex_statements_sexample_#1_end:\endcsname{ #3 }
     }
 }
-\NewDocumentCommand \inlineex { m } {
+\keys_define:nn {stex / inlineex }{
+  type    .str_set_x:N  = \sexampletype,
+  id      .str_set_x:N  = \sexampleid,
+  for     .clist_set:N  = \l__stex_statements_sexample_for_clist ,
+  name    .str_set_x:N  = \sexamplename
+}
+\cs_new_protected:Nn \__stex_statements_inlineex_args:n {
+  \str_clear:N \sexampletype
+  \str_clear:N \sexampleid
+  \str_clear:N \sexamplename
+  \clist_clear:N \l__stex_statements_sexample_for_clist
+  \keys_set:nn { stex / inlineex }{ #1 }
+}
+\NewDocumentCommand \inlineex { O{} m } {
   \begingroup
-  \stex_ref_new_doc_target:n{}
-  #1
+  \__stex_statements_inlineex_args:n{ #1 }
+  \stex_ref_new_doc_target:n \sexampleid
+  \stex_if_smsmode:TF{
+    \stex_smsmode_set_codes:
+    \str_if_empty:NF \sexamplename { \symdecl*{\examplename} }
+  }{
+    \seq_clear:N \l_tmpa_seq
+    \clist_map_inline:Nn \l__stex_statements_sexample_for_clist {
+      \str_if_eq:nnF{ ##1 }{}{
+        \stex_get_symbol:n { ##1 }
+        \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
+          \l_stex_get_symbol_uri_str
+        }
+      }
+    }
+    \exp_args:Nnx
+    \stex_annotate:nnn{example}{\seq_use:Nn \l_tmpa_seq {,}}{
+      \str_if_empty:NF \sexampletype {
+        \stex_annotate_invisible:nnn{type}{\sexampletype}{}
+      }
+      #2
+      \str_if_empty:NF \sexamplename { \symdecl*{\sexamplename} }
+    }
+  }
   \endgroup
 }
 \keys_define:nn { stex / sparagraph} {
   id      .str_set_x:N   = \sparagraphid ,
   title   .tl_set:N      = \l_stex_sparagraph_title_tl ,
   type    .str_set_x:N   = \sparagraphtype ,
-  for     .str_set_x:N   = \sparagraphfor ,
-  from    .tl_set_x:N    = \sparagraphfrom ,
+  for     .clist_set:N   = \l__stex_statements_sparagraph_for_clist ,
+  from    .tl_set:N      = \sparagraphfrom ,
+  to    .tl_set:N        = \sparagraphto ,
   start   .tl_set:N      = \l_stex_sparagraph_start_tl ,
   name    .str_set:N     = \sparagraphname
 }
@@ -4054,10 +4182,11 @@
 \cs_new_protected:Nn \stex_sparagraph_args:n {
   \tl_clear:N \l_stex_sparagraph_title_tl
   \tl_clear:N \sparagraphfrom
+  \tl_clear:N \sparagraphto
   \tl_clear:N \l_stex_sparagraph_start_tl
   \str_clear:N \sparagraphid
   \str_clear:N \sparagraphtype
-  \str_clear:N \sparagraphfor
+  \clist_clear:N \l__stex_statements_sparagraph_for_clist
   \str_clear:N \sparagraphname
   \keys_set:nn { stex / sparagraph }{ #1 }
 }
@@ -4071,12 +4200,28 @@
     \tl_set_eq:NN \sparagraphtitle \l_stex_sparagraph_start_tl
   }
   \@in@omtexttrue
-  \stex_smsmode_set_codes:
-  \stex_if_smsmode:F {
+  \stex_if_smsmode:TF {
+    \stex_smsmode_set_codes:
+  } {
+    \seq_clear:N \l_tmpa_seq
+    \clist_map_inline:Nn \l__stex_statements_sparagraph_for_clist {
+      \str_if_eq:nnF{ ##1 }{}{
+        \stex_get_symbol:n { ##1 }
+        \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
+          \l_stex_get_symbol_uri_str
+        }
+      }
+    }
     \exp_args:Nnnx
-    \begin{stex_annotate_env}{paragraph}{}
+    \begin{stex_annotate_env}{paragraph}{\seq_use:Nn \l_tmpa_seq {,}}
     \str_if_empty:NF \sparagraphtype {
       \stex_annotate_invisible:nnn{type}{\sparagraphtype}{}
+    }
+    \str_if_empty:NF \sparagraphfrom {
+      \stex_annotate_invisible:nnn{from}{\sparagraphfrom}{}
+    }
+    \str_if_empty:NF \sparagraphto {
+      \stex_annotate_invisible:nnn{to}{\sparagraphto}{}
     }
   }
   \clist_set:No \l_tmpa_clist \sparagraphtype
@@ -4133,6 +4278,59 @@
       \exp_after:wN \tl_set:Nn \csname __stex_statements_sparagraph_#1_end:\endcsname{ #3 }
     }
 }
+
+\keys_define:nn { stex / inlinepara} {
+  id      .str_set_x:N   = \sparagraphid ,
+  type    .str_set_x:N   = \sparagraphtype ,
+  for     .clist_set:N   = \l__stex_statements_sparagraph_for_clist ,
+  from    .tl_set:N      = \sparagraphfrom ,
+  to      .tl_set:N      = \sparagraphto ,
+  name    .str_set:N     = \sparagraphname
+}
+\cs_new_protected:Nn \__stex_statements_inlinepara_args:n {
+  \tl_clear:N \sparagraphfrom
+  \tl_clear:N \sparagraphto
+  \str_clear:N \sparagraphid
+  \str_clear:N \sparagraphtype
+  \clist_clear:N \l__stex_statements_sparagraph_for_clist
+  \str_clear:N \sparagraphname
+  \keys_set:nn { stex / inlinepara }{ #1 }
+}
+\NewDocumentCommand \inlinepara { O{} m } {
+  \begingroup
+  \__stex_statements_inlinepara_args:n{ #1 }
+  \stex_ref_new_doc_target:n \sparagraphid
+  \stex_if_smsmode:TF{
+    \stex_smsmode_set_codes:
+    \str_if_empty:NF \sparagraphname { \symdecl*{\sparagraphname} }
+  }{
+    \seq_clear:N \l_tmpa_seq
+    \clist_map_inline:Nn \l__stex_statements_sparagraph_for_clist {
+      \str_if_eq:nnF{ ##1 }{}{
+        \stex_get_symbol:n { ##1 }
+        \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
+          \l_stex_get_symbol_uri_str
+        }
+      }
+    }
+    \exp_args:Nnx
+    \stex_annotate:nnn{paragraph}{\seq_use:Nn \l_tmpa_seq {,}}{
+      \str_if_empty:NF \sparagraphtype {
+        \stex_annotate_invisible:nnn{type}{\sparagraphtype}{}
+      }
+      \str_if_empty:NF \sparagraphfrom {
+        \stex_annotate_invisible:nnn{from}{\sparagraphfrom}{}
+      }
+      \str_if_empty:NF \sparagraphto {
+        \stex_annotate_invisible:nnn{to}{\sparagraphto}{}
+      }
+      #2
+      \str_if_empty:NF \sparagraphname { \symdecl*{\sparagraphname} }
+    }
+  }
+  \endgroup
+}
+
 \NewDocumentEnvironment{symboldoc}{ m }{
   \seq_set_split:Nnn \l_tmpa_seq , { #1 }
   \seq_clear:N \l_tmpb_seq
@@ -4468,8 +4666,8 @@
   \symdecl[args=1]{seqtype}
   \notation[kleene]{seqtype}{#1^{\comp\ast}}
 
-  \symdef[args=2,li,prec=nobrackets]{sequence-index}{#1_{#2}}
-  \notation[ui,prec=nobrackets]{sequence-index}{#1^{#2}}
+  \symdef[args=2,li,prec=nobrackets]{sequence-index}{{#1}_{#2}}
+  \notation[ui,prec=nobrackets]{sequence-index}{{#1}^{#2}}
 
   %\symdef[args=3,li]{sequence-from-to}{#1_{#2}\comp{,\ellipses,}#1_{#3}}
   %\notation[ui]{sequence-from-to}{#1^{#2}\comp{,\ellipses,}#1^{#3}}
