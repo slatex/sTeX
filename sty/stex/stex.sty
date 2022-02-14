@@ -400,19 +400,17 @@
 \stex_path_from_string:Nn \c_stex_mainfile_seq
   \c_stex_mainfile_str
 \seq_gclear_new:N\g_stex_currentfile_seq
-\AddToHook{file/before}{
-  \stex_path_from_string:Nn\g_stex_currentfile_seq{\CurrentFilePath}
-  \stex_path_if_absolute:NTF\g_stex_currentfile_seq{
-    \exp_args:NNe\seq_put_right:Nn\g_stex_currentfile_seq{\CurrentFile}
-  }{
+\cs_new_protected:Nn \stex_filestack_push:n {
+  \stex_path_from_string:Nn\g_stex_currentfile_seq{#1}
+  \stex_path_if_absolute:NF\g_stex_currentfile_seq{
     \stex_path_from_string:Nn\g_stex_currentfile_seq{
-      \c_stex_pwd_str/\CurrentFilePath/\CurrentFile
+      \c_stex_pwd_str/#1
     }
   }
   \seq_gset_eq:NN\g_stex_currentfile_seq\g_stex_currentfile_seq
   \exp_args:NNo\seq_gpush:Nn\g__stex_files_stack\g_stex_currentfile_seq
 }
-\AddToHook{file/after}{
+\cs_new_protected:Nn \stex_filestack_pop: {
   \seq_if_empty:NF\g__stex_files_stack{
     \seq_gpop:NN\g__stex_files_stack\l_tmpa_seq
   }
@@ -422,6 +420,13 @@
     \seq_get:NN\g__stex_files_stack\l_tmpa_seq
     \seq_gset_eq:NN\g_stex_currentfile_seq\l_tmpa_seq
   }
+}
+
+\AddToHook{file/before}{
+  \stex_filestack_push:n{\CurrentFilePath/\CurrentFile}
+}
+\AddToHook{file/after}{
+  \stex_filestack_pop:
 }
 \str_if_empty:NTF\mathhub{
   \stex_kpsewhich:n{-var-value~MATHHUB}
@@ -1068,7 +1073,7 @@
 \cs_new_protected:Nn \STEXexport:n {
   \ignorespaces #1
   \stex_add_to_current_module:n { \ignorespaces #1 }
-  \stex_smsmode_set_codes:
+  \stex_smsmode_do:
 }
 \stex_deactivate_macro:Nn \STEXexport {module~environments}
 \cs_new_protected:Nn \stex_add_constant_to_current_module:n {
@@ -1270,11 +1275,10 @@
       \l_tmpa_str . \l_stex_module_sig_str .tex
     }
     \IfFileExists \l_tmpa_str {
-      \exp_args:No \stex_in_smsmode:nn { \l_tmpa_str } {
+      \exp_args:No \stex_file_in_smsmode:nn { \l_tmpa_str } {
         \str_clear:N \l_stex_current_module_str
         \seq_clear:N \l_stex_all_modules_seq
         \stex_debug:nn{modules}{Loading~signature~\l_tmpa_str}
-        \input { \l_tmpa_str }
       }
     }{
       \msg_error:nnx{stex}{error/unknownmodule}{for~signature~\l_tmpa_str}
@@ -1310,9 +1314,7 @@
   }
 
 
-  \stex_if_smsmode:TF {
-    \stex_smsmode_set_codes:
-  } {
+  \stex_if_smsmode:F{
     \begin{stex_annotate_env} {theory} {
       \l_stex_module_ns_str ? \l_stex_module_name_str
     }
@@ -1355,6 +1357,7 @@
   }
   \__stex_modules_begin_module:
   \stex_ref_new_doc_target:n \smoduleid
+  \stex_smsmode_do:
 } {
   \__stex_modules_end_module:
   \stex_if_smsmode:TF {
@@ -1469,6 +1472,7 @@
   \inlineass
   \inlinedef
   \inlineex
+  \endinput
 }
 
 \exp_args:NNx \seq_set_from_clist:Nn \g_stex_smsmode_allowedenvs_seq {
@@ -1476,10 +1480,10 @@
     smodule,
     copymodule,
     interpretmodule
-    %sdefinition,
-    %sexample,
-    %sassertion,
-    %sparagraph
+    sdefinition,
+    sexample,
+    sassertion,
+    sparagraph
   }
 }
 \bool_new:N \g__stex_smsmode_bool
@@ -1487,101 +1491,106 @@
 \prg_new_conditional:Nnn \stex_if_smsmode: { p, T, F, TF } {
   \bool_if:NTF \g__stex_smsmode_bool \prg_return_true: \prg_return_false:
 }
-\bool_new:N \g__stex_smsmode_catcode_bool
-\bool_set_false:N \g__stex_smsmode_catcode_bool
-\prg_new_conditional:Nnn \__stex_smsmode_if_catcodes: { p, T, F, TF } {
-  \bool_if:NTF \g__stex_smsmode_catcode_bool
-    \prg_return_true: \prg_return_false:
-}
-\cs_new_protected:Nn \stex_smsmode_set_codes: {
-  \stex_if_smsmode:T {
-    \__stex_smsmode_if_catcodes:F {
-      \bool_gset_true:N \g__stex_smsmode_catcode_bool
-      \exp_after:wN \char_gset_active_eq:NN
-        \c_backslash_str \__stex_smsmode_cs:
-      \tex_global:D \char_set_catcode_active:N \\
-      \tex_global:D \char_set_catcode_other:N $
-      \tex_global:D \char_set_catcode_other:N ^
-      \tex_global:D \char_set_catcode_other:N _
-      \tex_global:D \char_set_catcode_other:N &
-      \tex_global:D \char_set_catcode_other:N ##
-    }
-  }
-} \iffalse $ \fi % to make syntax highlighting work again
-\cs_new_protected:Nn \__stex_smsmode_unset_codes: {
-  \__stex_smsmode_if_catcodes:T {
-    \bool_gset_false:N \g__stex_smsmode_catcode_bool
-    \exp_after:wN \tex_global:D \exp_after:wN
-      \char_set_catcode_escape:N \c_backslash_str
-    \tex_global:D \char_set_catcode_math_toggle:N $
-    \tex_global:D \char_set_catcode_math_superscript:N ^
-    \tex_global:D \char_set_catcode_math_subscript:N _
-    \tex_global:D \char_set_catcode_alignment:N &
-    \tex_global:D \char_set_catcode_parameter:N ##
-  }
-} \iffalse $ \fi % to make syntax highlighting work again
 \cs_new_protected:Nn \stex_in_smsmode:nn {
   \vbox_set:Nn \l_tmpa_box {
     \bool_set_eq:cN { l__stex_smsmode_#1_bool } \g__stex_smsmode_bool
     \bool_gset_true:N \g__stex_smsmode_bool
-    \stex_smsmode_set_codes:
     #2
     \bool_gset_eq:Nc \g__stex_smsmode_bool { l__stex_smsmode_#1_bool }
-    \stex_if_smsmode:F {
-      \__stex_smsmode_unset_codes:
-    }
   }
   \box_clear:N \l_tmpa_box
 }
-\cs_new_protected:Nn \__stex_smsmode_cs: {
-  \str_clear:N \l_tmpa_str
-  \peek_analysis_map_inline:n {
-    % #1: token (one expansion)
-    % #2: charcode
-    % #3 catcode
-    \token_if_eq_charcode:NNTF ##3 B {
-      % token is a letter
-      \exp_args:NNo \str_put_right:Nn \l_tmpa_str { ##1 }
-    } {
-      \str_if_empty:NTF \l_tmpa_str {
-        % we don't allow (or need) single non-letter CSs
-        % for now
-        \peek_analysis_map_break:
+
+\quark_new:N \q__stex_smsmode_break
+
+\cs_new_protected:Nn \stex_file_in_smsmode:nn {
+ % \tl_clear:N \l__stex_smsmode_filecontent_tl
+ % \ior_open:Nn \c__stex_smsmode_ior {#1}
+ % \ior_map_inline:Nn \c__stex_smsmode_ior {
+ %   \tl_put_right:Nn \l__stex_smsmode_filecontent_tl { ##1 }
+ % }
+ % \ior_close:N \c__stex_smsmode_ior
+  \stex_filestack_push:n{#1}
+  \stex_in_smsmode:nn{#1} {
+    #2
+    \everyeof{\q__stex_smsmode_break\noexpand}
+    \expandafter\expandafter\expandafter
+    \stex_smsmode_do:
+    \csname @ @ input\endcsname "#1"\relax
+    %\expandafter \stex_smsmode_do: \l__stex_smsmode_filecontent_tl
+  }
+  \stex_filestack_pop:
+}
+\cs_new_protected:Npn \stex_smsmode_do: {
+  \stex_if_smsmode:T {
+    \__stex_smsmode_do:w
+  }
+}
+\cs_new_protected:Npn \__stex_smsmode_do:w #1 {
+  \int_compare:nNnTF {\tl_count:n{#1}} > 1 { % todo: optimize
+    \__stex_smsmode_do:w %#1
+  }{
+    \expandafter\if\expandafter\relax\noexpand#1
+      \expandafter\__stex_smsmode_do_aux:N\expandafter#1
+    \else\expandafter\__stex_smsmode_do:w\fi
+  }
+}
+\cs_new_protected:Nn \__stex_smsmode_do_aux:N {
+  \cs_if_eq:NNF #1 \q__stex_smsmode_break {
+    \tl_if_in:NnTF \g_stex_smsmode_allowedmacros_tl {#1} {
+      #1\__stex_smsmode_do:w
+    }{
+      \tl_if_in:NnTF \g_stex_smsmode_allowedmacros_escape_tl {#1} {
+        #1
       }{
-        \str_if_eq:onTF \l_tmpa_str { begin } {
-          \peek_analysis_map_break:n {
-            \exp_after:wN \__stex_smsmode_checkbegin:n ##1
+        \cs_if_eq:NNTF \begin #1 {
+          \__stex_smsmode_check_begin:n
+        }{
+          \cs_if_eq:NNTF \end #1 {
+            \__stex_smsmode_check_end:n
+          }{
+            \__stex_smsmode_do:w
           }
-        } {
-          \str_if_eq:onTF \l_tmpa_str { end } {
-            \peek_analysis_map_break:n {
-              \exp_after:wN \__stex_smsmode_checkend:n ##1
-            }
-          } {
-          \tl_set:Nn \l_tmpa_tl { \use:c{\l_tmpa_str} }
-          \exp_args:NNNo \exp_args:NNo \tl_if_in:NnTF
-            \g_stex_smsmode_allowedmacros_tl
-              { \use:c{\l_tmpa_str} } {
-              \stex_debug:nn{modules}{Executing~1:~\l_tmpa_str}
-              \peek_analysis_map_break:n {
-                \exp_after:wN \l_tmpa_tl ##1
-              }
-            } {
-              \exp_args:NNNo \exp_args:NNo \tl_if_in:NnTF
-              \g_stex_smsmode_allowedmacros_escape_tl
-                { \use:c{\l_tmpa_str} } {
-                \__stex_smsmode_unset_codes:
-                \stex_debug:nn{modules}{Executing~2:~\l_tmpa_str}
-                % TODO \__stex_smsmode_rescan_cs:
-                  \peek_analysis_map_break:n {
-                    \exp_after:wN \l_tmpa_tl ##1
-                  }
-              } {
-                  \int_compare:nNnTF {##2} = {92} {
-                    \peek_analysis_map_break:n { \__stex_smsmode_cs: }
-                  }{
-                    \peek_analysis_map_break:n { \exp_after:wN\relax ##1 }
-                  }
+        }
+      }
+    }
+  }
+}
+
+\cs_new_protected:Nn \__stex_smsmode_check_begin:n {
+  \seq_if_in:NxTF \g_stex_smsmode_allowedenvs_seq { \detokenize{#1} }{
+    \begin{#1}
+  }{
+    \__stex_smsmode_do:w
+  }
+}
+\cs_new_protected:Nn \__stex_smsmode_check_end:n {
+  \seq_if_in:NxTF \g_stex_smsmode_allowedenvs_seq { \detokenize{#1} }{
+    \end{#1}\__stex_smsmode_do:w
+  }{
+    \str_if_eq:nnTF{#1}{document}{\endinput}{\__stex_smsmode_do:w}
+  }
+}
+
+\cs_new_protected:Nn \stex_smsmode_do_ii: {
+  \stex_if_smsmode:T {
+    \peek_analysis_map_inline:n {
+      \int_compare:nNnT ##3 = 0 {
+        \exp_args:Nx \cs_if_eq:NNTF {##1} \q__stex_smsmode_break {
+          \peek_analysis_map_break:
+        }{
+          \tl_if_in:NxTF \g_stex_smsmode_allowedmacros_tl {##1} {
+            \peek_analysis_map_break:n{ ##1 \stex_smsmode_do:w }
+          }{
+            \tl_if_in:NxTF \g_stex_smsmode_allowedmacros_escape_tl {##1} {
+              \peek_analysis_map_break:n{ ##1 }
+            }{
+              \exp_args:Nx \cs_if_eq:NNTF {##1} \begin {
+                \__stex_smsmode_check_begin:n
+              }{
+                \exp_args:Nx \cs_if_eq:NNT {##1} \end {
+                  \__stex_smsmode_check_end:n
+                }
               }
             }
           }
@@ -1590,34 +1599,22 @@
     }
   }
 }
-\cs_new_protected:Nn \__stex_smsmode_rescan_cs: {
-  \str_clear:N \l_tmpb_str
-  \peek_analysis_map_inline:n {
-    \token_if_eq_charcode:NNTF ##3 B {
-      % token is a letter
-      \exp_args:NNo \str_put_right:Nn \l_tmpb_str { ##1 }
-    } {
-      \peek_analysis_map_break:n {
-        \exp_after:wN \use:c \exp_after:wN {
-          \exp_after:wN \l_tmpa_str\exp_after:wN
-        } \use:c { \l_tmpb_str \exp_after:wN } ##1
-      }
+\cs_new_protected:Nn \__stex_smsmode_check_begin_ii:n {
+  \seq_if_in:NnTF \g_stex_smsmode_allowedenvs_seq { #1 }{
+    \peek_analysis_map_break:n{ \begin{#1} }
+  }{
+    \stex_smsmode_do:w
+  }
+}
+\cs_new_protected:Nn \__stex_smsmode_check_end_ii:n {
+  \seq_if_in:NnT \g_stex_smsmode_allowedenvs_seq { #1 }{
+    \peek_analysis_map_break:n{
+      \end{#1}
+      \stex_smsmode_do:w
     }
   }
 }
-\cs_new_protected:Nn \__stex_smsmode_checkbegin:n {
-  \str_set:Nn \l_tmpa_str { #1 }
-  \seq_if_in:NoT \g_stex_smsmode_allowedenvs_seq \l_tmpa_str {
-    \__stex_smsmode_unset_codes:
-    \begin{#1}
-  }
-}
-\cs_new_protected:Nn \__stex_smsmode_checkend:n {
-  \str_set:Nn \l_tmpa_str { #1 }
-  \seq_if_in:NoT \g_stex_smsmode_allowedenvs_seq \l_tmpa_str {
-    \end{#1}
-  }
-}
+
 \cs_new_protected:Nn \stex_import_module_uri:nn {
   \str_set:Nx \l_stex_import_archive_str { #1 }
   \str_set:Nn \l_stex_import_path_str { #2 }
@@ -1757,7 +1754,7 @@
       }
     }
 
-    \exp_args:No \stex_in_smsmode:nn { \g__stex_importmodule_file_str } {
+    \exp_args:No \stex_file_in_smsmode:nn { \g__stex_importmodule_file_str } {
       \seq_clear:N \l_stex_all_modules_seq
       \str_clear:N \l_stex_current_module_str
       \str_set:Nx \l_tmpb_str { #2 }
@@ -1765,7 +1762,6 @@
         \stex_set_current_repository:n { #2 }
       }
       \stex_debug:nn{modules}{Loading~\g__stex_importmodule_file_str}
-      \input { \g__stex_importmodule_file_str }
     }
 
     \stex_if_module_exists:nF { #1 ? #4 } {
@@ -1796,7 +1792,7 @@
   \exp_args:Nx \stex_add_import_to_current_module:n {
     \l_stex_import_ns_str ? \l_stex_import_name_str
   }
-  \stex_smsmode_set_codes:
+  \stex_smsmode_do:
 }
 \stex_deactivate_macro:Nn \importmodule {module~environments}
 \NewDocumentCommand \usemodule { O{} m } {
@@ -1808,7 +1804,7 @@
     \stex_annotate_invisible:nnn
       {usemodule} {\l_stex_import_ns_str ? \l_stex_import_name_str} {}
   }
-  \stex_smsmode_set_codes:
+  \stex_smsmode_do:
 }
 
 %%%%%%%%%%%%%   symbols.dtx   %%%%%%%%%%%%%
@@ -1851,7 +1847,7 @@
     \bool_set_true:N \l_stex_symdecl_make_macro_bool
   }
   \stex_symdecl_do:n { #3 }
-  \stex_smsmode_set_codes:
+  \stex_smsmode_do:
 }
 \stex_deactivate_macro:Nn \symdecl {module~environments}
 \cs_new_protected:Nn \stex_symdecl_do:n {
@@ -2414,7 +2410,6 @@
   }
 
   \stex_if_smsmode:TF {
-    \stex_smsmode_set_codes:
   }{
 
     % HTML annotations
@@ -2465,6 +2460,7 @@
       }
     }
   }
+  \stex_smsmode_do:
 }
 \keys_define:nn { stex / setnotation } {
   lang    .tl_set_x:N  = \l__stex_notation_lang_str ,
@@ -3162,9 +3158,7 @@
     as~\l_stex_current_module_str?\l_stex_current_copymodule_name_str}
     \stex_debug:nn{copymodule}{modules:\seq_use:Nn \l__stex_features_copymodule_modules_seq {,~}}
   \stex_debug:nn{copymodule}{fields:\seq_use:Nn \l__stex_features_copymodule_fields_seq {,~}}
-  \stex_if_smsmode:TF {
-    \stex_smsmode_set_codes:
-  } {
+  \stex_if_smsmode:F {
     \begin{stex_annotate_env} {#4} {
       \l_stex_current_module_str?\l_stex_current_copymodule_name_str
     }
@@ -3268,6 +3262,7 @@
   \stex_reactivate_macro:N \assign
   \stex_reactivate_macro:N \renamedecl
   \stex_reactivate_macro:N \donotcopy
+  \stex_smsmode_do:
 }{
   \stex_copymodule_end:n {}
 }
@@ -3280,6 +3275,7 @@
   \stex_reactivate_macro:N \assign
   \stex_reactivate_macro:N \renamedecl
   \stex_reactivate_macro:N \donotcopy
+  \stex_smsmode_do:
 }{
   \stex_copymodule_end:n {
     \tl_if_exist:cF {
@@ -3429,9 +3425,7 @@
     feature   = #1 ,
   }
 
-  \stex_if_smsmode:TF {
-    \stex_smsmode_set_codes:
-  } {
+  \stex_if_smsmode:F {
     \begin{stex_annotate_env}{ feature:#1 }{}
       \stex_annotate_invisible:nnn{header}{}{ #3 }
   }
@@ -3493,7 +3487,7 @@
     { \l__stex_features_structure_name_str }{}
     \seq_clear:N \l_tmpa_seq
     \prop_put:Nno \l_stex_current_module_prop { fields } \l_tmpa_seq
-
+  \stex_smsmode_do:
 }{
     \prop_get:NnN \l_stex_current_module_prop { constants } \l_tmpa_seq
     \prop_get:NnN \l_stex_current_module_prop { fields } \l_tmpb_seq
@@ -3527,7 +3521,6 @@
 \str_new:N \l__stex_features_structure_def_tl
 \prop_new:N \l__stex_features_structure_prop
 \NewDocumentCommand \instantiate { m O{} m }{
-  \stex_smsmode_set_codes:
   \prop_get:NnN \l_stex_all_structures_prop {#1} \l_tmpa_str
   \prop_set_eq:Nc \l__stex_features_structure_prop {
     c_stex_feature_\l_tmpa_str _prop
@@ -3652,7 +3645,7 @@
       \prop_item:Nn \l__stex_features_structure_prop {name}
     }
   }
-
+  \stex_smsmode_do:
 }
 \cs_new_protected:Nn \stex_invoke_structure:nnn {
   \tl_if_empty:nTF{ #3 }{
@@ -3812,9 +3805,7 @@
   \stex_reactivate_macro:N \definiendum
   \stex_reactivate_macro:N \definame
   \stex_reactivate_macro:N \Definame
-  \stex_if_smsmode:TF {
-    \stex_smsmode_set_codes:
-  }{
+  \stex_if_smsmode:F{
     \seq_clear:N \l_tmpa_seq
     \clist_map_inline:Nn \l__stex_statements_sdefinition_for_clist {
       \str_if_eq:nnF{ ##1 }{}{
@@ -3843,6 +3834,7 @@
     }
   }
   \stex_ref_new_doc_target:n \sdefinitionid
+  \stex_smsmode_do:
 }{
   \str_if_empty:NF \sdefinitionname { \symdecl*{\sdefinitionname} }
   \stex_if_smsmode:F {
@@ -3899,7 +3891,6 @@
   \stex_reactivate_macro:N \definame
   \stex_reactivate_macro:N \Definame
   \stex_if_smsmode:TF{
-    \stex_smsmode_set_codes:
     \str_if_empty:NF \sdefinitionname { \symdecl*{\sdefinitionname} }
   }{
     \seq_clear:N \l_tmpa_seq
@@ -3921,6 +3912,7 @@
     }
   }
   \endgroup
+  \stex_smsmode_do:
 }
 
 \keys_define:nn {stex / sassertion }{
@@ -3942,9 +3934,7 @@
 
 \NewDocumentEnvironment{sassertion}{O{}}{
   \__stex_statements_sassertion_args:n{ #1 }
-  \stex_if_smsmode:TF {
-    \stex_smsmode_set_codes:
-  } {
+  \stex_if_smsmode:F {
     \seq_clear:N \l_tmpa_seq
     \clist_map_inline:Nn \l__stex_statements_sassertion_for_clist {
       \str_if_eq:nnF{ ##1 }{}{
@@ -3973,6 +3963,7 @@
     }
   }
   \stex_ref_new_doc_target:n \sassertionid
+  \stex_smsmode_do:
 }{
   \str_if_empty:NF \sassertionname { \symdecl*{\sassertionname} }
   \stex_if_smsmode:F {
@@ -4027,7 +4018,6 @@
   \__stex_statements_inlineass_args:n{ #1 }
   \stex_ref_new_doc_target:n \sassertionid
   \stex_if_smsmode:TF{
-    \stex_smsmode_set_codes:
     \str_if_empty:NF \sassertionname { \symdecl*{\sassertionname} }
   }{
     \seq_clear:N \l_tmpa_seq
@@ -4049,6 +4039,7 @@
     }
   }
   \endgroup
+  \stex_smsmode_do:
 }
 
 \keys_define:nn {stex / sexample }{
@@ -4067,9 +4058,7 @@
 
 \NewDocumentEnvironment{sexample}{O{}}{
   \__stex_statements_sexample_args:n{ #1 }
-  \stex_if_smsmode:TF {
-    \stex_smsmode_set_codes:
-  } {
+  \stex_if_smsmode:F {
     \seq_clear:N \l_tmpa_seq
     \clist_map_inline:Nn \l__stex_statements_sexample_for_clist {
       \str_if_eq:nnF{ ##1 }{}{
@@ -4098,6 +4087,7 @@
     }
   }
   \stex_ref_new_doc_target:n \sexampleid
+  \stex_smsmode_do:
 }{
   \str_if_empty:NF \sexamplename { \symdecl*{\sexamplename} }
   \stex_if_smsmode:F {
@@ -4152,7 +4142,6 @@
   \__stex_statements_inlineex_args:n{ #1 }
   \stex_ref_new_doc_target:n \sexampleid
   \stex_if_smsmode:TF{
-    \stex_smsmode_set_codes:
     \str_if_empty:NF \sexamplename { \symdecl*{\examplename} }
   }{
     \seq_clear:N \l_tmpa_seq
@@ -4174,6 +4163,7 @@
     }
   }
   \endgroup
+  \stex_smsmode_do:
 }
 \keys_define:nn { stex / sparagraph} {
   id      .str_set_x:N   = \sparagraphid ,
@@ -4207,9 +4197,7 @@
     \tl_set_eq:NN \sparagraphtitle \l_stex_sparagraph_start_tl
   }
   \@in@omtexttrue
-  \stex_if_smsmode:TF {
-    \stex_smsmode_set_codes:
-  } {
+  \stex_if_smsmode:F {
     \seq_clear:N \l_tmpa_seq
     \clist_map_inline:Nn \l__stex_statements_sparagraph_for_clist {
       \str_if_eq:nnF{ ##1 }{}{
@@ -4244,6 +4232,7 @@
     }
   }
   \stex_ref_new_doc_target:n \sparagraphid
+  \stex_smsmode_do:
   \ignorespacesandpars
 }{
   \stex_if_smsmode:F {
@@ -4308,7 +4297,6 @@
   \__stex_statements_inlinepara_args:n{ #1 }
   \stex_ref_new_doc_target:n \sparagraphid
   \stex_if_smsmode:TF{
-    \stex_smsmode_set_codes:
     \str_if_empty:NF \sparagraphname { \symdecl*{\sparagraphname} }
   }{
     \seq_clear:N \l_tmpa_seq
@@ -4336,6 +4324,7 @@
     }
   }
   \endgroup
+  \stex_smsmode_do:
 }
 
 \NewDocumentEnvironment{symboldoc}{ m }{

@@ -100,9 +100,7 @@
 % \immediate\write\testfile{\detokenize{this \is a \test}}
 % \immediate\closeout\testfile
 % \ExplSyntaxOn
-% \stex_in_smsmode:nn { foo } { 
-%   \input{tests/sometest.tex} 
-% }
+% \stex_file_in_smsmode:nn{tests/sometest.tex}{}
 % \ExplSyntaxOff
 %}
 %
@@ -275,6 +273,7 @@
   \inlineass
   \inlinedef
   \inlineex
+  \endinput
 }
 
 \exp_args:NNx \seq_set_from_clist:Nn \g_stex_smsmode_allowedenvs_seq {
@@ -301,198 +300,145 @@
 %    \end{macrocode}
 % \end{macro}
 %
-%
-% \begin{macro}[pTF]{\_@@_if_catcodes:}
-% Checks whether the SMS mode category code scheme is active.
-%    \begin{macrocode}
-\bool_new:N \g_@@_catcode_bool
-\bool_set_false:N \g_@@_catcode_bool
-\prg_new_conditional:Nnn \_@@_if_catcodes: { p, T, F, TF } {
-  \bool_if:NTF \g_@@_catcode_bool 
-    \prg_return_true: \prg_return_false:
-}
-%    \end{macrocode}
-% \end{macro}
-%
-% \begin{macro}{\stex_smsmode_set_codes:}
-%    \begin{macrocode}
-\cs_new_protected:Nn \stex_smsmode_set_codes: {
-  \stex_if_smsmode:T {
-    \_@@_if_catcodes:F {
-      \bool_gset_true:N \g_@@_catcode_bool
-      \exp_after:wN \char_gset_active_eq:NN 
-        \c_backslash_str \_@@_cs:
-      \tex_global:D \char_set_catcode_active:N \\
-      \tex_global:D \char_set_catcode_other:N $
-      \tex_global:D \char_set_catcode_other:N ^
-      \tex_global:D \char_set_catcode_other:N _
-      \tex_global:D \char_set_catcode_other:N &
-      \tex_global:D \char_set_catcode_other:N ##
-    }
-  }
-} \iffalse $ \fi % to make syntax highlighting work again
-%    \end{macrocode}
-% \end{macro}
-%
-% \begin{macro}{\_@@_unset_codes:}
-%   Sets category code scheme back from the one used in SMS mode.
-%    \begin{macrocode}
-\cs_new_protected:Nn \_@@_unset_codes: {
-  \_@@_if_catcodes:T {
-    \bool_gset_false:N \g_@@_catcode_bool
-    \exp_after:wN \tex_global:D \exp_after:wN 
-      \char_set_catcode_escape:N \c_backslash_str
-    \tex_global:D \char_set_catcode_math_toggle:N $
-    \tex_global:D \char_set_catcode_math_superscript:N ^
-    \tex_global:D \char_set_catcode_math_subscript:N _
-    \tex_global:D \char_set_catcode_alignment:N &
-    \tex_global:D \char_set_catcode_parameter:N ##
-  }
-} \iffalse $ \fi % to make syntax highlighting work again
-%    \end{macrocode}
-% \end{macro}
-%
 % \begin{macro}{\stex_in_smsmode:nn}
 %    \begin{macrocode}
 \cs_new_protected:Nn \stex_in_smsmode:nn {
   \vbox_set:Nn \l_tmpa_box {
     \bool_set_eq:cN { l_@@_#1_bool } \g_@@_bool
     \bool_gset_true:N \g_@@_bool
-    \stex_smsmode_set_codes:
     #2
     \bool_gset_eq:Nc \g_@@_bool { l_@@_#1_bool }
-    \stex_if_smsmode:F {
-      \_@@_unset_codes:
-    }
   }
   \box_clear:N \l_tmpa_box
+}
+
+\quark_new:N \q_@@_break
+
+%\ior_new:N \c_@@_ior
+%\tl_new:N \l_@@_filecontent_tl
+\cs_new_protected:Nn \stex_file_in_smsmode:nn {
+ % \tl_clear:N \l_@@_filecontent_tl
+ % \ior_open:Nn \c_@@_ior {#1}
+ % \ior_map_inline:Nn \c_@@_ior {
+ %   \tl_put_right:Nn \l_@@_filecontent_tl { ##1 }
+ % }
+ % \ior_close:N \c_@@_ior
+  \stex_filestack_push:n{#1}
+  \stex_in_smsmode:nn{#1} {
+    #2
+    \everyeof{\q_@@_break\noexpand}
+    \expandafter\expandafter\expandafter
+    \stex_smsmode_do:
+    \csname @ @ input\endcsname "#1"\relax
+    %\expandafter \stex_smsmode_do: \l_@@_filecontent_tl
+  }
+  \stex_filestack_pop:
 }
 %    \end{macrocode}
 % \end{macro}
 %
-% \begin{macro}{\_@@_cs:}
+% \begin{macro}{\stex_smsmode_do:}
 % is executed on encountering |\| in smsmode.
 % It checks whether the corresponding command is allowed and executes
 % or ignores it accordingly:
 %    \begin{macrocode}
-\cs_new_protected:Nn \_@@_cs: {
-  \str_clear:N \l_tmpa_str
-  \peek_analysis_map_inline:n {
-    % #1: token (one expansion)
-    % #2: charcode
-    % #3 catcode
-    \token_if_eq_charcode:NNTF ##3 B {
-      % token is a letter
-      \exp_args:NNo \str_put_right:Nn \l_tmpa_str { ##1 }
-    } {
-      \str_if_empty:NTF \l_tmpa_str {
-        % we don't allow (or need) single non-letter CSs
-        % for now
-        \peek_analysis_map_break: 
+\cs_new_protected:Npn \stex_smsmode_do: {
+  \stex_if_smsmode:T {
+    \_@@_do:w
+  }
+}
+\cs_new_protected:Npn \_@@_do:w #1 {
+  \int_compare:nNnTF {\tl_count:n{#1}} > 1 { % todo: optimize
+    \_@@_do:w %#1
+  }{
+    \expandafter\if\expandafter\relax\noexpand#1
+      \expandafter\_@@_do_aux:N\expandafter#1
+    \else\expandafter\_@@_do:w\fi
+  }
+}
+\cs_new_protected:Nn \_@@_do_aux:N {
+  \cs_if_eq:NNF #1 \q_@@_break {
+    \tl_if_in:NnTF \g_stex_smsmode_allowedmacros_tl {#1} {
+      #1\_@@_do:w
+    }{
+      \tl_if_in:NnTF \g_stex_smsmode_allowedmacros_escape_tl {#1} {
+        #1
       }{
-        \str_if_eq:onTF \l_tmpa_str { begin } {
-          \peek_analysis_map_break:n { 
-            \exp_after:wN \_@@_checkbegin:n ##1
-          }
-        } {
-          \str_if_eq:onTF \l_tmpa_str { end } {
-            \peek_analysis_map_break:n { 
-              \exp_after:wN \_@@_checkend:n ##1
-            }
-          } {
-          \tl_set:Nn \l_tmpa_tl { \use:c{\l_tmpa_str} }
-          \exp_args:NNNo \exp_args:NNo \tl_if_in:NnTF 
-            \g_stex_smsmode_allowedmacros_tl 
-              { \use:c{\l_tmpa_str} } {
-              \stex_debug:nn{modules}{Executing~1:~\l_tmpa_str}
-              \peek_analysis_map_break:n { 
-                \exp_after:wN \l_tmpa_tl ##1
-              }
-            } {
-              \exp_args:NNNo \exp_args:NNo \tl_if_in:NnTF 
-              \g_stex_smsmode_allowedmacros_escape_tl 
-                { \use:c{\l_tmpa_str} } {
-                \_@@_unset_codes:
-                \stex_debug:nn{modules}{Executing~2:~\l_tmpa_str}
-                % TODO \_@@_rescan_cs:
-%                \int_compare:nNnTF {##2} = {92} {
-%                  \peek_analysis_map_break:n {
-%                    \_@@_unset_codes:
-%                    \_@@_rescan_cs:
-%                  }
-%                } {
-                  \peek_analysis_map_break:n {
-                    \exp_after:wN \l_tmpa_tl ##1
-                  }
-%                }
-              } {
-                  \int_compare:nNnTF {##2} = {92} {
-                    \peek_analysis_map_break:n { \_@@_cs: }
-                  }{
-                    \peek_analysis_map_break:n { \exp_after:wN\relax ##1 }
-                  }
-              }
-            }
+        \cs_if_eq:NNTF \begin #1 {
+          \_@@_check_begin:n
+        }{
+          \cs_if_eq:NNTF \end #1 {
+            \_@@_check_end:n
+          }{
+            \_@@_do:w
           }
         }
       }
     }
   }
 }
-%    \end{macrocode}
-% \end{macro}
-%
-%
-% \begin{macro}{\_@@_rescan_cs:}
-% If the last token gobbled by |\stex_smsmode_cs:| happened to be
-% a |\|, we need to rescan the cs name and reinsert it into the input
-% stream:
-%    \begin{macrocode}
-\cs_new_protected:Nn \_@@_rescan_cs: {
-  \str_clear:N \l_tmpb_str
-  \peek_analysis_map_inline:n {
-    \token_if_eq_charcode:NNTF ##3 B {
-      % token is a letter
-      \exp_args:NNo \str_put_right:Nn \l_tmpb_str { ##1 }
-    } {
-      \peek_analysis_map_break:n {
-        \exp_after:wN \use:c \exp_after:wN { 
-          \exp_after:wN \l_tmpa_str\exp_after:wN 
-        } \use:c { \l_tmpb_str \exp_after:wN } ##1
-      }
+
+\cs_new_protected:Nn \_@@_check_begin:n {
+  \seq_if_in:NxTF \g_stex_smsmode_allowedenvs_seq { \detokenize{#1} }{
+    \begin{#1}
+  }{
+    \_@@_do:w
+  }
+}
+\cs_new_protected:Nn \_@@_check_end:n {
+  \seq_if_in:NxTF \g_stex_smsmode_allowedenvs_seq { \detokenize{#1} }{
+    \end{#1}\_@@_do:w
+  }{
+    \str_if_eq:nnTF{#1}{document}{\endinput}{\_@@_do:w}
+  }
+}
+
+\cs_new_protected:Nn \stex_smsmode_do_ii: {
+  \stex_if_smsmode:T {
+    \peek_analysis_map_inline:n {
+      \int_compare:nNnT ##3 = 0 {
+        \exp_args:Nx \cs_if_eq:NNTF {##1} \q_@@_break {
+          \peek_analysis_map_break:
+        }{
+          \tl_if_in:NxTF \g_stex_smsmode_allowedmacros_tl {##1} {
+            \peek_analysis_map_break:n{ ##1 \stex_smsmode_do:w }
+          }{
+            \tl_if_in:NxTF \g_stex_smsmode_allowedmacros_escape_tl {##1} {
+              \peek_analysis_map_break:n{ ##1 }
+            }{
+              \exp_args:Nx \cs_if_eq:NNTF {##1} \begin {
+                \_@@_check_begin:n
+              }{
+                \exp_args:Nx \cs_if_eq:NNT {##1} \end {
+                  \_@@_check_end:n
+                }
+              }
+            }
+          }
+        }
+      } 
+    }
+  }
+}
+\cs_new_protected:Nn \_@@_check_begin_ii:n {
+  \seq_if_in:NnTF \g_stex_smsmode_allowedenvs_seq { #1 }{
+    \peek_analysis_map_break:n{ \begin{#1} }
+  }{
+    \stex_smsmode_do:w
+  }
+}
+\cs_new_protected:Nn \_@@_check_end_ii:n {
+  \seq_if_in:NnT \g_stex_smsmode_allowedenvs_seq { #1 }{
+    \peek_analysis_map_break:n{
+      \end{#1}
+      \stex_smsmode_do:w
     }
   }
 }
 %    \end{macrocode}
 % \end{macro}
 %
-% \begin{macro}{\_@@_checkbegin:n}
-% called on |\begin|; checks whether the environment being opened
-% is allowed in SMS mode. 
-%    \begin{macrocode}
-\cs_new_protected:Nn \_@@_checkbegin:n {
-  \str_set:Nn \l_tmpa_str { #1 }
-  \seq_if_in:NoT \g_stex_smsmode_allowedenvs_seq \l_tmpa_str {
-    \_@@_unset_codes:
-    \begin{#1}
-  }
-}
-%    \end{macrocode}
-% \end{macro}
-%
-% \begin{macro}{\_@@_checkend:n}
-% called on |\end|; checks whether the environment being opened
-% is allowed in SMS mode. 
-%    \begin{macrocode}
-\cs_new_protected:Nn \_@@_checkend:n {
-  \str_set:Nn \l_tmpa_str { #1 }
-  \seq_if_in:NoT \g_stex_smsmode_allowedenvs_seq \l_tmpa_str {
-    \end{#1}
-  }
-}
-%    \end{macrocode}
-% \end{macro}
-%
+
 % \subsection{Inheritance}
 %    \begin{macrocode}
 %<@@=stex_importmodule>
@@ -653,7 +599,7 @@
       }
     }
 
-    \exp_args:No \stex_in_smsmode:nn { \g_@@_file_str } {
+    \exp_args:No \stex_file_in_smsmode:nn { \g_@@_file_str } {
       \seq_clear:N \l_stex_all_modules_seq
       \str_clear:N \l_stex_current_module_str
       \str_set:Nx \l_tmpb_str { #2 }
@@ -661,7 +607,6 @@
         \stex_set_current_repository:n { #2 }
       }
       \stex_debug:nn{modules}{Loading~\g_@@_file_str}
-      \input { \g_@@_file_str }
     }
     
     \stex_if_module_exists:nF { #1 ? #4 } {
@@ -697,7 +642,7 @@
   \exp_args:Nx \stex_add_import_to_current_module:n {
     \l_stex_import_ns_str ? \l_stex_import_name_str
   }
-  \stex_smsmode_set_codes:
+  \stex_smsmode_do:
 }
 \stex_deactivate_macro:Nn \importmodule {module~environments}
 %    \end{macrocode}
@@ -714,7 +659,7 @@
     \stex_annotate_invisible:nnn 
       {usemodule} {\l_stex_import_ns_str ? \l_stex_import_name_str} {}
   }
-  \stex_smsmode_set_codes:
+  \stex_smsmode_do:
 }
 %    \end{macrocode}
 % \end{macro}
