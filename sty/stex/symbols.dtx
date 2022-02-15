@@ -861,13 +861,15 @@
       }
     }
   }
-
-  \seq_put_right:cx {
-    l_stex_symdecl_ \l_@@_symbol_str
-    _notations
-  } {
-    \l_@@_variant_str \c_hash_str \l_@@_lang_str
-  }
+  \exp_args:Nx
+ % \stex_do_aftergroup:n {
+    \seq_put_right:cx {
+      l_stex_symdecl_ \l_@@_symbol_str
+      _notations
+    } {
+      \l_@@_variant_str \c_hash_str \l_@@_lang_str
+    }
+ % }
 
   \stex_debug:nn{symbols}{
     Notation~\l_@@_variant_str \c_hash_str \l_@@_lang_str
@@ -890,8 +892,7 @@
   \exp_args:Ne
   \stex_add_to_current_module:n {
     \seq_put_right:cn {
-      l_stex_symdecl_ 
-        \prop_item:Nn \l_tmpb_prop { symbol }
+      l_stex_symdecl_ \l_@@_symbol_str
       _notations
     } {
       \l_@@_variant_str \c_hash_str \l_@@_lang_str
@@ -1018,6 +1019,39 @@
       % todo throw error
     }
     \stex_smsmode_do:
+}
+
+\cs_new_protected:Nn \stex_copy_notations:nn {
+  \seq_if_exist:cTF{l_stex_symdecl_#2_notations}{
+    \stex_debug:nn {notations}{
+      Copying~notations~from~#2~to~#1\\
+      \seq_use:cn{l_stex_symdecl_#2_notations}{,~}
+    }
+    \seq_map_inline:cn {l_stex_symdecl_#2_notations}{
+      \seq_put_right:cn{l_stex_symdecl_#1_notations}{##1}
+      \cs_set_eq:cc {
+        stex_notation_ #1 \c_hash_str ##1 _cs
+      }{
+        stex_notation_ #2 \c_hash_str ##1 _cs
+      }
+    }
+  }{
+    \errmessage{Here:~#1^^J#2^^J\expandafter\meaning\csname
+    l_stex_symdecl_#2_notations
+    \endcsname}
+  }
+}
+
+\NewDocumentCommand \copynotation {m m} {
+  \stex_get_symbol:n { #1 }
+  \str_set_eq:NN \l_tmpa_str \l_stex_get_symbol_uri_str
+  \stex_get_symbol:n { #2 }
+  \exp_args:Noo
+  \stex_copy_notations:nn \l_tmpa_str \l_stex_get_symbol_uri_str
+  \exp_args:Nx \stex_add_import_to_current_module:n{
+    \stex_copy_notations:nn {\l_tmpa_str} {\l_stex_get_symbol_uri_str}
+  }
+  \stex_smsmode_do:
 }
 
 %    \end{macrocode}

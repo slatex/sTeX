@@ -1474,6 +1474,7 @@
   \inlineex
   \endinput
   \setnotation
+  \copynotation
 }
 
 \exp_args:NNx \seq_set_from_clist:Nn \g_stex_smsmode_allowedenvs_seq {
@@ -2343,13 +2344,15 @@
       }
     }
   }
-
-  \seq_put_right:cx {
-    l_stex_symdecl_ \l__stex_notation_symbol_str
-    _notations
-  } {
-    \l__stex_notation_variant_str \c_hash_str \l__stex_notation_lang_str
-  }
+  \exp_args:Nx
+ % \stex_do_aftergroup:n {
+    \seq_put_right:cx {
+      l_stex_symdecl_ \l__stex_notation_symbol_str
+      _notations
+    } {
+      \l__stex_notation_variant_str \c_hash_str \l__stex_notation_lang_str
+    }
+ % }
 
   \stex_debug:nn{symbols}{
     Notation~\l__stex_notation_variant_str \c_hash_str \l__stex_notation_lang_str
@@ -2372,8 +2375,7 @@
   \exp_args:Ne
   \stex_add_to_current_module:n {
     \seq_put_right:cn {
-      l_stex_symdecl_
-        \prop_item:Nn \l_tmpb_prop { symbol }
+      l_stex_symdecl_ \l__stex_notation_symbol_str
       _notations
     } {
       \l__stex_notation_variant_str \c_hash_str \l__stex_notation_lang_str
@@ -2483,6 +2485,39 @@
       % todo throw error
     }
     \stex_smsmode_do:
+}
+
+\cs_new_protected:Nn \stex_copy_notations:nn {
+  \seq_if_exist:cTF{l_stex_symdecl_#2_notations}{
+    \stex_debug:nn {notations}{
+      Copying~notations~from~#2~to~#1\\
+      \seq_use:cn{l_stex_symdecl_#2_notations}{,~}
+    }
+    \seq_map_inline:cn {l_stex_symdecl_#2_notations}{
+      \seq_put_right:cn{l_stex_symdecl_#1_notations}{##1}
+      \cs_set_eq:cc {
+        stex_notation_ #1 \c_hash_str ##1 _cs
+      }{
+        stex_notation_ #2 \c_hash_str ##1 _cs
+      }
+    }
+  }{
+    \errmessage{Here:~#1^^J#2^^J\expandafter\meaning\csname
+    l_stex_symdecl_#2_notations
+    \endcsname}
+  }
+}
+
+\NewDocumentCommand \copynotation {m m} {
+  \stex_get_symbol:n { #1 }
+  \str_set_eq:NN \l_tmpa_str \l_stex_get_symbol_uri_str
+  \stex_get_symbol:n { #2 }
+  \exp_args:Noo
+  \stex_copy_notations:nn \l_tmpa_str \l_stex_get_symbol_uri_str
+  \exp_args:Nx \stex_add_import_to_current_module:n{
+    \stex_copy_notations:nn {\l_tmpa_str} {\l_stex_get_symbol_uri_str}
+  }
+  \stex_smsmode_do:
 }
 
 \keys_define:nn { stex / symdef } {
@@ -3162,9 +3197,11 @@
   \def \l_tmpa_cs ##1 ##2 {#1}
   \bool_set_eq:NN \l_stex_html_do_output_bool \l__stex_features_oldhtml_bool
   \tl_clear:N \l_tmpa_tl
+  \tl_clear:N \l_tmpb_tl
   \prop_get:NnN \l_stex_current_copymodule_prop {fields} \l_tmpa_seq
   \seq_map_inline:Nn \l__stex_features_copymodule_modules_seq {
-    \seq_map_inline:cn {c_stex_module_##1_constants}{\stex_annotate:nnn{assignment} {##1?####1} {
+    \seq_map_inline:cn {c_stex_module_##1_constants}{
+      \tl_clear:N \l_tmpc_tl
       \l_tmpa_cs{##1}{####1}
       \str_if_exist:cTF {l__stex_features_copymodule_##1?####1_name_str} {
         \tl_put_right:Nx \l_tmpa_tl {
@@ -3181,10 +3218,15 @@
             _notations
           }
         }
-        \stex_annotate_invisible:nnn{alias}{\use:c{l__stex_features_copymodule_##1?####1_name_str}}{}
+        \tl_put_right:Nx \l_tmpc_tl {
+          \stex_annotate_invisible:nnn{alias}{\use:c{l__stex_features_copymodule_##1?####1_name_str}}{}
+          \stex_copy_notations:nn {\l_stex_current_module_str ? \use:c{l__stex_features_copymodule_##1?####1_name_str}}{##1?####1}
+        }
         \seq_put_right:Nx \l_tmpa_seq {\l_stex_current_module_str ? \use:c{l__stex_features_copymodule_##1?####1_name_str}}
         \str_if_exist:cT {l__stex_features_copymodule_##1?####1_macroname_str} {
-          \stex_annotate_invisible:nnn{macroname}{\use:c{l__stex_features_copymodule_##1?####1_macroname_str}}{}
+          \tl_put_right:Nx \l_tmpc_tl {
+            \stex_annotate_invisible:nnn{macroname}{\use:c{l__stex_features_copymodule_##1?####1_macroname_str}}{}
+          }
           \tl_put_right:Nx \l_tmpa_tl {
             \tl_set:cx {\use:c{l__stex_features_copymodule_##1?####1_macroname_str}}{
               \stex_invoke_symbol:n {
@@ -3211,7 +3253,10 @@
         }
         \seq_put_right:Nx \l_tmpa_seq {\l_stex_current_module_str ? \l_stex_current_copymodule_name_str / ####1 }
         \str_if_exist:cT {l__stex_features_copymodule_##1?####1_macroname_str} {
-          \stex_annotate_invisible:nnn{macroname}{\use:c{l__stex_features_copymodule_##1?####1_macroname_str}}{}
+          \tl_put_right:Nx \l_tmpc_tl {
+            \stex_annotate_invisible:nnn{macroname}{\use:c{l__stex_features_copymodule_##1?####1_macroname_str}}{}
+            \stex_copy_notations:nn {\l_stex_current_module_str ? \l_stex_current_copymodule_name_str / ####1 }{##1?####1}
+          }
           \tl_put_right:Nx \l_tmpa_tl {
             \tl_set:cx {\use:c{l__stex_features_copymodule_##1?####1_macroname_str}}{
               \stex_invoke_symbol:n {
@@ -3222,10 +3267,14 @@
         }
       }
       \tl_if_exist:cT {l__stex_features_copymodule_##1?####1_def_tl}{
-        \stex_annotate_invisible:nnn{definiens}{}{$\use:c{l__stex_features_copymodule_##1?####1_def_tl}$}
+        \tl_put_right:Nx \l_tmpc_tl {
+          \stex_annotate_invisible:nnn{definiens}{}{$\use:c{l__stex_features_copymodule_##1?####1_def_tl}$}
+        }
       }
-      % todo notations
-    }}
+      \tl_put_right:Nx \l_tmpb_tl {
+        \stex_annotate:nnn{assignment} {##1?####1} { \l_tmpc_tl }
+      }
+    }
   }
   \prop_put:Nno \l_stex_current_copymodule_prop {fields} \l_tmpa_seq
   \tl_put_left:Nx \l_tmpa_tl {
@@ -3240,6 +3289,7 @@
   \exp_args:Nx \stex_do_aftergroup:n {
       \exp_args:No \exp_not:n \l_tmpa_tl
   }
+  \l_tmpb_tl
   \stex_if_smsmode:F {
     \end{stex_annotate_env}
   }
