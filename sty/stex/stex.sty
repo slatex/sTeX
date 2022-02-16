@@ -290,6 +290,16 @@
   }
 }
 
+\protected\def\ignorespacesandpars{
+  \begingroup\catcode13=10\relax
+  \@ifnextchar\par{
+    \endgroup\expandafter\ignorespacesandpars\@gobble
+  }{
+    \endgroup
+  }
+}
+
+
 %%%%%%%%%%%%%   mathhub.dtx   %%%%%%%%%%%%%
 
 \msg_new:nnn{stex}{error/norepository}{
@@ -634,22 +644,10 @@
 
 \cs_new_protected:Nn \stex_inputref:nn {
   \stex_in_repository:nn {#1} {
-    \bool_lazy_any:nTF {
-      {\rustex_if_p:} {\latexml_if_p:}
-    } {
-      \str_clear:N \l_tmpa_str
-      \prop_get:NnNF \l_stex_current_repository_prop { narr } \l_tmpa_str {
-        \prop_get:NnNF \l_stex_current_repository_prop { ns } \l_tmpa_str {}
-      }
-      \stex_annotate_invisible:nnn{inputref}{
-        \l_tmpa_str / #2
-      }{}
-    }{
       \begingroup
         \inputreftrue
         \input{ \c_stex_mathhub_str / ##1 / source / #2 }
       \endgroup
-    }
   }
 }
 
@@ -914,7 +912,7 @@
 }
 
 \AtEndDocument{
-  \def\stexauxadddocref#1{}
+  \def\stexauxadddocref#1 #2 {}{}
 }
 
 \cs_new_protected:Nn \stex_ref_new_sym_target:n {
@@ -1067,6 +1065,9 @@
   Module~#1~declares~signature~#2,~but~does~not~
   declare~its~language
 }
+\msg_new:nnn{stex}{warning/deprecated}{
+  #1~is~deprecated;~please~use~#2~instead!
+}
 
 \msg_new:nnn{stex}{error/conflictingmodules}{
   Conflicting~imports~for~module~#1
@@ -1176,6 +1177,7 @@
   title         .tl_set:N     = \smoduletitle ,
   type          .str_set_x:N  = \smoduletype ,
   id            .str_set_x:N  = \smoduleid ,
+  deprecate     .str_set_x:N  = \l_stex_module_deprecate_str ,
   ns            .str_set_x:N  = \l_stex_module_ns_str ,
   lang          .str_set_x:N  = \l_stex_module_lang_str ,
   sig           .str_set_x:N  = \l_stex_module_sig_str ,
@@ -1190,6 +1192,7 @@
   \str_clear:N \smoduletype
   \str_clear:N \smoduleid
   \str_clear:N \l_stex_module_ns_str
+  \str_clear:N \l_stex_module_deprecate_str
   \str_clear:N \l_stex_module_lang_str
   \str_clear:N \l_stex_module_sig_str
   \str_clear:N \l_stex_module_creators_str
@@ -1257,6 +1260,7 @@
       file      = \exp_not:o { \g_stex_currentfile_seq } ,
       lang      = \l_stex_module_lang_str ,
       sig       = \l_stex_module_sig_str ,
+      deprecate = \l_stex_module_deprecate_str ,
       meta      = \l_stex_module_meta_str
     }
     \seq_clear:c {c_stex_module_\l_stex_module_ns_str?\l_stex_module_name_str _imports}
@@ -1310,6 +1314,13 @@
       }
     }
     \str_set:Nx\l_stex_current_module_str{\l_stex_module_ns_str?\l_stex_module_name_str}
+  }
+  \str_if_empty:NF \l_stex_module_deprecate_str {
+    \msg_warning:nnxx{stex}{warning/deprecated}{
+      Module~\l_stex_current_module_str
+    }{
+      \l_stex_module_deprecate_str
+    }
   }
 }
 \int_new:N \l_stex_module_group_depth_int
@@ -1773,6 +1784,7 @@
     \l_stex_import_ns_str ? \l_stex_import_name_str
   }
   \stex_smsmode_do:
+  \ignorespacesandpars
 }
 \stex_deactivate_macro:Nn \importmodule {module~environments}
 \NewDocumentCommand \usemodule { O{} m } {
@@ -1785,6 +1797,7 @@
       {usemodule} {\l_stex_import_ns_str ? \l_stex_import_name_str} {}
   }
   \stex_smsmode_do:
+  \ignorespacesandpars
 }
 
 %%%%%%%%%%%%%   symbols.dtx   %%%%%%%%%%%%%
@@ -1801,6 +1814,7 @@
   local       .bool_set:N  = \l_stex_symdecl_local_bool ,
   args        .str_set_x:N  = \l_stex_symdecl_args_str ,
   type        .tl_set:N    = \l_stex_symdecl_type_tl ,
+  deprecate   .str_set_x:N  = \l_stex_symdecl_deprecate_str ,
   align       .str_set:N    = \l_stex_symdecl_align_str , % TODO(?)
   gfc         .str_set:N    = \l_stex_symdecl_gfc_str , % TODO(?)
   specializes .str_set:N    = \l_stex_symdecl_specializes_str , % TODO(?)
@@ -1812,6 +1826,7 @@
 \cs_new_protected:Nn \__stex_symdecl_args:n {
   \str_clear:N \l_stex_symdecl_name_str
   \str_clear:N \l_stex_symdecl_args_str
+  \str_clear:N \l_stex_symdecl_deprecate_str
   \bool_set_false:N \l_stex_symdecl_local_bool
   \tl_clear:N \l_stex_symdecl_type_tl
   \tl_clear:N \l_stex_symdecl_definiens_tl
@@ -1852,6 +1867,13 @@
   \seq_clear:N \l_tmpa_seq
   \prop_put:Nno \l_tmpa_prop { name } \l_stex_symdecl_name_str
   \prop_put:Nno \l_tmpa_prop { type } \l_stex_symdecl_type_tl
+
+  \str_if_empty:NT \l_stex_symdecl_deprecate_str {
+    \str_if_empty:NF \l_stex_module_deprecate_str {
+      \str_set_eq:NN \l_stex_symdecl_deprecate_str \l_stex_module_deprecate_str
+    }
+  }
+  \prop_put:Nno \l_tmpa_prop { deprecate } \l_stex_symdecl_deprecate_str
 
   \exp_args:No \stex_add_constant_to_current_module:n {
     \l_stex_symdecl_name_str
@@ -2035,6 +2057,17 @@
       % argument is not a command name
       \__stex_symdecl_get_symbol_from_string:n { #1 }
       % \l_stex_all_symbols_seq
+    }
+  }
+  \str_if_eq:eeF {
+    \prop_item:cn {
+      l_stex_symdecl_\l_stex_get_symbol_uri_str _prop
+    }{ deprecate }
+  }{}{
+    \msg_warning:nnxx{stex}{warning/deprecated}{
+      Symbol~\l_stex_get_symbol_uri_str
+    }{
+      \prop_item:cn {l_stex_symdecl_\l_stex_get_symbol_uri_str _prop}{ deprecate }
     }
   }
 }
@@ -2616,6 +2649,17 @@
   \keys_set:nn { stex / terms } { #1 }
 }
 \cs_new_protected:Nn \stex_invoke_symbol:n {
+  \str_if_eq:eeF {
+    \prop_item:cn {
+      l_stex_symdecl_#1_prop
+    }{ deprecate }
+  }{}{
+    \msg_warning:nnxx{stex}{warning/deprecated}{
+      Symbol~#1
+    }{
+      \prop_item:cn {l_stex_symdecl_#1_prop}{ deprecate }
+    }
+  }
   \if_mode_math:
     \exp_after:wN \__stex_terms_invoke_math:n
   \else:
@@ -3747,15 +3791,6 @@
 }
 
 %%%%%%%%%%%%%   features.dtx   %%%%%%%%%%%%%
-
-\protected\def\ignorespacesandpars{
-  \begingroup\catcode13=10\relax
-  \@ifnextchar\par{
-    \endgroup\expandafter\ignorespacesandpars\@gobble
-  }{
-    \endgroup
-  }
-}
 
 
 \def\titleemph#1{\textbf{#1}}

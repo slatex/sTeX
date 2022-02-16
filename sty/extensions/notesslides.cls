@@ -11,7 +11,7 @@
 
 \keys_define:nn{notesslides / cls}{
   class   .code:n   = {
-    \PassOptionsToClass{\CurrentOption}{omdoc}
+    \PassOptionsToClass{\CurrentOption}{document-structure}
     \str_if_eq:nnT{#1}{book}{
       \PassOptionsToPackage{defaulttopsec=part}{notesslides}
     }
@@ -22,7 +22,7 @@
   notes   .bool_set:N  = \c__notesslides_notes_bool ,
   slides  .code:n      = { \bool_set_false:N \c__notesslides_notes_bool },
   unknown .code:n      = {
-    \PassOptionsToClass{\CurrentOption}{omdoc}
+    \PassOptionsToClass{\CurrentOption}{document-structure}
     \PassOptionsToClass{\CurrentOption}{beamer}
     \PassOptionsToPackage{\CurrentOption}{notesslides}
   }
