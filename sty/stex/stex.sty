@@ -679,35 +679,31 @@
   \prop_get:NnNF \l_stex_current_repository_prop {id} \l_tmpa_str {
     \msg_error:nnn{stex}{error/notinarchive}\libinput
   }
-  \bool_set_false:N \l_tmpa_bool
-  \tl_clear:N \l_tmpa_tl
+  \tl_clear:N \l__stex_mathhub_libinput_files_seq
   \seq_set_eq:NN \l_tmpa_seq \c_stex_mathhub_seq
   \seq_set_split:NnV \l_tmpb_seq / \l_tmpa_str
-  \seq_pop_right:NN \l_tmpb_seq \l_tmpa_str
-  \seq_pop_left:NNT \l_tmpb_seq \l_tmpb_str {
-    \seq_put_right:No \l_tmpa_seq \l_tmpb_str
-    \IfFileExists{ \stex_path_to_string:N \l_tmpa_seq
-      / meta-inf / lib / #1.tex}{
-        \bool_set_true:N \l_tmpa_bool
-        \tl_put_right:Nx \l_tmpa_tl {
-          \exp_not:N \input { \stex_path_to_string:N \l_tmpa_seq
-          / meta-inf / lib / #1.tex}
-        }
-      }{}
+
+  \bool_while_do:nn { ! \seq_if_empty_p:N \l_tmpb_seq }{
+    \str_set:Nx \l_tmpa_str {\stex_path_to_string:N \l_tmpa_seq / meta-inf / lib / #1.tex}
+    \IfFileExists{ \l_tmpa_str }{
+      \seq_put_right:No \l__stex_mathhub_libinput_files_seq \l_tmpa_str
+    }{}
+    \seq_pop_left:NN \l_tmpb_seq \l_tmpa_str
+    \seq_put_right:No \l_tmpa_seq \l_tmpa_str
   }
-  \IfFileExists{ \stex_path_to_string:N \l_tmpa_seq
-    / \l_tmpa_str / lib / #1.tex
-  }{
-    \bool_set_true:N \l_tmpa_bool
-    \tl_put_right:Nx \l_tmpa_tl {
-      \exp_not:N \input { \stex_path_to_string:N \l_tmpa_seq
-      / \l_tmpa_str / lib / #1.tex}
-    }
+
+  \str_set:Nx \l_tmpa_str {\stex_path_to_string:N \l_tmpa_seq / lib / #1.tex}
+  \IfFileExists{ \l_tmpa_str }{
+    \seq_put_right:No \l__stex_mathhub_libinput_files_seq \l_tmpa_str
   }{}
-  \bool_if:NF \l_tmpa_bool {
+
+  \seq_if_empty:NTF \l__stex_mathhub_libinput_files_seq {
     \msg_error:nnxx{stex}{error/nofile}{\exp_not:N\libinput}{#1.tex}
+  }{
+    \seq_map_inline:Nn \l__stex_mathhub_libinput_files_seq {
+      \input{ ##1 }
+    }
   }
-  \l_tmpa_tl
 }
 \NewDocumentCommand \libusepackage {O{} m} {
   \prop_if_exist:NF \l_stex_current_repository_prop {
@@ -716,38 +712,35 @@
   \prop_get:NnNF \l_stex_current_repository_prop {id} \l_tmpa_str {
     \msg_error:nnn{stex}{error/notinarchive}\libusepackage
   }
-  \bool_set_false:N \l_libusepackage_bool
-  \tl_clear:N \l_tmpa_tl
+  \tl_clear:N \l__stex_mathhub_libinput_files_seq
   \seq_set_eq:NN \l_tmpa_seq \c_stex_mathhub_seq
   \seq_set_split:NnV \l_tmpb_seq / \l_tmpa_str
-  \seq_pop_right:NN \l_tmpb_seq \l_tmpa_str
-  \seq_pop_left:NNT \l_tmpb_seq \l_tmpb_str {
-    \seq_put_right:No \l_tmpa_seq \l_tmpb_str
-    \IfFileExists{ \stex_path_to_string:N \l_tmpa_seq
-      / meta-inf / lib / #2.sty}{
-        \bool_set_true:N \l_libusepackage_bool
-        \tl_put_right:Nx \l_tmpa_tl {
-          \exp_not:N \usepackage[#1] { \stex_path_to_string:N \l_tmpa_seq
-          / meta-inf / lib / #2}
-        }
-      }{}
+
+  \bool_while_do:nn { ! \seq_if_empty_p:N \l_tmpb_seq }{
+    \str_set:Nx \l_tmpa_str {\stex_path_to_string:N \l_tmpa_seq / meta-inf / lib / #2.sty}
+    \IfFileExists{ \l_tmpa_str }{
+      \seq_put_right:No \l__stex_mathhub_libinput_files_seq \l_tmpa_str
+    }{}
+    \seq_pop_left:NN \l_tmpb_seq \l_tmpa_str
+    \seq_put_right:No \l_tmpa_seq \l_tmpa_str
   }
-  \IfFileExists{ \stex_path_to_string:N \l_tmpa_seq
-    / \l_tmpa_str / lib / #2.sty
+
+  \str_set:Nx \l_tmpa_str {\stex_path_to_string:N \l_tmpa_seq / lib / #2.sty}
+  \IfFileExists{ \l_tmpa_str }{
+    \seq_put_right:No \l__stex_mathhub_libinput_files_seq \l_tmpa_str
+  }{}
+
+  \seq_if_empty:NTF \l__stex_mathhub_libinput_files_seq {
+    \msg_error:nnxx{stex}{error/nofile}{\exp_not:N\libusepackage}{#2.sty}
   }{
-    \bool_if:NT \l_libusepackage_bool {
+    \int_compare:nNnTF {\seq_count:N \l__stex_mathhub_libinput_files_seq} = 1 {
+      \seq_map_inline:Nn \l__stex_mathhub_libinput_files_seq {
+        \usepackage[#1]{ ##1 }
+      }
+    }{
       \msg_error:nnxx{stex}{error/twofiles}{\exp_not:N\libusepackage}{#2.sty}
     }
-    \bool_set_true:N \l_libusepackage_bool
-    \tl_put_right:Nx \l_tmpa_tl {
-      \exp_not:N \usepackage[#1] { \stex_path_to_string:N \l_tmpa_seq
-      / \l_tmpa_str / lib / #2}
-    }
-  }{}
-  \bool_if:NF \l_libusepackage_bool {
-    \msg_error:nnxx{stex}{error/nofile}{\exp_not:N\libusepackage}{#2.sty}
   }
-  \l_tmpa_tl
 }
 
 \AddToHook{begindocument}{
@@ -1046,9 +1039,9 @@
 
 \cs_new_protected:Npn \srefsymuri #1 #2 {
   \str_if_exist:cTF {sref_sym_#1 _label_str }{
-    \exp_args:Nx \hyperref{\use:c{sref_sym_\l_stex_get_symbol_uri_str _label_str}}{#2}
+    \href{\use:c{sref_sym_#1 _label_str}}{#2}
   }{
-    \hyperref[sref_sym_#1]{#2}
+    \href{sref_sym_#1}{#2}
   }
 }
 
