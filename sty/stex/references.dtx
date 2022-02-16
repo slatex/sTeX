@@ -184,6 +184,7 @@
 %    \begin{macrocode}
 \str_const:Nn \c_@@_url_str{URL}
 \str_const:Nn \c_@@_ref_str{REF}
+\str_new:N \l_@@_curr_label_str
 % @currentlabel -> number
 % @currentlabelname -> title
 % @currentHref -> name.number <- id of some kind
@@ -191,58 +192,60 @@
 % \the#  -> number
 % \hyper@makecurrent{#}
 \cs_new_protected:Nn \stex_ref_new_doc_target:n {
-  \stex_get_document_uri:
+  \str_clear:N \l_@@_curr_label_str
   \str_set:Nx \l_tmpa_str { #1 }
-  \str_if_empty:NT \l_tmpa_str {
-    \int_zero:N \l_tmpa_int
-    \bool_set_true:N \l_tmpa_bool
-    \bool_while_do:Nn \l_tmpa_bool {
-      \cs_if_exist:cTF {
-        sref_\l_stex_current_docns_str?? REF_\int_use:N \l_tmpa_int _type
-      }{
-        \int_incr:N \l_tmpa_int
-      }{
-        \str_set:Nx \l_tmpa_str { REF_\int_use:N \l_tmpa_int }
-        \bool_set_false:N \l_tmpa_bool
-      }
+  \str_if_empty:NF \l_tmpa_str {
+    \stex_get_document_uri:
+    \str_set:Nx \l_@@_curr_label_str {
+      \l_stex_current_docns_str??#1
+    }
+    \seq_if_in:NoF \g_@@_all_refs_seq \l_@@_curr_label_str {
+      \seq_gput_right:No \g_@@_all_refs_seq \l_@@_curr_label_str
+    }
+    \stex_if_smsmode:TF {
+      \stex_get_document_url:
+      \str_gset_eq:cN {sref_url_\l_@@_curr_label_str _str}\l_stex_current_docurl_str
+      \str_gset_eq:cN {sref_\l_@@_curr_label_str _type}\c_@@_url_str
+    }{
+      \iow_now:Nx \c_@@_refs_iow { \l_tmpa_str~=~\expandafter\unexpanded\expandafter{\@currentlabel}~in~\exp_args:No\unexpanded\g_@@_title_tl,}
+      \exp_args:Nx\label{sref_\l_@@_curr_label_str}
+      \exp_args:NNNx\immediate\write\@auxout{\stexauxadddocref{\l_@@_curr_label_str}}
+      \str_gset:cx {sref_\l_@@_curr_label_str _type}\c_@@_ref_str
     }
   }
-  \str_set:Nx \l_tmpa_str {
-    \l_stex_current_docns_str??\l_tmpa_str
-  }
-  \seq_gput_right:No \g_@@_all_refs_seq \l_tmpa_str
-  \stex_if_smsmode:TF {
-    \stex_get_document_url:
-    \str_gset_eq:cN {sref_url_\l_tmpa_str _str}\l_stex_current_docurl_str
-    \str_gset_eq:cN {sref_\l_tmpa_str _type}\c_@@_url_str
-  }{
-    \iow_now:Nx \c_@@_refs_iow { \l_tmpa_str~=~\expandafter\unexpanded\expandafter{\@currentlabel}~in~\exp_args:No\unexpanded\g_@@_title_tl,}
-    \exp_args:Nx\label{sref_\l_tmpa_str}
-    \exp_args:NNNx\immediate\write\@auxout{\stexauxadddocref{\l_tmpa_str}}
-    \str_gset:cx {sref_\l_tmpa_str _type}\c_@@_ref_str
-  }
 }
+
 \cs_new_protected:Npn \stexauxadddocref #1 {
   \str_set:Nx \l_tmpa_str {#1}
   \str_gset_eq:cN{sref_\l_tmpa_str _type}\c_@@_ref_str
-  \seq_gput_right:Nx \g_@@_all_refs_seq {\l_tmpa_str}
+  \seq_if_in:NoF \g_@@_all_refs_seq \l_tmpa_str {
+    \seq_gput_right:No \g_@@_all_refs_seq \l_tmpa_str
+  }
 }
+
+\AtEndDocument{
+  \def\stexauxadddocref#1{}
+}
+
 %    \end{macrocode}
 %
 %    \begin{macrocode}
 \cs_new_protected:Nn \stex_ref_new_sym_target:n {
-  \stex_get_document_uri:
   \stex_if_smsmode:TF {
-    \stex_get_document_url:
-    \str_gset_eq:cN {sref_sym_url_#1_str}\l_stex_current_docurl_str
-    \str_gset_eq:cN {sref_sym_#1_type}\c_@@_url_str
-
+    \str_if_exist:cF{sref_sym_#1_type}{
+      \stex_get_document_url:
+      \str_gset_eq:cN {sref_sym_url_#1_str}\l_stex_current_docurl_str
+      \str_gset_eq:cN {sref_sym_#1_type}\c_@@_url_str
+    }
   }{
-    \iow_now:Nx \c_@@_refs_iow { \l_tmpa_str~=~\expandafter{\@currentlabel\iffalse}{\fi~in~\exp_args:No\unexpanded\g_@@_title_tl},}
-    \exp_args:Nx\label{sref_sym_#1}
-
-    \exp_args:NNNx\immediate\write\@auxout{\stexauxadddocref{sym_#1}}
-    \str_gset:cx {sref_sym_#1_type}\c_@@_ref_str
+    \str_if_empty:NF \l_@@_curr_label_str {
+      \str_gset_eq:cN {sref_sym_#1_label_str}\l_@@_curr_label_str
+      \immediate\write\@auxout{
+        \exp_not:N\expandafter\def\exp_not:N\csname sref_sym_#1_label_str\exp_not:N\endcsname{
+            \l_@@_curr_label_str
+          }
+      }
+    }
   }
 }
 %    \end{macrocode}
@@ -280,7 +283,7 @@
 \NewDocumentCommand \sref { O{} m}{
   \_@@_args:n { #1 }
   \str_if_empty:NTF \l_@@_indocument_str {
-    \str_set:Nn \l_tmpa_str { #2 }
+    \str_set:Nx \l_tmpa_str { #2 }
     \int_set:Nn \l_tmpa_int { \str_count:N \l_tmpa_str }
     \tl_set:Nn \l_tmpa_tl {
       \l_@@_fallback_tl
@@ -321,40 +324,48 @@
 
 \NewDocumentCommand \srefsym { O{} m}{
   \stex_get_symbol:n { #2 }
-  \_@@_args:n { #1 }
-  \str_if_empty:NTF \l_@@_indocument_str {
-    \tl_set:Nn \l_tmpa_tl {
-      \l_@@_fallback_tl
-    }
-    \tl_if_exist:cT{sref_sym_\l_stex_get_symbol_uri_str _type}{
+  \str_if_exist:cTF {sref_sym_\l_stex_get_symbol_uri_str _label_str }{
+    \sref[#1]{\use:c{sref_sym_\l_stex_get_symbol_uri_str _label_str}}
+  }{
+    \_@@_args:n { #1 }
+    \str_if_empty:NTF \l_@@_indocument_str {
       \tl_set:Nn \l_tmpa_tl {
-        % doc uri in \l_tmpb_str
-        \str_set:Nx \l_tmpa_str {\use:c{sref_sym_\l_stex_get_symbol_uri_str _type}}
-        \str_if_eq:NNTF \l_tmpa_str \c_@@_ref_str {
-          % reference
-          \cs_if_exist:cTF{autoref}{
-            \l_@@_pre_tl\autoref{sref_sym_\l_stex_get_symbol_uri_str}\l_@@_post_tl
+        \l_@@_fallback_tl
+      }
+      \tl_if_exist:cT{sref_sym_\l_stex_get_symbol_uri_str _type}{
+        \tl_set:Nn \l_tmpa_tl {
+          % doc uri in \l_tmpb_str
+          \str_set:Nx \l_tmpa_str {\use:c{sref_sym_\l_stex_get_symbol_uri_str _type}}
+          \str_if_eq:NNTF \l_tmpa_str \c_@@_ref_str {
+            % reference
+            \cs_if_exist:cTF{autoref}{
+              \l_@@_pre_tl\autoref{sref_sym_\l_stex_get_symbol_uri_str}\l_@@_post_tl
+            }{
+              \l_@@_pre_tl\ref{sref_sym_\l_stex_get_symbol_uri_str}\l_@@_post_tl
+            }
           }{
-            \l_@@_pre_tl\ref{sref_sym_\l_stex_get_symbol_uri_str}\l_@@_post_tl
-          }
-        }{
-          % URL
-          \if_bool:N \c_@@_hyperref_bool {
-            \exp_args:Nx \href{\use:c{sref_sym_url_\l_stex_get_symbol_uri_str _str}}{\l_@@_fallback_tl}
-          }{
-            \l_@@_fallback_tl
+            % URL
+            \if_bool:N \c_@@_hyperref_bool {
+              \exp_args:Nx \href{\use:c{sref_sym_url_\l_stex_get_symbol_uri_str _str}}{\l_@@_fallback_tl}
+            }{
+              \l_@@_fallback_tl
+            }
           }
         }
       }
+      \l_tmpa_tl
+    }{
+      % TODO
     }
-    \l_tmpa_tl
-  }{
-    % TODO
   }
 }
 
 \cs_new_protected:Npn \srefsymuri #1 #2 {
-  \hyperref[sref_sym_#1]{#2}
+  \str_if_exist:cTF {sref_sym_#1 _label_str }{
+    \exp_args:Nx \hyperref{\use:c{sref_sym_\l_stex_get_symbol_uri_str _label_str}}{#2}
+  }{
+    \hyperref[sref_sym_#1]{#2}
+  }
 }
 
 %    \end{macrocode}
