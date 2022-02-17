@@ -878,30 +878,33 @@
 \str_const:Nn \c__stex_refs_url_str{URL}
 \str_const:Nn \c__stex_refs_ref_str{REF}
 \str_new:N \l__stex_refs_curr_label_str
+\int_new:N \l__stex_refs_unnamed_counter_int
 \cs_new_protected:Nn \stex_ref_new_doc_target:n {
+  \stex_get_document_uri:
   \str_clear:N \l__stex_refs_curr_label_str
   \str_set:Nx \l_tmpa_str { #1 }
-  \str_if_empty:NF \l_tmpa_str {
-    \stex_get_document_uri:
-    \str_set:Nx \l__stex_refs_curr_label_str {
-      \l_stex_current_docns_str?#1
-    }
-    \seq_if_exist:cF{g__stex_refs_labels_#1_seq}{
-      \seq_new:c {g__stex_refs_labels_#1_seq}
-    }
-    \seq_if_in:coF{g__stex_refs_labels_#1_seq}\l__stex_refs_curr_label_str {
-      \seq_gput_right:co{g__stex_refs_labels_#1_seq}\l__stex_refs_curr_label_str
-    }
-    \stex_if_smsmode:TF {
-      \stex_get_document_url:
-      \str_gset_eq:cN {sref_url_\l__stex_refs_curr_label_str _str}\l_stex_current_docurl_str
-      \str_gset_eq:cN {sref_\l__stex_refs_curr_label_str _type}\c__stex_refs_url_str
-    }{
-      \iow_now:Nx \c__stex_refs_refs_iow { \l_tmpa_str~=~\expandafter\unexpanded\expandafter{\@currentlabel}~in~\exp_args:No\unexpanded\g__stex_refs_title_tl,}
-      \exp_args:Nx\label{sref_\l__stex_refs_curr_label_str}
-      \immediate\write\@auxout{\stexauxadddocref{\l_stex_current_docns_str}{#1}}
-      \str_gset:cx {sref_\l__stex_refs_curr_label_str _type}\c__stex_refs_ref_str
-    }
+  \str_if_empty:NT \l_tmpa_str {
+    \int_incr:N \l__stex_refs_unnamed_counter_int
+    \str_set:Nx \l_tmpa_str {REF\int_use:N \l__stex_refs_unnamed_counter_int}
+  }
+  \str_set:Nx \l__stex_refs_curr_label_str {
+    \l_stex_current_docns_str?\l_tmpa_str
+  }
+  \seq_if_exist:cF{g__stex_refs_labels_\l_tmpa_str _seq}{
+    \seq_new:c {g__stex_refs_labels_\l_tmpa_str _seq}
+  }
+  \seq_if_in:coF{g__stex_refs_labels_\l_tmpa_str _seq}\l__stex_refs_curr_label_str {
+    \seq_gput_right:co{g__stex_refs_labels_\l_tmpa_str _seq}\l__stex_refs_curr_label_str
+  }
+  \stex_if_smsmode:TF {
+    \stex_get_document_url:
+    \str_gset_eq:cN {sref_url_\l__stex_refs_curr_label_str _str}\l_stex_current_docurl_str
+    \str_gset_eq:cN {sref_\l__stex_refs_curr_label_str _type}\c__stex_refs_url_str
+  }{
+    \iow_now:Nx \c__stex_refs_refs_iow { \l_tmpa_str~=~\expandafter\unexpanded\expandafter{\@currentlabel}~in~\exp_args:No\unexpanded\g__stex_refs_title_tl,}
+    \exp_args:Nx\label{sref_\l__stex_refs_curr_label_str}
+    \immediate\write\@auxout{\stexauxadddocref{\l_stex_current_docns_str}{\l_tmpa_str}}
+    \str_gset:cx {sref_\l__stex_refs_curr_label_str _type}\c__stex_refs_ref_str
   }
 }
 
@@ -1405,7 +1408,9 @@
     }
   }
   \__stex_modules_begin_module:
-  \stex_ref_new_doc_target:n \smoduleid
+  \str_if_empty:NF \smoduleid {
+    \stex_ref_new_doc_target:n \smoduleid
+  }
   \stex_smsmode_do:
 } {
   \__stex_modules_end_module:
@@ -1828,14 +1833,17 @@
 }
 \keys_define:nn { stex / symdecl } {
   name        .str_set_x:N  = \l_stex_symdecl_name_str ,
-  local       .bool_set:N  = \l_stex_symdecl_local_bool ,
+  local       .bool_set:N   = \l_stex_symdecl_local_bool ,
   args        .str_set_x:N  = \l_stex_symdecl_args_str ,
-  type        .tl_set:N    = \l_stex_symdecl_type_tl ,
+  type        .tl_set:N     = \l_stex_symdecl_type_tl ,
   deprecate   .str_set_x:N  = \l_stex_symdecl_deprecate_str ,
   align       .str_set:N    = \l_stex_symdecl_align_str , % TODO(?)
   gfc         .str_set:N    = \l_stex_symdecl_gfc_str , % TODO(?)
   specializes .str_set:N    = \l_stex_symdecl_specializes_str , % TODO(?)
-  def         .tl_set:N    = \l_stex_symdecl_definiens_tl
+  def         .tl_set:N     = \l_stex_symdecl_definiens_tl ,
+  assoc       .choices:nn   =
+      {bin,binl,binr,pre,conj,pwconj}
+      {\str_set:Nx \l_stex_symdecl_assoctype_str {\l_keys_choice_tl}}
 }
 
 \bool_new:N \l_stex_symdecl_make_macro_bool
@@ -1844,6 +1852,7 @@
   \str_clear:N \l_stex_symdecl_name_str
   \str_clear:N \l_stex_symdecl_args_str
   \str_clear:N \l_stex_symdecl_deprecate_str
+  \str_clear:N \l_stex_symdecl_assoctype_str
   \bool_set_false:N \l_stex_symdecl_local_bool
   \tl_clear:N \l_stex_symdecl_type_tl
   \tl_clear:N \l_stex_symdecl_definiens_tl
@@ -2609,6 +2618,9 @@
   lang    .str_set_x:N = \l__stex_notation_lang_str ,
   variant .str_set_x:N = \l__stex_notation_variant_str ,
   prec    .str_set_x:N = \l__stex_notation_prec_str ,
+  assoc   .choices:nn  =
+      {bin,binl,binr,pre,conj,pwconj}
+      {\str_set:Nx \l_stex_symdecl_assoctype_str {\l_keys_choice_tl}},
   unknown .code:n      = \str_set:Nx
       \l__stex_notation_variant_str \l_keys_key_str
 }
@@ -2616,6 +2628,7 @@
 \cs_new_protected:Nn \__stex_notation_symdef_args:n {
   \str_clear:N \l_stex_symdecl_name_str
   \str_clear:N \l_stex_symdecl_args_str
+  \str_clear:N \l_stex_symdecl_assoctype_str
   \bool_set_false:N \l_stex_symdecl_local_bool
   \tl_clear:N \l_stex_symdecl_type_tl
   \tl_clear:N \l_stex_symdecl_definiens_tl
@@ -3957,7 +3970,9 @@
       \l_tmpa_tl
     }
   }
-  \stex_ref_new_doc_target:n \sdefinitionid
+  \str_if_empty:NF \sdefinitionid {
+    \stex_ref_new_doc_target:n \sdefinitionid
+  }
   \stex_smsmode_do:
 }{
   \str_if_empty:NF \sdefinitionname { \symdecl*{\sdefinitionname} }
@@ -4010,10 +4025,12 @@
 \NewDocumentCommand \inlinedef { O{} m } {
   \begingroup
   \__stex_statements_inlinedef_args:n{ #1 }
-  \stex_ref_new_doc_target:n \sdefinitionid
   \stex_reactivate_macro:N \definiendum
   \stex_reactivate_macro:N \definame
   \stex_reactivate_macro:N \Definame
+  \str_if_empty:NF \sdefinitionid {
+    \stex_ref_new_doc_target:n \sdefinitionid
+  }
   \stex_if_smsmode:TF{
     \str_if_empty:NF \sdefinitionname { \symdecl*{\sdefinitionname} }
   }{
@@ -4086,10 +4103,19 @@
       \l_tmpa_tl
     }
   }
-  \stex_ref_new_doc_target:n \sassertionid
+  \str_if_empty:NTF \sassertionid {
+    \str_if_empty:NF \sassertionname {
+      \stex_ref_new_doc_target:n {}
+    }
+  } {
+    \stex_ref_new_doc_target:n \sassertionid
+  }
   \stex_smsmode_do:
 }{
-  \str_if_empty:NF \sassertionname { \symdecl*{\sassertionname} }
+  \str_if_empty:NF \sassertionname {
+    \symdecl*{\sassertionname}
+    \stex_ref_new_sym_target:n {\l_stex_current_module_str ? \sassertionname}
+  }
   \stex_if_smsmode:F {
     \clist_set:No \l_tmpa_clist \sassertiontype
     \tl_clear:N \l_tmpa_tl
@@ -4140,9 +4166,19 @@
 \NewDocumentCommand \inlineass { O{} m } {
   \begingroup
   \__stex_statements_inlineass_args:n{ #1 }
-  \stex_ref_new_doc_target:n \sassertionid
+  \str_if_empty:NTF \sassertionid {
+    \str_if_empty:NF \sassertionname {
+      \stex_ref_new_doc_target:n {}
+    }
+  } {
+    \stex_ref_new_doc_target:n \sassertionid
+  }
+
   \stex_if_smsmode:TF{
-    \str_if_empty:NF \sassertionname { \symdecl*{\sassertionname} }
+    \str_if_empty:NF \sassertionname {
+      \symdecl*{\sassertionname}
+      \stex_ref_new_sym_target:n {\l_stex_current_module_str ? \sassertionname}
+    }
   }{
     \seq_clear:N \l_tmpa_seq
     \clist_map_inline:Nn \l__stex_statements_sassertion_for_clist {
@@ -4159,7 +4195,10 @@
         \stex_annotate_invisible:nnn{type}{\sassertiontype}{}
       }
       #2
-      \str_if_empty:NF \sassertionname { \symdecl*{\sassertionname} }
+      \str_if_empty:NF \sassertionname {
+        \symdecl*{\sassertionname}
+        \stex_ref_new_sym_target:n {\l_stex_current_module_str ? \sassertionname}
+      }
     }
   }
   \endgroup
@@ -4210,7 +4249,9 @@
       \l_tmpa_tl
     }
   }
-  \stex_ref_new_doc_target:n \sexampleid
+  \str_if_empty:NF \sexampleid {
+    \stex_ref_new_doc_target:n \sexampleid
+  }
   \stex_smsmode_do:
 }{
   \str_if_empty:NF \sexamplename { \symdecl*{\sexamplename} }
@@ -4264,7 +4305,9 @@
 \NewDocumentCommand \inlineex { O{} m } {
   \begingroup
   \__stex_statements_inlineex_args:n{ #1 }
-  \stex_ref_new_doc_target:n \sexampleid
+  \str_if_empty:NF \sexampleid {
+    \stex_ref_new_doc_target:n \sexampleid
+  }
   \stex_if_smsmode:TF{
     \str_if_empty:NF \sexamplename { \symdecl*{\examplename} }
   }{
@@ -4355,10 +4398,34 @@
       \l_tmpa_tl
     }
   }
-  \stex_ref_new_doc_target:n \sparagraphid
+  \clist_set:No \l_tmpa_clist \sparagraphtype
+  \str_if_empty:NTF \sparagraphid {
+    \str_if_empty:NTF \sparagraphname {
+      \exp_args:NNx \clist_if_in:NnT \l_tmpa_clist {\tl_to_str:n{symdoc}}{
+        \stex_ref_new_doc_target:n {}
+      }
+    } {
+      \stex_ref_new_doc_target:n {}
+    }
+  } {
+    \stex_ref_new_doc_target:n \sparagraphid
+  }
+  \exp_args:NNx
+  \clist_if_in:NnT \l_tmpa_clist {\tl_to_str:n{symdoc}}{
+    \clist_map_inline:Nn \l__stex_statements_sparagraph_for_clist {
+      \str_if_eq:nnF{ ##1 }{}{
+        \stex_get_symbol:n { ##1 }
+        \stex_ref_new_sym_target:n \l_stex_get_symbol_uri_str
+      }
+    }
+  }
   \stex_smsmode_do:
   \ignorespacesandpars
 }{
+  \str_if_empty:NF \sparagraphname {
+    \symdecl*{\sparagraphname}
+    \stex_ref_new_sym_target:n {\l_stex_current_module_str ? \sparagraphname}
+  }
   \stex_if_smsmode:F {
     \clist_set:No \l_tmpa_clist \sparagraphtype
     \tl_clear:N \l_tmpa_tl
@@ -4367,7 +4434,6 @@
         \tl_set:Nn \l_tmpa_tl {\use:c{__stex_statements_sparagraph_##1_end:}}
       }
     }
-    \str_if_empty:NF \sparagraphname { \symdecl*{\sparagraphname} }
     \tl_if_empty:NTF \l_tmpa_tl {
       \__stex_statements_sparagraph_end:
     }{
@@ -4419,9 +4485,23 @@
 \NewDocumentCommand \inlinepara { O{} m } {
   \begingroup
   \__stex_statements_inlinepara_args:n{ #1 }
-  \stex_ref_new_doc_target:n \sparagraphid
+  \clist_set:No \l_tmpa_clist \sparagraphtype
+  \str_if_empty:NTF \sparagraphid {
+    \str_if_empty:NTF \sparagraphname {
+      \exp_args:NNx \clist_if_in:NnT \l_tmpa_clist {\tl_to_str:n{symdoc}}{
+        \stex_ref_new_doc_target:n {}
+      }
+    } {
+      \stex_ref_new_doc_target:n {}
+    }
+  } {
+    \stex_ref_new_doc_target:n \sparagraphid
+  }
   \stex_if_smsmode:TF{
-    \str_if_empty:NF \sparagraphname { \symdecl*{\sparagraphname} }
+    \str_if_empty:NF \sparagraphname {
+      \symdecl*{\sparagraphname}
+      \stex_ref_new_sym_target:n {\l_stex_current_module_str ? \sparagraphname}
+    }
   }{
     \seq_clear:N \l_tmpa_seq
     \clist_map_inline:Nn \l__stex_statements_sparagraph_for_clist {
@@ -4443,8 +4523,16 @@
       \str_if_empty:NF \sparagraphto {
         \stex_annotate_invisible:nnn{to}{\sparagraphto}{}
       }
+      \str_if_empty:NF \sparagraphname {
+        \symdecl*{\sparagraphname}
+        \stex_ref_new_sym_target:n {\l_stex_current_module_str ? \sparagraphname}
+      }
+      \exp_args:NNx \clist_if_in:NnT \l_tmpa_clist {\tl_to_str:n{symdoc}}{
+        \clist_map_inline:Nn \l_tmpa_seq {
+          \stex_ref_new_sym_target:n {##1}
+        }
+      }
       #2
-      \str_if_empty:NF \sparagraphname { \symdecl*{\sparagraphname} }
     }
   }
   \endgroup
