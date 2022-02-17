@@ -294,7 +294,7 @@
     }{
       \seq_pop_left:NN \l_tmpa_seq \l_tmpb_str
       \seq_pop_right:NN \l_tmpa_seq \l_tmpa_str
-      \int_set:Nn \l_tmpa_int { \exp_args:Nx \str_count:n {\l_tmpb_str?\l_tmpa_str} }
+      \int_set:Nn \l_tmpa_int { \exp_args:Ne \str_count:n {\l_tmpb_str?\l_tmpa_str} }
       \seq_if_exist:cTF{g_@@_labels_\l_tmpa_str _seq}{
         \str_set_eq:NN \l_tmpc_str \l_tmpa_str
         \str_clear:N \l_tmpa_str
@@ -312,19 +312,27 @@
       }
     }
     \str_if_empty:NTF \l_tmpa_str {
-      \l_@@_fallback_tl
+      \tl_if_empty:NTF \l_@@_linktext_tl \l_@@_fallback_tl \l_@@_linktext_tl
     }{
       \str_if_eq:cNTF {sref_\l_tmpa_str _type} \c_@@_ref_str {
-        \cs_if_exist:cTF{autoref}{
-          \l_@@_pre_tl\exp_args:Nx\autoref{sref_\l_tmpa_str}\l_@@_post_tl
+        \tl_if_empty:NTF \l_@@_linktext_tl {
+          \cs_if_exist:cTF{autoref}{
+            \l_@@_pre_tl\exp_args:Nx\autoref{sref_\l_tmpa_str}\l_@@_post_tl
+          }{
+            \l_@@_pre_tl\exp_args:Nx\ref{sref_\l_tmpa_str}\l_@@_post_tl
+          }
         }{
-          \l_@@_pre_tl\exp_args:Nx\ref{sref_\l_tmpa_str}\l_@@_post_tl
+          \ltx@ifpackageloaded{hyperref}{
+            \hyperref[sref_\l_tmpa_str]\l_@@_linktext_tl
+          }{
+            \l_@@_linktext_tl
+          }
         }
       }{
         \ltx@ifpackageloaded{hyperref}{
-          \exp_args:Nx \href{\use:c{sref_url_\l_tmpa_str _str}}{\l_@@_fallback_tl}
+          \href{\use:c{sref_url_\l_tmpa_str _str}}{\tl_if_empty:NTF \l_@@_linktext_tl \l_@@_fallback_tl \l_@@_linktext_tl}
         }{
-          \l_@@_fallback_tl
+          \tl_if_empty:NTF \l_@@_linktext_tl \l_@@_fallback_tl \l_@@_linktext_tl
         }
       }
     }
@@ -335,36 +343,44 @@
 
 \NewDocumentCommand \srefsym { O{} m}{
   \stex_get_symbol:n { #2 }
-  \str_if_exist:cTF {sref_sym_\l_stex_get_symbol_uri_str _label_str }{
-    \sref[#1]{\use:c{sref_sym_\l_stex_get_symbol_uri_str _label_str}}
+  \_@@_sym_aux:nn{#1}{\l_stex_get_symbol_uri_str}
+}
+
+\cs_new_protected:Nn \_@@_sym_aux:nn {
+  \str_if_exist:cTF {sref_sym_#2 _label_str }{
+    \sref[#1]{\use:c{sref_sym_#2 _label_str}}
   }{
     \_@@_args:n { #1 }
     \str_if_empty:NTF \l_@@_indocument_str {
-      \tl_set:Nn \l_tmpa_tl {
-        \l_@@_fallback_tl
-      }
-      \tl_if_exist:cT{sref_sym_\l_stex_get_symbol_uri_str _type}{
-        \tl_set:Nn \l_tmpa_tl {
-          % doc uri in \l_tmpb_str
-          \str_set:Nx \l_tmpa_str {\use:c{sref_sym_\l_stex_get_symbol_uri_str _type}}
-          \str_if_eq:NNTF \l_tmpa_str \c_@@_ref_str {
-            % reference
+      \tl_if_exist:cTF{sref_sym_#2 _type}{
+        % doc uri in \l_tmpb_str
+        \str_set:Nx \l_tmpa_str {\use:c{sref_sym_#2 _type}}
+        \str_if_eq:NNTF \l_tmpa_str \c_@@_ref_str {
+          % reference
+          \tl_if_empty:NTF \l_@@_linktext_tl {
             \cs_if_exist:cTF{autoref}{
-              \l_@@_pre_tl\autoref{sref_sym_\l_stex_get_symbol_uri_str}\l_@@_post_tl
+              \l_@@_pre_tl\autoref{sref_sym_#2}\l_@@_post_tl
             }{
-              \l_@@_pre_tl\ref{sref_sym_\l_stex_get_symbol_uri_str}\l_@@_post_tl
+              \l_@@_pre_tl\ref{sref_sym_#2}\l_@@_post_tl
             }
           }{
-            % URL
             \ltx@ifpackageloaded{hyperref}{
-              \exp_args:Nx \href{\use:c{sref_sym_url_\l_stex_get_symbol_uri_str _str}}{\l_@@_fallback_tl}
+              \hyperref[sref_sym_#2]\l_@@_linktext_tl
             }{
-              \l_@@_fallback_tl
+              \l_@@_linktext_tl
             }
           }
+        }{
+          % URL
+          \ltx@ifpackageloaded{hyperref}{
+            \href{\use:c{sref_sym_url_#2 _str}}{\tl_if_empty:NTF \l_@@_linktext_tl \l_@@_fallback_tl \l_@@_linktext_tl}
+          }{
+            \tl_if_empty:NTF \l_@@_linktext_tl \l_@@_fallback_tl \l_@@_linktext_tl
+          }
         }
+      }{
+        \tl_if_empty:NTF \l_@@_linktext_tl \l_@@_fallback_tl \l_@@_linktext_tl
       }
-      \l_tmpa_tl
     }{
       % TODO
     }
@@ -372,11 +388,7 @@
 }
 
 \cs_new_protected:Npn \srefsymuri #1 #2 {
-  \str_if_exist:cTF {sref_sym_#1 _label_str }{
-    \href{\use:c{sref_sym_#1 _label_str}}{#2}
-  }{
-    \href{sref_sym_#1}{#2}
-  }
+  \_@@_sym_aux:nn{linktext={#2}}{#1}
 }
 
 %    \end{macrocode}
