@@ -34,48 +34,57 @@
 % This is the documentation for the \pkg{stex-modules} package.
 % For a more high-level introduction, 
 %  see \href{\basedocurl/manual.pdf}{the \sTeX Manual} or the
-% \href{\basedocurl/stex.pdf}{full \sTeX documentation}.
+% \href{\basedocurl/stex.pdf}{full \sTeX documentation}.\fi
 %
-% \input{../../doc/packages/modules}
-% \fi
 %
 % \begin{documentation}\label{pkg:modules:doc}
 %
-% Code related to Modules
+% This sub package contains code related to Modules
+%
+% \ifinfulldoc\else
+% \input{../../doc/packages/modules}
+% \fi
 %
 % \section{Macros and Environments}\label{pkg:modules:doc:macros}
 %
-% \begin{variable}{\l_stex_current_module_str}
-% All information of a module is stored as a property list. 
-% \cs{l_stex_current_module_str}
-% always points to the current module (if existent).
-%
-% Most importantly, the |content|-field stores all the code
-% to execute on activation; i.e. when this module is being included.
-%
-% Additionally, it stores:
+% The content of a module with uri \meta{<URI>} is stored in four
+% macros. All modifications of these macros are global:
+% \begin{variable}{\c_stex_module_<URI>_prop}
+%    A property list with the following fields:
 % \begin{itemize}
-%   \item The \emph{name} in field |name|,
-%   \item the \emph{namespace} in field |ns|,
-%   \item this module's \emph{language} in field |lang|,
-%   \item if a language module that translates some other
-%     modules, the \emph{original} module in field |sig| (for signature),
-%   \item the \emph{metatheory} in field |meta|,
-%   \item the URIs of all \emph{imported modules} in field |imports|,
-%   \item the names of all \emph{declarations} in field |constants|,
-%   \item the \emph{file} this module was declared in in field |file|,
+%   \item[|name|] The \emph{name} of the module,
+%   \item[|ns|] the \emph{namespace} in field |ns|,
+%   \item[|file|] the \emph{file} containing the module, 
+%       as a sequence of path fragments
+%   \item[|lang|] the module's \emph{language},
+%   \item[|sig|] the language of the signature module, if the
+%     current file is a translation from some other language,
+%   \item[|deprecate|] if this module is deprecated, the module
+%     that replaces it,
+%   \item[|meta|] the metatheory of the module.
 % \end{itemize}
 % \end{variable}
 %
-% \begin{variable}{\l_stex_all_modules_seq}
-%   Stores full URIs for all
-%   modules currently in scope.
+% \begin{variable}{\c_stex_module_<URI>_code}
+%    The code to execute when this module is activated (i.e. imported),
+%    e.g. to set all the semantic macros, notations, etc. 
 % \end{variable}
 %
-% \begin{variable}{\g_stex_module_files_prop,\g_stex_modules_in_file_seq}
-%   A property list mapping file paths to the lists of all modules
-%   declared therein. \cs{g_stex_modules_in_file_seq} always points to
-%   the current file(-stream - \cs{input}s are considered the same file).
+% \begin{variable}{\c_stex_module_<URI>_constants}
+%    The names of all constants declared in the module 
+% \end{variable}
+%
+% \begin{variable}{\c_stex_module_<URI>_constants}
+%    The full URIs of all modules imported in this module 
+% \end{variable}
+%
+% \begin{variable}{\l_stex_current_module_str}
+%   \cs{l_stex_current_module_str} always
+%   contains the URI of the current module (if existent).
+% \end{variable}
+%
+% \begin{variable}{\l_stex_all_modules_seq}
+%   Stores full URIs for all modules currently in scope.
 % \end{variable}
 %
 % \begin{function}[pTF]{\stex_if_in_module:}
@@ -88,62 +97,77 @@
 % \end{function}
 %
 % \begin{function}{\stex_add_to_current_module:n,\STEXexport}
-%   Adds the provided tokens to the |content| field of the current
-%   module.
+%   Adds the provided tokens to the |_code| control sequence of the
+%   current module. 
+%
+%   \cs{stex_add_to_current_module:n} is used internally,
+%   \cs{STEXexport} is intended for users and additionally executes
+%   the provided code immediately.
 % \end{function}
 %
 % \begin{function}{\stex_add_constant_to_current_module:n}
-%   Adds the declaration with the provided name to the |constants|
-%   field of the current module.
+%   Adds the declaration with the provided name to the |_constants|
+%   control sequence of the current module.
 % \end{function}
 %
 % \begin{function}{\stex_add_import_to_current_module:n}
-%   Adds the module with the provided full URI to the |imports|
-%   field of the current module.
+%   Adds the module with the provided full URI to the |_imports|
+%   control sequence of the current module.
 % \end{function}
 %
-% \begin{function}{\stex_modules_compute_namespace:nN}
-%   \begin{syntax} \cs{stex_modules_compute_namespace:nN} 
-%     \Arg{namespace} \Arg{path}
-%   \end{syntax}
-%   Computes the namespace for file \meta{path} in repository
-%   with namespace \meta{namespace} as follows:
+% \begin{function}{\stex_collect_imports:n}
+%   Iterates over all imports of the provided (full URI of a) module
+%   and stores them as a topologically sorted list -- including
+%   the provided module as the last element -- in
+%   |\l_stex_collect_imports_seq|
+% \end{function}
 %
-%   If the file is |.../source/sub/file.tex|
-%   and the namespace |http://some.namespace/foo|, then the namespace of
-%   is |http://some.namespace/foo/sub/file|.
+% \begin{function}{\stex_do_up_to_module:n}
+%  Code that is \emph{exported} from module (such as symbol declarations)
+%  should be local \emph{to the current module}. For that reason, ideally
+%  all symbol declarations and similar commands should be called directly
+%  in the module environment, however, that is not always feasible, e.g.
+%  in structural features or |sparapraph|s. \cs{stex_do_up_to_module}
+%  therefore executes the provided code repeatedly in an \cs{aftergroup}
+%  up until the group level is equal to that of the innermost smodule environment. 
 % \end{function}
 %
 % \begin{function}{\stex_modules_current_namespace:}
-%   Computes the current namespace
+%   Computes the current namespace as follows:
+%
+%   If the current file is |.../source/sub/file.tex| in some archive
+%   with namespace |http://some.namespace/foo|, then the namespace of
+%   is |http://some.namespace/foo/sub/file|. Otherwise, the namespace
+%   is the absolute file path of the current file (i.e. starting with |file:///|).
+%
+%  The result is stored in |\l_stex_modules_ns_str|. Additionally, the sub path
+%  relative to the current repository is stored in |\l_stex_modules_subpath_str|.
 % \end{function}
 %
-%\stextest{
-% \ExplSyntaxOn
-% \stex_modules_current_namespace:
-% Namespace~1:\\ \l_stex_modules_ns_str \\
-% Faking~a~repository:\\
-% \stex_set_current_repository:n{Foo/Bar}
-% \seq_pop_right:NN \g_stex_currentfile_seq \testtemp
-% \edef\testtempb{\detokenize{source}}
-% \exp_args:NNo \seq_put_right:Nn \g_stex_currentfile_seq { \testtempb }
-% \edef\testtempb{\detokenize{test}}
-% \exp_args:NNo \seq_put_right:Nn \g_stex_currentfile_seq { \testtempb }
-% \exp_args:NNo \seq_put_right:Nn \g_stex_currentfile_seq { \testtemp }
-% \stex_modules_current_namespace:
-% Namespace~2:\\ \l_stex_modules_ns_str
-% \ExplSyntaxOff
-%}
-%
-% \subsection{The \texttt{module}-environment}
+% \subsection{The \texttt{smodule} environment}
 %
 % \begin{environment}{module}
 %   \begin{syntax} \cs{begin}|{module}[|\meta{options}|]|\Arg{name}\end{syntax}
 % 
-%   Opens a new module with name \meta{name}.
-%
-%   TODO document options.
-% \end{environment}
+%   Opens a new module with name \meta{name}. Options are:
+%   \begin{itemize}
+%     \item[|title|] (\meta{token list}) to display in customizations.
+%     \item[|type|] (\meta{string}$\ast$)  for use in customizations.
+%     \item[|deprecate|] (\meta{module}) if set, will throw a warning
+%       when loaded, urging to use \meta{module} instead.
+%     \item[|id|] (\meta{string}) for cross-referencing.
+%     \item[|ns|] (\meta{URI}) the namespace to use. \emph{Should not be used,
+%       unless you know precisely what you're doing}. If not explicitly set, is
+%       computed using \cs{stex_modules_current_namespace:}.
+%     \item[|lang|] (\meta{language}) if not set, computed from the current file name (e.g. |foo.en.tex|).
+%     \item[|sig|] (\meta{language}) if the current file is a translation of a file with the same base name
+%       but a different language suffix, setting |sig=<lang>| will preload the module
+%       from that language file. This helps ensuring that the (formal) content of both modules
+%       is (almost) identical across languages and avoids duplication.
+%     \item[|creators|] (\meta{string}$\ast$) names of the creators.
+%     \item[|contributors|] (\meta{string}$\ast$) names of contributors.
+%     \item[|srccite|] (\meta{string}) a source citation for the content of this module.
+%   \end{itemize}
 %
 % \begin{function}{\stex_module_setup:nn}
 %   \begin{syntax}\cs{stex_module_setup:nn}\Arg{params}\Arg{name}\end{syntax}
@@ -152,59 +176,13 @@
 %   \cs{l_stex_current_module_str} appropriately.
 % \end{function}
 %
-% \begin{function}{\stex_modules_heading:}
-%   Takes care of the module header, if the |showmods| package option
-%   is true. This macro can be overridden for customization.
-% \end{function}
-%
-% \begin{environment}{@module}
-%   \begin{syntax} \cs{begin}|{@module}[|\meta{options}|]|\Arg{name}\end{syntax}
-%
-%   Core functionality of the |module|-environment without a header.
-%
 % \end{environment}
 %
-%\stextest{
-% \ExplSyntaxOn
-% \stex_set_current_repository:n {Foo/Bar}
-% \seq_pop_right:NN \g_stex_currentfile_seq \l_tmpa_tl
-% \seq_put_right:Nx \g_stex_currentfile_seq { \tl_to_str:n{tests} }
-% \seq_put_right:Nx \g_stex_currentfile_seq { \tl_to_str:n{Foo} }
-% \seq_put_right:Nx \g_stex_currentfile_seq { \tl_to_str:n{Bar} }
-% \seq_put_right:Nx \g_stex_currentfile_seq { \tl_to_str:n{source} }
-% \seq_put_right:Nx \g_stex_currentfile_seq { \tl_to_str:n{Foo.tex} }
-% \begin{smodule}{Foo}
-%  Module~path:~ 
-%  \prop_item:cn {c_stex_module_\l_stex_current_module_str _prop} { ns }?
-%  \prop_item:cn {c_stex_module_\l_stex_current_module_str _prop} { name }\\
-%  Language:~\prop_item:cn {c_stex_module_\l_stex_current_module_str _prop} { lang }\\
-%  Signature:~\prop_item:cn {c_stex_module_\l_stex_current_module_str _prop} { sig }\\
-%  Metatheory:~\prop_item:cn {c_stex_module_\l_stex_current_module_str _prop} { meta }\\
-% \end{smodule}
-% \ExplSyntaxOff
-%}
-%
-%\stextest{
-% \ExplSyntaxOn
-% \stex_set_current_repository:n {Foo/Bar}
-% \stex_debug:nn{modules}{Test:~\stex_path_to_string:N \g_stex_currentfile_seq }
-% \seq_pop_right:NN \g_stex_currentfile_seq \l_tmpa_tl
-% \seq_put_right:Nx \g_stex_currentfile_seq { \tl_to_str:n{tests} }
-% \seq_put_right:Nx \g_stex_currentfile_seq { \tl_to_str:n{Foo} }
-% \seq_put_right:Nx \g_stex_currentfile_seq { \tl_to_str:n{Bar} }
-% \seq_put_right:Nx \g_stex_currentfile_seq { \tl_to_str:n{source} }
-% \seq_put_right:Nx \g_stex_currentfile_seq { \tl_to_str:n{Foo.tex} }
-% \stex_debug:nn{modules}{Test:~\stex_path_to_string:N \g_stex_currentfile_seq }
-% \begin{smodule}[title=Foo Bar]{Bar}
-%  Module~path:~ 
-%  \prop_item:cn {c_stex_module_\l_stex_current_module_str _prop} { ns }?
-%  \prop_item:cn {c_stex_module_\l_stex_current_module_str _prop} { name }\\
-%  Language:~\prop_item:cn {c_stex_module_\l_stex_current_module_str _prop} { lang }\\
-%  Signature:~\prop_item:cn {c_stex_module_\l_stex_current_module_str _prop} { sig }\\
-%  Metatheory:~\prop_item:cn {c_stex_module_\l_stex_current_module_str _prop} { meta }\\
-% \end{smodule}
-% \ExplSyntaxOff
-%}
+% \begin{function}{\stexpatchmodule}
+%   \begin{syntax} \cs{stexpatchmodule} [\meta{type}] \Arg{begincode} \Arg{endcode} \end{syntax}
+%   Customizes the presentation for those |smodule|-environments
+%   with |type=|\meta{type}, or all others if no \meta{type} is given.
+% \end{function}
 %
 % \begin{function}{\STEXModule}
 %   \begin{syntax} \cs{STEXModule} \Arg{fragment} \end{syntax}
@@ -215,38 +193,15 @@
 %
 % \begin{function}{\stex_invoke_module:n}
 %   Invoked by \cs{STEXModule}. Needs to be followed either
-%   by |!|\meta{macro} or |?|\Arg{symbolname}. In the first case,
-%   it stores the full URI in \meta{macro}; in the second
+%   by |!\macro| or |?|\Arg{symbolname}. In the first case,
+%   it stores the full URI in \cs{macro}; in the second
 %   case, it invokes the symbol \meta{symbolname} in the
 %   selected module.
 % \end{function}
 %
-%\stextest{
-%   \begin{smodule}{STEXModuleTest1}
-%     \symdecl{foo}
-%   \end{smodule}
-%   \begin{smodule}{STEXModuleTest2}
-%     \importmodule{STEXModuleTest1}
-%     \symdecl{foo}
-%   \end{smodule}
-%   \begin{smodule}{STEXModuleTest3}
-%     \importmodule{STEXModuleTest2}
-%     \symdecl{foo}
-%     \STEXModule{STEXModuleTest1}!\teststring
-%     \teststring\\
-%     \STEXModule{STEXModuleTest2}!\teststring
-%     \teststring\\
-%     \STEXModule{STEXModuleTest3}!\teststring
-%     \teststring\\
-%     \STEXModule{STEXModuleTest1}?{foo}[\comp{foo1}]\\
-%     \STEXModule{STEXModuleTest2}?{foo}[\comp{foo2}]\\
-%     \STEXModule{STEXModuleTest3}?{foo}[\comp{foo3}]\\
-%   \end{smodule}
-%}
-%
 % \begin{function}{\stex_activate_module:n}
 %   Activate the module with the provided URI; i.e. executes
-%   all macro code of the module's |content|-field (does
+%   all macro code of the module's |_code|-macro (does
 %   nothing if the module is already activated in the current
 %   context) and adds the module to \cs{l_stex_all_modules_seq}.
 % \end{function}
@@ -333,9 +288,9 @@
   \newlinechar=-1\relax
   \endlinechar=-1\relax
   %\catcode`\ = 9\relax
-  \expandafter\endgroup\STEXexport:n
+  \expandafter\endgroup\_@@_export:n
 }
-\cs_new_protected:Nn \STEXexport:n {
+\cs_new_protected:Nn \_@@_export:n {
   \ignorespaces #1
   \stex_add_to_current_module:n { \ignorespaces #1 }
   \stex_smsmode_do:
@@ -350,11 +305,18 @@
   \str_set:Nx \l_tmpa_str { #1 }
   \seq_gput_right:co {c_stex_module_\l_stex_current_module_str _constants} { \l_tmpa_str }
 }
-
-%\cs_new_protected:Nn \stex_add_field_to_current_module:n {
-%  \str_set:Nx \l_tmpa_str { #1 }
-%  \seq_gput_right:co {c_stex_module_\l_stex_current_module_str _fields} { \l_tmpa_str }
-%}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\stex_add_import_to_current_module:n}
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_add_import_to_current_module:n {
+  \str_set:Nx \l_tmpa_str { #1 }
+  \exp_args:Nno
+  \seq_if_in:cnF{c_stex_module_\l_stex_current_module_str _imports}\l_tmpa_str{
+    \seq_gput_right:co{c_stex_module_\l_stex_current_module_str _imports}\l_tmpa_str
+  }
+}
 %    \end{macrocode}
 % \end{macro}
 %
@@ -377,13 +339,26 @@
 %    \end{macrocode}
 % \end{macro}
 %
-% \begin{macro}{\stex_add_import_to_current_module:n}
+% \begin{macro}{\stex_do_up_to_module:n}
 %    \begin{macrocode}
-\cs_new_protected:Nn \stex_add_import_to_current_module:n {
-  \str_set:Nx \l_tmpa_str { #1 }
-  \exp_args:Nno
-  \seq_if_in:cnF{c_stex_module_\l_stex_current_module_str _imports}\l_tmpa_str{
-    \seq_gput_right:co{c_stex_module_\l_stex_current_module_str _imports}\l_tmpa_str
+\int_new:N \l_@@_group_depth_int
+\tl_new:N \l_@@_aftergroup_tl
+\cs_new_protected:Nn \stex_do_up_to_module:n {
+  \int_compare:nNnTF \l_@@_group_depth_int = \currentgrouplevel {
+    #1
+  }{
+    #1
+    \expandafter \tl_gset:Nn \expandafter \l_@@_aftergroup_tl \expandafter { \l_@@_aftergroup_tl #1 }
+    \aftergroup\_@@_aftergroup_do:
+  }
+}
+\cs_new_protected:Nn \_@@_aftergroup_do: {
+  \int_compare:nNnTF \l_@@_group_depth_int = \currentgrouplevel {
+    \l_@@_aftergroup_tl
+    \tl_clear:N \l_@@_aftergroup_tl
+  }{
+    \l_@@_aftergroup_tl
+    \aftergroup\_@@_aftergroup_do:
   }
 }
 %    \end{macrocode}
@@ -396,7 +371,19 @@
 %
 %
 %    \begin{macrocode}
-\cs_new_protected:Nn \stex_modules_compute_namespace:nN {
+
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\stex_modules_current_namespace:}
+%
+% Computes the current namespace based on the current
+% MathHub repository (if existent) and the current file.
+%
+%    \begin{macrocode}
+\str_new:N \l_stex_modules_ns_str
+\str_new:N \l_stex_modules_subpath_str
+\cs_new_protected:Nn \_@@_compute_namespace:nN {
   \str_set:Nx \l_tmpa_str { #1 }
   \seq_set_eq:NN \l_tmpa_seq #2
   % split off file extension
@@ -426,28 +413,12 @@
     }
   }
 }
-%    \end{macrocode}
-% \end{macro}
-%
-% Stores its return values in:
-% \begin{variable}{\l_stex_modules_ns_str,\l_stex_modules_subpath_str}
-%    \begin{macrocode}
-\str_new:N \l_stex_modules_ns_str
-\str_new:N \l_stex_modules_subpath_str
-%    \end{macrocode}
-% \end{variable}
-%
-% \begin{macro}{\stex_modules_current_namespace:}
-%
-% Computes the current namespace based on the current
-% MathHub repository (if existent) and the current file.
-%
-%    \begin{macrocode}
+
 \cs_new_protected:Nn \stex_modules_current_namespace: {
   \str_clear:N \l_stex_modules_subpath_str
   \prop_if_exist:NTF \l_stex_current_repository_prop {
     \prop_get:NnN \l_stex_current_repository_prop { ns } \l_tmpa_str
-    \stex_modules_compute_namespace:nN \l_tmpa_str \g_stex_currentfile_seq
+    \_@@_compute_namespace:nN \l_tmpa_str \g_stex_currentfile_seq
   }{
     % split off file extension
     \seq_set_eq:NN \l_tmpa_seq \g_stex_currentfile_seq
@@ -463,9 +434,9 @@
 %    \end{macrocode}
 % \end{macro}
 %
-% \subsubsection{The module environment}
+% \subsubsection{The \texttt{smodule} environment}
 %
-% |module| arguments:
+% |smodule| arguments:
 %
 %    \begin{macrocode}
 \keys_define:nn { stex / module } {
@@ -583,7 +554,6 @@
       meta      = \l_stex_module_meta_str
     }
     \seq_clear:c {c_stex_module_\l_stex_module_ns_str?\l_stex_module_name_str _imports}
-    \seq_clear:c {c_stex_module_\l_stex_module_ns_str?\l_stex_module_name_str _fields}
     \seq_clear:c {c_stex_module_\l_stex_module_ns_str?\l_stex_module_name_str _constants}
     \tl_clear:c {c_stex_module_\l_stex_module_ns_str?\l_stex_module_name_str _code}
     \str_set:Nx\l_stex_current_module_str{\l_stex_module_ns_str?\l_stex_module_name_str}
@@ -650,7 +620,7 @@
 %    \end{macrocode}
 % \end{macro}
 %
-% \begin{environment}{module}
+% \begin{environment}{smodule}
 %
 % The |module| environment.
 %
@@ -659,7 +629,6 @@
 %   implements |\begin{smodule}|
 %
 %    \begin{macrocode}
-\int_new:N \l_stex_module_group_depth_int
 \cs_new_protected:Nn \_@@_begin_module: {
   \stex_reactivate_macro:N \STEXexport
   \stex_reactivate_macro:N \importmodule
@@ -680,10 +649,6 @@
   \seq_put_right:Nx \l_stex_all_modules_seq {
     \l_stex_module_ns_str ? \l_stex_module_name_str
   }
-
-%  \seq_gput_right:Nx  \g_stex_modules_in_file_seq
-%      { \l_stex_module_ns_str ? \l_stex_module_name_str }
-
   
   \stex_if_smsmode:F{
     \begin{stex_annotate_env} {theory} {
@@ -701,7 +666,7 @@
       }
     }
   }
-  \int_set:Nn \l_stex_module_group_depth_int {\currentgrouplevel}
+  \int_set:Nn \l_@@_group_depth_int {\currentgrouplevel}
   % TODO: Inherit metatheory for nested modules?
 }
 \iffalse \end{stex_annotate_env} \fi %^^A make syntax highlighting work again
@@ -714,22 +679,12 @@
 %
 %    \begin{macrocode}
 \cs_new_protected:Nn \_@@_end_module: {
-%  \str_set:Nx \l_tmpa_str {
-%    c_stex_module_
-%    \prop_item:Nn \l_stex_current_module_prop { ns } ?
-%    \prop_item:Nn \l_stex_current_module_prop { name }
-%    _prop
-%  }
-  %^^A \prop_new:c { \l_tmpa_str }
-%  \prop_gset_eq:cN { \l_tmpa_str } \l_stex_current_module_prop
   \stex_debug:nn{modules}{Closing~module~\prop_item:cn {c_stex_module_\l_stex_current_module_str _prop} { name }}
 }
 %    \end{macrocode}
 % \end{macro}
 %
-% \begin{environment}{smodule}
-%
-%  The core environment, with no header
+%  The core environment
 %    
 %    \begin{macrocode}
 \iffalse \begin{stex_annotate_env} \fi %^^A make syntax highlighting work again
@@ -756,23 +711,7 @@
   \stex_smsmode_do:
 } {
   \_@@_end_module:
-  \stex_if_smsmode:TF {
-%    \exp_args:Nx \stex_add_to_sms:n {
-%      \prop_gset_from_keyval:cn {
-%        c_stex_module_
-%        \prop_item:Nn \l_stex_current_module_prop { ns } ?
-%        \prop_item:Nn \l_stex_current_module_prop { name }
-%        _prop
-%      } {
-%        name      = \prop_item:cn { \l_tmpa_str } { name } ,
-%        ns        = \prop_item:cn { \l_tmpa_str } { ns } ,
-%        file      = \prop_item:cn { \l_tmpa_str } { file } ,
-%        lang      = \prop_item:cn { \l_tmpa_str } { lang } ,
-%        sig       = \prop_item:cn { \l_tmpa_str } { sig } ,
-%        meta      = \prop_item:cn { \l_tmpa_str } { meta }
-%      }
-%    }
-  }{
+  \stex_if_smsmode:F {
     \end{stex_annotate_env}
     \clist_set:No \l_tmpa_clist \smoduletype
     \tl_clear:N \l_tmpa_tl
@@ -788,7 +727,11 @@
     }
   }
 }
-
+%    \end{macrocode}
+% \end{environment}
+%
+% \begin{macro}{\stexpatchmodule}
+%    \begin{macrocode}
 \cs_new_protected:Nn \_@@_smodule_start: {}
 \cs_new_protected:Nn \_@@_smodule_end: {}
 
@@ -802,11 +745,8 @@
       \exp_after:wN \tl_set:Nn \csname _@@_smodule_#1_end:\endcsname{ #3 }
     }
 }
-
 %    \end{macrocode}
-% \end{environment}
-%
-% \end{environment}
+% \end{macro}
 %
 % \subsubsection{Invoking modules}
 %

@@ -177,7 +177,10 @@
 % Warnings and error messages
 %
 %    \begin{macrocode}
-
+\msg_new:nnn{stex}{error/wrongargs}{
+  args~value~in~symbol~declaration~for~#1~
+  needs~to~be~i,~a,~b~or~B,~but~#2~given
+}
 %    \end{macrocode}
 %
 % \subsection{Symbol Declarations}
@@ -253,6 +256,13 @@
   \stex_symdecl_do:n { #3 }
   \stex_smsmode_do:
 }
+
+\cs_new_protected:Nn \stex_symdecl_do:nn {
+  \_@@_args:n{#1}
+  \bool_set_false:N \l_stex_symdecl_make_macro_bool
+  \stex_symdecl_do:n{#2}
+}
+
 \stex_deactivate_macro:Nn \symdecl {module~environments}
 %    \end{macrocode}
 % \end{macro}
@@ -312,14 +322,10 @@
         \int_incr:N \l_tmpb_int
       }
     }{
-      \msg_set:nnn{stex}{error/wrongargs}{
-        args~value~in~symbol~declaration~for~
+      \msg_error:nnxx{stex}{error/wrongargs}{
         \l_stex_current_module_str ?
-        \l_stex_symdecl_name_str ~
-        needs~to~be~
-        i,~a,~b~or~B,~but~##1~given
-      }
-      \msg_error:nn{stex}{error/wrongargs}
+        \l_stex_symdecl_name_str
+      }{##1}
     }
   }
   \bool_if:NTF \l_tmpa_bool {
@@ -347,7 +353,7 @@
   % semantic macro
 
   \bool_if:NT \l_stex_symdecl_make_macro_bool {
-    \exp_args:Nx \stex_do_aftergroup:n {
+    \exp_args:Nx \stex_do_up_to_module:n {
       \tl_set:cn { #1 } { \stex_invoke_symbol:n {
         \l_stex_current_module_str ? \l_stex_symdecl_name_str
       }}
@@ -424,29 +430,8 @@
     }
   }
 
-  \stex_if_smsmode:TF {
-    \bool_if:NF \l_stex_symdecl_local_bool {
-%      \exp_args:Nx \stex_add_to_sms:n {
-%        \prop_set_from_keyval:cn {
-%          l_stex_symdecl_ 
-%          \l_stex_current_module_str ? \l_stex_symdecl_name_str
-%          _prop 
-%        } {
-%          name      = \prop_item:Nn \l_tmpa_prop { name }       ,
-%          module    = \prop_item:Nn \l_tmpa_prop { module }     ,
-%          local     = \prop_item:Nn \l_tmpa_prop { local }      ,
-%          type      = \prop_item:Nn \l_tmpa_prop { type }       ,
-%          args      = \prop_item:Nn \l_tmpa_prop { args }       ,
-%          arity     = \prop_item:Nn \l_tmpa_prop { arity }      ,
-%          assocs    = \prop_item:Nn \l_tmpa_prop { assocs }
-%        }
-%        \seq_put_right:Nn \exp_not:N \l_stex_all_symbols_seq {
-%          \l_stex_current_module_str ? \l_stex_symdecl_name_str
-%        }
-%      }
-    }
-  }{
-    \exp_args:Nx \stex_do_aftergroup:n {
+  \stex_if_smsmode:F {
+    \exp_args:Nx \stex_do_up_to_module:n {
         \seq_put_right:Nn \exp_not:N \l_stex_all_symbols_seq {
         \l_stex_current_module_str ? \l_stex_symdecl_name_str
       }
@@ -463,6 +448,9 @@
         \tl_if_empty:NF \l_stex_symdecl_definiens_tl {
           \stex_annotate_invisible:nnn{definiens}{}
             {$\l_stex_symdecl_definiens_tl$}
+        }
+        \str_if_empty:NF \l_stex_symdecl_assoctype_str {
+          \stex_annotate_invisible:nnn{assoctype}{\l_stex_symdecl_assoctype_str}{}
         }
       }
     }
@@ -606,10 +594,17 @@
 %
 % \begin{macro}{\notation}
 %    \begin{macrocode}
-\NewDocumentCommand \notation { O{} m } {
-  \_stex_notation_args:n { #1 }
+\NewDocumentCommand \notation { s O{} m } {
+  \_stex_notation_args:n { #2 }
   \tl_clear:N \l_stex_symdecl_definiens_tl
-  \stex_get_symbol:n { #2 }
+  \stex_get_symbol:n { #3 }
+  \tl_set:Nn \l_@@_after_do_tl {
+    \_@@_final:
+    \IfBooleanTF#1{
+      \stex_setnotation:n {\l_@@_symbol_str}
+    }{}
+    \stex_smsmode_do:
+  }
   \stex_notation_do:nn { \l_stex_get_symbol_uri_str }
 }
 \stex_deactivate_macro:Nn \notation {module~environments}
@@ -689,7 +684,7 @@
         { \l_@@_opprec_tl } 
         { \exp_not:n { #2 } }
     }
-    \_@@_final:
+    \l_@@_after_do_tl
   }{
     \str_if_in:NnTF \l_@@_args_str b {
       \exp_args:Nne \use:nn
@@ -743,7 +738,7 @@
 \cs_new_protected:Nn \_@@_arguments: {
   \int_incr:N \l_@@_currarg_int
   \str_if_empty:NTF \l_@@_remaining_args_str {
-    \_@@_final:
+    \l_@@_after_do_tl
   }{
     \str_set:Nx \l_tmpa_str { \str_head:N \l_@@_remaining_args_str }
     \str_set:Nx \l_@@_remaining_args_str { \str_tail:N \l_@@_remaining_args_str }
@@ -886,7 +881,7 @@
     }
   }
   \exp_args:Nx
- % \stex_do_aftergroup:n {
+ % \stex_do_up_to_module:n {
     \seq_put_right:cx {
       l_stex_symdecl_ \l_@@_symbol_str
       _notations
@@ -933,20 +928,7 @@
     %}
   }
 
-  \stex_if_smsmode:TF {
-%    \exp_args:Nx \stex_add_to_sms:n {
-%      \prop_set_from_keyval:cn {
-%        l_stex_notation_ \l_tmpa_str \c_hash_str \l_@@_variant_str
-%          \c_hash_str \l_@@_lang_str _prop
-%      } {
-%        symbol    = \prop_item:Nn \l_tmpb_prop { symbol }     ,
-%        language  = \prop_item:Nn \l_tmpb_prop { language }   ,
-%        variant   = \prop_item:Nn \l_tmpb_prop { variant }    ,
-%        opprec    = \prop_item:Nn \l_tmpb_prop { opprec }     ,
-%        argprecs  = \prop_item:Nn \l_tmpb_prop { argprecs }   ,
-%      }
-%    }
-  }{
+  \stex_if_smsmode:F {
 
     % HTML annotations
     \stex_if_do_html:T {
@@ -993,7 +975,6 @@
       }
     }
   }
-  \stex_smsmode_do:
 }
 %    \end{macrocode}
 % \end{macro}
@@ -1013,36 +994,40 @@
   \keys_set:nn { stex / setnotation } { #1 }
 }
 
-\NewDocumentCommand \setnotation {m m} {
-  \stex_get_symbol:n { #1 }
-  \_stex_setnotation_args:n { #2 }
-  \exp_args:Nnx \seq_if_in:cnTF { l_stex_symdecl_\l_stex_get_symbol_uri_str _notations }
+\cs_new_protected:Nn \stex_setnotation:n {
+  \exp_args:Nnx \seq_if_in:cnTF { l_stex_symdecl_#1 _notations }
     { \l_@@_variant_str \c_hash_str \l_@@_lang_str }{
-      \exp_args:Nnx \seq_remove_all:cn { l_stex_symdecl_\l_stex_get_symbol_uri_str _notations }
+      \exp_args:Nnx \seq_remove_all:cn { l_stex_symdecl_#1 _notations }
         { \l_@@_variant_str \c_hash_str \l_@@_lang_str }
-      \exp_args:Nnx \seq_remove_all:cn { l_stex_symdecl_\l_stex_get_symbol_uri_str _notations }
+      \exp_args:Nnx \seq_remove_all:cn { l_stex_symdecl_#1 _notations }
         { \c_hash_str }
-      \exp_args:Nnx \seq_put_left:cn { l_stex_symdecl_\l_stex_get_symbol_uri_str _notations }
+      \exp_args:Nnx \seq_put_left:cn { l_stex_symdecl_#1 _notations }
         { \l_@@_variant_str \c_hash_str \l_@@_lang_str }
       \exp_args:Nx \stex_add_to_current_module:n {
-        \exp_args:Nnx \seq_remove_all:cn { l_stex_symdecl_\l_stex_get_symbol_uri_str _notations }
+        \exp_args:Nnx \seq_remove_all:cn { l_stex_symdecl_#1 _notations }
           { \l_@@_variant_str \c_hash_str \l_@@_lang_str }
-        \exp_args:Nnx \seq_put_left:cn { l_stex_symdecl_\l_stex_get_symbol_uri_str _notations }
+        \exp_args:Nnx \seq_put_left:cn { l_stex_symdecl_#1 _notations }
           { \l_@@_variant_str \c_hash_str \l_@@_lang_str }
-        \exp_args:Nnx \seq_remove_all:cn { l_stex_symdecl_\l_stex_get_symbol_uri_str _notations }
+        \exp_args:Nnx \seq_remove_all:cn { l_stex_symdecl_#1 _notations }
           { \c_hash_str }
       }
       \stex_debug:nn {notations}{
         Setting~default~notation~
         {\l_@@_variant_str \c_hash_str \l_@@_lang_str}~for~
-        \l_stex_get_symbol_uri_str \\
+        #1 \\
         \expandafter\meaning\csname
-        l_stex_symdecl_\l_stex_get_symbol_uri_str _notations\endcsname
+        l_stex_symdecl_#1 _notations\endcsname
       }
     }{
       % todo throw error
     }
-    \stex_smsmode_do:
+}
+
+\NewDocumentCommand \setnotation {m m} {
+  \stex_get_symbol:n { #1 }
+  \_stex_setnotation_args:n { #2 }
+  \stex_setnotation:n{\l_stex_get_symbol_uri_str}
+  \stex_smsmode_do:
 }
 
 \cs_new_protected:Nn \stex_copy_notations:nn {
@@ -1063,7 +1048,7 @@
       }
     }
     \exp_args:Nx
-    \stex_do_aftergroup:n {
+    \stex_do_up_to_module:n {
       \seq_put_right:cn{l_stex_symdecl_#1_notations}{##1}
       \cs_generate_from_arg_count:cNnn {
         stex_notation_ #1 \c_hash_str ##1 _cs
@@ -1127,6 +1112,10 @@
   \_@@_symdef_args:n { #1 }
   \bool_set_true:N \l_stex_symdecl_make_macro_bool
   \stex_symdecl_do:n { #2 }
+  \tl_set:Nn \l_@@_after_do_tl {
+    \_@@_final:
+    \stex_smsmode_do:
+  }
   \exp_args:Nx \stex_notation_do:nn {
     \l_stex_current_module_str ? \l_stex_symdecl_name_str
   }
@@ -1134,6 +1123,102 @@
 \stex_deactivate_macro:Nn \symdef {module~environments}
 %    \end{macrocode}
 % \end{macro}
+%
+% \subsection{Variables}
+%    \begin{macrocode}
+%<@@=stex_variables>
+
+\keys_define:nn { stex / vardef } {
+  name    .str_set_x:N  = \l_@@_name_str ,
+  args    .str_set_x:N  = \l_@@_args_str ,
+  type    .tl_set:N     = \l_@@_type_tl ,
+  def     .tl_set:N     = \l_@@_def_tl ,
+  op      .tl_set:N     = \l_@@_op_tl ,
+  prec    .str_set_x:N  = \l_@@_prec_str ,
+  assoc   .choices:nn   = 
+      {bin,binl,binr,pre,conj,pwconj}
+      {\str_set:Nx \l_@@_assoctype_str {\l_keys_choice_tl}},
+  bind    .choices:nn   =
+      {forall,exists}
+      {\str_set:Nx \l_@@_bind_str {\l_keys_choice_tl}}
+}
+
+\cs_new_protected:Nn \_@@_args:n {
+  \str_clear:N \l_@@_name_str
+  \str_clear:N \l_@@_args_str
+  \str_clear:N \l_@@_prec_str
+  \str_clear:N \l_@@_assoctype_str
+  \str_clear:N \l_@@_bind_str
+  \tl_clear:N \l_@@_type_tl
+  \tl_clear:N \l_@@_def_tl
+  \tl_clear:N \l_@@_op_tl
+
+  \keys_set:nn { stex / vardef } { #1 }
+}
+
+\NewDocumentCommand \vardecl {O{} m m} {
+  \_@@_args:n {#1}
+  \str_if_empty:NT \l_@@_name_str {
+    \str_set:Nx \l_@@_name_str { #2 }
+  }
+  \prop_clear:N \l_tmpa_prop
+  \prop_put:Nno \l_tmpa_prop { name } \l_@@_name_str
+  
+  \int_zero:N \l_tmpb_int
+  \bool_set_true:N \l_tmpa_bool
+  \str_map_inline:Nn \l_@@_args_str {
+    \token_case_meaning:NnF ##1 {
+      0 {} 1 {} 2 {} 3 {} 4 {} 5 {} 6 {} 7 {} 8 {} 9 {}
+      {\tl_to_str:n i} { \bool_set_false:N \l_tmpa_bool }
+      {\tl_to_str:n b} { \bool_set_false:N \l_tmpa_bool }
+      {\tl_to_str:n a} { 
+        \bool_set_false:N \l_tmpa_bool
+        \int_incr:N \l_tmpb_int
+      }
+      {\tl_to_str:n B} { 
+        \bool_set_false:N \l_tmpa_bool
+        \int_incr:N \l_tmpb_int
+      }
+    }{
+      \msg_error:nnxx{stex}{error/wrongargs}{
+        variable~\l_@@_name_str
+      }{##1}
+    }
+  }
+  \bool_if:NTF \l_tmpa_bool {
+    % possibly numeric
+    \str_if_empty:NTF \l_@@_args_str {
+      \prop_put:Nnn \l_tmpa_prop { args } {}
+      \prop_put:Nnn \l_tmpa_prop { arity } { 0 }
+    }{
+      \int_set:Nn \l_tmpa_int { \l_@@_args_str }
+      \prop_put:Nnx \l_tmpa_prop { arity } { \int_use:N \l_tmpa_int }
+      \str_clear:N \l_tmpa_str
+      \int_step_inline:nn \l_tmpa_int {
+        \str_put_right:Nn \l_tmpa_str i
+      }
+      \prop_put:Nnx \l_tmpa_prop { args } { \l_tmpa_str }
+    }
+  } {
+    \prop_put:Nnx \l_tmpa_prop { args } { \l_@@_args_str }
+    \prop_put:Nnx \l_tmpa_prop { arity }
+      { \str_count:N \l_@@_args_str }
+  }
+  \prop_put:Nnx \l_tmpa_prop { assocs } { \int_use:N \l_tmpb_int }
+  \tl_set:cn { #2 }{ \stex_invoke_variable:n { \l_@@_name_str } }
+
+
+
+
+
+
+  \prop_set_eq:cN { l_stex_variable_\l_@@_name_str _prop} \l_tmpa_prop
+}
+
+
+
+
+%    \end{macrocode}
 %
 %    \begin{macrocode}
 %</package>

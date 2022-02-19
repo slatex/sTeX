@@ -35,28 +35,17 @@
 % For a more high-level introduction, 
 %  see \href{\basedocurl/manual.pdf}{the \sTeX Manual} or the
 % \href{\basedocurl/stex.pdf}{full \sTeX documentation}.
-%
-% \input{../../doc/packages/basics}
 % \fi
 %
 % \begin{documentation}\label{pkg:basics:doc}
 %
-% Both the \sTeX package and class offer the following
-% package options:
+% This sub package provides general set up code, auxiliary methods
+% and abstractions for |xhtml| annotations.
 %
-% \begin{description}
-%   \item[\texttt{debug}] (\meta{log-prefix}$\ast$) Logs debugging
-%     information with the given prefixes to the terminal,
-%     or all if |all| is given.
-%   \item[\texttt{lang}] (\meta{language}$\ast$) Languages
-%     to load with the \pkg{babel} package.
-%   \item[\texttt{mathhub}] (\meta{directory}) MathHub folder
-%     to search for repositories.
-%   \item[\texttt{sms}] (\meta{boolean}) use \emph{persisted}
-%     mode (see ???).
-%   \item[\texttt{image}] (\meta{boolean}) passed on to
-%     \pkg{tikzinput}.
-% \end{description}
+%\ifinfulldoc\else
+% \input{../../doc/packages/basics}
+% \fi
+%
 %
 % \section{Macros and Environments}\label{pkg:basics:doc:macros}
 %
@@ -71,13 +60,25 @@
 % Logs \meta{message}, if the package option |debug| contains \meta{log-prefix}.
 % \end{function}
 %
-% \begin{function}{\stex_add_to_sms:n}
-% Adds the provided code to the |.sms|-file of the document.
+% \subsection{HTML Annotations}
+%
+% \begin{function}{\if@latexml}
+%   \LaTeX2e conditional for \latexml
 % \end{function}
 %
-% \begin{function}{\if@latexml,\latexml_if_p:,\latexml_if:T,\latexml_if:F,\latexml_if:TF}
-%   \LaTeX2e and \LaTeX3 conditionals for \latexml.
+% \begin{function}[pTF]{\latexml_if:}
+%   \LaTeX3 conditionals for \latexml.
 % \end{function}
+%
+% \begin{function}[pTF]{\stex_if_do_html:}
+%   Whether to currently produce any HTML annotations (can be false
+%   in some advanced structuring environments, for example)
+% \end{function}
+%
+% \begin{function}{\stex_suppress_html:n}
+%   Temporarily disables HTML annotations in its argument code
+% \end{function}
+% 
 %
 % We have four macros for annotating generated HTML (via \latexml
 % or \rustex) with attributes:
@@ -102,16 +103,20 @@
 %   \begin{syntax} \cs{begin}|{stex_annotate_env}|\Arg{property}\Arg{resource}
 %       \meta{content}
 %     \cs{end}|{stex_annotate_env}|
-%\end{syntax}
+%   \end{syntax}
 % behaves like \cs{stex_annotate:nnn} \Arg{property} \Arg{resource}
 %     \Arg{content}.
 % \end{environment}
+%
+% \subsection{Babel Languages}
 %
 % \begin{variable}{\c_stex_languages_prop,\c_stex_language_abbrevs_prop}
 %   Map language abbreviations to their full babel names and vice versa.
 %   e.g. \cs{c_stex_languages_prop}|{en}| yields |english|, and
 %   \cs{c_stex_language_abbrevs_prop}|{english}| yields |en|.
 % \end{variable}
+%
+% \subsection{Auxiliary Methods}
 %
 % \begin{function}{\stex_deactivate_macro:Nn , \stex_reactivate_macro:N}
 %   \begin{syntax}\cs{stex_deactivate_macro:Nn}\meta{cs}\Arg{environments}\end{syntax}
@@ -123,9 +128,9 @@
 %   environments.
 % \end{function}
 %
-% \begin{function}{\MSC}
-%   \begin{syntax}\cs{MSC}\Arg{msc} \end{syntax}
-%   Designates the \emph{math subject classifier} of the current module / file.
+% \begin{function}{\ignorespacesandpars}
+%   ignores white space characters and |\par| control sequences.
+%   Expands tokens in the process.
 % \end{function}
 %
 % \end{documentation}
@@ -259,45 +264,6 @@
 \stex_debug:nn{log}{debug~mode~on}
 %    \end{macrocode}
 %
-% \subsection{Persistence}
-%
-%    \begin{macrocode}
-%<@@=stex_persist>
-%    \end{macrocode}
-%
-% \begin{variable}{\c_@@_sms_iow}
-%
-%   File variable used for the sms-File
-%
-%    \begin{macrocode}
-\iow_new:N \c_@@_sms_iow
-\AddToHook{begindocument}{
-  \bool_if:NTF \c_stex_persist_mode_bool {
-    \ExplSyntaxOn \input{\jobname.sms} \ExplSyntaxOff
-  } {
-%    \iow_open:Nn \c_@@_sms_iow {\jobname.sms}
-  }
-}
-\AddToHook{enddocument}{
-  \bool_if:NF \c_stex_persist_mode_bool {
-%    \iow_close:N \c_@@_sms_iow
-  }
-}
-%    \end{macrocode}
-% \end{variable}
-%
-% \begin{macro}{\stex_add_to_sms:n}
-%
-% Adds the provided code to the |.sms|-file of the document.
-%
-%    \begin{macrocode}
-\cs_new_protected:Nn \stex_add_to_sms:n {
-  \bool_if:NF \c_stex_persist_mode_bool {
-%    \iow_now:Nn \c_@@_sms_iow { #1 }
-  }
-}
-%    \end{macrocode}
-% \end{macro}
 %
 % \subsection{HTML Annotations}
 %    \begin{macrocode}
@@ -311,16 +277,18 @@
 \rustex_add_Namespace:nn{stex}{http://kwarc.info/ns/sTeX}
 %    \end{macrocode}
 %
-% \begin{macro}{\if@latexml}
-% \begin{macro}[pTF]{\latexml_if:}
-%
 % Conditionals for \latexml:
 %
+% \begin{macro}{\if@latexml}
 %    \begin{macrocode}
 \ifcsname if@latexml\endcsname\else
     \expandafter\newif\csname if@latexml\endcsname\@latexmlfalse
 \fi
-
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}[pTF]{\latexml_if:}
+%    \begin{macrocode}
 \prg_new_conditional:Nnn \latexml_if: {p, T, F, TF} {
   \if@latexml
     \prg_return_true:
@@ -329,7 +297,6 @@
   \fi:
 }
 %    \end{macrocode}
-% \end{macro}
 % \end{macro}
 %
 % \begin{variable}{\l_@@_arg_tl, \c_@@_emptyarg_tl}
@@ -358,13 +325,14 @@
 %    \end{macrocode}
 % \end{macro}
 %
-% \begin{macro}{\l_stex_html_do_output_bool,\stex_if_do_html:}
+% \begin{macro}[pTF]{\stex_if_do_html:}
 %  Whether to (locally) produce HTML output
 %    \begin{macrocode}
-\bool_new:N \l_stex_html_do_output_bool
-\bool_set_true:N \l_stex_html_do_output_bool
+\bool_new:N \_stex_html_do_output_bool
+\bool_set_true:N \_stex_html_do_output_bool
+
 \prg_new_conditional:Nnn \stex_if_do_html: {p,T,F,TF} {
-  \bool_if:nTF \l_stex_html_do_output_bool
+  \bool_if:nTF \_stex_html_do_output_bool
     \prg_return_true: \prg_return_false:
 }
 %    \end{macrocode}
@@ -375,11 +343,11 @@
 %    \begin{macrocode}
 \cs_new_protected:Nn \stex_suppress_html:n {
   \exp_args:Nne \use:nn {
-    \bool_set_false:N \l_stex_html_do_output_bool
+    \bool_set_false:N \_stex_html_do_output_bool
     #1
   }{
     \stex_if_do_html:T {
-      \bool_set_true:N \l_stex_html_do_output_bool
+      \bool_set_true:N \_stex_html_do_output_bool
     }
   }
 }
@@ -499,7 +467,7 @@
 % \end{macro}
 % \end{environment}
 %
-% \subsection{Languages}
+% \subsection{Babel Languages}
 %    \begin{macrocode}
 %<@@=stex_language>
 %    \end{macrocode}
@@ -555,7 +523,7 @@
 }
 %    \end{macrocode}
 %
-% \subsection{Activating/Deactivating Macros}
+% \subsection{Auxiliary Methods}
 %
 % \begin{macro}{\stex_deactivate_macro:Nn}
 %    \begin{macrocode}
@@ -576,33 +544,8 @@
 %    \end{macrocode}
 % \end{macro}
 %
-% \begin{macro}{\stex_do_aftergroup:nn}
+% \begin{macro}{\ignorespacesandpars}
 %    \begin{macrocode}
-%<@@=stex_aftergroup>
-\tl_new:N \l_@@_tl
-\cs_new_protected:Nn \stex_do_aftergroup:n {
-  \int_compare:nNnTF \l_stex_module_group_depth_int = \currentgrouplevel {
-    #1
-  }{
-    #1
-    \expandafter \tl_gset:Nn \expandafter \l_@@_tl \expandafter { \l_@@_tl #1 }
-    \aftergroup\_@@_do:
-  }
-}
-\cs_new_protected:Nn \_@@_do: {
-  \int_compare:nNnTF \l_stex_module_group_depth_int = \currentgrouplevel {
-    \l_@@_tl
-    \tl_clear:N \l_@@_tl
-  }{
-    \l_@@_tl
-    \aftergroup\_@@_do:
-  }
-}
-%    \end{macrocode}
-% \end{macro}
-%
-%    \begin{macrocode}
-
 \protected\def\ignorespacesandpars{
   \begingroup\catcode13=10\relax
   \@ifnextchar\par{
@@ -611,10 +554,9 @@
     \endgroup
   }
 }
-
-
 %</package>
 %    \end{macrocode}
+% \end{macro}
 %
 % \end{implementation}
 %

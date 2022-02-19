@@ -35,14 +35,17 @@
 % For a more high-level introduction, 
 %  see \href{\basedocurl/manual.pdf}{the \sTeX Manual} or the
 % \href{\basedocurl/stex.pdf}{full \sTeX documentation}.
-%
-% \begin{omgroup}{Manual}\input{../../doc/packages/mathhub}\end{omgroup}
 % \fi
+%
 %
 % \begin{documentation}\label{pkg:mathhub:doc}
 %
-% Code related to managing and using MathHub repositories,
-% files, paths and related hooks and methods.
+% This sub package provides code for handling \sTeX archives,
+% files, file paths and related methods.
+%
+% \ifinfulldoc\else
+% \begin{omgroup}{Manual}\input{../../doc/packages/mathhub}\end{omgroup}
+% \fi
 %
 % \section{Macros and Environments}\label{pkg:mathhub:doc:macros}
 %
@@ -52,13 +55,9 @@
 % shell escaping.
 % \end{function}
 %
-%   \subsection{Files, Paths, URIs}
+% \subsection{Files, Paths, URIs}
 %
-% \begin{function}{\stex_path_from_string:Nn, 
-%    \stex_path_from_string:NV,
-%    \stex_path_from_string:cn,
-%    \stex_path_from_string:cV
-%    }
+% \begin{function}{\stex_path_from_string:Nn}
 %
 %   \begin{syntax} \cs{stex_path_from_string:Nn} \meta{path-variable} \Arg{string} \end{syntax}
 %   turns the \meta{string} into a path by splitting it at |/|-characters
@@ -91,32 +90,11 @@
 %   The file being currently processed (respecting |\input| etc.)
 % \end{variable}
 %
-% \stextest{
-% \ExplSyntaxOn
-% \def\cpath@print#1{
-%    \stex_path_from_string:Nn \l_tmpb_seq { #1 }
-%    \stex_path_to_string:NN \l_tmpb_seq \l_tmpa_str
-%    \str_use:N \l_tmpa_str
-%  }
-% \ExplSyntaxOff
-% \begin{center}
-% \begin{tabular}{|l|l|l|}\hline
-%   path & canonicalized path & expected\\\hline
-%   aaa & \cpath@print{aaa} & aaa \\
-%   ../../aaa & \cpath@print{../../aaa} &  ../../aaa\\
-%   aaa/bbb & \cpath@print{aaa/bbb} & aaa/bbb \\
-%   aaa/.. & \cpath@print{aaa/..} &\\
-%   ../../aaa/bbb & \cpath@print{../../aaa/bbb} & ../../aaa/bbb\\
-%   ../aaa/../bbb & \cpath@print{../aaa/../bbb} & ../bbb \\
-%   ../aaa/bbb & \cpath@print{../aaa/bbb} &  ../aaa/bbb\\
-%   aaa/bbb/../ddd & \cpath@print{aaa/bbb/../ddd} & aaa/ddd\\
-%   aaa/bbb/./ddd & \cpath@print{aaa/bbb/./ddd} & aaa/bbb/ddd\\
-%   ./ & \cpath@print{./} & \\
-%   aaa/bbb/../.. & \cpath@print{aaa/bbb/../..} & \\\hline
-% \end{tabular}
-% \end{center}
-% }
-%
+% \begin{function}{\stex_filestack_push:n,\stex_filestack_pop:}
+% Push and pop (repsectively) a file path to the file stack,
+% to keep track of the current file. Are called in hooks |file/before|
+% and |file/after|, respectively.
+% \end{function}
 %
 %  \subsection{MathHub Archives}
 %
@@ -135,9 +113,15 @@
 %
 % \begin{variable}{\l_stex_current_repository_prop}
 %   Always points to the \emph{current} MathHub repository (if
-%   we currently are in one). Has the fields |id|, |ns| (namespace),
-%   |narr| (narrative namespace; currently not in use) and
-%   |deps| (dependencies; currently not in use).
+%   we currently are in one). Has the following fields corresponding
+%   to the entries in the |MANIFEST.MF|-file:
+%   \begin{itemize}
+%     \item[|id|:] The name of the archive, including its group (e.g. |smglom/calculus|),
+%     \item[|ns|:] The content namespace (for modules and symbols),
+%     \item[|narr|:] the narration namespace (for document references),
+%     \item[|docurl|:] The URL that is used as a basis for \emph{external references},
+%     \item[|deps|:] All archives that this archive depends on (currently not in use).
+%   \end{itemize}
 % \end{variable}
 %
 % \begin{function}{\stex_set_current_repository:n}
@@ -159,37 +143,63 @@
 % to the previous repository after executing \Arg{code}.
 % \end{function}
 %
+%  \subsection{Using Content in Archives}
+%
 % \begin{function}[EXP]{\mhpath}
 %   \begin{syntax}\cs{mhpath}\Arg{archive-ID}\Arg{filename}\end{syntax}
 % Expands to the full path of file \meta{filename} in repository \meta{archive-ID}.
 % Does not check whether the file or the repository exist. 
 % \end{function}
 %
-% \begin{function}{\inputref,\inputref:nn}
+% \begin{function}{\inputref,\mhinput}
 %   \begin{syntax}\cs{inputref}|[|\meta{archive-ID}|]|\Arg{filename}\end{syntax}
-% \cs{input}s the file \meta{filename} in repository \meta{archive-ID}.
+% Both \cs{input} the file \meta{filename} in archive \meta{archive-ID} (relative
+% to the |source|-subdirectory). \cs{mhinput} does so directly.
+% \cs{inputref} does so within an |\begingroup|...|\endgroup|-block,
+% and skips it in |html|-mode, inserting a \emph{reference} to the
+% file instead.
+%
+%   Both also set |\ifinputref| to true.
+% \end{function}
+%
+% \begin{function}{\addmhbibresource}
+%   \begin{syntax}\cs{inputref}|[|\meta{archive-ID}|]|\Arg{filename}\end{syntax}
+% Adds a |.bib|-file \meta{filename} in archive \meta{archive-ID} (relative
+% to the top-directory of the archive!).
 % \end{function}
 %
 % \begin{function}{\libinput}
 %   \begin{syntax} \cs{libinput}\Arg{filename} \end{syntax}
 %   Inputs \meta{filename}|.tex| from the |lib| folders in the
-%   current archive and the |meta-inf|-archive of the current archive group
-%   (if existent). Throws an error if no file by that name exists in
-%   either folder, includes both if both exist.
+%   current archive and the |meta-inf|-archive of the current archive group(s)
+%   (if existent) in descending order. Throws an error if no file by that name exists in
+%   any of the relevant |lib|-folders.
 % \end{function}
 %
-% \stextest{
-%  \ExplSyntaxOn
-%  \stex_require_repository:n { Foo/Bar }
-%  id:~\prop_item:cn {c_stex_mathhub_Foo/Bar_manifest_prop} {id}\ \\
-%  narr:~\prop_item:cn {c_stex_mathhub_Foo/Bar_manifest_prop} {narr}\ \\
-%  ns:~\prop_item:cn {c_stex_mathhub_Foo/Bar_manifest_prop} {ns}\ \\
-%  deps:~\prop_item:cn {c_stex_mathhub_Foo/Bar_manifest_prop} {deps}\ \\
-% \stex_require_repository:n { Bar/Foo }
-%  \ExplSyntaxOff
-% }
+% \begin{function}{\libusepackage}
+%   \begin{syntax} \cs{libusepackage}[\meta{args}]\Arg{filename} \end{syntax}
+%   Like \cs{libinput}, but looks for |.sty|-files and calls
+%   |\usepackage[\meta{args}]\Arg{filename}| instead of \cs{input}.
 %
+%   Throws an error, if none or more than one suitable package file is found.
+% \end{function}
 %
+% \begin{function}{\mhgraphics,\cmhgraphics}
+%   \emph{If} the \pkg{graphicx} package is loaded, these
+%   macros are defined at |\begin{document}|.
+%
+%   \cs{mhgraphics} takes the same arguments as \cs{includegraphics},
+%   with the additional optional key |mhrepos|. It then resolves
+%   the file path in |\mhgraphics[mhrepos=Foo/Bar]{foo/bar.png}|
+%   relative to the |source|-folder of the |Foo/Bar|-archive.
+%
+%   \cs{cmhgraphics} additional wraps the image in a |center|-environment.
+% \end{function}
+%
+% \begin{function}{\lstinputmhlisting,\clstinputmhlisting}
+%   Like \cs{mhgraphics}, but only defined if the \pkg{listings}-package
+%   is loaded, and with \cs{lstinputlisting} instead of \cs{includegraphics}.
+% \end{function}
 %
 % \end{documentation}
 %
@@ -230,11 +240,7 @@
 % i.e. a path is absolute if the sequence starts with an empty 
 % entry.
 %
-% \begin{macro}{\stex_path_from_string:Nn, 
-%    \stex_path_from_string:NV,
-%    \stex_path_from_string:cn,
-%    \stex_path_from_string:cV
-%    }
+% \begin{macro}{\stex_path_from_string:Nn}
 %    \begin{macrocode}
 \cs_new_protected:Nn \stex_path_from_string:Nn {
   \str_set:Nx \l_tmpa_str { #2 }
@@ -253,8 +259,7 @@
     \stex_path_canonicalize:N #1
   }
 }
-\cs_generate_variant:Nn \stex_path_from_string:Nn 
-  { NV, cn, cV }
+
 %    \end{macrocode}
 % \end{macro}
 %
@@ -359,7 +364,10 @@
 % \begin{variable}{\c_stex_pwd_seq,\c_stex_pwd_str}
 %    \begin{macrocode}
 \sys_if_platform_windows:TF{
-  \stex_kpsewhich:n{-expand-var~\c_percent_str CD\c_percent_str}
+  \begingroup\escapechar=-1\catcode`\\=12
+  \exp_args:Nx\stex_kpsewhich:n{-expand-var~\c_percent_str CD\c_percent_str}
+  \exp_args:NNx\str_replace_all:Nnn\l_stex_kpsewhich_return_str{\c_backslash_str}/
+  \exp_args:Nnx\use:nn{\endgroup}{\str_set:Nn\exp_not:N\l_stex_kpsewhich_return_str{\l_stex_kpsewhich_return_str}}
 }{
   \stex_kpsewhich:n{-var-value~PWD}
 }
@@ -401,12 +409,13 @@
 % \end{variable}
 %
 % \begin{variable}{\g_stex_currentfile_seq}
-%
-% Hooks for file inputs that push/pop \cs{g_@@_stack} to update
-% \cs{c_stex_mainfile_seq}.
-%
 %    \begin{macrocode}
 \seq_gclear_new:N\g_stex_currentfile_seq
+%    \end{macrocode}
+% \end{variable}
+%
+% \begin{macro}{\stex_filestack_push:n}
+%    \begin{macrocode}
 \cs_new_protected:Nn \stex_filestack_push:n {
   \stex_path_from_string:Nn\g_stex_currentfile_seq{#1}
   \stex_path_if_absolute:NF\g_stex_currentfile_seq{
@@ -417,6 +426,11 @@
   \seq_gset_eq:NN\g_stex_currentfile_seq\g_stex_currentfile_seq
   \exp_args:NNo\seq_gpush:Nn\g_@@_stack\g_stex_currentfile_seq
 }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\stex_filestack_pop:}
+%    \begin{macrocode}
 \cs_new_protected:Nn \stex_filestack_pop: {
   \seq_if_empty:NF\g_@@_stack{
     \seq_gpop:NN\g_@@_stack\l_tmpa_seq
@@ -428,7 +442,12 @@
     \seq_gset_eq:NN\g_stex_currentfile_seq\l_tmpa_seq
   }
 }
-
+%    \end{macrocode}
+% \end{macro}
+%
+% Hooks for the current file:
+%
+%    \begin{macrocode}
 \AddToHook{file/before}{
   \stex_filestack_push:n{\CurrentFilePath/\CurrentFile}
 }
@@ -436,7 +455,6 @@
   \stex_filestack_pop:
 }
 %    \end{macrocode}
-% \end{variable}
 %
 % \subsection{MathHub Repositories}
 %    \begin{macrocode}
@@ -444,15 +462,24 @@
 %    \end{macrocode}
 %
 % \begin{variable}{\mathhub, \c_stex_mathhub_seq, \c_stex_mathhub_str}
+% The path to the mathhub directory. If the \cs{mathhub}-macro is not set,
+% we query |kpsewhich| for the |MATHHUB| system variable.
 %    \begin{macrocode}
 \str_if_empty:NTF\mathhub{
-  \stex_kpsewhich:n{-var-value~MATHHUB}
+  \sys_if_platform_windows:TF{
+    \begingroup\escapechar=-1\catcode`\\=12
+    \exp_args:Nx\stex_kpsewhich:n{-expand-var~\c_percent_str MATHHUB\c_percent_str}
+    \exp_args:NNx\str_replace_all:Nnn\l_stex_kpsewhich_return_str{\c_backslash_str}/
+    \exp_args:Nnx\use:nn{\endgroup}{\str_set:Nn\exp_not:N\l_stex_kpsewhich_return_str{\l_stex_kpsewhich_return_str}}
+  }{
+    \stex_kpsewhich:n{-var-value~MATHHUB}
+  }
   \str_set_eq:NN\c_stex_mathhub_str\l_stex_kpsewhich_return_str
   
   \str_if_empty:NTF\c_stex_mathhub_str{
     \msg_warning:nn{stex}{warning/nomathhub}
   }{
-    \stex_debug:nn{mathhub} {MathHub:~\str_use:N\c_stex_mathhub_str}
+    \stex_debug:nn{mathhub}{MathHub:~\str_use:N\c_stex_mathhub_str}
     \exp_args:NNo \stex_path_from_string:Nn\c_stex_mathhub_seq\c_stex_mathhub_str
   }
 }{
@@ -468,12 +495,13 @@
 %    \end{macrocode}
 % \end{variable}
 %
-%
 % \begin{macro}{\_@@_do_manifest:n}
+% Checks whether the manifest for archive |#1| already exists, and
+% if not, finds and parses the corresponding manifest file
 %    \begin{macrocode}
 \cs_new_protected:Nn \_@@_do_manifest:n {
-  \str_set:Nx \l_tmpa_str { #1 }
   \prop_if_exist:cF {c_stex_mathhub_#1_manifest_prop} {
+    \str_set:Nx \l_tmpa_str { #1 }
     \prop_new:c { c_stex_mathhub_#1_manifest_prop }
     \seq_set_split:NnV \l_tmpa_seq / \l_tmpa_str
     \seq_concat:NNN \l_tmpa_seq \c_stex_mathhub_seq \l_tmpa_seq
@@ -492,7 +520,7 @@
 %
 % \begin{variable}{\l_@@_manifest_file_seq}
 %    \begin{macrocode}
-\str_new:N\l_@@_manifest_file_seq
+\seq_new:N\l_@@_manifest_file_seq
 %    \end{macrocode}
 % \end{variable}
 %
@@ -617,14 +645,6 @@
   \prop_if_exist:cF { c_stex_mathhub_#1_manifest_prop } {
     \stex_debug:nn{mathhub}{Opening~archive:~#1}
     \_@@_do_manifest:n { #1 }
-    \exp_args:Nx \stex_add_to_sms:n {
-      \prop_const_from_keyval:cn { c_stex_mathhub_#1_manifest_prop } {
-        id   = \prop_item:cn { c_stex_mathhub_#1_manifest_prop } {  id  } ,
-        ns   = \prop_item:cn { c_stex_mathhub_#1_manifest_prop } {  ns  } ,
-        narr = \prop_item:cn { c_stex_mathhub_#1_manifest_prop } { narr } ,
-        deps = \prop_item:cn { c_stex_mathhub_#1_manifest_prop } { deps }
-      }
-    }
   }
 }
 %    \end{macrocode}
@@ -699,11 +719,27 @@
 %    \end{macrocode}
 % \end{macro}
 %
-% \begin{macro}{\inputref,\stex_inputref:nn,\mhinput\stex_mhinput:nn}
+%  \subsection{Using Content in Archives}
+%
+% \begin{macro}{\mhpath}
+%    \begin{macrocode}
+\def \mhpath #1 #2 {
+  \exp_args:Ne \str_if_eq:nnTF{#1}{}{
+    \c_stex_mathhub_str / 
+      \prop_item:Nn \l_stex_current_repository_prop { id }
+      / source / #2
+  }{
+    \c_stex_mathhub_str / #1 / source / #2
+  }
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\inputref,\mhinput}
 %    \begin{macrocode}
 \newif \ifinputref \inputreffalse
 
-\cs_new_protected:Nn \stex_mhinput:nn {
+\cs_new_protected:Nn \_@@_mhinput:nn {
   \stex_in_repository:nn {#1} {
     \ifinputref
       \input{ \c_stex_mathhub_str / ##1 / source / #2 }
@@ -718,10 +754,11 @@
   \stex_mhinput:nn{ #1 }{ #2 }
 }
 
-\cs_new_protected:Nn \stex_inputref:nn {
+\cs_new_protected:Nn \_@@_inputref:nn {
   \stex_in_repository:nn {#1} {
     \bool_lazy_any:nTF {
-      {\rustex_if_p:} {\latexml_if_p:}
+      {\rustex_if_p:} 
+      {\latexml_if_p:}
     } {
       \str_clear:N \l_tmpa_str
       \prop_get:NnNF \l_stex_current_repository_prop { narr } \l_tmpa_str {
@@ -738,34 +775,22 @@
     }
   }
 }
-
 \NewDocumentCommand \inputref { O{} m}{
-  \stex_inputref:nn{ #1 }{ #2 }
+  \_@@_inputref:nn{ #1 }{ #2 }
 }
-
-\cs_new_protected:Nn \stex_mhbibresource:nn {
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\addmhbibresource}
+%    \begin{macrocode}
+\cs_new_protected:Nn \_@@_mhbibresource:nn {
   \stex_in_repository:nn {#1} {
     \addbibresource{ \c_stex_mathhub_str / ##1 / #2 }
   }
 }
 \newcommand\addmhbibresource[2][]{
-  \stex_mhbibresource:nn{ #1 }{ #2 }
+  \_@@_mhbibresource:nn{ #1 }{ #2 }
 }
-%    \end{macrocode}
-% \end{macro}
-%
-%
-% \begin{macro}{\mhpath}
-%    \begin{macrocode}
-  \def \mhpath #1 #2 {
-    \exp_args:Ne \str_if_eq:nnTF{#1}{}{
-      \c_stex_mathhub_str / 
-        \prop_item:Nn \l_stex_current_repository_prop { id }
-        / source / #2
-    }{
-      \c_stex_mathhub_str / #1 / source / #2
-    }
-  }
 %    \end{macrocode}
 % \end{macro}
 %
@@ -778,7 +803,7 @@
   \prop_get:NnNF \l_stex_current_repository_prop {id} \l_tmpa_str {
     \msg_error:nnn{stex}{error/notinarchive}\libinput
   }
-  \tl_clear:N \l_@@_libinput_files_seq
+  \seq_clear:N \l_@@_libinput_files_seq
   \seq_set_eq:NN \l_tmpa_seq \c_stex_mathhub_seq
   \seq_set_split:NnV \l_tmpb_seq / \l_tmpa_str
 
@@ -849,6 +874,7 @@
 %    \end{macrocode}
 % \end{macro}
 %
+% \begin{macro}{\mhgraphics,\cmhgraphics}
 %    \begin{macrocode}
 
 \AddToHook{begindocument}{
@@ -859,6 +885,11 @@
       \includegraphics[#1]{\mhpath\Gin@mhrepos{#2}}}
     \newcommand\cmhgraphics[2][]{\begin{center}\mhgraphics[#1]{#2}\end{center}}    
   }{}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\lstinputmhlisting,\clstinputmhlisting}
+%    \begin{macrocode}
 	\ltx@ifpackageloaded{listings}{
     \define@key{lst}{mhrepos}{\def\lst@mhrepos{#1}}
     \newcommand\lstinputmhlisting[2][]{%
@@ -868,9 +899,9 @@
   }{}
 }
 
-
 %</package>
 %    \end{macrocode}
+% \end{macro}
 %
 % \end{implementation}
 %

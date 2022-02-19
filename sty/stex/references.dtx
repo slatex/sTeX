@@ -35,15 +35,93 @@
 % For a more high-level introduction, 
 %  see \href{\basedocurl/manual.pdf}{the \sTeX Manual} or the
 % \href{\basedocurl/stex.pdf}{full \sTeX documentation}.
-%
-% \input{../../doc/packages/references}
 % \fi
 %
 % \begin{documentation}\label{pkg:sref:doc}
 %
-% Code related to links and cross-references
+% This sub package contains code related to links and cross-references
+%
+%\ifinfulldoc\else
+% \input{../../doc/packages/references}
+% \fi
 %
 % \section{Macros and Environments}\label{pkg:sref:doc:macros}
+%
+% \begin{function}{\STEXreftitle}
+%    \begin{syntax} \cs{STEXreftitle}\Arg{some title} \end{syntax}
+%
+%    Sets the title of the current document to \meta{some title}.
+%    A reference to the current document from \emph{some other}
+%    document will then be displayed accordingly. e.g.
+%    if |\STEXreftitle{foo book}| is called, then referencing 
+%    Definition 3.5 in this document in another document will display
+%    |Definition 3.5 in foo book|.
+% \end{function}
+%
+% \begin{function}{\stex_get_document_uri:}
+%   Computes the current document uri from the current archive's
+%   |narr|-field and its location relative to the archive's 
+%   |source|-directory. Reference targets are computed from
+%   this URI and the reference-id.
+%
+%   \begin{variable}{\l_stex_current_docns_str}
+%      Stores its result in |\l_stex_current_docns_str|
+%   \end{variable}
+% \end{function}
+%
+% \begin{function}{\stex_get_document_url:}
+%   Computes the current URL from the current archive's
+%   |docurl|-field and its location relative to the archive's 
+%   |source|-directory. Reference targets are computed from
+%   this URL and the reference-id, if this document is only included
+%   in SMS mode.
+%
+%   \begin{variable}{\l_stex_current_docurl_str}
+%      Stores its result in |\l_stex_current_docurl_str|
+%   \end{variable}
+% \end{function}
+%
+% \subsection{Setting Reference Targets}
+%
+% \begin{function}{\stex_ref_new_doc_target:n}
+%    \begin{syntax} \cs{stex_ref_new_doc_target:n}\Arg{id} \end{syntax}
+%
+%    Sets a new reference target with id \meta{id}.
+% \end{function}
+%
+% \begin{function}{\stex_ref_new_sym_target:n}
+%    \begin{syntax} \cs{stex_ref_new_sym_target:n}\Arg{uri} \end{syntax}
+%
+%    Sets a new reference target for the symbol \meta{uri}.
+% \end{function}
+%
+% \subsection{Using References}
+%
+% \begin{function}{\sref}
+%   \begin{syntax} \cs{sref}|[|\meta{opt-args}|]|\Arg{id} \end{syntax}
+%   References the label with if \meta{id}.
+%   Optional arguments: TODO
+% \end{function}
+%
+% \begin{function}{\srefsym}
+%   \begin{syntax} \cs{srefsym}|[|\meta{opt-args}|]|\Arg{symbol} \end{syntax}
+%   Like \cs{sref}, but references the \emph{canonical label} for
+%   the provided symbol. The canonical target is the last of the following
+%   occuring in the document:
+%   \begin{itemize}
+%     \item A \cs{definiendum} or \cs{definame} for \meta{symbol},
+%     \item The |sassertion|, |sexample| or |sparagraph| with |for=|\meta{symbol} that
+%       generated \meta{symbol} in the first place, or
+%     \item A \cs{sparagraph} with |type=symdoc| and |for=|\meta{symbol}.
+%   \end{itemize}
+% \end{function}
+%
+% \begin{function}{\srefsymuri}
+%   \begin{syntax} \cs{srefsymuri}\Arg{URI}\Arg{text} \end{syntax}
+%    A convenient short-hand for |\srefsym[linktext={text}]{URI}|,
+%    but requires the first argument to be a full URI already.
+%    Intended to be used in e.g. \cs{compemph@uri}, \cs{defemph@uri}, etc.
+% \end{function}
 %
 % \end{documentation}
 %
@@ -56,8 +134,6 @@
 
 %%%%%%%%%%%%%   references.dtx   %%%%%%%%%%%%%
 
-%\RequirePackage{hyperref}
-%\RequirePackage{cleveref}
 %<@@=stex_refs>
 %    \end{macrocode}
 %
@@ -67,6 +143,9 @@
 
 %    \end{macrocode}
 %
+% References are stored in the file |\jobname.sref|, to enable
+% cross-referencing external documents.
+%
 %    \begin{macrocode}
 \iow_new:N \c_@@_refs_iow
 \AddToHook{begindocument}{
@@ -75,20 +154,28 @@
 \AddToHook{enddocument}{
   \iow_close:N \c_@@_refs_iow
 }
-
+%    \end{macrocode}
+%
+% \begin{macro}{\STEXreftitle}
+%    \begin{macrocode}
 \str_set:Nn \g_@@_title_tl {Unnamed~Document}
 
 \NewDocumentCommand \STEXreftitle { m } {
   \tl_gset:Nx \g_@@_title_tl { #1 }
 }
 %    \end{macrocode}
+% \end{macro}
 %
 % \subsection{Document URIs and URLs}
 %
+% \begin{variable}{\l_stex_current_docns_str}
 %    \begin{macrocode}
-
 \str_new:N \l_stex_current_docns_str
-
+%    \end{macrocode}
+% \end{variable}
+%
+% \begin{macro}{\stex_get_document_uri:}
+%    \begin{macrocode}
 \cs_new_protected:Nn \stex_get_document_uri: {
   \seq_set_eq:NN \l_tmpa_seq \g_stex_currentfile_seq
   \seq_pop_right:NN \l_tmpa_seq \l_tmpb_str
@@ -130,10 +217,16 @@
   }
 }
 %    \end{macrocode}
+% \end{macro}
 %
-%
+% \begin{variable}{\l_stex_current_docurl_str}
 %    \begin{macrocode}
 \str_new:N \l_stex_current_docurl_str
+%    \end{macrocode}
+% \end{variable}
+%
+% \begin{macro}{\stex_get_document_url:}
+%    \begin{macrocode}
 \cs_new_protected:Nn \stex_get_document_url: {
   \seq_set_eq:NN \l_tmpa_seq \g_stex_currentfile_seq
   \seq_pop_right:NN \l_tmpa_seq \l_tmpb_str
@@ -177,6 +270,7 @@
   }
 }
 %    \end{macrocode}
+% \end{macro}
 %
 % \subsection{Setting Reference Targets}
 %
@@ -191,6 +285,10 @@
 % \the#  -> number
 % \hyper@makecurrent{#}
 \int_new:N \l_@@_unnamed_counter_int
+%    \end{macrocode}
+%
+% \begin{macro}{\stex_ref_new_doc_target:n}
+%    \begin{macrocode}
 \cs_new_protected:Nn \stex_ref_new_doc_target:n {
   \stex_get_document_uri:
   \str_clear:N \l_@@_curr_label_str
@@ -219,7 +317,12 @@
     \str_gset:cx {sref_\l_@@_curr_label_str _type}\c_@@_ref_str
   }
 }
-
+%    \end{macrocode}
+% \end{macro}
+%
+% The following is used to set the necessary macros in the |.aux|-file.
+%
+%    \begin{macrocode}
 \cs_new_protected:Npn \stexauxadddocref #1 #2 {
   \str_set:Nn \l_tmpa_str {#1?#2}
   \str_gset_eq:cN{sref_#1?#2_type}\c_@@_ref_str
@@ -230,13 +333,17 @@
     \seq_gput_right:co{g_@@_labels_#2_seq}\l_tmpa_str
   }
 }
-
+%    \end{macrocode}
+% To avoid resetting the same macros when the |.aux|-file is read
+% at the end of the document:
+%
+%    \begin{macrocode}
 \AtEndDocument{
   \def\stexauxadddocref#1 #2 {}{}
 }
-
 %    \end{macrocode}
 %
+% \begin{macro}{\stex_ref_new_sym_target:n}
 %    \begin{macrocode}
 \cs_new_protected:Nn \stex_ref_new_sym_target:n {
   \stex_if_smsmode:TF {
@@ -257,21 +364,24 @@
   }
 }
 %    \end{macrocode}
+% \end{macro}
 %
 % \subsection{Using References}
 %
 %    \begin{macrocode}
 \str_new:N \l_@@_indocument_str
+%    \end{macrocode}
+%
+% \begin{macro}{\sref}
+% Optional arguments:
+%    \begin{macrocode}
+
 \keys_define:nn { stex / sref } {
   linktext      .tl_set:N  = \l_@@_linktext_tl ,
   fallback      .tl_set:N  = \l_@@_fallback_tl ,
   pre           .tl_set:N  = \l_@@_pre_tl ,
   post          .tl_set:N  = \l_@@_post_tl ,
-  %indoc         .str_set_x:N  = \l_@@_repo_str ,
 }
-
-
-
 \cs_new_protected:Nn \_@@_args:n {
   \tl_clear:N \l_@@_linktext_tl
   \tl_clear:N \l_@@_fallback_tl
@@ -280,7 +390,9 @@
   \str_clear:N \l_@@_repo_str
   \keys_set:nn { stex / sref } { #1 }
 }
-
+%    \end{macrocode}
+% The actual macro:
+%    \begin{macrocode}
 \NewDocumentCommand \sref { O{} m}{
   \_@@_args:n { #1 }
   \str_if_empty:NTF \l_@@_indocument_str {
@@ -343,7 +455,11 @@
     % TODO
   }
 }
-
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\srefsym}
+%    \begin{macrocode}
 \NewDocumentCommand \srefsym { O{} m}{
   \stex_get_symbol:n { #2 }
   \_@@_sym_aux:nn{#1}{\l_stex_get_symbol_uri_str}
@@ -389,13 +505,16 @@
     }
   }
 }
-
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\srefsymuri}
+%    \begin{macrocode}
 \cs_new_protected:Npn \srefsymuri #1 #2 {
   \_@@_sym_aux:nn{linktext={#2}}{#1}
 }
-
 %    \end{macrocode}
-%
+% \end{macro}
 %
 %    \begin{macrocode}
 %</package>
