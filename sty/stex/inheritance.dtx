@@ -35,75 +35,68 @@
 % For a more high-level introduction, 
 %  see \href{\basedocurl/manual.pdf}{the \sTeX Manual} or the
 % \href{\basedocurl/stex.pdf}{full \sTeX documentation}.
-%
-% \input{../../doc/packages/inheritance}
 % \fi
 %
 % \begin{documentation}\label{pkg:inheritance:doc}
 %
 % Code related to Module Inheritance, in particular \emph{sms mode}.
 %
+%\ifinfulldoc\else
+% \input{../../doc/packages/inheritance}
+%\fi
+%
 % \section{Macros and Environments}\label{pkg:inheritance:doc:macros}
 %
 %    \subsection{SMS Mode}
 % ``SMS Mode'' is used when loading modules from external tex files.
 % It deactivates any output and ignores all \TeX\ commands
-% not explicitly allowed via the following lists:
+% not explicitly allowed via the following lists -- all of which either
+% declare module content or are needed in order to declare module content:
 %
 % \begin{variable}{\g_stex_smsmode_allowedmacros_tl}
-%   Macros that are executed as is; i.e. with the category code scheme
-%   used in SMS mode.
+%   Macros that are executed as is; i.e. sms mode continues immediately after.
+%   These macros may not take any arguments or otherwise gobble tokens.
+%
+%   Initially: \cs{makeatletter}, \cs{makeatother}, \cs{ExplSyntaxOn},
+%   \cs{ExplSyntaxOff}.
 % \end{variable}
 %
 % \begin{variable}{\g_stex_smsmode_allowedmacros_escape_tl}
-%   Macros that are executed with the category codes restored.
+%   Macros that are executed and potentially gobble up further tokens.
+%   These macros need to make sure, that the very last token they ultimately
+%   expand to is \cs{stex_smsmode_do:}.
 %
-%   Importantly, these macros need to call \cs{stex_smsmode_set_codes:}
-%   after reading all arguments. Note, that 
-%   \cs{stex_smsmode_set_codes:} takes
-%   care of checking whether we are in SMS mode in the first place, 
-%   so calling this function eagerly is unproblematic.
+%   Initially: \cs{symdecl}, \cs{notation}, \cs{symdef}, 
+%   \cs{importmodule}, \cs{STEXexport}, \cs{inlineass}, \cs{inlinedef},
+%   \cs{inlineex}, \cs{endinput}, \cs{setnotation}, \cs{copynotation}.
 % \end{variable}
 %
 % \begin{variable}{\g_stex_smsmode_allowedenvs_seq}
 %   The names of environments that should be allowed in SMS mode.
 %   The corresponding \cs{begin}-statements are treated like
 %   the macros in \cs{g_stex_smsmode_allowedmacros_escape_tl}, so
-%   \cs{stex_smsmode_set_codes:} should be called at the end of the
+%   \cs{stex_smsmode_do:} needs to be the last token in the
 %   \cs{begin}-code. Since \cs{end}-statements take no arguments anyway,
-%   those are called with the SMS mode category code scheme active.
+%   those are called directly and sms mode continues afterwards.
+%
+%   Initially: |smodule|, |copymodule|, |interpretmodule|, |sdefinition|,
+%   |sexample|, |sassertion|, |sparagraph|.
 % \end{variable}
 %
 % \begin{function}[pTF]{\stex_if_smsmode:}
 %   Tests whether SMS mode is currently active.
 % \end{function}
 %
-% \begin{function}{\stex_smsmode_set_codes:}
-%   Sets the current category code scheme to that of the SMS mode, if
-%   SMS mode is currently active and if necessary.
-%
-%   This method should be called at the end of every macro or 
-%   \cs{begin} environment code that are allowed in SMS mode.
-%
+% \begin{function}{\stex_file_in_smsmode:nn}
+%   \begin{syntax} \cs{stex_in_smsmode:nn} \Arg{filename} \Arg{code} \end{syntax}
+%   Executes \meta{code} in SMS mode, followed by the content of \meta{filename}. 
+%   \meta{code} can be used e.g. to set the current repository, and is
+%   executed within a new tex group, and the same group as the file content.
 % \end{function}
 %
-% \begin{function}{\stex_in_smsmode:nn}
-%   \begin{syntax} \cs{stex_in_smsmode:nn} \Arg{name} \Arg{code} \end{syntax}
-%   Executes \meta{code} in SMS mode. \meta{name} can be arbitrary,
-%   but should be distinct, since it allows for nesting 
-%   \cs{stex_in_smsmode:nn} without spuriously terminating SMS mode.
+% \begin{function}{\stex_smsmode_do:}
+%   Starts gobbling tokens until one is encountered that is allowed in SMS mode.
 % \end{function}
-%
-%\stextest{
-% \immediate\openout\testfile=./tests/sometest.tex
-% \immediate\write\testfile{\detokenize{\this is \a test}^^J}
-% \immediate\write\testfile{\detokenize{this \is a \test}}
-% \immediate\closeout\testfile
-% \ExplSyntaxOn
-% \stex_file_in_smsmode:nn{tests/sometest.tex}{}
-% \ExplSyntaxOff
-%}
-%
 %
 %    \subsection{Imports and Inheritance}
 %
@@ -115,62 +108,11 @@
 %   
 % \end{function}
 %
-%\stextest{
-%   \begin{smodule}{Foo}
-%      \symdecl[name=foo, args=3]{bar}
-%      \symdecl[args=bai]{foobar}
-%      Meaning:~\present\bar\\
-%   \end{smodule}
-%      Meaning:~\present\bar\\
-%   \begin{smodule}{Importtest}
-%     \importmodule{Foo}
-%      Meaning:~\present\bar\\
-%   \end{smodule}
-%   \begin{smodule}{Importtest2}
-%     \importmodule{Importtest}
-%      Meaning:~\present\bar\\
-%   \end{smodule}
-%}
-%
 % \begin{function}{\usemodule}
 %   \begin{syntax} \cs{importmodule}|[|\meta{archive-ID}|]|\Arg{module-path} \end{syntax}
 %   Like \cs{importmodule}, but does not export its contents;
 %   i.e. including the current module will not activate the used module
-%   
 % \end{function}
-%
-%\stextest{
-%   \begin{smodule}{UseTest1}
-%      \symdecl{foo}
-%   \end{smodule}
-%   \begin{smodule}{UseTest2}
-%     \usemodule{UseTest1}
-%      \symdecl{bar}
-%      Meaning:~\present\foo\\
-%   \end{smodule}
-%   \begin{smodule}{UseTest3}
-%     \importmodule{UseTest2}
-%     Meaning:~\present\foo\\
-%     Meaning:~\present\bar\\
-%
-%     All modules: \ExplSyntaxOn
-%       \seq_use:Nn \l_stex_all_modules_seq {,~} \\
-%      All~symbols:~
-%        \seq_use:Nn \l_stex_all_symbols_seq {,~}
-%     \ExplSyntaxOff 
-%   \end{smodule}
-%}
-%
-%
-%\stextest{
-% Circular dependencies:
-% \begin{smodule}{CircDep1}
-%   \importmodule[Foo/Bar]{circular1?Circular1}
-%   \importmodule[Bar/Foo]{circular2?Circular2}
-%   \present\fooA\\
-%   \present\fooB
-% \end{smodule}
-%}
 %
 % \begin{function}{\stex_import_module_uri:nn}
 %   \begin{syntax} \cs{stex_import_module_uri:nn} \Arg{archive-ID} \Arg{module-path} \end{syntax}
@@ -217,6 +159,11 @@
 %       \end{enumerate}
 %   \end{enumerate}
 % \end{function}
+% \begin{variable}{
+%   \l_stex_import_name_str,\l_stex_import_archive_str,\l_stex_import_path_str,\l_stex_import_ns_str
+% }
+%  stores the result in these four variables.
+% \end{variable}
 %
 % \begin{function}{\stex_import_require_module:nnnn}
 %    \begin{syntax} \Arg{ns} \Arg{archive-ID} \Arg{path} \Arg{name} \end{syntax}
@@ -224,9 +171,8 @@
 %     exists. If not, it looks for a plausible file that declares
 %     a module with that URI.
 %
-%     Finally, activates that module by executing its |content|-field.
+%     Finally, activates that module by executing its |_code|-macro.
 % \end{function}
-%
 %
 % \end{documentation}
 %
@@ -302,9 +248,9 @@
 %    \end{macrocode}
 % \end{macro}
 %
-% \begin{macro}{\stex_in_smsmode:nn}
+% \begin{macro}{\_@@_in_smsmode:nn}
 %    \begin{macrocode}
-\cs_new_protected:Nn \stex_in_smsmode:nn {
+\cs_new_protected:Nn \_@@_in_smsmode:nn {
   \vbox_set:Nn \l_tmpa_box {
     \bool_set_eq:cN { l_@@_#1_bool } \g_@@_bool
     \bool_gset_true:N \g_@@_bool
@@ -313,12 +259,16 @@
   }
   \box_clear:N \l_tmpa_box
 }
-
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\stex_file_in_smsmode:nn}
+%    \begin{macrocode}
 \quark_new:N \q_@@_break
 
 \cs_new_protected:Nn \stex_file_in_smsmode:nn {
   \stex_filestack_push:n{#1}
-  \stex_in_smsmode:nn{#1} {
+  \_@@_in_smsmode:nn{#1} {
     #2
     \everyeof{\q_@@_break\noexpand}
     \expandafter\expandafter\expandafter
