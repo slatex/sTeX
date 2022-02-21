@@ -375,7 +375,7 @@
 }
 
 \NewDocumentCommand \_@@_arg: { s O{} m}{
-  \str_if_eq:nnTF {#2}{}{
+  \tl_if_empty:nTF {#2}{
     \int_set:Nn \l_tmpa_int {\prop_item:Nn \l_@@_custom_args_prop {currnum}}
     \bool_set_true:N \l_tmpa_bool
     \bool_do_while:Nn \l_tmpa_bool {
@@ -752,20 +752,35 @@
 %
 % \begin{macro}{\symref,\symname}
 %    \begin{macrocode}
-\NewDocumentCommand \symref { m m }{
-  \let\compemph_uri_prev:\compemph@uri
-  \let\compemph@uri\symrefemph@uri
-  \STEXsymbol{#1}![#2]
-  \let\compemph@uri\compemph_uri_prev:
-}
+\cs_new:Nn \stex_capitalize:n { \uppercase{#1} }
 
 \keys_define:nn { stex / symname } {
-  post    .str_set_x:N   = \l_stex_symname_post_str
+  pre     .tl_set_x:N    = \l_@@_pre_tl ,
+  post    .tl_set_x:N    = \l_@@_post_tl ,
+  root    .tl_set_x:N    = \l_@@_root_tl
 }
 
 \cs_new_protected:Nn \stex_symname_args:n {
-  \str_clear:N \l_stex_symname_post_str
+  \tl_clear:N \l_@@_post_tl
+  \tl_clear:N \l_@@_pre_tl
+  \tl_clear:N \l_@@_root_str
   \keys_set:nn { stex / symname } { #1 }
+}
+
+\NewDocumentCommand \symref { m m }{
+  \let\compemph_uri_prev:\compemph@uri
+  \let\compemph@uri\symrefemph@uri
+  \STEXsymbol{#1}![ #2 ]
+  \let\compemph@uri\compemph_uri_prev:
+}
+
+\NewDocumentCommand \synonym { O{} m m}{
+  \stex_symname_args:n { #1 }
+  \let\compemph_uri_prev:\compemph@uri
+  \let\compemph@uri\symrefemph@uri
+  % TODO
+  \STEXsymbol{#2}![\l_@@_pre_tl #3 \l_@@_post_tl]
+  \let\compemph@uri\compemph_uri_prev:
 }
 
 \NewDocumentCommand \symname { O{} m }{
@@ -780,7 +795,24 @@
   \let\compemph@uri\symrefemph@uri
   \exp_args:NNx \use:nn
   \stex_invoke_symbol:n { { \l_stex_get_symbol_uri_str }![
-    \l_tmpa_str \l_stex_symname_post_str
+    \l_@@_pre_tl \l_tmpa_str \l_@@_post_tl
+  ] }
+  \let\compemph@uri\compemph_uri_prev:
+}
+
+\NewDocumentCommand \Symname { O{} m }{
+  \stex_symname_args:n { #1 }
+  \stex_get_symbol:n { #2 }
+  \str_set:Nx \l_tmpa_str {
+    \prop_item:cn { l_stex_symdecl_ \l_stex_get_symbol_uri_str _prop } { name }
+  }
+  \exp_args:NNno \str_replace_all:Nnn \l_tmpa_str {-} {~}
+  \let\compemph_uri_prev:\compemph@uri
+  \let\compemph@uri\symrefemph@uri
+  \exp_args:NNx \use:nn
+  \stex_invoke_symbol:n { { \l_stex_get_symbol_uri_str }![
+    \exp_after:wN \stex_capitalize:n \l_tmpa_str
+      \l_@@_post_tl
   ] }
   \let\compemph@uri\compemph_uri_prev:
 }

@@ -81,6 +81,7 @@
 % \begin{macro}{definiendum}
 %    \begin{macrocode}
 \keys_define:nn {stex / definiendum }{
+  pre     .tl_set:N     = \l_@@_definiendum_pre_tl,
   post    .tl_set:N     = \l_@@_definiendum_post_tl,
   root    .str_set_x:N  = \l_@@_definiendum_root_str,
   gfa     .str_set_x:N  = \l_@@_definiendum_gfa_str
@@ -101,7 +102,7 @@
     } {
       \str_set:Nx \l_@@_definiendum_root_str { #3 }
       \tl_set:Nn \l_tmpa_tl {
-        \l_@@_definiendum_root_str\l_@@_definiendum_post_tl
+        \l_@@_definiendum_pre_tl\l_@@_definiendum_root_str\l_@@_definiendum_post_tl
        }
     }
   } {
@@ -121,8 +122,6 @@
 %
 % \begin{macro}{definame}
 %    \begin{macrocode}
-
-\cs_new:Nn \stex_capitalize:n { \uppercase{#1} }
 
 \NewDocumentCommand \definame { O{} m } {
   \_@@_definiendum_args:n { #1 }
@@ -146,7 +145,7 @@
 \stex_deactivate_macro:Nn \definame {definition~environments}
 
 \NewDocumentCommand \Definame { O{} m } {
-  \__stex_statements_definiendum_args:n { #1 }
+  \_@@_definiendum_args:n { #1 }
   \stex_get_symbol:n { #2 }
   \str_set:Nx \l_tmpa_str {
     \prop_item:cn { l_stex_symdecl_ \l_stex_get_symbol_uri_str _prop } { name }
@@ -165,22 +164,20 @@
 }
 \stex_deactivate_macro:Nn \Definame {definition~environments}
 
-\NewDocumentCommand \Symname { O{} m }{
-  \stex_symname_args:n { #1 }
-  \stex_get_symbol:n { #2 }
-  \str_set:Nx \l_tmpa_str {
-    \prop_item:cn { l_stex_symdecl_ \l_stex_get_symbol_uri_str _prop } { name }
-  }
-  \exp_args:NNno \str_replace_all:Nnn \l_tmpa_str {-} {~}
-  \let\compemph_uri_prev:\compemph@uri
-  \let\compemph@uri\symrefemph@uri
-  \exp_args:NNx \use:nn
-  \stex_invoke_symbol:n { { \l_stex_get_symbol_uri_str }![
-    \exp_after:wN \stex_capitalize:n \l_tmpa_str
-      \l_stex_symname_post_str
-  ] }
-  \let\compemph@uri\compemph_uri_prev:
+\NewDocumentCommand \premise { m }{
+  \stex_annotate:nnn{ premise }{}{ #1 }
 }
+\NewDocumentCommand \conclusion { m }{
+  \stex_annotate:nnn{ conclusion }{}{ #1 }
+}
+\NewDocumentCommand \definiens { m }{
+  \stex_annotate:nnn{ definiens }{}{ #1 }
+}
+
+\stex_deactivate_macro:Nn \premise {definition,~example~or~assertion~environments}
+\stex_deactivate_macro:Nn \conclusion {example~or~assertion~environments}
+\stex_deactivate_macro:Nn \definiens {definition~environments}
+
 %    \end{macrocode}
 % \end{macro}
 %
@@ -208,10 +205,12 @@
   \stex_reactivate_macro:N \definiendum
   \stex_reactivate_macro:N \definame
   \stex_reactivate_macro:N \Definame
+  \stex_reactivate_macro:N \premise
+  \stex_reactivate_macro:N \definiens
   \stex_if_smsmode:F{
     \seq_clear:N \l_tmpa_seq
     \clist_map_inline:Nn \l_@@_sdefinition_for_clist {
-      \str_if_eq:nnF{ ##1 }{}{
+      \tl_if_empty:nF{ ##1 }{
         \stex_get_symbol:n { ##1 }
         \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
           \l_stex_get_symbol_uri_str
@@ -303,13 +302,15 @@
   \stex_reactivate_macro:N \definiendum
   \stex_reactivate_macro:N \definame
   \stex_reactivate_macro:N \Definame
+  \stex_reactivate_macro:N \premise
+  \stex_reactivate_macro:N \definiens
   \stex_ref_new_doc_target:n \sdefinitionid
   \stex_if_smsmode:TF{
     \str_if_empty:NF \sdefinitionname { \stex_symdecl_do:nn{}{\sdefinitionname} }
   }{
     \seq_clear:N \l_tmpa_seq
     \clist_map_inline:Nn \l_@@_sdefinition_for_clist {
-      \str_if_eq:nnF{ ##1 }{}{
+      \tl_if_empty:nF{ ##1 }{
         \stex_get_symbol:n { ##1 }
         \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
           \l_stex_get_symbol_uri_str
@@ -356,10 +357,12 @@
 
 \NewDocumentEnvironment{sassertion}{O{}}{
   \_@@_sassertion_args:n{ #1 }
+  \stex_reactivate_macro:N \premise
+  \stex_reactivate_macro:N \conclusion
   \stex_if_smsmode:F {
     \seq_clear:N \l_tmpa_seq
     \clist_map_inline:Nn \l_@@_sassertion_for_clist {
-      \str_if_eq:nnF{ ##1 }{}{
+      \tl_if_empty:nF{ ##1 }{
         \stex_get_symbol:n { ##1 }
         \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
           \l_stex_get_symbol_uri_str
@@ -457,6 +460,8 @@
 }
 \NewDocumentCommand \inlineass { O{} m } {
   \begingroup
+  \stex_reactivate_macro:N \premise
+  \stex_reactivate_macro:N \conclusion
   \_@@_inlineass_args:n{ #1 }
   \str_if_empty:NTF \sassertionid {
     \str_if_empty:NF \sassertionname {
@@ -474,7 +479,7 @@
   }{
     \seq_clear:N \l_tmpa_seq
     \clist_map_inline:Nn \l_@@_sassertion_for_clist {
-      \str_if_eq:nnF{ ##1 }{}{
+      \tl_if_empty:nF{ ##1 }{
         \stex_get_symbol:n { ##1 }
         \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
           \l_stex_get_symbol_uri_str
@@ -520,10 +525,12 @@
 
 \NewDocumentEnvironment{sexample}{O{}}{
   \_@@_sexample_args:n{ #1 }
+  \stex_reactivate_macro:N \premise
+  \stex_reactivate_macro:N \conclusion
   \stex_if_smsmode:F {
     \seq_clear:N \l_tmpa_seq
     \clist_map_inline:Nn \l_@@_sexample_for_clist {
-      \str_if_eq:nnF{ ##1 }{}{
+      \tl_if_empty:nF{ ##1 }{
         \stex_get_symbol:n { ##1 }
         \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
           \l_stex_get_symbol_uri_str
@@ -614,6 +621,8 @@
 }
 \NewDocumentCommand \inlineex { O{} m } {
   \begingroup
+  \stex_reactivate_macro:N \premise
+  \stex_reactivate_macro:N \conclusion
   \_@@_inlineex_args:n{ #1 }
   \str_if_empty:NF \sexampleid {
     \stex_ref_new_doc_target:n \sexampleid
@@ -623,7 +632,7 @@
   }{
     \seq_clear:N \l_tmpa_seq
     \clist_map_inline:Nn \l_@@_sexample_for_clist {
-      \str_if_eq:nnF{ ##1 }{}{
+      \tl_if_empty:nF{ ##1 }{
         \stex_get_symbol:n { ##1 }
         \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
           \l_stex_get_symbol_uri_str
@@ -684,7 +693,7 @@
   \stex_if_smsmode:F {
     \seq_clear:N \l_tmpa_seq
     \clist_map_inline:Nn \l_@@_sparagraph_for_clist {
-      \str_if_eq:nnF{ ##1 }{}{
+      \tl_if_empty:nF{ ##1 }{
         \stex_get_symbol:n { ##1 }
         \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
           \l_stex_get_symbol_uri_str
@@ -730,7 +739,7 @@
   \exp_args:NNx
   \clist_if_in:NnT \l_tmpa_clist {\tl_to_str:n{symdoc}}{
     \clist_map_inline:Nn \l_@@_sparagraph_for_clist {
-      \str_if_eq:nnF{ ##1 }{}{
+      \tl_if_empty:nF{ ##1 }{
         \stex_get_symbol:n { ##1 }
         \stex_ref_new_sym_target:n \l_stex_get_symbol_uri_str
       }
@@ -827,7 +836,7 @@
   }{
     \seq_clear:N \l_tmpa_seq
     \clist_map_inline:Nn \l_@@_sparagraph_for_clist {
-      \str_if_eq:nnF{ ##1 }{}{
+      \tl_if_empty:nF{ ##1 }{
         \stex_get_symbol:n { ##1 }
         \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
           \l_stex_get_symbol_uri_str
@@ -882,27 +891,6 @@
 %
 %
 %
-% \begin{environment}{symboldoc}
-%    \begin{macrocode}
-\NewDocumentEnvironment{symboldoc}{ m }{
-  \seq_set_split:Nnn \l_tmpa_seq , { #1 }
-  \seq_clear:N \l_tmpb_seq
-  \seq_map_inline:Nn \l_tmpa_seq {
-    \str_if_eq:nnF{ ##1 }{}{
-      \stex_get_symbol:n { ##1 }
-      \exp_args:NNo \seq_put_right:Nn \l_tmpb_seq {
-        \l_stex_get_symbol_uri_str
-      }
-    }
-  }
-  \par
-  \exp_args:Nnnx
-  \begin{stex_annotate_env}{symboldoc}{\seq_use:Nn \l_tmpb_seq {,}}
-}{
-  \end{stex_annotate_env}
-}
-%    \end{macrocode}
-% \end{environment}
 %
 %
 %    \begin{macrocode}

@@ -315,7 +315,7 @@
     }
     \seq_map_inline:Nn #1 {
       \str_set:Nn \l_tmpa_tl { ##1 }
-      \str_if_eq:NNTF \l_tmpa_tl \c__stex_path_dot_str {} {
+      \str_if_eq:NNF \l_tmpa_tl \c__stex_path_dot_str {
         \str_if_eq:NNTF \l_tmpa_tl \c__stex_path_up_str {
           \seq_if_empty:NTF \l_tmpa_seq {
             \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
@@ -598,7 +598,7 @@
   }
 }
 \def \mhpath #1 #2 {
-  \exp_args:Ne \str_if_eq:nnTF{#1}{}{
+  \exp_args:Ne \tl_if_empty:nTF{#1}{
     \c_stex_mathhub_str /
       \prop_item:Nn \l_stex_current_repository_prop { id }
       / source / #2
@@ -1829,14 +1829,14 @@
   \keys_set:nn { stex / symdecl } { #1 }
 }
 
-\NewDocumentCommand \symdecl { s O{} m } {
-  \__stex_symdecl_args:n { #2 }
+\NewDocumentCommand \symdecl { s m O{}} {
+  \__stex_symdecl_args:n { #3 }
   \IfBooleanTF #1 {
     \bool_set_false:N \l_stex_symdecl_make_macro_bool
   } {
     \bool_set_true:N \l_stex_symdecl_make_macro_bool
   }
-  \stex_symdecl_do:n { #3 }
+  \stex_symdecl_do:n { #2 }
   \stex_smsmode_do:
 }
 
@@ -2144,10 +2144,10 @@
 
   \keys_set:nn { stex / notation } { #1 }
 }
-\NewDocumentCommand \notation { s O{} m } {
-  \_stex_notation_args:n { #2 }
+\NewDocumentCommand \notation { s m O{}} {
+  \_stex_notation_args:n { #3 }
   \tl_clear:N \l_stex_symdecl_definiens_tl
-  \stex_get_symbol:n { #3 }
+  \stex_get_symbol:n { #2 }
   \tl_set:Nn \l_stex_notation_after_do_tl {
     \__stex_notation_final:
     \IfBooleanTF#1{
@@ -2590,10 +2590,10 @@
   \keys_set:nn { stex / symdef } { #1 }
 }
 
-\NewDocumentCommand \symdef { O{} m } {
-  \__stex_notation_symdef_args:n { #1 }
+\NewDocumentCommand \symdef { m O{} } {
+  \__stex_notation_symdef_args:n { #2 }
   \bool_set_true:N \l_stex_symdecl_make_macro_bool
-  \stex_symdecl_do:n { #2 }
+  \stex_symdecl_do:n { #1 }
   \tl_set:Nn \l_stex_notation_after_do_tl {
     \__stex_notation_final:
     \stex_smsmode_do:
@@ -2789,6 +2789,17 @@
   }{
     \__stex_variables_do_simple:nnn
   }
+}
+
+\NewDocumentCommand \svar { O{} m }{
+  \tl_if_empty:nTF {#1}{
+    \str_set:Nn \l_tmpa_str { #2 }
+  }{
+    \str_set:Nn \l_tmpa_str { #1 }
+  }
+  \_stex_term_omv:nn {
+        var://\l_tmpa_str
+    }{ \comp{ #2 } }
 }
 
 
@@ -2990,7 +3001,7 @@
 }
 
 \NewDocumentCommand \__stex_terms_arg: { s O{} m}{
-  \str_if_eq:nnTF {#2}{}{
+  \tl_if_empty:nTF {#2}{
     \int_set:Nn \l_tmpa_int {\prop_item:Nn \l__stex_terms_custom_args_prop {currnum}}
     \bool_set_true:N \l_tmpa_bool
     \bool_do_while:Nn \l_tmpa_bool {
@@ -3259,20 +3270,35 @@
   }
   { \l__stex_terms_custom_uri } { \l__stex_terms_custom_uri } { \l_tmpa_tl }
 }
-\NewDocumentCommand \symref { m m }{
-  \let\compemph_uri_prev:\compemph@uri
-  \let\compemph@uri\symrefemph@uri
-  \STEXsymbol{#1}![#2]
-  \let\compemph@uri\compemph_uri_prev:
-}
+\cs_new:Nn \stex_capitalize:n { \uppercase{#1} }
 
 \keys_define:nn { stex / symname } {
-  post    .str_set_x:N   = \l_stex_symname_post_str
+  pre     .tl_set_x:N    = \l__stex_terms_pre_tl ,
+  post    .tl_set_x:N    = \l__stex_terms_post_tl ,
+  root    .tl_set_x:N    = \l__stex_terms_root_tl
 }
 
 \cs_new_protected:Nn \stex_symname_args:n {
-  \str_clear:N \l_stex_symname_post_str
+  \tl_clear:N \l__stex_terms_post_tl
+  \tl_clear:N \l__stex_terms_pre_tl
+  \tl_clear:N \l__stex_terms_root_str
   \keys_set:nn { stex / symname } { #1 }
+}
+
+\NewDocumentCommand \symref { m m }{
+  \let\compemph_uri_prev:\compemph@uri
+  \let\compemph@uri\symrefemph@uri
+  \STEXsymbol{#1}![ #2 ]
+  \let\compemph@uri\compemph_uri_prev:
+}
+
+\NewDocumentCommand \synonym { O{} m m}{
+  \stex_symname_args:n { #1 }
+  \let\compemph_uri_prev:\compemph@uri
+  \let\compemph@uri\symrefemph@uri
+  % TODO
+  \STEXsymbol{#2}![\l__stex_terms_pre_tl #3 \l__stex_terms_post_tl]
+  \let\compemph@uri\compemph_uri_prev:
 }
 
 \NewDocumentCommand \symname { O{} m }{
@@ -3287,7 +3313,24 @@
   \let\compemph@uri\symrefemph@uri
   \exp_args:NNx \use:nn
   \stex_invoke_symbol:n { { \l_stex_get_symbol_uri_str }![
-    \l_tmpa_str \l_stex_symname_post_str
+    \l__stex_terms_pre_tl \l_tmpa_str \l__stex_terms_post_tl
+  ] }
+  \let\compemph@uri\compemph_uri_prev:
+}
+
+\NewDocumentCommand \Symname { O{} m }{
+  \stex_symname_args:n { #1 }
+  \stex_get_symbol:n { #2 }
+  \str_set:Nx \l_tmpa_str {
+    \prop_item:cn { l_stex_symdecl_ \l_stex_get_symbol_uri_str _prop } { name }
+  }
+  \exp_args:NNno \str_replace_all:Nnn \l_tmpa_str {-} {~}
+  \let\compemph_uri_prev:\compemph@uri
+  \let\compemph@uri\symrefemph@uri
+  \exp_args:NNx \use:nn
+  \stex_invoke_symbol:n { { \l_stex_get_symbol_uri_str }![
+    \exp_after:wN \stex_capitalize:n \l_tmpa_str
+      \l__stex_terms_post_tl
   ] }
   \let\compemph@uri\compemph_uri_prev:
 }
@@ -3902,9 +3945,9 @@
     \prop_put:Nno \l_stex_current_module_prop { fields } { \l_tmpb_seq }
     \exp_args:Nnx
     \AddToHookNext { env / mathstructure / after }{
-      \symdecl[type = \exp_not:N\collection,def={\STEXsymbol{module-type}{
+      \symdecl{ #2 }[type = \exp_not:N\collection,def={\STEXsymbol{module-type}{
         \_stex_term_math_oms:nnnn { \l_tmpa_str }{}{0}{}
-      }}, name = \prop_item:Nn \l_stex_current_module_prop { origname }]{ #2 }
+      }}, name = \prop_item:Nn \l_stex_current_module_prop { origname }]
       \STEXexport {
         \prop_put:Nno \exp_not:N \l_stex_all_structures_prop
           {\prop_item:Nn \l_stex_current_module_prop { origname }}
@@ -3983,18 +4026,18 @@
     \tl_if_empty:NTF \l_tmpb_tl {
       \tl_if_empty:NF \l_tmpa_tl {
         \exp_args:Nx \use:n {
-          \symdecl[args=\l_tmpb_str,def={\exp_args:No\exp_not:n{\l_tmpa_tl}}]{#3/\l__stex_features_structure_field_str}
+          \symdecl{#3/\l__stex_features_structure_field_str}[args=\l_tmpb_str,def={\exp_args:No\exp_not:n{\l_tmpa_tl}}]
         }
       }
     }{
       \tl_if_empty:NTF \l_tmpa_tl {
         \exp_args:Nx \use:n {
-          \symdef[args=\l_tmpb_str]{#3/\l__stex_features_structure_field_str}\exp_after:wN\exp_not:n\exp_after:wN{\l_tmpb_tl}
+          \symdef{#3/\l__stex_features_structure_field_str}[args=\l_tmpb_str]\exp_after:wN\exp_not:n\exp_after:wN{\l_tmpb_tl}
         }
 
       }{
         \exp_args:Nx \use:n {
-          \symdef[args=\l_tmpb_str,def={\exp_args:No\exp_not:n{\l_tmpa_tl}}]{#3/\l__stex_features_structure_field_str}
+          \symdef{#3/\l__stex_features_structure_field_str}[args=\l_tmpb_str,def={\exp_args:No\exp_not:n{\l_tmpa_tl}}]
           \exp_after:wN\exp_not:n\exp_after:wN{\l_tmpb_tl}
         }
       }
@@ -4023,17 +4066,17 @@
       \prop_get:cnN { l_stex_symdecl_ ##1 _prop } {args}
         \l_tmpb_str
       \exp_args:Nx \use:n {
-        \symdecl[args=\l_tmpb_str]{#3/\l_tmpa_str}
+        \symdecl{#3/\l_tmpa_str}[args=\l_tmpb_str]
       }
     }
   }
 
-  \symdecl*[type={\STEXsymbol{module-type}{
+  \symdecl*{#3}[type={\STEXsymbol{module-type}{
     \_stex_term_math_oms:nnnn {
       \prop_item:Nn \l__stex_features_structure_prop {ns} ?
       \prop_item:Nn \l__stex_features_structure_prop {name}
       }{}{0}{}
-  }}]{#3}
+  }}]
 
   % TODO: -> sms file
 
@@ -4080,6 +4123,7 @@
 
 \def\titleemph#1{\textbf{#1}}
 \keys_define:nn {stex / definiendum }{
+  pre     .tl_set:N     = \l__stex_statements_definiendum_pre_tl,
   post    .tl_set:N     = \l__stex_statements_definiendum_post_tl,
   root    .str_set_x:N  = \l__stex_statements_definiendum_root_str,
   gfa     .str_set_x:N  = \l__stex_statements_definiendum_gfa_str
@@ -4100,7 +4144,7 @@
     } {
       \str_set:Nx \l__stex_statements_definiendum_root_str { #3 }
       \tl_set:Nn \l_tmpa_tl {
-        \l__stex_statements_definiendum_root_str\l__stex_statements_definiendum_post_tl
+        \l__stex_statements_definiendum_pre_tl\l__stex_statements_definiendum_root_str\l__stex_statements_definiendum_post_tl
        }
     }
   } {
@@ -4115,8 +4159,6 @@
   }
 }
 \stex_deactivate_macro:Nn \definiendum {definition~environments}
-
-\cs_new:Nn \stex_capitalize:n { \uppercase{#1} }
 
 \NewDocumentCommand \definame { O{} m } {
   \__stex_statements_definiendum_args:n { #1 }
@@ -4159,22 +4201,20 @@
 }
 \stex_deactivate_macro:Nn \Definame {definition~environments}
 
-\NewDocumentCommand \Symname { O{} m }{
-  \stex_symname_args:n { #1 }
-  \stex_get_symbol:n { #2 }
-  \str_set:Nx \l_tmpa_str {
-    \prop_item:cn { l_stex_symdecl_ \l_stex_get_symbol_uri_str _prop } { name }
-  }
-  \exp_args:NNno \str_replace_all:Nnn \l_tmpa_str {-} {~}
-  \let\compemph_uri_prev:\compemph@uri
-  \let\compemph@uri\symrefemph@uri
-  \exp_args:NNx \use:nn
-  \stex_invoke_symbol:n { { \l_stex_get_symbol_uri_str }![
-    \exp_after:wN \stex_capitalize:n \l_tmpa_str
-      \l_stex_symname_post_str
-  ] }
-  \let\compemph@uri\compemph_uri_prev:
+\NewDocumentCommand \premise { m }{
+  \stex_annotate:nnn{ premise }{}{ #1 }
 }
+\NewDocumentCommand \conclusion { m }{
+  \stex_annotate:nnn{ conclusion }{}{ #1 }
+}
+\NewDocumentCommand \definiens { m }{
+  \stex_annotate:nnn{ definiens }{}{ #1 }
+}
+
+\stex_deactivate_macro:Nn \premise {definition,~example~or~assertion~environments}
+\stex_deactivate_macro:Nn \conclusion {example~or~assertion~environments}
+\stex_deactivate_macro:Nn \definiens {definition~environments}
+
 
 \keys_define:nn {stex / sdefinition }{
   type    .str_set_x:N  = \sdefinitiontype,
@@ -4197,10 +4237,12 @@
   \stex_reactivate_macro:N \definiendum
   \stex_reactivate_macro:N \definame
   \stex_reactivate_macro:N \Definame
+  \stex_reactivate_macro:N \premise
+  \stex_reactivate_macro:N \definiens
   \stex_if_smsmode:F{
     \seq_clear:N \l_tmpa_seq
     \clist_map_inline:Nn \l__stex_statements_sdefinition_for_clist {
-      \str_if_eq:nnF{ ##1 }{}{
+      \tl_if_empty:nF{ ##1 }{
         \stex_get_symbol:n { ##1 }
         \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
           \l_stex_get_symbol_uri_str
@@ -4281,13 +4323,15 @@
   \stex_reactivate_macro:N \definiendum
   \stex_reactivate_macro:N \definame
   \stex_reactivate_macro:N \Definame
+  \stex_reactivate_macro:N \premise
+  \stex_reactivate_macro:N \definiens
   \stex_ref_new_doc_target:n \sdefinitionid
   \stex_if_smsmode:TF{
     \str_if_empty:NF \sdefinitionname { \stex_symdecl_do:nn{}{\sdefinitionname} }
   }{
     \seq_clear:N \l_tmpa_seq
     \clist_map_inline:Nn \l__stex_statements_sdefinition_for_clist {
-      \str_if_eq:nnF{ ##1 }{}{
+      \tl_if_empty:nF{ ##1 }{
         \stex_get_symbol:n { ##1 }
         \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
           \l_stex_get_symbol_uri_str
@@ -4326,10 +4370,12 @@
 
 \NewDocumentEnvironment{sassertion}{O{}}{
   \__stex_statements_sassertion_args:n{ #1 }
+  \stex_reactivate_macro:N \premise
+  \stex_reactivate_macro:N \conclusion
   \stex_if_smsmode:F {
     \seq_clear:N \l_tmpa_seq
     \clist_map_inline:Nn \l__stex_statements_sassertion_for_clist {
-      \str_if_eq:nnF{ ##1 }{}{
+      \tl_if_empty:nF{ ##1 }{
         \stex_get_symbol:n { ##1 }
         \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
           \l_stex_get_symbol_uri_str
@@ -4416,6 +4462,8 @@
 }
 \NewDocumentCommand \inlineass { O{} m } {
   \begingroup
+  \stex_reactivate_macro:N \premise
+  \stex_reactivate_macro:N \conclusion
   \__stex_statements_inlineass_args:n{ #1 }
   \str_if_empty:NTF \sassertionid {
     \str_if_empty:NF \sassertionname {
@@ -4433,7 +4481,7 @@
   }{
     \seq_clear:N \l_tmpa_seq
     \clist_map_inline:Nn \l__stex_statements_sassertion_for_clist {
-      \str_if_eq:nnF{ ##1 }{}{
+      \tl_if_empty:nF{ ##1 }{
         \stex_get_symbol:n { ##1 }
         \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
           \l_stex_get_symbol_uri_str
@@ -4472,10 +4520,12 @@
 
 \NewDocumentEnvironment{sexample}{O{}}{
   \__stex_statements_sexample_args:n{ #1 }
+  \stex_reactivate_macro:N \premise
+  \stex_reactivate_macro:N \conclusion
   \stex_if_smsmode:F {
     \seq_clear:N \l_tmpa_seq
     \clist_map_inline:Nn \l__stex_statements_sexample_for_clist {
-      \str_if_eq:nnF{ ##1 }{}{
+      \tl_if_empty:nF{ ##1 }{
         \stex_get_symbol:n { ##1 }
         \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
           \l_stex_get_symbol_uri_str
@@ -4555,6 +4605,8 @@
 }
 \NewDocumentCommand \inlineex { O{} m } {
   \begingroup
+  \stex_reactivate_macro:N \premise
+  \stex_reactivate_macro:N \conclusion
   \__stex_statements_inlineex_args:n{ #1 }
   \str_if_empty:NF \sexampleid {
     \stex_ref_new_doc_target:n \sexampleid
@@ -4564,7 +4616,7 @@
   }{
     \seq_clear:N \l_tmpa_seq
     \clist_map_inline:Nn \l__stex_statements_sexample_for_clist {
-      \str_if_eq:nnF{ ##1 }{}{
+      \tl_if_empty:nF{ ##1 }{
         \stex_get_symbol:n { ##1 }
         \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
           \l_stex_get_symbol_uri_str
@@ -4618,7 +4670,7 @@
   \stex_if_smsmode:F {
     \seq_clear:N \l_tmpa_seq
     \clist_map_inline:Nn \l__stex_statements_sparagraph_for_clist {
-      \str_if_eq:nnF{ ##1 }{}{
+      \tl_if_empty:nF{ ##1 }{
         \stex_get_symbol:n { ##1 }
         \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
           \l_stex_get_symbol_uri_str
@@ -4664,7 +4716,7 @@
   \exp_args:NNx
   \clist_if_in:NnT \l_tmpa_clist {\tl_to_str:n{symdoc}}{
     \clist_map_inline:Nn \l__stex_statements_sparagraph_for_clist {
-      \str_if_eq:nnF{ ##1 }{}{
+      \tl_if_empty:nF{ ##1 }{
         \stex_get_symbol:n { ##1 }
         \stex_ref_new_sym_target:n \l_stex_get_symbol_uri_str
       }
@@ -4756,7 +4808,7 @@
   }{
     \seq_clear:N \l_tmpa_seq
     \clist_map_inline:Nn \l__stex_statements_sparagraph_for_clist {
-      \str_if_eq:nnF{ ##1 }{}{
+      \tl_if_empty:nF{ ##1 }{
         \stex_get_symbol:n { ##1 }
         \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
           \l_stex_get_symbol_uri_str
@@ -4790,23 +4842,6 @@
   \stex_smsmode_do:
 }
 
-\NewDocumentEnvironment{symboldoc}{ m }{
-  \seq_set_split:Nnn \l_tmpa_seq , { #1 }
-  \seq_clear:N \l_tmpb_seq
-  \seq_map_inline:Nn \l_tmpa_seq {
-    \str_if_eq:nnF{ ##1 }{}{
-      \stex_get_symbol:n { ##1 }
-      \exp_args:NNo \seq_put_right:Nn \l_tmpb_seq {
-        \l_stex_get_symbol_uri_str
-      }
-    }
-  }
-  \par
-  \exp_args:Nnnx
-  \begin{stex_annotate_env}{symboldoc}{\seq_use:Nn \l_tmpb_seq {,}}
-}{
-  \end{stex_annotate_env}
-}
 
 
 %%%%%%%%%%%%%   sproof.dtx   %%%%%%%%%%%%%
@@ -4911,6 +4946,7 @@
   }{}
 }
 \newcommand\spfsketch[2][]{
+  \stex_reactivate_macro:N \premise
   \__stex_sproof_spf_args:n{#1}
   \tl_if_eq:NNF \l__stex_sproof_spf_display_tl\spf@flow{
     \titleemph{
@@ -4926,6 +4962,7 @@
   \sproofend
 }
 \newenvironment{spfeq}[2][]{
+  \stex_reactivate_macro:N \premise
   \__stex_sproof_spf_args:n{#1}
   %\sref@target
   \tl_if_eq:NNF \l__stex_sproof_spf_display_tl\spf@flow{
@@ -4943,6 +4980,7 @@
   \end{array}\end{displaymath}
 }
 \newenvironment{spf@proof}[2][]{
+  \stex_reactivate_macro:N \premise
   \__stex_sproof_spf_args:n{#1}
   %\sref@target
   \count_ten=10
@@ -5056,7 +5094,6 @@
   args      .tl_set:N     = \l__stex_sproof_just_args_tl
 }
 \newenvironment{justification}[1][]{}{}
-\newcommand\premise[2][]{#2}
 \newcommand\justarg[2][]{#2}
 
 %%%%%%%%%%%%%   others.dtx   %%%%%%%%%%%%%
@@ -5083,71 +5120,71 @@
 \ExplSyntaxOff
 \csname stex_suppress_html:n\endcsname{
   % is-a (a:A, a \in A, a is an A, etc.)
-  \symdecl[args=ai]{isa}
-  \notation[typed]{isa}{#1 \comp{:} #2}{##1 \comp, ##2}
-  \notation[in]{isa}{#1 \comp\in #2}{##1 \comp, ##2}
-  \notation[pred]{isa}{#2\comp(#1 \comp)}{##1 \comp, ##2}
+  \symdecl{isa}[args=ai]
+  \notation{isa}[typed]{#1 \comp{:} #2}{##1 \comp, ##2}
+  \notation{isa}[in]{#1 \comp\in #2}{##1 \comp, ##2}
+  \notation{isa}[pred]{#2\comp(#1 \comp)}{##1 \comp, ##2}
 
   % bind (\forall, \Pi, \lambda etc.)
-  \symdecl[args=Bi]{bind}
-  \notation[forall]{bind}{\comp\forall #1.\;#2}{##1 \comp, ##2}
-  \notation[Pi]{bind}{\comp\prod_{#1}#2}{##1 \comp, ##2}
-  \notation[depfun]{bind}{\comp( #1 \comp{)\;\to\;} #2}{##1 \comp, ##2}
+  \symdecl{bind}[args=Bi]
+  \notation{bind}[forall]{\comp\forall #1.\;#2}{##1 \comp, ##2}
+  \notation{bind}[Pi]{\comp\prod_{#1}#2}{##1 \comp, ##2}
+  \notation{bind}[depfun]{\comp( #1 \comp{)\;\to\;} #2}{##1 \comp, ##2}
 
   % dummy variable
   \symdecl{dummyvar}
-  \notation[underscore]{dummyvar}{\comp\_}
-  \notation[dot]{dummyvar}{\comp\cdot}
-  \notation[dash]{dummyvar}{\comp{{\rm --}}}
+  \notation{dummyvar}[underscore]{\comp\_}
+  \notation{dummyvar}[dot]{\comp\cdot}
+  \notation{dummyvar}[dash]{\comp{{\rm --}}}
 
   %fromto (function space, Hom-set, implication etc.)
-  \symdecl[args=ai]{fromto}
-  \notation[xarrow]{fromto}{#1 \comp\to #2}{##1 \comp\times ##2}
-  \notation[arrow]{fromto}{#1 \comp\to #2}{##1 \comp\to ##2}
+  \symdecl{fromto}[args=ai]
+  \notation{fromto}[xarrow]{#1 \comp\to #2}{##1 \comp\times ##2}
+  \notation{fromto}[arrow]{#1 \comp\to #2}{##1 \comp\to ##2}
 
   % mapto (lambda etc.)
-  %\symdecl[args=Bi]{mapto}
-  %\notation[mapsto]{mapto}{#1 \comp\mapsto #2}{#1 \comp, #2}
-  %\notation[lambda]{mapto}{\comp\lambda #1 \comp.\; #2}{#1 \comp, #2}
-  %\notation[lambdau]{mapto}{\comp\lambda_{#1} \comp.\; #2}{#1 \comp, #2}
+  %\symdecl{mapto}[args=Bi]
+  %\notation{mapto}[mapsto]{#1 \comp\mapsto #2}{#1 \comp, #2}
+  %\notation{mapto}[lambda]{\comp\lambda #1 \comp.\; #2}{#1 \comp, #2}
+  %\notation{mapto}[lambdau]{\comp\lambda_{#1} \comp.\; #2}{#1 \comp, #2}
 
   % function/operator application
-  \symdecl[args=ia]{apply}
-  \notation[prec=0;0x\infprec,parens]{apply}{#1 \comp( #2 \comp)}{##1 \comp, ##2}
-  \notation[prec=0;0x\infprec,lambda]{apply}{#1 \; #2 }{##1 \; ##2}
+  \symdecl{apply}[args=ia]
+  \notation{apply}[prec=0;0x\infprec,parens]{#1 \comp( #2 \comp)}{##1 \comp, ##2}
+  \notation{apply}[prec=0;0x\infprec,lambda]{#1 \; #2 }{##1 \; ##2}
 
   % ``type'' of all collections (sets,classes,types,kinds)
   \symdecl{collection}
-  \notation[U]{collection}{\comp{\mathcal{U}}}
-  \notation[set]{collection}{\comp{\textsf{Set}}}
+  \notation{collection}[U]{\comp{\mathcal{U}}}
+  \notation{collection}[set]{\comp{\textsf{Set}}}
 
   % collection of propositions/booleans/truth values
-  \symdecl[name=proposition]{prop}
-  \notation[prop]{prop}{\comp{{\rm prop}}}
-  \notation[BOOL]{prop}{\comp{{\rm BOOL}}}
+  \symdecl{prop}[name=proposition]
+  \notation{prop}[prop]{\comp{{\rm prop}}}
+  \notation{prop}[BOOL]{\comp{{\rm BOOL}}}
 
   % sequences
-  \symdecl[args=1]{seqtype}
-  \notation[kleene]{seqtype}{#1^{\comp\ast}}
+  \symdecl{seqtype}[args=1]
+  \notation{seqtype}[kleene]{#1^{\comp\ast}}
 
-  \symdef[args=2,li,prec=nobrackets]{sequence-index}{{#1}_{#2}}
-  \notation[ui,prec=nobrackets]{sequence-index}{{#1}^{#2}}
+  \symdef{sequence-index}[args=2,li,prec=nobrackets]{{#1}_{#2}}
+  \notation{sequence-index}[ui,prec=nobrackets]{{#1}^{#2}}
 
-  \symdef[args=a,prec=nobrackets]{aseqdots}{#1\comp{,\ellipses}}{##1\comp,##2}
-  \symdef[args=ai,prec=nobrackets]{aseqfromto}{#1\comp{,\ellipses,}#2}{##1\comp,##2}
-  \symdef[args=aii,prec=nobrackets]{aseqfromtovia}{#1\comp{,\ellipses,}#2\comp{,\ellipses,}#3}{##1\comp,##2}
+  \symdef{aseqdots}[args=a,prec=nobrackets]{#1\comp{,\ellipses}}{##1\comp,##2}
+  \symdef{aseqfromto}[args=ai,prec=nobrackets]{#1\comp{,\ellipses,}#2}{##1\comp,##2}
+  \symdef{aseqfromtovia}[args=aii,prec=nobrackets]{#1\comp{,\ellipses,}#2\comp{,\ellipses,}#3}{##1\comp,##2}
 
   % letin (``let'', local definitions, variable substitution)
-  \symdecl[args=bii]{letin}
-  \notation[let]{letin}{\comp{{\rm let}}\;#1\comp{=}#2\;\comp{{\rm in}}\;#3}
-  \notation[subst]{letin}{#3 \comp[ #1 \comp/ #2 \comp]}
-  \notation[frac]{letin}{#3 \comp[ \frac{#2}{#1} \comp]}
+  \symdecl{letin}[args=bii]
+  \notation{letin}[let]{\comp{{\rm let}}\;#1\comp{=}#2\;\comp{{\rm in}}\;#3}
+  \notation{letin}[subst]{#3 \comp[ #1 \comp/ #2 \comp]}
+  \notation{letin}[frac]{#3 \comp[ \frac{#2}{#1} \comp]}
 
   % structures
-  \symdecl*[args=1]{module-type}
+  \symdecl*{module-type}[args=1]
   \notation{module-type}{\mathtt{MOD} #1}
-  \symdecl[name=mathematical-structure,args=a]{mathstruct} % TODO
-  \notation[angle,prec=nobrackets]{mathstruct}{\comp\langle #1 \comp\rangle}{##1 \comp, ##2}
+  \symdecl{mathstruct}[name=mathematical-structure,args=a] % TODO
+  \notation{mathstruct}[angle,prec=nobrackets]{\comp\langle #1 \comp\rangle}{##1 \comp, ##2}
 
 }
   \ExplSyntaxOn
