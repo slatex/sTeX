@@ -1,0 +1,5480 @@
+%%
+%% This is file `stex.sty',
+%% generated with the docstrip utility.
+%%
+%% The original source files were:
+%%
+%% basics.dtx  (with options: `package')
+%% mathhub.dtx  (with options: `package')
+%% references.dtx  (with options: `package')
+%% modules.dtx  (with options: `package')
+%% inheritance.dtx  (with options: `package')
+%% symbols.dtx  (with options: `package')
+%% terms.dtx  (with options: `package')
+%% features.dtx  (with options: `package')
+%% statements.dtx  (with options: `package')
+%% sproof.dtx  (with options: `package')
+%% others.dtx  (with options: `package')
+%% metatheory.dtx  (with options: `package')
+%% 
+
+%%%%%%%%%%%%%   basics.dtx   %%%%%%%%%%%%%
+
+\RequirePackage{expl3,l3keys2e,ltxcmds}
+\ProvidesExplPackage{stex}{2021/08/01}{1.9}{bla}
+
+
+\keys_define:nn { stex } {
+  debug     .clist_set:N  = \c_stex_debug_clist ,
+  lang      .clist_set:N  = \c_stex_languages_clist ,
+  mathhub   .tl_set_x:N   = \mathhub ,
+  sms       .bool_set:N   = \c_stex_persist_mode_bool ,
+  image     .bool_set:N   = \c_tikzinput_image_bool,
+  unknown   .code:n       = {}
+}
+\ProcessKeysOptions { stex }
+\protected\def\stex{%
+  \@ifundefined{texorpdfstring}%
+  {\let\texorpdfstring\@firstoftwo}%
+  {}%
+  \texorpdfstring{\raisebox{-.5ex}S\kern-.5ex\TeX}{sTeX}\xspace%
+}
+\def\sTeX{\stex}
+\msg_new:nnn{stex}{error/unknownlanguage}{
+  Unknown~language:~#1
+}
+\msg_new:nnn{stex}{warning/nomathhub}{
+  MATHHUB~system~variable~not~found~and~no~
+  \detokenize{\mathhub}-value~set!
+}
+\msg_new:nnn{stex}{error/deactivated-macro}{
+  The~\detokenize{#1}~command~is~only~allowed~in~#2!
+}
+\cs_new_protected:Nn \stex_debug:nn {
+  \clist_if_in:NnTF \c_stex_debug_clist { all } {
+    \exp_args:Nnnx\msg_set:nnn{stex}{debug / #1}{
+      \\Debug~#1:~#2\\
+    }
+    \msg_none:nn{stex}{debug / #1}
+  }{
+    \clist_if_in:NnT \c_stex_debug_clist { #1 } {
+      \exp_args:Nnnx\msg_set:nnn{stex}{debug / #1}{
+        \\Debug~#1:~#2\\
+      }
+      \msg_none:nn{stex}{debug / #1}
+    }
+  }
+}
+\clist_if_in:NnTF \c_stex_debug_clist {all} {
+    \msg_redirect_module:nnn{ stex }{ none }{ term }
+}{
+  \clist_map_inline:Nn \c_stex_debug_clist {
+    \msg_redirect_name:nnn{ stex }{ debug / ##1 }{ term }
+  }
+}
+
+\stex_debug:nn{log}{debug~mode~on}
+\RequirePackage{rustex}
+\rustex_add_Namespace:nn{stex}{http://kwarc.info/ns/sTeX}
+\ifcsname if@latexml\endcsname\else
+    \expandafter\newif\csname if@latexml\endcsname\@latexmlfalse
+\fi
+\prg_new_conditional:Nnn \latexml_if: {p, T, F, TF} {
+  \if@latexml
+    \prg_return_true:
+  \else:
+    \prg_return_false:
+  \fi:
+}
+\tl_new:N \l__stex_annotate_arg_tl
+\tl_const:Nx \c__stex_annotate_emptyarg_tl {
+  \rustex_if:TF {
+    \rustex_direct_HTML:n { \c_ampersand_str lrm; }
+  }{~}
+}
+\cs_new_protected:Nn \__stex_annotate_checkempty:n {
+  \tl_set:Nn \l__stex_annotate_arg_tl { #1 }
+  \tl_if_empty:NT \l__stex_annotate_arg_tl {
+    \tl_set_eq:NN \l__stex_annotate_arg_tl \c__stex_annotate_emptyarg_tl
+  }
+}
+\bool_new:N \_stex_html_do_output_bool
+\bool_set_true:N \_stex_html_do_output_bool
+
+\prg_new_conditional:Nnn \stex_if_do_html: {p,T,F,TF} {
+  \bool_if:nTF \_stex_html_do_output_bool
+    \prg_return_true: \prg_return_false:
+}
+\cs_new_protected:Nn \stex_suppress_html:n {
+  \exp_args:Nne \use:nn {
+    \bool_set_false:N \_stex_html_do_output_bool
+    #1
+  }{
+    \stex_if_do_html:T {
+      \bool_set_true:N \_stex_html_do_output_bool
+    }
+  }
+}
+\rustex_if:TF{
+  \cs_new_protected:Nn \stex_annotate:nnn {
+    \__stex_annotate_checkempty:n { #3 }
+    \rustex_annotate_HTML:nn {
+      property="stex:#1" ~
+      resource="#2"
+    } {
+      \mode_if_vertical:TF{
+        \tl_use:N \l__stex_annotate_arg_tl\par
+      }{
+        \tl_use:N \l__stex_annotate_arg_tl
+      }
+    }
+  }
+  \cs_new_protected:Nn \stex_annotate_invisible:n {
+    \__stex_annotate_checkempty:n { #1 }
+    \rustex_annotate_HTML:nn {
+      stex:visible="false" ~
+      style:display="none"
+    } {
+      \mode_if_vertical:TF{
+        \tl_use:N \l__stex_annotate_arg_tl\par
+      }{
+        \tl_use:N \l__stex_annotate_arg_tl
+      }
+    }
+  }
+  \cs_new_protected:Nn \stex_annotate_invisible:nnn {
+    \__stex_annotate_checkempty:n { #3 }
+    \rustex_annotate_HTML:nn {
+      property="stex:#1" ~
+      resource="#2" ~
+      stex:visible="false" ~
+      style:display="none"
+    } {
+      \mode_if_vertical:TF{
+        \tl_use:N \l__stex_annotate_arg_tl\par
+      }{
+        \tl_use:N \l__stex_annotate_arg_tl
+      }
+    }
+  }
+  \NewDocumentEnvironment{stex_annotate_env} { m m } {
+    \par
+    \rustex_annotate_HTML_begin:n {
+      property="stex:#1" ~
+      resource="#2"
+    }
+  }{
+    \par\rustex_annotate_HTML_end:
+  }
+}{
+  \latexml_if:TF {
+    \cs_new_protected:Nn \stex_annotate:nnn {
+      \__stex_annotate_checkempty:n { #3 }
+      \mode_if_math:TF {
+        \cs:w latexml@annotate@math\cs_end:{#1}{#2}{
+          \tl_use:N \l__stex_annotate_arg_tl
+        }
+      }{
+        \cs:w latexml@annotate@text\cs_end:{#1}{#2}{
+          \tl_use:N \l__stex_annotate_arg_tl
+        }
+      }
+    }
+    \cs_new_protected:Nn \stex_annotate_invisible:n {
+      \__stex_annotate_checkempty:n { #1 }
+      \mode_if_math:TF {
+        \cs:w latexml@invisible@math\cs_end:{
+          \tl_use:N \l__stex_annotate_arg_tl
+        }
+      } {
+        \cs:w latexml@invisible@text\cs_end:{
+          \tl_use:N \l__stex_annotate_arg_tl
+        }
+      }
+    }
+    \cs_new_protected:Nn \stex_annotate_invisible:nnn {
+      \__stex_annotate_checkempty:n { #3 }
+      \cs:w latexml@annotate@invisible\cs_end:{#1}{#2}{
+        \tl_use:N \l__stex_annotate_arg_tl
+      }
+    }
+    \NewDocumentEnvironment{stex_annotate_env} { m m } {
+      \par\begin{latexml@annotateenv}{#1}{#2}
+    }{
+      \par\end{latexml@annotateenv}
+    }
+  }{
+    \cs_new_protected:Nn \stex_annotate:nnn {#3}
+    \cs_new_protected:Nn \stex_annotate_invisible:n {}
+    \cs_new_protected:Nn \stex_annotate_invisible:nnn {}
+    \NewDocumentEnvironment{stex_annotate_env} { m m } {}{}
+  }
+}
+\prop_const_from_keyval:Nn \c_stex_languages_prop {
+  en = english ,
+  de = ngerman ,
+  ar = arabic ,
+  bg = bulgarian ,
+  ru = russian ,
+  fi = finnish ,
+  ro = romanian ,
+  tr = turkish ,
+  fr = french
+}
+
+\prop_const_from_keyval:Nn \c_stex_language_abbrevs_prop {
+  english   = en ,
+  ngerman   = de ,
+  arabic    = ar ,
+  bulgarian = bg ,
+  russian   = ru ,
+  finnish   = fi ,
+  romanian  = ro ,
+  turkish   = tr ,
+  french    = fr
+}
+\clist_if_empty:NF \c_stex_languages_clist {
+  \clist_clear:N \l_tmpa_clist
+  \clist_map_inline:Nn \c_stex_languages_clist {
+    \prop_get:NnNTF \c_stex_languages_prop { #1 } \l_tmpa_str {
+      \clist_put_right:No \l_tmpa_clist \l_tmpa_str
+    } {
+      \msg_error:nnx{stex}{error/unknownlanguage}{\l_tmpa_str}
+    }
+  }
+  \stex_debug:nn{lang} {Languages:~\clist_use:Nn \l_tmpa_clist {,~} }
+  \RequirePackage[\clist_use:Nn \l_tmpa_clist,]{babel}
+}
+\cs_new_protected:Nn \stex_deactivate_macro:Nn {
+  \exp_after:wN\let\csname \detokenize{#1} - orig\endcsname#1
+  \def#1{
+    \msg_error:nnnn{stex}{error/deactivated-macro}{#1}{#2}
+  }
+}
+\cs_new_protected:Nn \stex_reactivate_macro:N {
+  \exp_after:wN\let\exp_after:wN#1\csname \detokenize{#1} - orig\endcsname
+}
+\protected\def\ignorespacesandpars{
+  \begingroup\catcode13=10\relax
+  \@ifnextchar\par{
+    \endgroup\expandafter\ignorespacesandpars\@gobble
+  }{
+    \endgroup
+  }
+}
+
+%%%%%%%%%%%%%   mathhub.dtx   %%%%%%%%%%%%%
+
+\msg_new:nnn{stex}{error/norepository}{
+  No~archive~#1~found~in~#2
+}
+\msg_new:nnn{stex}{error/notinarchive}{
+  Not~currently~in~an~archive,~but~\detokenize{#1}~
+  needs~one!
+}
+\msg_new:nnn{stex}{error/nofile}{
+  \detokenize{#1}~could~not~find~file~#2
+}
+\msg_new:nnn{stex}{error/twofiles}{
+  \detokenize{#1}~found~two~candidates~for~#2
+}
+\cs_new_protected:Nn \stex_path_from_string:Nn {
+  \str_set:Nx \l_tmpa_str { #2 }
+  \str_if_empty:NTF \l_tmpa_str {
+    \seq_clear:N #1
+  }{
+    \exp_args:NNNo \seq_set_split:Nnn #1 / { \l_tmpa_str }
+    \sys_if_platform_windows:T{
+      \seq_clear:N \l_tmpa_tl
+      \seq_map_inline:Nn #1 {
+        \seq_set_split:Nnn \l_tmpb_tl \c_backslash_str { ##1 }
+        \seq_concat:NNN \l_tmpa_tl \l_tmpa_tl \l_tmpb_tl
+      }
+      \seq_set_eq:NN #1 \l_tmpa_tl
+    }
+    \stex_path_canonicalize:N #1
+  }
+}
+
+\cs_new_protected:Nn \stex_path_to_string:NN {
+  \exp_args:NNe \str_set:Nn #2 { \seq_use:Nn #1 / }
+}
+
+\cs_new:Nn \stex_path_to_string:N {
+  \seq_use:Nn #1 /
+}
+\str_const:Nn \c__stex_path_dot_str {.}
+\str_const:Nn \c__stex_path_up_str {..}
+\cs_new_protected:Nn \stex_path_canonicalize:N {
+  \seq_if_empty:NF #1 {
+    \seq_clear:N \l_tmpa_seq
+    \seq_get_left:NN #1 \l_tmpa_tl
+    \str_if_empty:NT \l_tmpa_tl {
+      \seq_put_right:Nn \l_tmpa_seq {}
+    }
+    \seq_map_inline:Nn #1 {
+      \str_set:Nn \l_tmpa_tl { ##1 }
+      \str_if_eq:NNF \l_tmpa_tl \c__stex_path_dot_str {
+        \str_if_eq:NNTF \l_tmpa_tl \c__stex_path_up_str {
+          \seq_if_empty:NTF \l_tmpa_seq {
+            \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
+              \c__stex_path_up_str
+            }
+          }{
+            \seq_get_right:NN \l_tmpa_seq \l_tmpa_tl
+            \str_if_eq:NNTF \l_tmpa_tl \c__stex_path_up_str {
+              \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
+                \c__stex_path_up_str
+              }
+            }{
+              \seq_pop_right:NN \l_tmpa_seq \l_tmpb_tl
+            }
+          }
+        }{
+          \str_if_empty:NF \l_tmpa_tl {
+            \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq { \l_tmpa_tl }
+          }
+        }
+      }
+    }
+    \seq_gset_eq:NN #1 \l_tmpa_seq
+  }
+}
+\prg_new_conditional:Nnn \stex_path_if_absolute:N {p, T, F, TF} {
+  \seq_if_empty:NTF #1 {
+    \prg_return_false:
+  }{
+    \seq_get_left:NN #1 \l_tmpa_tl
+    \sys_if_platform_windows:TF{
+      \str_if_in:NnTF \l_tmpa_tl {:}{
+        \prg_return_true:
+      }{
+        \prg_return_false:
+      }
+    }{
+      \str_if_empty:NTF \l_tmpa_tl {
+        \prg_return_true:
+      }{
+        \prg_return_false:
+      }
+    }
+  }
+}
+\str_new:N\l_stex_kpsewhich_return_str
+\cs_new_protected:Nn \stex_kpsewhich:n {
+  \sys_get_shell:nnN { kpsewhich ~ #1 } { } \l_tmpa_tl
+  \exp_args:NNo\str_set:Nn\l_stex_kpsewhich_return_str{\l_tmpa_tl}
+  \tl_trim_spaces:N \l_stex_kpsewhich_return_str
+}
+\sys_if_platform_windows:TF{
+  \begingroup\escapechar=-1\catcode`\\=12
+  \exp_args:Nx\stex_kpsewhich:n{-expand-var~\c_percent_str CD\c_percent_str}
+  \exp_args:NNx\str_replace_all:Nnn\l_stex_kpsewhich_return_str{\c_backslash_str}/
+  \exp_args:Nnx\use:nn{\endgroup}{\str_set:Nn\exp_not:N\l_stex_kpsewhich_return_str{\l_stex_kpsewhich_return_str}}
+}{
+  \stex_kpsewhich:n{-var-value~PWD}
+}
+
+\stex_path_from_string:Nn\c_stex_pwd_seq\l_stex_kpsewhich_return_str
+\stex_path_to_string:NN\c_stex_pwd_seq\c_stex_pwd_str
+\stex_debug:nn {mathhub} {PWD:~\str_use:N\c_stex_pwd_str}
+\seq_gclear_new:N\g__stex_files_stack
+\str_set:Nx \c_stex_mainfile_str {\c_stex_pwd_str/\jobname.tex}
+\stex_path_from_string:Nn \c_stex_mainfile_seq
+  \c_stex_mainfile_str
+\seq_gclear_new:N\g_stex_currentfile_seq
+\cs_new_protected:Nn \stex_filestack_push:n {
+  \stex_path_from_string:Nn\g_stex_currentfile_seq{#1}
+  \stex_path_if_absolute:NF\g_stex_currentfile_seq{
+    \stex_path_from_string:Nn\g_stex_currentfile_seq{
+      \c_stex_pwd_str/#1
+    }
+  }
+  \seq_gset_eq:NN\g_stex_currentfile_seq\g_stex_currentfile_seq
+  \exp_args:NNo\seq_gpush:Nn\g__stex_files_stack\g_stex_currentfile_seq
+}
+\cs_new_protected:Nn \stex_filestack_pop: {
+  \seq_if_empty:NF\g__stex_files_stack{
+    \seq_gpop:NN\g__stex_files_stack\l_tmpa_seq
+  }
+  \seq_if_empty:NTF\g__stex_files_stack{
+    \seq_gset_eq:NN\g_stex_currentfile_seq\c_stex_mainfile_seq
+  }{
+    \seq_get:NN\g__stex_files_stack\l_tmpa_seq
+    \seq_gset_eq:NN\g_stex_currentfile_seq\l_tmpa_seq
+  }
+}
+\AddToHook{file/before}{
+  \stex_filestack_push:n{\CurrentFilePath/\CurrentFile}
+}
+\AddToHook{file/after}{
+  \stex_filestack_pop:
+}
+\str_if_empty:NTF\mathhub{
+  \sys_if_platform_windows:TF{
+    \begingroup\escapechar=-1\catcode`\\=12
+    \exp_args:Nx\stex_kpsewhich:n{-expand-var~\c_percent_str MATHHUB\c_percent_str}
+    \exp_args:NNx\str_replace_all:Nnn\l_stex_kpsewhich_return_str{\c_backslash_str}/
+    \exp_args:Nnx\use:nn{\endgroup}{\str_set:Nn\exp_not:N\l_stex_kpsewhich_return_str{\l_stex_kpsewhich_return_str}}
+  }{
+    \stex_kpsewhich:n{-var-value~MATHHUB}
+  }
+  \str_set_eq:NN\c_stex_mathhub_str\l_stex_kpsewhich_return_str
+
+  \str_if_empty:NTF\c_stex_mathhub_str{
+    \msg_warning:nn{stex}{warning/nomathhub}
+  }{
+    \stex_debug:nn{mathhub}{MathHub:~\str_use:N\c_stex_mathhub_str}
+    \exp_args:NNo \stex_path_from_string:Nn\c_stex_mathhub_seq\c_stex_mathhub_str
+  }
+}{
+  \stex_path_from_string:Nn \c_stex_mathhub_seq \mathhub
+  \stex_path_if_absolute:NF \c_stex_mathhub_seq {
+    \exp_args:NNx \stex_path_from_string:Nn \c_stex_mathhub_seq {
+      \c_stex_pwd_str/\mathhub
+    }
+  }
+  \stex_path_to_string:NN\c_stex_mathhub_seq\c_stex_mathhub_str
+  \stex_debug:nn{mathhub} {MathHub:~\str_use:N\c_stex_mathhub_str}
+}
+\cs_new_protected:Nn \__stex_mathhub_do_manifest:n {
+  \prop_if_exist:cF {c_stex_mathhub_#1_manifest_prop} {
+    \str_set:Nx \l_tmpa_str { #1 }
+    \prop_new:c { c_stex_mathhub_#1_manifest_prop }
+    \seq_set_split:NnV \l_tmpa_seq / \l_tmpa_str
+    \seq_concat:NNN \l_tmpa_seq \c_stex_mathhub_seq \l_tmpa_seq
+    \__stex_mathhub_find_manifest:N \l_tmpa_seq
+    \seq_if_empty:NTF \l__stex_mathhub_manifest_file_seq {
+      \msg_error:nnxx{stex}{error/norepository}{#1}{
+        \stex_path_to_string:N \c_stex_mathhub_str
+      }
+    } {
+      \exp_args:No \__stex_mathhub_parse_manifest:n { \l_tmpa_str }
+    }
+  }
+}
+\seq_new:N\l__stex_mathhub_manifest_file_seq
+\cs_new_protected:Nn \__stex_mathhub_find_manifest:N {
+  \seq_set_eq:NN\l_tmpa_seq #1
+  \bool_set_true:N\l_tmpa_bool
+  \bool_while_do:Nn \l_tmpa_bool {
+    \seq_if_empty:NTF \l_tmpa_seq {
+      \bool_set_false:N\l_tmpa_bool
+    }{
+      \file_if_exist:nTF{
+        \stex_path_to_string:N\l_tmpa_seq/MANIFEST.MF
+      }{
+        \seq_put_right:Nn\l_tmpa_seq{MANIFEST.MF}
+        \bool_set_false:N\l_tmpa_bool
+      }{
+        \file_if_exist:nTF{
+          \stex_path_to_string:N\l_tmpa_seq/META-INF/MANIFEST.MF
+        }{
+          \seq_put_right:Nn\l_tmpa_seq{META-INF}
+          \seq_put_right:Nn\l_tmpa_seq{MANIFEST.MF}
+          \bool_set_false:N\l_tmpa_bool
+        }{
+          \file_if_exist:nTF{
+            \stex_path_to_string:N\l_tmpa_seq/meta-inf/MANIFEST.MF
+          }{
+            \seq_put_right:Nn\l_tmpa_seq{meta-inf}
+            \seq_put_right:Nn\l_tmpa_seq{MANIFEST.MF}
+            \bool_set_false:N\l_tmpa_bool
+          }{
+            \seq_pop_right:NN\l_tmpa_seq\l_tmpa_tl
+          }
+        }
+      }
+    }
+  }
+  \seq_set_eq:NN\l__stex_mathhub_manifest_file_seq\l_tmpa_seq
+}
+\ior_new:N \c__stex_mathhub_manifest_ior
+\cs_new_protected:Nn \__stex_mathhub_parse_manifest:n {
+  \seq_set_eq:NN \l_tmpa_seq \l__stex_mathhub_manifest_file_seq
+  \ior_open:Nn \c__stex_mathhub_manifest_ior {\stex_path_to_string:N \l_tmpa_seq}
+  \ior_map_inline:Nn \c__stex_mathhub_manifest_ior {
+    \str_set:Nn \l_tmpa_str {##1}
+    \exp_args:NNoo \seq_set_split:Nnn
+        \l_tmpb_seq \c_colon_str \l_tmpa_str
+    \seq_pop_left:NNTF \l_tmpb_seq \l_tmpa_tl {
+      \exp_args:NNe \str_set:Nn \l_tmpb_tl {
+        \exp_args:NNo \seq_use:Nn \l_tmpb_seq \c_colon_str
+      }
+      \exp_args:No \str_case:nnTF \l_tmpa_tl {
+        {id} {
+          \prop_gput:cno { c_stex_mathhub_#1_manifest_prop }
+            { id } \l_tmpb_tl
+        }
+        {narration-base} {
+          \prop_gput:cno { c_stex_mathhub_#1_manifest_prop }
+            { narr } \l_tmpb_tl
+        }
+        {url-base} {
+          \prop_gput:cno { c_stex_mathhub_#1_manifest_prop }
+            { docurl } \l_tmpb_tl
+        }
+        {source-base} {
+          \prop_gput:cno { c_stex_mathhub_#1_manifest_prop }
+            { ns } \l_tmpb_tl
+        }
+        {ns} {
+          \prop_gput:cno { c_stex_mathhub_#1_manifest_prop }
+            { ns } \l_tmpb_tl
+        }
+        {dependencies} {
+          \prop_gput:cno { c_stex_mathhub_#1_manifest_prop }
+            { deps } \l_tmpb_tl
+        }
+      }{}{}
+    }{}
+  }
+  \ior_close:N \c__stex_mathhub_manifest_ior
+}
+\cs_new_protected:Nn \stex_set_current_repository:n {
+  \stex_require_repository:n { #1 }
+  \prop_set_eq:Nc \l_stex_current_repository_prop {
+    c_stex_mathhub_#1_manifest_prop
+  }
+}
+\cs_new_protected:Nn \stex_require_repository:n {
+  \prop_if_exist:cF { c_stex_mathhub_#1_manifest_prop } {
+    \stex_debug:nn{mathhub}{Opening~archive:~#1}
+    \__stex_mathhub_do_manifest:n { #1 }
+  }
+}
+
+\__stex_mathhub_find_manifest:N \c_stex_pwd_seq
+\seq_if_empty:NTF \l__stex_mathhub_manifest_file_seq {
+  \stex_debug:nn{mathhub}{Not~currently~in~a~MathHub~repository}
+} {
+  \__stex_mathhub_parse_manifest:n { main }
+  \prop_get:NnN \c_stex_mathhub_main_manifest_prop {id}
+    \l_tmpa_str
+  \prop_set_eq:cN { c_stex_mathhub_\l_tmpa_str _manifest_prop }
+    \c_stex_mathhub_main_manifest_prop
+  \exp_args:Nx \stex_set_current_repository:n { \l_tmpa_str }
+  \stex_debug:nn{mathhub}{Current~repository:~
+    \prop_item:Nn \l_stex_current_repository_prop {id}
+  }
+}
+\cs_new_protected:Nn \stex_in_repository:nn {
+  \str_set:Nx \l_tmpa_str { #1 }
+  \cs_set:Npn \l_tmpa_cs ##1 { #2 }
+  \str_if_empty:NTF \l_tmpa_str {
+    \prop_if_exist:NTF \l_stex_current_repository_prop {
+      \stex_debug:nn{mathhub}{do~in~current~repository:~\prop_item:Nn \l_stex_current_repository_prop { id }}
+      \exp_args:Ne \l_tmpa_cs{
+        \prop_item:Nn \l_stex_current_repository_prop { id }
+      }
+    }{
+      \l_tmpa_cs{}
+    }
+  }{
+    \stex_debug:nn{mathhub}{in~repository:~\l_tmpa_str}
+    \stex_require_repository:n \l_tmpa_str
+    \str_set:Nx \l_tmpa_str { #1 }
+    \exp_args:Nne \use:nn {
+      \stex_set_current_repository:n \l_tmpa_str
+      \exp_args:Nx \l_tmpa_cs{\l_tmpa_str}
+    }{
+      \stex_debug:nn{mathhub}{switching~back~to:~
+        \prop_if_exist:NTF \l_stex_current_repository_prop {
+          \prop_item:Nn \l_stex_current_repository_prop { id }:~
+          \meaning\l_stex_current_repository_prop
+        }{
+          no~repository
+        }
+      }
+      \prop_if_exist:NTF \l_stex_current_repository_prop {
+       \stex_set_current_repository:n {
+        \prop_item:Nn \l_stex_current_repository_prop { id }
+       }
+      }{
+        \let\exp_not:N\l_stex_current_repository_prop\exp_not:N\undefined
+      }
+    }
+  }
+}
+\def \mhpath #1 #2 {
+  \exp_args:Ne \tl_if_empty:nTF{#1}{
+    \c_stex_mathhub_str /
+      \prop_item:Nn \l_stex_current_repository_prop { id }
+      / source / #2
+  }{
+    \c_stex_mathhub_str / #1 / source / #2
+  }
+}
+\newif \ifinputref \inputreffalse
+
+\cs_new_protected:Nn \__stex_mathhub_mhinput:nn {
+  \stex_in_repository:nn {#1} {
+    \ifinputref
+      \input{ \c_stex_mathhub_str / ##1 / source / #2 }
+    \else
+      \inputreftrue
+      \input{ \c_stex_mathhub_str / ##1 / source / #2 }
+      \inputreffalse
+    \fi
+  }
+}
+\NewDocumentCommand \mhinput { O{} m}{
+  \stex_mhinput:nn{ #1 }{ #2 }
+}
+
+\cs_new_protected:Nn \__stex_mathhub_inputref:nn {
+  \stex_in_repository:nn {#1} {
+    \bool_lazy_any:nTF {
+      {\rustex_if_p:}
+      {\latexml_if_p:}
+    } {
+      \str_clear:N \l_tmpa_str
+      \prop_get:NnNF \l_stex_current_repository_prop { narr } \l_tmpa_str {
+        \prop_get:NnNF \l_stex_current_repository_prop { ns } \l_tmpa_str {}
+      }
+      \stex_annotate_invisible:nnn{inputref}{
+        \l_tmpa_str / #2
+      }{}
+    }{
+      \begingroup
+        \inputreftrue
+        \input{ \c_stex_mathhub_str / ##1 / source / #2 }
+      \endgroup
+    }
+  }
+}
+\NewDocumentCommand \inputref { O{} m}{
+  \__stex_mathhub_inputref:nn{ #1 }{ #2 }
+}
+\cs_new_protected:Nn \__stex_mathhub_mhbibresource:nn {
+  \stex_in_repository:nn {#1} {
+    \addbibresource{ \c_stex_mathhub_str / ##1 / #2 }
+  }
+}
+\newcommand\addmhbibresource[2][]{
+  \__stex_mathhub_mhbibresource:nn{ #1 }{ #2 }
+}
+\cs_new_protected:Npn \libinput #1 {
+  \prop_if_exist:NF \l_stex_current_repository_prop {
+    \msg_error:nnn{stex}{error/notinarchive}\libinput
+  }
+  \prop_get:NnNF \l_stex_current_repository_prop {id} \l_tmpa_str {
+    \msg_error:nnn{stex}{error/notinarchive}\libinput
+  }
+  \seq_clear:N \l__stex_mathhub_libinput_files_seq
+  \seq_set_eq:NN \l_tmpa_seq \c_stex_mathhub_seq
+  \seq_set_split:NnV \l_tmpb_seq / \l_tmpa_str
+
+  \bool_while_do:nn { ! \seq_if_empty_p:N \l_tmpb_seq }{
+    \str_set:Nx \l_tmpa_str {\stex_path_to_string:N \l_tmpa_seq / meta-inf / lib / #1.tex}
+    \IfFileExists{ \l_tmpa_str }{
+      \seq_put_right:No \l__stex_mathhub_libinput_files_seq \l_tmpa_str
+    }{}
+    \seq_pop_left:NN \l_tmpb_seq \l_tmpa_str
+    \seq_put_right:No \l_tmpa_seq \l_tmpa_str
+  }
+
+  \str_set:Nx \l_tmpa_str {\stex_path_to_string:N \l_tmpa_seq / lib / #1.tex}
+  \IfFileExists{ \l_tmpa_str }{
+    \seq_put_right:No \l__stex_mathhub_libinput_files_seq \l_tmpa_str
+  }{}
+
+  \seq_if_empty:NTF \l__stex_mathhub_libinput_files_seq {
+    \msg_error:nnxx{stex}{error/nofile}{\exp_not:N\libinput}{#1.tex}
+  }{
+    \seq_map_inline:Nn \l__stex_mathhub_libinput_files_seq {
+      \input{ ##1 }
+    }
+  }
+}
+\NewDocumentCommand \libusepackage {O{} m} {
+  \prop_if_exist:NF \l_stex_current_repository_prop {
+    \msg_error:nnn{stex}{error/notinarchive}\libusepackage
+  }
+  \prop_get:NnNF \l_stex_current_repository_prop {id} \l_tmpa_str {
+    \msg_error:nnn{stex}{error/notinarchive}\libusepackage
+  }
+  \tl_clear:N \l__stex_mathhub_libinput_files_seq
+  \seq_set_eq:NN \l_tmpa_seq \c_stex_mathhub_seq
+  \seq_set_split:NnV \l_tmpb_seq / \l_tmpa_str
+
+  \bool_while_do:nn { ! \seq_if_empty_p:N \l_tmpb_seq }{
+    \str_set:Nx \l_tmpa_str {\stex_path_to_string:N \l_tmpa_seq / meta-inf / lib / #2.sty}
+    \IfFileExists{ \l_tmpa_str }{
+      \seq_put_right:No \l__stex_mathhub_libinput_files_seq \l_tmpa_str
+    }{}
+    \seq_pop_left:NN \l_tmpb_seq \l_tmpa_str
+    \seq_put_right:No \l_tmpa_seq \l_tmpa_str
+  }
+
+  \str_set:Nx \l_tmpa_str {\stex_path_to_string:N \l_tmpa_seq / lib / #2.sty}
+  \IfFileExists{ \l_tmpa_str }{
+    \seq_put_right:No \l__stex_mathhub_libinput_files_seq \l_tmpa_str
+  }{}
+
+  \seq_if_empty:NTF \l__stex_mathhub_libinput_files_seq {
+    \msg_error:nnxx{stex}{error/nofile}{\exp_not:N\libusepackage}{#2.sty}
+  }{
+    \int_compare:nNnTF {\seq_count:N \l__stex_mathhub_libinput_files_seq} = 1 {
+      \seq_map_inline:Nn \l__stex_mathhub_libinput_files_seq {
+        \usepackage[#1]{ ##1 }
+      }
+    }{
+      \msg_error:nnxx{stex}{error/twofiles}{\exp_not:N\libusepackage}{#2.sty}
+    }
+  }
+}
+
+\AddToHook{begindocument}{
+\ltx@ifpackageloaded{graphicx}{
+    \define@key{Gin}{mhrepos}{\def\Gin@mhrepos{#1}}
+    \newcommand\mhgraphics[2][]{%
+      \def\Gin@mhrepos{}\setkeys{Gin}{#1}%
+      \includegraphics[#1]{\mhpath\Gin@mhrepos{#2}}}
+    \newcommand\cmhgraphics[2][]{\begin{center}\mhgraphics[#1]{#2}\end{center}}
+  }{}
+\ltx@ifpackageloaded{listings}{
+    \define@key{lst}{mhrepos}{\def\lst@mhrepos{#1}}
+    \newcommand\lstinputmhlisting[2][]{%
+      \def\lst@mhrepos{}\setkeys{lst}{#1}%
+      \lstinputlisting[#1]{\mhpath\lst@mhrepos{#2}}}
+    \newcommand\clstinputmhlisting[2][]{\begin{center}\lstinputmhlisting[#1]{#2}\end{center}}
+  }{}
+}
+
+
+%%%%%%%%%%%%%   references.dtx   %%%%%%%%%%%%%
+
+
+\AddToHook{begindocument}{
+}
+\AddToHook{enddocument}{
+}
+\str_set:Nn \g__stex_refs_title_tl {Unnamed~Document}
+
+\NewDocumentCommand \STEXreftitle { m } {
+  \tl_gset:Nx \g__stex_refs_title_tl { #1 }
+}
+\str_new:N \l_stex_current_docns_str
+\cs_new_protected:Nn \stex_get_document_uri: {
+  \seq_set_eq:NN \l_tmpa_seq \g_stex_currentfile_seq
+  \seq_pop_right:NN \l_tmpa_seq \l_tmpb_str
+  \exp_args:NNno \seq_set_split:Nnn \l_tmpb_seq . \l_tmpb_str
+  \seq_get_left:NN \l_tmpb_seq \l_tmpb_str
+  \seq_put_right:No \l_tmpa_seq \l_tmpb_str
+
+  \str_clear:N \l_tmpa_str
+  \prop_if_exist:NT \l_stex_current_repository_prop {
+    \prop_get:NnNF \l_stex_current_repository_prop { narr } \l_tmpa_str {
+      \prop_get:NnNF \l_stex_current_repository_prop { ns } \l_tmpa_str {}
+    }
+  }
+
+  \str_if_empty:NTF \l_tmpa_str {
+    \str_set:Nx \l_stex_current_docns_str {
+      file:/\stex_path_to_string:N \l_tmpa_seq
+    }
+  }{
+    \bool_set_true:N \l_tmpa_bool
+    \bool_while_do:Nn \l_tmpa_bool {
+      \seq_pop_left:NN \l_tmpa_seq \l_tmpb_str
+      \exp_args:No \str_case:nnTF { \l_tmpb_str } {
+        {source} { \bool_set_false:N \l_tmpa_bool }
+      }{}{
+        \seq_if_empty:NT \l_tmpa_seq {
+          \bool_set_false:N \l_tmpa_bool
+        }
+      }
+    }
+
+    \seq_if_empty:NTF \l_tmpa_seq {
+      \str_set_eq:NN \l_stex_current_docns_str \l_tmpa_str
+    }{
+      \str_set:Nx \l_stex_current_docns_str {
+        \l_tmpa_str/\stex_path_to_string:N \l_tmpa_seq
+      }
+    }
+  }
+}
+\str_new:N \l_stex_current_docurl_str
+\cs_new_protected:Nn \stex_get_document_url: {
+  \seq_set_eq:NN \l_tmpa_seq \g_stex_currentfile_seq
+  \seq_pop_right:NN \l_tmpa_seq \l_tmpb_str
+  \exp_args:NNno \seq_set_split:Nnn \l_tmpb_seq . \l_tmpb_str
+  \seq_get_left:NN \l_tmpb_seq \l_tmpb_str
+  \seq_put_right:No \l_tmpa_seq \l_tmpb_str
+
+  \str_clear:N \l_tmpa_str
+  \prop_if_exist:NT \l_stex_current_repository_prop {
+    \prop_get:NnNF \l_stex_current_repository_prop { docurl } \l_tmpa_str {
+      \prop_get:NnNF \l_stex_current_repository_prop { narr } \l_tmpa_str {
+        \prop_get:NnNF \l_stex_current_repository_prop { ns } \l_tmpa_str {}
+      }
+    }
+  }
+
+  \str_if_empty:NTF \l_tmpa_str {
+    \str_set:Nx \l_stex_current_docurl_str {
+      file:/\stex_path_to_string:N \l_tmpa_seq
+    }
+  }{
+    \bool_set_true:N \l_tmpa_bool
+    \bool_while_do:Nn \l_tmpa_bool {
+      \seq_pop_left:NN \l_tmpa_seq \l_tmpb_str
+      \exp_args:No \str_case:nnTF { \l_tmpb_str } {
+        {source} { \bool_set_false:N \l_tmpa_bool }
+      }{}{
+        \seq_if_empty:NT \l_tmpa_seq {
+          \bool_set_false:N \l_tmpa_bool
+        }
+      }
+    }
+
+    \seq_if_empty:NTF \l_tmpa_seq {
+      \str_set_eq:NN \l_stex_current_docurl_str \l_tmpa_str
+    }{
+      \str_set:Nx \l_stex_current_docurl_str {
+        \l_tmpa_str/\stex_path_to_string:N \l_tmpa_seq
+      }
+    }
+  }
+}
+\str_const:Nn \c__stex_refs_url_str{URL}
+\str_const:Nn \c__stex_refs_ref_str{REF}
+\str_new:N \l__stex_refs_curr_label_str
+\int_new:N \l__stex_refs_unnamed_counter_int
+\cs_new_protected:Nn \stex_ref_new_doc_target:n {
+  \stex_get_document_uri:
+  \str_clear:N \l__stex_refs_curr_label_str
+  \str_set:Nx \l_tmpa_str { #1 }
+  \str_if_empty:NT \l_tmpa_str {
+    \int_incr:N \l__stex_refs_unnamed_counter_int
+    \str_set:Nx \l_tmpa_str {REF\int_use:N \l__stex_refs_unnamed_counter_int}
+  }
+  \str_set:Nx \l__stex_refs_curr_label_str {
+    \l_stex_current_docns_str?\l_tmpa_str
+  }
+  \seq_if_exist:cF{g__stex_refs_labels_\l_tmpa_str _seq}{
+    \seq_new:c {g__stex_refs_labels_\l_tmpa_str _seq}
+  }
+  \seq_if_in:coF{g__stex_refs_labels_\l_tmpa_str _seq}\l__stex_refs_curr_label_str {
+    \seq_gput_right:co{g__stex_refs_labels_\l_tmpa_str _seq}\l__stex_refs_curr_label_str
+  }
+  \stex_if_smsmode:TF {
+    \stex_get_document_url:
+    \str_gset_eq:cN {sref_url_\l__stex_refs_curr_label_str _str}\l_stex_current_docurl_str
+    \str_gset_eq:cN {sref_\l__stex_refs_curr_label_str _type}\c__stex_refs_url_str
+  }{
+    %\iow_now:Nx \c__stex_refs_refs_iow { \l_tmpa_str~=~\expandafter\unexpanded\expandafter{\@currentlabel}~in~\exp_args:No\unexpanded\g__stex_refs_title_tl,}
+    \exp_args:Nx\label{sref_\l__stex_refs_curr_label_str}
+    \immediate\write\@auxout{\stexauxadddocref{\l_stex_current_docns_str}{\l_tmpa_str}}
+    \str_gset:cx {sref_\l__stex_refs_curr_label_str _type}\c__stex_refs_ref_str
+  }
+}
+\cs_new_protected:Npn \stexauxadddocref #1 #2 {
+  \str_set:Nn \l_tmpa_str {#1?#2}
+  \str_gset_eq:cN{sref_#1?#2_type}\c__stex_refs_ref_str
+  \seq_if_exist:cF{g__stex_refs_labels_#2_seq}{
+    \seq_new:c {g__stex_refs_labels_#2_seq}
+  }
+  \seq_if_in:coF{g__stex_refs_labels_#2_seq}\l_tmpa_str {
+    \seq_gput_right:co{g__stex_refs_labels_#2_seq}\l_tmpa_str
+  }
+}
+\AtEndDocument{
+  \def\stexauxadddocref#1 #2 {}{}
+}
+\cs_new_protected:Nn \stex_ref_new_sym_target:n {
+  \stex_if_smsmode:TF {
+    \str_if_exist:cF{sref_sym_#1_type}{
+      \stex_get_document_url:
+      \str_gset_eq:cN {sref_sym_url_#1_str}\l_stex_current_docurl_str
+      \str_gset_eq:cN {sref_sym_#1_type}\c__stex_refs_url_str
+    }
+  }{
+    \str_if_empty:NF \l__stex_refs_curr_label_str {
+      \str_gset_eq:cN {sref_sym_#1_label_str}\l__stex_refs_curr_label_str
+      \immediate\write\@auxout{
+        \exp_not:N\expandafter\def\exp_not:N\csname sref_sym_#1_label_str\exp_not:N\endcsname{
+            \l__stex_refs_curr_label_str
+          }
+      }
+    }
+  }
+}
+\str_new:N \l__stex_refs_indocument_str
+
+\keys_define:nn { stex / sref } {
+  linktext      .tl_set:N  = \l__stex_refs_linktext_tl ,
+  fallback      .tl_set:N  = \l__stex_refs_fallback_tl ,
+  pre           .tl_set:N  = \l__stex_refs_pre_tl ,
+  post          .tl_set:N  = \l__stex_refs_post_tl ,
+}
+\cs_new_protected:Nn \__stex_refs_args:n {
+  \tl_clear:N \l__stex_refs_linktext_tl
+  \tl_clear:N \l__stex_refs_fallback_tl
+  \tl_clear:N \l__stex_refs_pre_tl
+  \tl_clear:N \l__stex_refs_post_tl
+  \str_clear:N \l__stex_refs_repo_str
+  \keys_set:nn { stex / sref } { #1 }
+}
+\NewDocumentCommand \sref { O{} m}{
+  \__stex_refs_args:n { #1 }
+  \str_if_empty:NTF \l__stex_refs_indocument_str {
+    \str_set:Nx \l_tmpa_str { #2 }
+    \exp_args:NNno \seq_set_split:Nnn \l_tmpa_seq ? \l_tmpa_str
+    \int_compare:nNnTF {\seq_count:N \l_tmpa_seq} = 1 {
+      \seq_if_exist:cTF{g__stex_refs_labels_\l_tmpa_str _seq}{
+        \seq_get_left:cNF {g__stex_refs_labels_\l_tmpa_str _seq} \l_tmpa_str {
+          \str_clear:N \l_tmpa_str
+        }
+      }{
+        \str_clear:N \l_tmpa_str
+      }
+    }{
+      \seq_pop_left:NN \l_tmpa_seq \l_tmpb_str
+      \seq_pop_right:NN \l_tmpa_seq \l_tmpa_str
+      \int_set:Nn \l_tmpa_int { \exp_args:Ne \str_count:n {\l_tmpb_str?\l_tmpa_str} }
+      \seq_if_exist:cTF{g__stex_refs_labels_\l_tmpa_str _seq}{
+        \str_set_eq:NN \l_tmpc_str \l_tmpa_str
+        \str_clear:N \l_tmpa_str
+        \seq_map_inline:cn {g__stex_refs_labels_\l_tmpc_str _seq} {
+          \str_if_eq:eeT { \l_tmpb_str?\l_tmpc_str }{
+            \str_range:nnn { ##1 }{ -\l_tmpa_int}{ -1 }
+          }{
+            \seq_map_break:n {
+              \str_set:Nn \l_tmpa_str { ##1 }
+            }
+          }
+        }
+      }{
+        \str_clear:N \l_tmpa_str
+      }
+    }
+    \str_if_empty:NTF \l_tmpa_str {
+      \tl_if_empty:NTF \l__stex_refs_linktext_tl \l__stex_refs_fallback_tl \l__stex_refs_linktext_tl
+    }{
+      \str_if_eq:cNTF {sref_\l_tmpa_str _type} \c__stex_refs_ref_str {
+        \tl_if_empty:NTF \l__stex_refs_linktext_tl {
+          \cs_if_exist:cTF{autoref}{
+            \l__stex_refs_pre_tl\exp_args:Nx\autoref{sref_\l_tmpa_str}\l__stex_refs_post_tl
+          }{
+            \l__stex_refs_pre_tl\exp_args:Nx\ref{sref_\l_tmpa_str}\l__stex_refs_post_tl
+          }
+        }{
+          \ltx@ifpackageloaded{hyperref}{
+            \hyperref[sref_\l_tmpa_str]\l__stex_refs_linktext_tl
+          }{
+            \l__stex_refs_linktext_tl
+          }
+        }
+      }{
+        \ltx@ifpackageloaded{hyperref}{
+          \href{\use:c{sref_url_\l_tmpa_str _str}}{\tl_if_empty:NTF \l__stex_refs_linktext_tl \l__stex_refs_fallback_tl \l__stex_refs_linktext_tl}
+        }{
+          \tl_if_empty:NTF \l__stex_refs_linktext_tl \l__stex_refs_fallback_tl \l__stex_refs_linktext_tl
+        }
+      }
+    }
+  }{
+    % TODO
+  }
+}
+\NewDocumentCommand \srefsym { O{} m}{
+  \stex_get_symbol:n { #2 }
+  \__stex_refs_sym_aux:nn{#1}{\l_stex_get_symbol_uri_str}
+}
+
+\cs_new_protected:Nn \__stex_refs_sym_aux:nn {
+  \str_if_exist:cTF {sref_sym_#2 _label_str }{
+    \sref[#1]{\use:c{sref_sym_#2 _label_str}}
+  }{
+    \__stex_refs_args:n { #1 }
+    \str_if_empty:NTF \l__stex_refs_indocument_str {
+      \tl_if_exist:cTF{sref_sym_#2 _type}{
+        % doc uri in \l_tmpb_str
+        \str_set:Nx \l_tmpa_str {\use:c{sref_sym_#2 _type}}
+        \str_if_eq:NNTF \l_tmpa_str \c__stex_refs_ref_str {
+          % reference
+          \tl_if_empty:NTF \l__stex_refs_linktext_tl {
+            \cs_if_exist:cTF{autoref}{
+              \l__stex_refs_pre_tl\autoref{sref_sym_#2}\l__stex_refs_post_tl
+            }{
+              \l__stex_refs_pre_tl\ref{sref_sym_#2}\l__stex_refs_post_tl
+            }
+          }{
+            \ltx@ifpackageloaded{hyperref}{
+              \hyperref[sref_sym_#2]\l__stex_refs_linktext_tl
+            }{
+              \l__stex_refs_linktext_tl
+            }
+          }
+        }{
+          % URL
+          \ltx@ifpackageloaded{hyperref}{
+            \href{\use:c{sref_sym_url_#2 _str}}{\tl_if_empty:NTF \l__stex_refs_linktext_tl \l__stex_refs_fallback_tl \l__stex_refs_linktext_tl}
+          }{
+            \tl_if_empty:NTF \l__stex_refs_linktext_tl \l__stex_refs_fallback_tl \l__stex_refs_linktext_tl
+          }
+        }
+      }{
+        \tl_if_empty:NTF \l__stex_refs_linktext_tl \l__stex_refs_fallback_tl \l__stex_refs_linktext_tl
+      }
+    }{
+      % TODO
+    }
+  }
+}
+\cs_new_protected:Npn \srefsymuri #1 #2 {
+  \__stex_refs_sym_aux:nn{linktext={#2}}{#1}
+}
+
+%%%%%%%%%%%%%   modules.dtx   %%%%%%%%%%%%%
+
+\msg_new:nnn{stex}{error/unknownmodule}{
+  No~module~#1~found
+}
+\msg_new:nnn{stex}{error/syntax}{
+  Syntax~error:~#1
+}
+\msg_new:nnn{stex}{error/siglanguage}{
+  Module~#1~declares~signature~#2,~but~does~not~
+  declare~its~language
+}
+\msg_new:nnn{stex}{warning/deprecated}{
+  #1~is~deprecated;~please~use~#2~instead!
+}
+
+\msg_new:nnn{stex}{error/conflictingmodules}{
+  Conflicting~imports~for~module~#1
+}
+\str_new:N \l_stex_current_module_str
+\seq_new:N \l_stex_all_modules_seq
+\prg_new_conditional:Nnn \stex_if_in_module: {p, T, F, TF} {
+  \str_if_empty:NTF \l_stex_current_module_str
+    \prg_return_false: \prg_return_true:
+}
+\prg_new_conditional:Nnn \stex_if_module_exists:n {p, T, F, TF} {
+  \prop_if_exist:cTF { c_stex_module_#1_prop }
+    \prg_return_true: \prg_return_false:
+}
+\cs_new_protected:Nn \stex_add_to_current_module:n {
+  \tl_gput_right:cn {c_stex_module_\l_stex_current_module_str _code} { #1 }
+}
+\cs_new_protected:Npn \STEXexport {
+  \begingroup
+  \newlinechar=-1\relax
+  \endlinechar=-1\relax
+  %\catcode`\ = 9\relax
+  \expandafter\endgroup\__stex_modules_export:n
+}
+\cs_new_protected:Nn \__stex_modules_export:n {
+  \ignorespaces #1
+  \stex_add_to_current_module:n { \ignorespaces #1 }
+  \stex_smsmode_do:
+}
+\stex_deactivate_macro:Nn \STEXexport {module~environments}
+\cs_new_protected:Nn \stex_add_constant_to_current_module:n {
+  \str_set:Nx \l_tmpa_str { #1 }
+  \seq_gput_right:co {c_stex_module_\l_stex_current_module_str _constants} { \l_tmpa_str }
+}
+\cs_new_protected:Nn \stex_add_import_to_current_module:n {
+  \str_set:Nx \l_tmpa_str { #1 }
+  \exp_args:Nno
+  \seq_if_in:cnF{c_stex_module_\l_stex_current_module_str _imports}\l_tmpa_str{
+    \seq_gput_right:co{c_stex_module_\l_stex_current_module_str _imports}\l_tmpa_str
+  }
+}
+\cs_new_protected:Nn \stex_collect_imports:n {
+  \seq_clear:N \l_stex_collect_imports_seq
+  \__stex_modules_collect_imports:n {#1}
+}
+\cs_new_protected:Nn \__stex_modules_collect_imports:n {
+  \seq_map_inline:cn {c_stex_module_#1_imports} {
+    \seq_if_in:NnF \l_stex_collect_imports_seq { ##1 } {
+      \__stex_modules_collect_imports:n { ##1 }
+    }
+  }
+  \seq_if_in:NnF \l_stex_collect_imports_seq { #1 } {
+    \seq_put_right:Nx \l_stex_collect_imports_seq { #1 }
+  }
+}
+\int_new:N \l__stex_modules_group_depth_int
+\tl_new:N \l__stex_modules_aftergroup_tl
+\cs_new_protected:Nn \stex_do_up_to_module:n {
+  \int_compare:nNnTF \l__stex_modules_group_depth_int = \currentgrouplevel {
+    #1
+  }{
+    #1
+    \expandafter \tl_gset:Nn \expandafter \l__stex_modules_aftergroup_tl \expandafter { \l__stex_modules_aftergroup_tl #1 }
+    \aftergroup\__stex_modules_aftergroup_do:
+  }
+}
+\cs_new_protected:Nn \__stex_modules_aftergroup_do: {
+  \int_compare:nNnTF \l__stex_modules_group_depth_int = \currentgrouplevel {
+    \l__stex_modules_aftergroup_tl
+    \tl_clear:N \l__stex_modules_aftergroup_tl
+  }{
+    \l__stex_modules_aftergroup_tl
+    \aftergroup\__stex_modules_aftergroup_do:
+  }
+}
+
+\str_new:N \l_stex_modules_ns_str
+\str_new:N \l_stex_modules_subpath_str
+\cs_new_protected:Nn \__stex_modules_compute_namespace:nN {
+  \str_set:Nx \l_tmpa_str { #1 }
+  \seq_set_eq:NN \l_tmpa_seq #2
+  % split off file extension
+  \seq_pop_right:NN \l_tmpa_seq \l_tmpb_str
+  \exp_args:NNno \seq_set_split:Nnn \l_tmpb_seq . \l_tmpb_str
+  \seq_get_left:NN \l_tmpb_seq \l_tmpb_str
+  \seq_put_right:No \l_tmpa_seq \l_tmpb_str
+
+  \bool_set_true:N \l_tmpa_bool
+  \bool_while_do:Nn \l_tmpa_bool {
+    \seq_pop_left:NN \l_tmpa_seq \l_tmpb_str
+    \exp_args:No \str_case:nnTF { \l_tmpb_str } {
+      {source} { \bool_set_false:N \l_tmpa_bool }
+    }{}{
+      \seq_if_empty:NT \l_tmpa_seq {
+        \bool_set_false:N \l_tmpa_bool
+      }
+    }
+  }
+
+  \stex_path_to_string:NN \l_tmpa_seq \l_stex_modules_subpath_str
+  \str_if_empty:NTF \l_stex_modules_subpath_str {
+    \str_set_eq:NN \l_stex_modules_ns_str \l_tmpa_str
+  }{
+    \str_set:Nx \l_stex_modules_ns_str {
+      \l_tmpa_str/\l_stex_modules_subpath_str
+    }
+  }
+}
+
+\cs_new_protected:Nn \stex_modules_current_namespace: {
+  \str_clear:N \l_stex_modules_subpath_str
+  \prop_if_exist:NTF \l_stex_current_repository_prop {
+    \prop_get:NnN \l_stex_current_repository_prop { ns } \l_tmpa_str
+    \__stex_modules_compute_namespace:nN \l_tmpa_str \g_stex_currentfile_seq
+  }{
+    % split off file extension
+    \seq_set_eq:NN \l_tmpa_seq \g_stex_currentfile_seq
+    \seq_pop_right:NN \l_tmpa_seq \l_tmpb_str
+    \exp_args:NNno \seq_set_split:Nnn \l_tmpb_seq . \l_tmpb_str
+    \seq_get_left:NN \l_tmpb_seq \l_tmpb_str
+    \seq_put_right:No \l_tmpa_seq \l_tmpb_str
+    \str_set:Nx \l_stex_modules_ns_str {
+      file:/\stex_path_to_string:N \l_tmpa_seq
+    }
+  }
+}
+\keys_define:nn { stex / module } {
+  title         .tl_set:N     = \smoduletitle ,
+  type          .str_set_x:N  = \smoduletype ,
+  id            .str_set_x:N  = \smoduleid ,
+  deprecate     .str_set_x:N  = \l_stex_module_deprecate_str ,
+  ns            .str_set_x:N  = \l_stex_module_ns_str ,
+  lang          .str_set_x:N  = \l_stex_module_lang_str ,
+  sig           .str_set_x:N  = \l_stex_module_sig_str ,
+  creators      .str_set_x:N  = \l_stex_module_creators_str ,
+  contributors  .str_set_x:N  = \l_stex_module_contributors_str ,
+  meta          .str_set_x:N  = \l_stex_module_meta_str ,
+  srccite       .str_set_x:N  = \l_stex_module_srccite_str
+}
+
+\cs_new_protected:Nn \__stex_modules_args:n {
+  \str_clear:N \smoduletitle
+  \str_clear:N \smoduletype
+  \str_clear:N \smoduleid
+  \str_clear:N \l_stex_module_ns_str
+  \str_clear:N \l_stex_module_deprecate_str
+  \str_clear:N \l_stex_module_lang_str
+  \str_clear:N \l_stex_module_sig_str
+  \str_clear:N \l_stex_module_creators_str
+  \str_clear:N \l_stex_module_contributors_str
+  \str_clear:N \l_stex_module_meta_str
+  \str_clear:N \l_stex_module_srccite_str
+  \keys_set:nn { stex / module } { #1 }
+}
+
+
+\cs_new_protected:Nn \stex_module_setup:nn {
+  \str_set:Nx \l_stex_module_name_str { #2 }
+  \__stex_modules_args:n { #1 }
+  \stex_if_in_module:TF {
+    % Nested module
+    \prop_get:cnN {c_stex_module_\l_stex_current_module_str _prop}
+      { ns } \l_stex_module_ns_str
+    \str_set:Nx \l_stex_module_name_str {
+      \prop_item:cn {c_stex_module_\l_stex_current_module_str _prop}
+        { name } / \l_stex_module_name_str
+    }
+  }{
+    % not nested:
+    \str_if_empty:NT \l_stex_module_ns_str {
+      \stex_modules_current_namespace:
+      \str_set_eq:NN \l_stex_module_ns_str \l_stex_modules_ns_str
+      \exp_args:NNNo \seq_set_split:Nnn \l_tmpa_seq
+          / {\l_stex_module_ns_str}
+      \seq_pop_right:NN \l_tmpa_seq \l_tmpa_str
+      \str_if_eq:NNT \l_tmpa_str \l_stex_module_name_str {
+        \str_set:Nx \l_stex_module_ns_str {
+          \stex_path_to_string:N \l_tmpa_seq
+        }
+      }
+    }
+  }
+  \str_if_empty:NT \l_stex_module_lang_str {
+    \seq_get_right:NN \g_stex_currentfile_seq \l_tmpa_str
+    \seq_set_split:NnV \l_tmpa_seq . \l_tmpa_str
+    \seq_pop_right:NN \l_tmpa_seq \l_tmpa_str % .tex
+    \seq_pop_left:NN \l_tmpa_seq \l_tmpa_str % <filename>
+    \seq_if_empty:NF \l_tmpa_seq { %remaining element should be language
+      \stex_debug:nn{modules} {Language~\l_stex_module_lang_str~
+        inferred~from~file~name}
+      \seq_pop_left:NN \l_tmpa_seq \l_stex_module_lang_str
+    }
+  }
+
+  \stex_if_smsmode:F { \str_if_empty:NF \l_stex_module_lang_str {
+    \prop_get:NVNTF \c_stex_languages_prop \l_stex_module_lang_str
+      \l_tmpa_str {
+        \ltx@ifpackageloaded{babel}{
+          \exp_args:Nx \selectlanguage { \l_tmpa_str }
+        }{}
+      } {
+        \msg_error:nnx{stex}{error/unknownlanguage}{\l_tmpa_str}
+      }
+  }}
+  \str_if_empty:NTF \l_stex_module_sig_str {
+    \exp_args:Nnx \prop_gset_from_keyval:cn {
+      c_stex_module_\l_stex_module_ns_str?\l_stex_module_name_str _prop
+    } {
+      name      = \l_stex_module_name_str ,
+      ns        = \l_stex_module_ns_str ,
+      file      = \exp_not:o { \g_stex_currentfile_seq } ,
+      lang      = \l_stex_module_lang_str ,
+      sig       = \l_stex_module_sig_str ,
+      deprecate = \l_stex_module_deprecate_str ,
+      meta      = \l_stex_module_meta_str
+    }
+    \seq_clear:c {c_stex_module_\l_stex_module_ns_str?\l_stex_module_name_str _imports}
+    \seq_clear:c {c_stex_module_\l_stex_module_ns_str?\l_stex_module_name_str _constants}
+    \tl_clear:c {c_stex_module_\l_stex_module_ns_str?\l_stex_module_name_str _code}
+    \str_set:Nx\l_stex_current_module_str{\l_stex_module_ns_str?\l_stex_module_name_str}
+    \str_if_empty:NT \l_stex_module_meta_str {
+      \str_set:Nx \l_stex_module_meta_str {
+        \c_stex_metatheory_ns_str ? Metatheory
+      }
+    }
+    \str_if_eq:VnF \l_stex_module_meta_str {NONE} {
+      \bool_set_true:N \l_stex_in_meta_bool
+      \exp_args:Nx \stex_add_to_current_module:n {
+        \bool_set_true:N \l_stex_in_meta_bool
+        \stex_activate_module:n {\l_stex_module_meta_str}
+        \bool_set_false:N \l_stex_in_meta_bool
+      }
+      \stex_activate_module:n {\l_stex_module_meta_str}
+      \bool_set_false:N \l_stex_in_meta_bool
+    }
+  }{
+    \str_if_empty:NT \l_stex_module_lang_str {
+      \msg_error:nnxx{stex}{error/siglanguage}{
+        \l_stex_module_ns_str?\l_stex_module_name_str
+      }{\l_stex_module_sig_str}
+    }
+
+    \seq_set_eq:NN \l_tmpa_seq \g_stex_currentfile_seq
+    \seq_pop_right:NN \l_tmpa_seq \l_tmpa_str
+    \seq_set_split:NnV \l_tmpb_seq . \l_tmpa_str
+    \seq_pop_right:NN \l_tmpb_seq \l_tmpa_str % .tex
+    \seq_pop_left:NN \l_tmpb_seq \l_tmpa_str % <filename>
+    \str_set:Nx \l_tmpa_str {
+      \stex_path_to_string:N \l_tmpa_seq /
+      \l_tmpa_str . \l_stex_module_sig_str .tex
+    }
+    \IfFileExists \l_tmpa_str {
+      \exp_args:No \stex_file_in_smsmode:nn { \l_tmpa_str } {
+        \str_clear:N \l_stex_current_module_str
+        \seq_clear:N \l_stex_all_modules_seq
+        \stex_debug:nn{modules}{Loading~signature~\l_tmpa_str}
+      }
+    }{
+      \msg_error:nnx{stex}{error/unknownmodule}{for~signature~\l_tmpa_str}
+    }
+    \stex_if_smsmode:F {
+      \stex_activate_module:n {
+        \l_stex_module_ns_str ? \l_stex_module_name_str
+      }
+    }
+    \str_set:Nx\l_stex_current_module_str{\l_stex_module_ns_str?\l_stex_module_name_str}
+  }
+  \str_if_empty:NF \l_stex_module_deprecate_str {
+    \msg_warning:nnxx{stex}{warning/deprecated}{
+      Module~\l_stex_current_module_str
+    }{
+      \l_stex_module_deprecate_str
+    }
+  }
+}
+\cs_new_protected:Nn \__stex_modules_begin_module: {
+  \stex_reactivate_macro:N \STEXexport
+  \stex_reactivate_macro:N \importmodule
+  \stex_reactivate_macro:N \symdecl
+  \stex_reactivate_macro:N \notation
+  \stex_reactivate_macro:N \symdef
+
+  \stex_debug:nn{modules}{
+    New~module:\\
+    Namespace:~\l_stex_module_ns_str\\
+    Name:~\l_stex_module_name_str\\
+    Language:~\l_stex_module_lang_str\\
+    Signature:~\l_stex_module_sig_str\\
+    Metatheory:~\l_stex_module_meta_str\\
+    File:~\stex_path_to_string:N \g_stex_currentfile_seq
+  }
+
+  \seq_put_right:Nx \l_stex_all_modules_seq {
+    \l_stex_module_ns_str ? \l_stex_module_name_str
+  }
+
+  \stex_if_smsmode:F{
+    \begin{stex_annotate_env} {theory} {
+      \l_stex_module_ns_str ? \l_stex_module_name_str
+    }
+
+    \stex_annotate_invisible:nnn{header}{} {
+      \stex_annotate:nnn{language}{ \l_stex_module_lang_str }{}
+      \stex_annotate:nnn{signature}{ \l_stex_module_sig_str }{}
+      \str_if_eq:VnF \l_stex_module_meta_str {NONE} {
+        \stex_annotate:nnn{metatheory}{ \l_stex_module_meta_str }{}
+      }
+      \str_if_empty:NF \smoduletype {
+        \stex_annotate:nnn{type}{\smoduletype}{}
+      }
+    }
+  }
+  \int_set:Nn \l__stex_modules_group_depth_int {\currentgrouplevel}
+  % TODO: Inherit metatheory for nested modules?
+}
+\iffalse \end{stex_annotate_env} \fi %^^A make syntax highlighting work again
+\cs_new_protected:Nn \__stex_modules_end_module: {
+  \stex_debug:nn{modules}{Closing~module~\prop_item:cn {c_stex_module_\l_stex_current_module_str _prop} { name }}
+}
+\iffalse \begin{stex_annotate_env} \fi %^^A make syntax highlighting work again
+\NewDocumentEnvironment { smodule } { O{} m } {
+  \stex_module_setup:nn{#1}{#2}
+  \par
+  \stex_if_smsmode:F{
+    \tl_clear:N \l_tmpa_tl
+    \clist_map_inline:Nn \smoduletype {
+      \tl_if_exist:cT {__stex_modules_smodule_##1_start:}{
+        \tl_set:Nn \l_tmpa_tl {\use:c{__stex_modules_smodule_##1_start:}}
+      }
+    }
+    \tl_if_empty:NTF \l_tmpa_tl {
+      \__stex_modules_smodule_start:
+    }{
+      \l_tmpa_tl
+    }
+  }
+  \__stex_modules_begin_module:
+  \str_if_empty:NF \smoduleid {
+    \stex_ref_new_doc_target:n \smoduleid
+  }
+  \stex_smsmode_do:
+} {
+  \__stex_modules_end_module:
+  \stex_if_smsmode:F {
+    \end{stex_annotate_env}
+    \clist_set:No \l_tmpa_clist \smoduletype
+    \tl_clear:N \l_tmpa_tl
+    \clist_map_inline:Nn \l_tmpa_clist {
+      \tl_if_exist:cT {__stex_modules_smodule_##1_end:}{
+        \tl_set:Nn \l_tmpa_tl {\use:c{__stex_modules_smodule_##1_end:}}
+      }
+    }
+    \tl_if_empty:NTF \l_tmpa_tl {
+      \__stex_modules_smodule_end:
+    }{
+      \l_tmpa_tl
+    }
+  }
+}
+\cs_new_protected:Nn \__stex_modules_smodule_start: {}
+\cs_new_protected:Nn \__stex_modules_smodule_end: {}
+
+\newcommand\stexpatchmodule[3][] {
+    \str_set:Nx \l_tmpa_str{ #1 }
+    \str_if_empty:NTF \l_tmpa_str {
+      \tl_set:Nn \__stex_modules_smodule_start: { #2 }
+      \tl_set:Nn \__stex_modules_smodule_end: { #3 }
+    }{
+      \exp_after:wN \tl_set:Nn \csname __stex_modules_smodule_#1_start:\endcsname{ #2 }
+      \exp_after:wN \tl_set:Nn \csname __stex_modules_smodule_#1_end:\endcsname{ #3 }
+    }
+}
+\NewDocumentCommand \STEXModule { m } {
+  \exp_args:NNx \str_set:Nn \l_tmpa_str { #1 }
+  \int_set:Nn \l_tmpa_int { \str_count:N \l_tmpa_str }
+  \tl_set:Nn \l_tmpa_tl {
+    \msg_error:nnx{stex}{error/unknownmodule}{#1}
+  }
+  \seq_map_inline:Nn \l_stex_all_modules_seq {
+    \str_set:Nn \l_tmpb_str { ##1 }
+    \str_if_eq:eeT { \l_tmpa_str } {
+      \str_range:Nnn \l_tmpb_str { -\l_tmpa_int } { -1 }
+    } {
+      \seq_map_break:n {
+        \tl_set:Nn \l_tmpa_tl {
+          \stex_invoke_module:n { ##1 }
+        }
+      }
+    }
+  }
+  \l_tmpa_tl
+}
+
+\cs_new_protected:Nn \stex_invoke_module:n {
+  \stex_debug:nn{modules}{Invoking~module~#1}
+  \peek_charcode_remove:NTF ! {
+    \__stex_modules_invoke_uri:nN { #1 }
+  } {
+    \peek_charcode_remove:NTF ? {
+      \__stex_modules_invoke_symbol:nn { #1 }
+    } {
+      \msg_error:nnx{stex}{error/syntax}{
+        ?~or~!~expected~after~
+        \c_backslash_str STEXModule{#1}
+      }
+    }
+  }
+}
+
+\cs_new_protected:Nn \__stex_modules_invoke_uri:nN {
+  \str_set:Nn #2 { #1 }
+}
+
+\cs_new_protected:Nn \__stex_modules_invoke_symbol:nn {
+  \stex_invoke_symbol:n{#1?#2}
+}
+\bool_new:N \l_stex_in_meta_bool
+\bool_set_false:N \l_stex_in_meta_bool
+\cs_new_protected:Nn \stex_activate_module:n {
+  \stex_debug:nn{modules}{Activating~module~#1}
+  \seq_if_in:NnT \l_stex_implicit_morphisms_seq { #1 }{
+    \msg_error:nnn{stex}{error/conflictingmodules}{ #1 }
+  }
+  \exp_args:NNx \seq_if_in:NnF \l_stex_all_modules_seq { #1 } {
+    \seq_put_right:Nx \l_stex_all_modules_seq { #1 }
+    \use:c{ c_stex_module_#1_code }
+  }
+}
+
+%%%%%%%%%%%%%   inheritance.dtx   %%%%%%%%%%%%%
+
+\tl_new:N \g_stex_smsmode_allowedmacros_tl
+\tl_new:N \g_stex_smsmode_allowedmacros_escape_tl
+\seq_new:N \g_stex_smsmode_allowedenvs_seq
+
+\tl_set:Nn \g_stex_smsmode_allowedmacros_tl {
+  \makeatletter
+  \makeatother
+  \ExplSyntaxOn
+  \ExplSyntaxOff
+  \rustexBREAK
+}
+
+\tl_set:Nn \g_stex_smsmode_allowedmacros_escape_tl {
+  \symdef
+  \importmodule
+  \notation
+  \symdecl
+  \STEXexport
+  \inlineass
+  \inlinedef
+  \inlineex
+  \endinput
+  \setnotation
+  \copynotation
+}
+
+\exp_args:NNx \seq_set_from_clist:Nn \g_stex_smsmode_allowedenvs_seq {
+  \tl_to_str:n {
+    smodule,
+    copymodule,
+    interpretmodule,
+    sdefinition,
+    sexample,
+    sassertion,
+    sparagraph
+  }
+}
+\bool_new:N \g__stex_smsmode_bool
+\bool_set_false:N \g__stex_smsmode_bool
+\prg_new_conditional:Nnn \stex_if_smsmode: { p, T, F, TF } {
+  \bool_if:NTF \g__stex_smsmode_bool \prg_return_true: \prg_return_false:
+}
+\cs_new_protected:Nn \__stex_smsmode_in_smsmode:nn {
+  \vbox_set:Nn \l_tmpa_box {
+    \bool_set_eq:cN { l__stex_smsmode_#1_bool } \g__stex_smsmode_bool
+    \bool_gset_true:N \g__stex_smsmode_bool
+    #2
+    \bool_gset_eq:Nc \g__stex_smsmode_bool { l__stex_smsmode_#1_bool }
+  }
+  \box_clear:N \l_tmpa_box
+}
+\quark_new:N \q__stex_smsmode_break
+
+\cs_new_protected:Nn \stex_file_in_smsmode:nn {
+  \stex_filestack_push:n{#1}
+  \__stex_smsmode_in_smsmode:nn{#1} {
+    #2
+    \everyeof{\q__stex_smsmode_break\noexpand}
+    \expandafter\expandafter\expandafter
+    \stex_smsmode_do:
+    \csname @ @ input\endcsname "#1"\relax
+  }
+  \stex_filestack_pop:
+}
+\cs_new_protected:Npn \stex_smsmode_do: {
+  \stex_if_smsmode:T {
+    \__stex_smsmode_do:w
+  }
+}
+\cs_new_protected:Npn \__stex_smsmode_do:w #1 {
+  \exp_args:Nx \tl_if_empty:nTF { \tl_tail:n{ #1 }}{
+    \expandafter\if\expandafter\relax\noexpand#1
+      \expandafter\__stex_smsmode_do_aux:N\expandafter#1
+    \else\expandafter\__stex_smsmode_do:w\fi
+  }{
+    \__stex_smsmode_do:w %#1
+  }
+}
+\cs_new_protected:Nn \__stex_smsmode_do_aux:N {
+  \cs_if_eq:NNF #1 \q__stex_smsmode_break {
+    \tl_if_in:NnTF \g_stex_smsmode_allowedmacros_tl {#1} {
+      #1\__stex_smsmode_do:w
+    }{
+      \tl_if_in:NnTF \g_stex_smsmode_allowedmacros_escape_tl {#1} {
+        #1
+      }{
+        \cs_if_eq:NNTF \begin #1 {
+          \__stex_smsmode_check_begin:n
+        }{
+          \cs_if_eq:NNTF \end #1 {
+            \__stex_smsmode_check_end:n
+          }{
+            \__stex_smsmode_do:w
+          }
+        }
+      }
+    }
+  }
+}
+
+\cs_new_protected:Nn \__stex_smsmode_check_begin:n {
+  \seq_if_in:NxTF \g_stex_smsmode_allowedenvs_seq { \detokenize{#1} }{
+    \begin{#1}
+  }{
+    \__stex_smsmode_do:w
+  }
+}
+\cs_new_protected:Nn \__stex_smsmode_check_end:n {
+  \seq_if_in:NxTF \g_stex_smsmode_allowedenvs_seq { \detokenize{#1} }{
+    \end{#1}\__stex_smsmode_do:w
+  }{
+    \str_if_eq:nnTF{#1}{document}{\endinput}{\__stex_smsmode_do:w}
+  }
+}
+
+\cs_new_protected:Nn \stex_import_module_uri:nn {
+  \str_set:Nx \l_stex_import_archive_str { #1 }
+  \str_set:Nn \l_stex_import_path_str { #2 }
+
+  \exp_args:NNNo \seq_set_split:Nnn \l_tmpb_seq ? { \l_stex_import_path_str }
+  \seq_pop_right:NN \l_tmpb_seq \l_stex_import_name_str
+  \str_set:Nx \l_stex_import_path_str { \seq_use:Nn \l_tmpb_seq ? }
+
+  \stex_modules_current_namespace:
+  \bool_lazy_all:nTF {
+    {\str_if_empty_p:N \l_stex_import_archive_str}
+    {\str_if_empty_p:N \l_stex_import_path_str}
+    {\stex_if_module_exists_p:n { \l_stex_module_ns_str ? \l_stex_import_name_str } }
+  }{
+    \str_set_eq:NN \l_stex_import_path_str \l_stex_modules_subpath_str
+    \str_set_eq:NN \l_stex_import_ns_str \l_stex_module_ns_str
+  }{
+    \str_if_empty:NT \l_stex_import_archive_str {
+      \prop_if_exist:NT \l_stex_current_repository_prop {
+        \prop_get:NnN \l_stex_current_repository_prop { id } \l_stex_import_archive_str
+      }
+    }
+    \str_if_empty:NTF \l_stex_import_archive_str {
+      \str_if_empty:NF \l_stex_import_path_str {
+        \str_set:Nx \l_stex_import_ns_str {
+          \l_stex_module_ns_str / \l_stex_import_path_str
+        }
+      }
+    }{
+      \stex_require_repository:n \l_stex_import_archive_str
+      \prop_get:cnN { c_stex_mathhub_\l_stex_import_archive_str _manifest_prop } { ns }
+        \l_stex_import_ns_str
+      \str_if_empty:NF \l_stex_import_path_str {
+        \str_set:Nx \l_stex_import_ns_str {
+          \l_stex_import_ns_str / \l_stex_import_path_str
+        }
+      }
+    }
+  }
+}
+\str_new:N \l_stex_import_name_str
+\str_new:N \l_stex_import_archive_str
+\str_new:N \l_stex_import_path_str
+\str_new:N \l_stex_import_ns_str
+\cs_new_protected:Nn \stex_import_require_module:nnnn {
+  \exp_args:Nx \stex_if_module_exists:nF { #1 ? #4 } {
+
+    % archive
+    \str_set:Nx \l_tmpa_str { #2 }
+    \str_if_empty:NTF \l_tmpa_str {
+      \seq_set_eq:NN \l_tmpa_seq \g_stex_currentfile_seq
+    } {
+      \stex_path_from_string:Nn \l_tmpb_seq { \l_tmpa_str }
+      \seq_concat:NNN \l_tmpa_seq \c_stex_mathhub_seq \l_tmpb_seq
+      \seq_put_right:Nn \l_tmpa_seq { source }
+    }
+
+    % path
+    \str_set:Nx \l_tmpb_str { #3 }
+    \str_if_empty:NTF \l_tmpb_str {
+      \str_set:Nx \l_tmpa_str { \stex_path_to_string:N \l_tmpa_seq / #4 }
+
+      \ltx@ifpackageloaded{babel} {
+        \exp_args:NNx \prop_get:NnNF \c_stex_language_abbrevs_prop
+            { \languagename } \l_tmpb_str {
+              \msg_error:nnx{stex}{error/unknownlanguage}{\languagename}
+            }
+      } {
+        \str_clear:N \l_tmpb_str
+      }
+
+      \stex_debug:nn{modules}{Checking~\l_tmpa_str.\l_tmpb_str.tex}
+      \IfFileExists{ \l_tmpa_str.\l_tmpb_str.tex }{
+        \str_gset:Nx \g__stex_importmodule_file_str { \l_tmpa_str.\l_tmpb_str.tex }
+      }{
+        \stex_debug:nn{modules}{Checking~\l_tmpa_str.tex}
+        \IfFileExists{ \l_tmpa_str.tex }{
+          \str_gset:Nx \g__stex_importmodule_file_str { \l_tmpa_str.tex }
+        }{
+          % try english as default
+          \stex_debug:nn{modules}{Checking~\l_tmpa_str.en.tex}
+          \IfFileExists{ \l_tmpa_str.en.tex }{
+            \str_gset:Nx \g__stex_importmodule_file_str { \l_tmpa_str.en.tex }
+          }{
+            \msg_error:nnx{stex}{error/unknownmodule}{#1?#4}
+          }
+        }
+      }
+
+    } {
+      \seq_set_split:NnV \l_tmpb_seq / \l_tmpb_str
+      \seq_concat:NNN \l_tmpa_seq \l_tmpa_seq \l_tmpb_seq
+
+      \ltx@ifpackageloaded{babel} {
+        \exp_args:NNx \prop_get:NnNF \c_stex_language_abbrevs_prop
+            { \languagename } \l_tmpb_str {
+              \msg_error:nnx{stex}{error/unknownlanguage}{\languagename}
+            }
+      } {
+        \str_clear:N \l_tmpb_str
+      }
+
+      \stex_path_to_string:NN \l_tmpa_seq \l_tmpa_str
+
+      \stex_debug:nn{modules}{Checking~\l_tmpa_str/#4.\l_tmpb_str.tex}
+      \IfFileExists{ \l_tmpa_str/#4.\l_tmpb_str.tex }{
+        \str_gset:Nx \g__stex_importmodule_file_str { \l_tmpa_str/#4.\l_tmpb_str.tex }
+      }{
+        \stex_debug:nn{modules}{Checking~\l_tmpa_str/#4.tex}
+        \IfFileExists{ \l_tmpa_str/#4.tex }{
+          \str_gset:Nx \g__stex_importmodule_file_str { \l_tmpa_str/#4.tex }
+        }{
+          % try english as default
+          \stex_debug:nn{modules}{Checking~\l_tmpa_str/#4.en.tex}
+          \IfFileExists{ \l_tmpa_str/#4.en.tex }{
+            \str_gset:Nx \g__stex_importmodule_file_str { \l_tmpa_str/#4.en.tex }
+          }{
+            \stex_debug:nn{modules}{Checking~\l_tmpa_str.\l_tmpb_str.tex}
+            \IfFileExists{ \l_tmpa_str.\l_tmpb_str.tex }{
+              \str_gset:Nx \g__stex_importmodule_file_str { \l_tmpa_str.\l_tmpb_str.tex }
+            }{
+              \stex_debug:nn{modules}{Checking~\l_tmpa_str.tex}
+              \IfFileExists{ \l_tmpa_str.tex }{
+                \str_gset:Nx \g__stex_importmodule_file_str { \l_tmpa_str.tex }
+              }{
+                % try english as default
+                \stex_debug:nn{modules}{Checking~\l_tmpa_str.en.tex}
+                \IfFileExists{ \l_tmpa_str.en.tex }{
+                  \str_gset:Nx \g__stex_importmodule_file_str { \l_tmpa_str.en.tex }
+                }{
+                  \msg_error:nnx{stex}{error/unknownmodule}{#1?#4}
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    \exp_args:No \stex_file_in_smsmode:nn { \g__stex_importmodule_file_str } {
+      \seq_clear:N \l_stex_all_modules_seq
+      \str_clear:N \l_stex_current_module_str
+      \str_set:Nx \l_tmpb_str { #2 }
+      \str_if_empty:NF \l_tmpb_str {
+        \stex_set_current_repository:n { #2 }
+      }
+      \stex_debug:nn{modules}{Loading~\g__stex_importmodule_file_str}
+    }
+
+    \stex_if_module_exists:nF { #1 ? #4 } {
+      \msg_error:nnx{stex}{error/unknownmodule}{
+        #1?#4~(in~file~\g__stex_importmodule_file_str)
+      }
+    }
+  }
+  \stex_activate_module:n { #1 ? #4 }
+}
+\NewDocumentCommand \importmodule { O{} m } {
+  \stex_import_module_uri:nn { #1 } { #2 }
+  \stex_debug:nn{modules}{Importing~module:~
+    \l_stex_import_ns_str ? \l_stex_import_name_str
+  }
+  \stex_if_smsmode:F {
+    \stex_import_require_module:nnnn
+    { \l_stex_import_ns_str } { \l_stex_import_archive_str }
+    { \l_stex_import_path_str } { \l_stex_import_name_str }
+    \stex_annotate_invisible:nnn
+      {import} {\l_stex_import_ns_str ? \l_stex_import_name_str} {}
+  }
+  \exp_args:Nx \stex_add_to_current_module:n {
+    \stex_import_require_module:nnnn
+    { \l_stex_import_ns_str } { \l_stex_import_archive_str }
+    { \l_stex_import_path_str } { \l_stex_import_name_str }
+  }
+  \exp_args:Nx \stex_add_import_to_current_module:n {
+    \l_stex_import_ns_str ? \l_stex_import_name_str
+  }
+  \stex_smsmode_do:
+  \ignorespacesandpars
+}
+\stex_deactivate_macro:Nn \importmodule {module~environments}
+\NewDocumentCommand \usemodule { O{} m } {
+  \stex_if_smsmode:F {
+    \stex_import_module_uri:nn { #1 } { #2 }
+    \stex_import_require_module:nnnn
+    { \l_stex_import_ns_str } { \l_stex_import_archive_str }
+    { \l_stex_import_path_str } { \l_stex_import_name_str }
+    \stex_annotate_invisible:nnn
+      {usemodule} {\l_stex_import_ns_str ? \l_stex_import_name_str} {}
+  }
+  \stex_smsmode_do:
+  \ignorespacesandpars
+}
+
+%%%%%%%%%%%%%   symbols.dtx   %%%%%%%%%%%%%
+
+\msg_new:nnn{stex}{error/wrongargs}{
+  args~value~in~symbol~declaration~for~#1~
+  needs~to~be~i,~a,~b~or~B,~but~#2~given
+}
+\seq_new:N \l_stex_all_symbols_seq
+\NewDocumentCommand \STEXsymbol { m } {
+  \stex_get_symbol:n { #1 }
+  \exp_args:No
+  \stex_invoke_symbol:n { \l_stex_get_symbol_uri_str }
+}
+\keys_define:nn { stex / symdecl } {
+  name        .str_set_x:N  = \l_stex_symdecl_name_str ,
+  local       .bool_set:N   = \l_stex_symdecl_local_bool ,
+  args        .str_set_x:N  = \l_stex_symdecl_args_str ,
+  type        .tl_set:N     = \l_stex_symdecl_type_tl ,
+  deprecate   .str_set_x:N  = \l_stex_symdecl_deprecate_str ,
+  align       .str_set:N    = \l_stex_symdecl_align_str , % TODO(?)
+  gfc         .str_set:N    = \l_stex_symdecl_gfc_str , % TODO(?)
+  specializes .str_set:N    = \l_stex_symdecl_specializes_str , % TODO(?)
+  def         .tl_set:N     = \l_stex_symdecl_definiens_tl ,
+  assoc       .choices:nn   =
+      {bin,binl,binr,pre,conj,pwconj}
+      {\str_set:Nx \l_stex_symdecl_assoctype_str {\l_keys_choice_tl}}
+}
+
+\bool_new:N \l_stex_symdecl_make_macro_bool
+
+\cs_new_protected:Nn \__stex_symdecl_args:n {
+  \str_clear:N \l_stex_symdecl_name_str
+  \str_clear:N \l_stex_symdecl_args_str
+  \str_clear:N \l_stex_symdecl_deprecate_str
+  \str_clear:N \l_stex_symdecl_assoctype_str
+  \bool_set_false:N \l_stex_symdecl_local_bool
+  \tl_clear:N \l_stex_symdecl_type_tl
+  \tl_clear:N \l_stex_symdecl_definiens_tl
+
+  \keys_set:nn { stex / symdecl } { #1 }
+}
+
+\NewDocumentCommand \symdecl { s m O{}} {
+  \__stex_symdecl_args:n { #3 }
+  \IfBooleanTF #1 {
+    \bool_set_false:N \l_stex_symdecl_make_macro_bool
+  } {
+    \bool_set_true:N \l_stex_symdecl_make_macro_bool
+  }
+  \stex_symdecl_do:n { #2 }
+  \stex_smsmode_do:
+}
+
+\cs_new_protected:Nn \stex_symdecl_do:nn {
+  \__stex_symdecl_args:n{#1}
+  \bool_set_false:N \l_stex_symdecl_make_macro_bool
+  \stex_symdecl_do:n{#2}
+}
+
+\stex_deactivate_macro:Nn \symdecl {module~environments}
+\cs_new_protected:Nn \stex_symdecl_do:n {
+  \stex_if_in_module:F {
+    % TODO throw error? some default namespace?
+  }
+
+  \str_if_empty:NT \l_stex_symdecl_name_str {
+    \str_set:Nx \l_stex_symdecl_name_str { #1 }
+  }
+
+  \prop_if_exist:cT { l_stex_symdecl_
+      \l_stex_current_module_str ?
+      \l_stex_symdecl_name_str
+    _prop
+  }{
+    % TODO throw error (beware of circular dependencies)
+  }
+
+  \prop_clear:N \l_tmpa_prop
+  \prop_put:Nnx \l_tmpa_prop { module } { \l_stex_current_module_str }
+  \seq_clear:N \l_tmpa_seq
+  \prop_put:Nno \l_tmpa_prop { name } \l_stex_symdecl_name_str
+  \prop_put:Nno \l_tmpa_prop { type } \l_stex_symdecl_type_tl
+
+  \str_if_empty:NT \l_stex_symdecl_deprecate_str {
+    \str_if_empty:NF \l_stex_module_deprecate_str {
+      \str_set_eq:NN \l_stex_symdecl_deprecate_str \l_stex_module_deprecate_str
+    }
+  }
+  \prop_put:Nno \l_tmpa_prop { deprecate } \l_stex_symdecl_deprecate_str
+
+  \exp_args:No \stex_add_constant_to_current_module:n {
+    \l_stex_symdecl_name_str
+  }
+
+  % arity/args
+  \int_zero:N \l_tmpb_int
+
+  \bool_set_true:N \l_tmpa_bool
+  \str_map_inline:Nn \l_stex_symdecl_args_str {
+    \token_case_meaning:NnF ##1 {
+      0 {} 1 {} 2 {} 3 {} 4 {} 5 {} 6 {} 7 {} 8 {} 9 {}
+      {\tl_to_str:n i} { \bool_set_false:N \l_tmpa_bool }
+      {\tl_to_str:n b} { \bool_set_false:N \l_tmpa_bool }
+      {\tl_to_str:n a} {
+        \bool_set_false:N \l_tmpa_bool
+        \int_incr:N \l_tmpb_int
+      }
+      {\tl_to_str:n B} {
+        \bool_set_false:N \l_tmpa_bool
+        \int_incr:N \l_tmpb_int
+      }
+    }{
+      \msg_error:nnxx{stex}{error/wrongargs}{
+        \l_stex_current_module_str ?
+        \l_stex_symdecl_name_str
+      }{##1}
+    }
+  }
+  \bool_if:NTF \l_tmpa_bool {
+    % possibly numeric
+    \str_if_empty:NTF \l_stex_symdecl_args_str {
+      \prop_put:Nnn \l_tmpa_prop { args } {}
+      \prop_put:Nnn \l_tmpa_prop { arity } { 0 }
+    }{
+      \int_set:Nn \l_tmpa_int { \l_stex_symdecl_args_str }
+      \prop_put:Nnx \l_tmpa_prop { arity } { \int_use:N \l_tmpa_int }
+      \str_clear:N \l_tmpa_str
+      \int_step_inline:nn \l_tmpa_int {
+        \str_put_right:Nn \l_tmpa_str i
+      }
+      \prop_put:Nnx \l_tmpa_prop { args } { \l_tmpa_str }
+    }
+  } {
+    \prop_put:Nnx \l_tmpa_prop { args } { \l_stex_symdecl_args_str }
+    \prop_put:Nnx \l_tmpa_prop { arity }
+      { \str_count:N \l_stex_symdecl_args_str }
+  }
+  \prop_put:Nnx \l_tmpa_prop { assocs } { \int_use:N \l_tmpb_int }
+
+  % semantic macro
+
+  \bool_if:NT \l_stex_symdecl_make_macro_bool {
+    \exp_args:Nx \stex_do_up_to_module:n {
+      \tl_set:cn { #1 } { \stex_invoke_symbol:n {
+        \l_stex_current_module_str ? \l_stex_symdecl_name_str
+      }}
+    }
+
+    \bool_if:NF \l_stex_symdecl_local_bool {
+      \exp_args:Nx \stex_add_to_current_module:n {
+        \tl_set:cn { #1 } { \stex_invoke_symbol:n {
+          \l_stex_current_module_str ? \l_stex_symdecl_name_str
+        } }
+      }
+    }
+  }
+
+  % add to all symbols
+
+  \bool_if:NF \l_stex_symdecl_local_bool {
+    \exp_args:Nx \stex_add_to_current_module:n {
+      \seq_put_right:Nn \exp_not:N \l_stex_all_symbols_seq {
+        \l_stex_current_module_str ? \l_stex_symdecl_name_str
+      }
+    }
+  }
+
+  \stex_debug:nn{symbols}{New~symbol:~
+    \l_stex_current_module_str ? \l_stex_symdecl_name_str^^J
+    Type:~\exp_not:o { \l_stex_symdecl_type_tl }^^J
+    Args:~\prop_item:Nn \l_tmpa_prop { args }
+  }
+
+  % circular dependencies require this:
+
+  \prop_if_exist:cF {
+    l_stex_symdecl_
+    \l_stex_current_module_str ? \l_stex_symdecl_name_str
+    _prop
+  } {
+    \prop_set_eq:cN {
+      l_stex_symdecl_
+      \l_stex_current_module_str ? \l_stex_symdecl_name_str
+      _prop
+    } \l_tmpa_prop
+  }
+
+  \seq_clear:c {
+    l_stex_symdecl_
+    \l_stex_current_module_str ? \l_stex_symdecl_name_str
+    _notations
+  }
+
+  \bool_if:NF \l_stex_symdecl_local_bool {
+    \exp_args:Nx
+    \stex_add_to_current_module:n {
+      \seq_clear:c {
+        l_stex_symdecl_
+        \l_stex_current_module_str ? \l_stex_symdecl_name_str
+        _notations
+      }
+      \prop_set_from_keyval:cn {
+        l_stex_symdecl_
+        \l_stex_current_module_str ? \l_stex_symdecl_name_str
+        _prop
+      } {
+        name      = \prop_item:Nn \l_tmpa_prop { name }       ,
+        module    = \prop_item:Nn \l_tmpa_prop { module }     ,
+        type      = \prop_item:Nn \l_tmpa_prop { type }       ,
+        args      = \prop_item:Nn \l_tmpa_prop { args }       ,
+        arity     = \prop_item:Nn \l_tmpa_prop { arity }      ,
+        assocs    = \prop_item:Nn \l_tmpa_prop { assocs }
+      }
+    }
+  }
+
+  \stex_if_smsmode:F {
+    \exp_args:Nx \stex_do_up_to_module:n {
+        \seq_put_right:Nn \exp_not:N \l_stex_all_symbols_seq {
+        \l_stex_current_module_str ? \l_stex_symdecl_name_str
+      }
+    }
+    \stex_if_do_html:T {
+      \stex_annotate_invisible:nnn {symdecl} {
+        \l_stex_current_module_str ? \l_stex_symdecl_name_str
+      } {
+        \tl_if_empty:NF \l_stex_symdecl_type_tl {\stex_annotate_invisible:nnn{type}{}{$\l_stex_symdecl_type_tl$}}
+        \stex_annotate_invisible:nnn{args}{}{
+          \prop_item:Nn \l_tmpa_prop { args }
+        }
+        \stex_annotate_invisible:nnn{macroname}{#1}{}
+        \tl_if_empty:NF \l_stex_symdecl_definiens_tl {
+          \stex_annotate_invisible:nnn{definiens}{}
+            {$\l_stex_symdecl_definiens_tl$}
+        }
+        \str_if_empty:NF \l_stex_symdecl_assoctype_str {
+          \stex_annotate_invisible:nnn{assoctype}{\l_stex_symdecl_assoctype_str}{}
+        }
+      }
+    }
+  }
+}
+\str_new:N \l_stex_get_symbol_uri_str
+
+\cs_new_protected:Nn \stex_get_symbol:n {
+  \tl_if_head_eq_catcode:nNTF { #1 } \relax {
+    \__stex_symdecl_get_symbol_from_cs:n { #1 }
+  }{
+    % argument is a string
+    % is it a command name?
+    \cs_if_exist:cTF { #1 }{
+      \cs_set_eq:Nc \l_tmpa_tl { #1 }
+      \str_set:Nx \l_tmpa_str { \cs_argument_spec:N \l_tmpa_tl }
+      \str_if_empty:NTF \l_tmpa_str {
+        \exp_args:Nx \cs_if_eq:NNTF {
+          \tl_head:N \l_tmpa_tl
+        } \stex_invoke_symbol:n {
+          \exp_args:No \__stex_symdecl_get_symbol_from_cs:n { \use:c { #1 } }
+        }{
+          \__stex_symdecl_get_symbol_from_string:n { #1 }
+        }
+      } {
+        \__stex_symdecl_get_symbol_from_string:n { #1 }
+      }
+    }{
+      % argument is not a command name
+      \__stex_symdecl_get_symbol_from_string:n { #1 }
+      % \l_stex_all_symbols_seq
+    }
+  }
+  \str_if_eq:eeF {
+    \prop_item:cn {
+      l_stex_symdecl_\l_stex_get_symbol_uri_str _prop
+    }{ deprecate }
+  }{}{
+    \msg_warning:nnxx{stex}{warning/deprecated}{
+      Symbol~\l_stex_get_symbol_uri_str
+    }{
+      \prop_item:cn {l_stex_symdecl_\l_stex_get_symbol_uri_str _prop}{ deprecate }
+    }
+  }
+}
+
+\cs_new_protected:Nn \__stex_symdecl_get_symbol_from_string:n {
+  \str_set:Nn \l_tmpa_str { #1 }
+  \bool_set_false:N \l_tmpa_bool
+  \stex_if_in_module:T {
+    \exp_args:Nno \seq_if_in:cnT {c_stex_module_\l_stex_current_module_str _constants} { \l_tmpa_str } {
+      \bool_set_true:N \l_tmpa_bool
+      \str_set:Nx \l_stex_get_symbol_uri_str {
+        \l_stex_current_module_str ? #1
+      }
+    }
+  }
+  \bool_if:NF \l_tmpa_bool {
+    \tl_set:Nn \l_tmpa_tl {
+      \msg_set:nnn{stex}{error/unknownsymbol}{
+        No~symbol~#1~found!
+      }
+      \msg_error:nn{stex}{error/unknownsymbol}
+    }
+    \str_set:Nn \l_tmpa_str { #1 }
+    \int_set:Nn \l_tmpa_int { \str_count:N \l_tmpa_str }
+    \seq_map_inline:Nn \l_stex_all_symbols_seq {
+      \str_set:Nn \l_tmpb_str { ##1 }
+      \str_if_eq:eeT { \l_tmpa_str } {
+        \str_range:Nnn \l_tmpb_str { -\l_tmpa_int } { -1 }
+      } {
+        \seq_map_break:n {
+          \tl_set:Nn \l_tmpa_tl {
+            \str_set:Nn \l_stex_get_symbol_uri_str {
+              ##1
+            }
+          }
+        }
+      }
+    }
+    \l_tmpa_tl
+  }
+}
+
+\cs_new_protected:Nn \__stex_symdecl_get_symbol_from_cs:n {
+  \exp_args:NNx \tl_set:Nn \l_tmpa_tl
+    { \tl_tail:N \l_tmpa_tl }
+  \tl_if_single:NTF \l_tmpa_tl {
+    \exp_args:No \tl_if_head_is_group:nTF \l_tmpa_tl {
+      \exp_after:wN \str_set:Nn \exp_after:wN
+        \l_stex_get_symbol_uri_str \l_tmpa_tl
+    }{
+      % TODO
+      % tail is not a single group
+    }
+  }{
+    % TODO
+    % tail is not a single group
+  }
+}
+\keys_define:nn { stex / notation } {
+  lang    .tl_set_x:N  = \l__stex_notation_lang_str ,
+  variant .tl_set_x:N  = \l__stex_notation_variant_str ,
+  prec    .str_set_x:N = \l__stex_notation_prec_str ,
+  op      .tl_set:N    = \l__stex_notation_op_tl ,
+  primary .bool_set:N  = \l__stex_notation_primary_bool ,
+  primary .default:n   = {true} ,
+  unknown .code:n      = \str_set:Nx
+      \l__stex_notation_variant_str \l_keys_key_str
+}
+
+\cs_new_protected:Nn \_stex_notation_args:n {
+  \str_clear:N \l__stex_notation_lang_str
+  \str_clear:N \l__stex_notation_variant_str
+  \str_clear:N \l__stex_notation_prec_str
+  \tl_clear:N \l__stex_notation_op_tl
+  \bool_set_false:N \l__stex_notation_primary_bool
+
+  \keys_set:nn { stex / notation } { #1 }
+}
+\NewDocumentCommand \notation { s m O{}} {
+  \_stex_notation_args:n { #3 }
+  \tl_clear:N \l_stex_symdecl_definiens_tl
+  \stex_get_symbol:n { #2 }
+  \tl_set:Nn \l_stex_notation_after_do_tl {
+    \__stex_notation_final:
+    \IfBooleanTF#1{
+      \stex_setnotation:n {\l_stex_get_symbol_uri_str}
+    }{}
+    \stex_smsmode_do:
+  }
+  \stex_notation_do:nnnn
+    { \prop_item:cn {l_stex_symdecl_\l_stex_get_symbol_uri_str _prop } { args } }
+    { \prop_item:cn { l_stex_symdecl_\l_stex_get_symbol_uri_str _prop } { arity } }
+    { \l__stex_notation_variant_str \c_hash_str \l__stex_notation_lang_str }
+}
+\stex_deactivate_macro:Nn \notation {module~environments}
+\seq_new:N \l__stex_notation_precedences_seq
+\tl_new:N \l__stex_notation_opprec_tl
+\int_new:N \l__stex_notation_currarg_int
+\tl_new:N \stex_symbol_after_invocation_tl
+
+\cs_new_protected:Nn \stex_notation_do:nnnn {
+  \let\l_stex_current_symbol_str\relax
+  \seq_clear:N \l__stex_notation_precedences_seq
+  \tl_clear:N \l__stex_notation_opprec_tl
+  \str_set:Nx \l__stex_notation_args_str { #1 }
+  \str_set:Nx \l__stex_notation_arity_str { #2 }
+  \str_set:Nx \__stex_notation_suffix_str { #3 }
+
+  % precedences
+  \str_if_empty:NTF \l__stex_notation_prec_str {
+    \int_compare:nNnTF \l__stex_notation_arity_str = 0 {
+      \tl_set:No \l__stex_notation_opprec_tl { \neginfprec }
+    }{
+      \tl_set:Nn \l__stex_notation_opprec_tl { 0 }
+    }
+  } {
+    \str_if_eq:onTF \l__stex_notation_prec_str {nobrackets}{
+      \tl_set:No \l__stex_notation_opprec_tl { \neginfprec }
+      \int_step_inline:nn { \l__stex_notation_arity_str } {
+        \exp_args:NNo
+        \seq_put_right:Nn \l__stex_notation_precedences_seq { \infprec }
+      }
+    }{
+      \seq_set_split:NnV \l_tmpa_seq ; \l__stex_notation_prec_str
+      \seq_pop_left:NNTF \l_tmpa_seq \l_tmpa_str {
+        \tl_set:No \l__stex_notation_opprec_tl { \l_tmpa_str }
+        \seq_pop_left:NNT \l_tmpa_seq \l_tmpa_str {
+          \exp_args:NNNo \exp_args:NNno \seq_set_split:Nnn
+            \l_tmpa_seq {\tl_to_str:n{x} } { \l_tmpa_str }
+          \seq_map_inline:Nn \l_tmpa_seq {
+            \seq_put_right:Nn \l_tmpb_seq { ##1 }
+          }
+        }
+      }{
+        \int_compare:nNnTF \l__stex_notation_arity_str = 0 {
+          \tl_set:No \l__stex_notation_opprec_tl { \infprec }
+        }{
+          \tl_set:No \l__stex_notation_opprec_tl { 0 }
+        }
+      }
+    }
+  }
+
+  \seq_set_eq:NN \l_tmpa_seq \l__stex_notation_precedences_seq
+  \int_step_inline:nn { \l__stex_notation_arity_str } {
+    \seq_pop_left:NNF \l_tmpa_seq \l_tmpb_str {
+      \exp_args:NNo
+      \seq_put_right:No \l__stex_notation_precedences_seq {
+        \l__stex_notation_opprec_tl
+      }
+    }
+  }
+  \tl_clear:N \l_stex_notation_dummyargs_tl
+
+  \int_compare:nNnTF \l__stex_notation_arity_str = 0 {
+    \exp_args:NNe
+    \cs_set:Npn \l_stex_notation_macrocode_cs {
+      \_stex_term_math_oms:nnnn { \l_stex_current_symbol_str }
+        { \__stex_notation_suffix_str }
+        { \l__stex_notation_opprec_tl }
+        { \exp_not:n { #4 } }
+    }
+    \l_stex_notation_after_do_tl
+  }{
+    \str_if_in:NnTF \l__stex_notation_args_str b {
+      \exp_args:Nne \use:nn
+      {
+      \cs_generate_from_arg_count:NNnn \l_stex_notation_macrocode_cs
+      \cs_set:Npn \l__stex_notation_arity_str } { {
+        \_stex_term_math_omb:nnnn { \l_stex_current_symbol_str }
+          { \__stex_notation_suffix_str }
+          { \l__stex_notation_opprec_tl }
+          { \exp_not:n { #4 } }
+      }}
+    }{
+      \str_if_in:NnTF \l__stex_notation_args_str B {
+        \exp_args:Nne \use:nn
+        {
+        \cs_generate_from_arg_count:NNnn \l_stex_notation_macrocode_cs
+        \cs_set:Npn \l__stex_notation_arity_str } { {
+          \_stex_term_math_omb:nnnn { \l_stex_current_symbol_str }
+            { \__stex_notation_suffix_str }
+            { \l__stex_notation_opprec_tl }
+            { \exp_not:n { #4 } }
+        } }
+      }{
+        \exp_args:Nne \use:nn
+        {
+        \cs_generate_from_arg_count:NNnn \l_stex_notation_macrocode_cs
+        \cs_set:Npn \l__stex_notation_arity_str } { {
+          \_stex_term_math_oma:nnnn { \l_stex_current_symbol_str }
+            { \__stex_notation_suffix_str }
+            { \l__stex_notation_opprec_tl }
+            { \exp_not:n { #4 } }
+        } }
+      }
+    }
+
+    \str_set_eq:NN \l__stex_notation_remaining_args_str \l__stex_notation_args_str
+    \int_zero:N \l__stex_notation_currarg_int
+    \seq_set_eq:NN \l__stex_notation_remaining_precs_seq \l__stex_notation_precedences_seq
+    \__stex_notation_arguments:
+  }
+}
+\cs_new_protected:Nn \__stex_notation_arguments: {
+  \int_incr:N \l__stex_notation_currarg_int
+  \str_if_empty:NTF \l__stex_notation_remaining_args_str {
+    \l_stex_notation_after_do_tl
+  }{
+    \str_set:Nx \l_tmpa_str { \str_head:N \l__stex_notation_remaining_args_str }
+    \str_set:Nx \l__stex_notation_remaining_args_str { \str_tail:N \l__stex_notation_remaining_args_str }
+    \str_if_eq:VnTF \l_tmpa_str a {
+      \__stex_notation_argument_assoc:n
+    }{
+      \str_if_eq:VnTF \l_tmpa_str B {
+        \__stex_notation_argument_assoc:n
+      }{
+        \seq_pop_left:NN \l__stex_notation_remaining_precs_seq \l_tmpa_str
+        \tl_put_right:Nx \l_stex_notation_dummyargs_tl {
+          { \_stex_term_math_arg:nnn
+            { \int_use:N \l__stex_notation_currarg_int }
+            { \l_tmpa_str }
+            { ####\int_use:N \l__stex_notation_currarg_int }
+          }
+        }
+        \__stex_notation_arguments:
+      }
+    }
+  }
+}
+\cs_new_protected:Nn \__stex_notation_argument_assoc:n {
+
+  \cs_generate_from_arg_count:NNnn \l_tmpa_cs \cs_set:Npn
+    {\l__stex_notation_arity_str}{
+    #1
+  }
+  \int_zero:N \l_tmpa_int
+  \tl_clear:N \l_tmpa_tl
+  \str_map_inline:Nn \l__stex_notation_args_str {
+    \int_incr:N \l_tmpa_int
+    \tl_put_right:Nx \l_tmpa_tl {
+      \str_if_eq:nnTF {##1}{a}{ {} }{
+        \str_if_eq:nnTF {##1}{B}{ {} }{
+          {\_stex_term_arg:nn{\int_use:N \l_tmpa_int}{################ \int_use:N \l_tmpa_int}}
+        }
+      }
+    }
+  }
+  \exp_after:wN\exp_after:wN\exp_after:wN \def
+  \exp_after:wN\exp_after:wN\exp_after:wN \l_tmpa_cs
+  \exp_after:wN\exp_after:wN\exp_after:wN ##
+  \exp_after:wN\exp_after:wN\exp_after:wN 1
+  \exp_after:wN\exp_after:wN\exp_after:wN ##
+  \exp_after:wN\exp_after:wN\exp_after:wN 2
+  \exp_after:wN\exp_after:wN\exp_after:wN {
+    \exp_after:wN \exp_after:wN \exp_after:wN
+    \exp_not:n \exp_after:wN \exp_after:wN \exp_after:wN {
+      \exp_after:wN \l_tmpa_cs \l_tmpa_tl
+    }
+  }
+
+  \seq_pop_left:NN \l__stex_notation_remaining_precs_seq \l_tmpa_str
+  \tl_put_right:Nx \l_stex_notation_dummyargs_tl { {
+    \_stex_term_math_assoc_arg:nnnn
+      { \int_use:N \l__stex_notation_currarg_int }
+      { \l_tmpa_str }
+      { ####\int_use:N \l__stex_notation_currarg_int }
+      { \l_tmpa_cs {####1} {####2} }
+  } }
+  \__stex_notation_arguments:
+}
+\cs_new_protected:Nn \__stex_notation_final: {
+  \exp_args:Nne \use:nn
+  {
+  \cs_generate_from_arg_count:cNnn {
+      stex_notation_ \l_stex_get_symbol_uri_str \c_hash_str
+      \__stex_notation_suffix_str
+      _cs
+    }
+    \cs_set:Npn \l__stex_notation_arity_str } { {
+      \exp_after:wN \exp_after:wN \exp_after:wN
+      \exp_not:n \exp_after:wN \exp_after:wN \exp_after:wN
+      { \exp_after:wN \l_stex_notation_macrocode_cs \l_stex_notation_dummyargs_tl \stex_symbol_after_invocation_tl}
+  } }
+
+  \tl_if_empty:NF \l__stex_notation_op_tl {
+    \cs_set:cpx {
+      stex_op_notation_ \l_stex_get_symbol_uri_str \c_hash_str
+      \__stex_notation_suffix_str
+      _cs
+    } {
+      \_stex_term_oms:nnn {
+        \l_stex_get_symbol_uri_str \c_hash_str \__stex_notation_suffix_str
+      }{
+        \l_stex_get_symbol_uri_str
+      }{ \comp{ \exp_args:No \exp_not:n { \l__stex_notation_op_tl } } }
+    }
+  }
+
+  \exp_args:Ne
+  \stex_add_to_current_module:n {
+    \cs_generate_from_arg_count:cNnn {
+      stex_notation_ \l_stex_get_symbol_uri_str \c_hash_str
+      \__stex_notation_suffix_str
+      _cs
+    } \cs_set:Npn {\l__stex_notation_arity_str} {
+        \exp_after:wN \exp_after:wN \exp_after:wN
+        \exp_not:n \exp_after:wN \exp_after:wN \exp_after:wN
+        { \exp_after:wN \l_stex_notation_macrocode_cs \l_stex_notation_dummyargs_tl \stex_symbol_after_invocation_tl}
+    }
+    \tl_if_empty:NF \l__stex_notation_op_tl {
+      \cs_set:cpn {
+        stex_op_notation_\l_stex_get_symbol_uri_str \c_hash_str
+        \__stex_notation_suffix_str
+        _cs
+      } {
+        \_stex_term_oms:nnn {
+          \l_stex_get_symbol_uri_str\c_hash_str \__stex_notation_suffix_str
+        }{
+          \l_stex_get_symbol_uri_str
+        }{ \comp{ \exp_args:No \exp_not:n { \l__stex_notation_op_tl } } }
+      }
+    }
+  }
+  %\exp_args:Nx
+ % \stex_do_up_to_module:n {
+    \seq_put_right:cx {
+      l_stex_symdecl_ \l_stex_get_symbol_uri_str
+      _notations
+    } {
+      \__stex_notation_suffix_str
+    }
+ % }
+
+  \stex_debug:nn{symbols}{
+    Notation~\__stex_notation_suffix_str
+    ~for~\l_stex_get_symbol_uri_str^^J
+    Operator~precedence:~\l__stex_notation_opprec_tl^^J
+    Argument~precedences:~
+      \seq_use:Nn \l__stex_notation_precedences_seq {,~}^^J
+    Notation: \cs_meaning:c {
+      stex_notation_ \l_stex_get_symbol_uri_str \c_hash_str
+      \__stex_notation_suffix_str
+      _cs
+    }
+  }
+
+  \exp_args:Ne
+  \stex_add_to_current_module:n {
+    \seq_put_right:cn {
+      l_stex_symdecl_\l_stex_get_symbol_uri_str
+      _notations
+    } { \__stex_notation_suffix_str }
+  }
+
+  \stex_if_smsmode:F {
+
+    % HTML annotations
+    \stex_if_do_html:T {
+      \stex_annotate_invisible:nnn { notation }
+      { \l_stex_get_symbol_uri_str } {
+        \stex_annotate_invisible:nnn { notationfragment }
+          { \__stex_notation_suffix_str }{}
+        \stex_annotate_invisible:nnn { precedence }
+          { \l__stex_notation_prec_str }{}
+
+        \int_zero:N \l_tmpa_int
+        \str_set_eq:NN \l__stex_notation_remaining_args_str \l__stex_notation_args_str
+        \tl_clear:N \l_tmpa_tl
+        \int_step_inline:nn { \l__stex_notation_arity_str }{
+          \int_incr:N \l_tmpa_int
+          \str_set:Nx \l_tmpb_str { \str_head:N \l__stex_notation_remaining_args_str }
+          \str_set:Nx \l__stex_notation_remaining_args_str { \str_tail:N \l__stex_notation_remaining_args_str }
+          \str_if_eq:VnTF \l_tmpb_str a {
+            \tl_set:Nx \l_tmpa_tl { \l_tmpa_tl {
+              \c_hash_str \c_hash_str \int_use:N \l_tmpa_int a ,
+              \c_hash_str \c_hash_str \int_use:N \l_tmpa_int b
+            } }
+          }{
+            \str_if_eq:VnTF \l_tmpb_str B {
+              \tl_set:Nx \l_tmpa_tl { \l_tmpa_tl {
+                \c_hash_str \c_hash_str \int_use:N \l_tmpa_int a ,
+                \c_hash_str \c_hash_str \int_use:N \l_tmpa_int b
+              } }
+            }{
+              \tl_set:Nx \l_tmpa_tl { \l_tmpa_tl {
+                \c_hash_str \c_hash_str \int_use:N \l_tmpa_int
+              } }
+            }
+          }
+        }
+        \stex_annotate_invisible:nnn { notationcomp }{}{
+          \str_set:Nx \l_stex_current_symbol_str {\l_stex_get_symbol_uri_str }
+          $ \exp_args:Nno \use:nn { \use:c {
+            stex_notation_ \l_stex_current_symbol_str
+            \c_hash_str \__stex_notation_suffix_str _cs
+          } } { \l_tmpa_tl } $
+        }
+      }
+    }
+  }
+}
+\keys_define:nn { stex / setnotation } {
+  lang    .tl_set_x:N  = \l__stex_notation_lang_str ,
+  variant .tl_set_x:N  = \l__stex_notation_variant_str ,
+  unknown .code:n      = \str_set:Nx
+      \l__stex_notation_variant_str \l_keys_key_str
+}
+
+\cs_new_protected:Nn \_stex_setnotation_args:n {
+  \str_clear:N \l__stex_notation_lang_str
+  \str_clear:N \l__stex_notation_variant_str
+  \keys_set:nn { stex / setnotation } { #1 }
+}
+
+\cs_new_protected:Nn \stex_setnotation:n {
+  \exp_args:Nnx \seq_if_in:cnTF { l_stex_symdecl_#1 _notations }
+    { \l__stex_notation_variant_str \c_hash_str \l__stex_notation_lang_str }{
+      \exp_args:Nnx \seq_remove_all:cn { l_stex_symdecl_#1 _notations }
+        { \l__stex_notation_variant_str \c_hash_str \l__stex_notation_lang_str }
+      \exp_args:Nnx \seq_remove_all:cn { l_stex_symdecl_#1 _notations }
+        { \c_hash_str }
+      \exp_args:Nnx \seq_put_left:cn { l_stex_symdecl_#1 _notations }
+        { \l__stex_notation_variant_str \c_hash_str \l__stex_notation_lang_str }
+      \exp_args:Nx \stex_add_to_current_module:n {
+        \exp_args:Nnx \seq_remove_all:cn { l_stex_symdecl_#1 _notations }
+          { \l__stex_notation_variant_str \c_hash_str \l__stex_notation_lang_str }
+        \exp_args:Nnx \seq_put_left:cn { l_stex_symdecl_#1 _notations }
+          { \l__stex_notation_variant_str \c_hash_str \l__stex_notation_lang_str }
+        \exp_args:Nnx \seq_remove_all:cn { l_stex_symdecl_#1 _notations }
+          { \c_hash_str }
+      }
+      \stex_debug:nn {notations}{
+        Setting~default~notation~
+        {\l__stex_notation_variant_str \c_hash_str \l__stex_notation_lang_str}~for~
+        #1 \\
+        \expandafter\meaning\csname
+        l_stex_symdecl_#1 _notations\endcsname
+      }
+    }{
+      % todo throw error
+    }
+}
+
+\NewDocumentCommand \setnotation {m m} {
+  \stex_get_symbol:n { #1 }
+  \_stex_setnotation_args:n { #2 }
+  \stex_setnotation:n{\l_stex_get_symbol_uri_str}
+  \stex_smsmode_do:
+}
+
+\cs_new_protected:Nn \stex_copy_notations:nn {
+  \stex_debug:nn {notations}{
+    Copying~notations~from~#2~to~#1\\
+    \seq_use:cn{l_stex_symdecl_#2_notations}{,~}
+  }
+  \tl_clear:N \l_tmpa_tl
+  \int_step_inline:nn { \prop_item:cn {l_stex_symdecl_#2_prop}{ arity } } {
+    \tl_put_right:Nn \l_tmpa_tl { {## ##1} }
+  }
+  \seq_map_inline:cn {l_stex_symdecl_#2_notations}{
+    \cs_set_eq:Nc \l_tmpa_cs { stex_notation_ #2 \c_hash_str ##1 _cs }
+    \edef \l_tmpa_tl {
+      \exp_after:wN\exp_after:wN\exp_after:wN \exp_not:n
+      \exp_after:wN\exp_after:wN\exp_after:wN {
+        \exp_after:wN \l_tmpa_cs \l_tmpa_tl
+      }
+    }
+    \exp_args:Nx
+    \stex_do_up_to_module:n {
+      \seq_put_right:cn{l_stex_symdecl_#1_notations}{##1}
+      \cs_generate_from_arg_count:cNnn {
+        stex_notation_ #1 \c_hash_str ##1 _cs
+      } \cs_set:Npn { \prop_item:cn {l_stex_symdecl_#2_prop}{ arity } }{
+        \exp_after:wN\exp_not:n\exp_after:wN{\l_tmpa_tl}
+      }
+    }
+  }
+}
+
+\NewDocumentCommand \copynotation {m m} {
+  \stex_get_symbol:n { #1 }
+  \str_set_eq:NN \l_tmpa_str \l_stex_get_symbol_uri_str
+  \stex_get_symbol:n { #2 }
+  \exp_args:Noo
+  \stex_copy_notations:nn \l_tmpa_str \l_stex_get_symbol_uri_str
+  \exp_args:Nx \stex_add_import_to_current_module:n{
+    \stex_copy_notations:nn {\l_tmpa_str} {\l_stex_get_symbol_uri_str}
+  }
+  \stex_smsmode_do:
+}
+
+\keys_define:nn { stex / symdef } {
+  name    .str_set_x:N = \l_stex_symdecl_name_str ,
+  local   .bool_set:N  = \l_stex_symdecl_local_bool ,
+  args    .str_set_x:N = \l_stex_symdecl_args_str ,
+  type    .tl_set:N    = \l_stex_symdecl_type_tl ,
+  def     .tl_set:N    = \l_stex_symdecl_definiens_tl ,
+  op      .tl_set:N    = \l__stex_notation_op_tl ,
+  lang    .str_set_x:N = \l__stex_notation_lang_str ,
+  variant .str_set_x:N = \l__stex_notation_variant_str ,
+  prec    .str_set_x:N = \l__stex_notation_prec_str ,
+  assoc   .choices:nn  =
+      {bin,binl,binr,pre,conj,pwconj}
+      {\str_set:Nx \l_stex_symdecl_assoctype_str {\l_keys_choice_tl}},
+  unknown .code:n      = \str_set:Nx
+      \l__stex_notation_variant_str \l_keys_key_str
+}
+
+\cs_new_protected:Nn \__stex_notation_symdef_args:n {
+  \str_clear:N \l_stex_symdecl_name_str
+  \str_clear:N \l_stex_symdecl_args_str
+  \str_clear:N \l_stex_symdecl_assoctype_str
+  \bool_set_false:N \l_stex_symdecl_local_bool
+  \tl_clear:N \l_stex_symdecl_type_tl
+  \tl_clear:N \l_stex_symdecl_definiens_tl
+  \str_clear:N \l__stex_notation_lang_str
+  \str_clear:N \l__stex_notation_variant_str
+  \str_clear:N \l__stex_notation_prec_str
+  \tl_clear:N \l__stex_notation_op_tl
+
+  \keys_set:nn { stex / symdef } { #1 }
+}
+
+\NewDocumentCommand \symdef { m O{} } {
+  \__stex_notation_symdef_args:n { #2 }
+  \bool_set_true:N \l_stex_symdecl_make_macro_bool
+  \stex_symdecl_do:n { #1 }
+  \tl_set:Nn \l_stex_notation_after_do_tl {
+    \__stex_notation_final:
+    \stex_smsmode_do:
+  }
+  \str_set:Nx \l_stex_get_symbol_uri_str {
+    \l_stex_current_module_str ? \l_stex_symdecl_name_str
+  }
+  \exp_args:Nx \stex_notation_do:nnnn
+    { \prop_item:cn {l_stex_symdecl_\l_stex_get_symbol_uri_str _prop } { args } }
+    { \prop_item:cn { l_stex_symdecl_\l_stex_get_symbol_uri_str _prop } { arity } }
+    { \l__stex_notation_variant_str \c_hash_str \l__stex_notation_lang_str }
+}
+\stex_deactivate_macro:Nn \symdef {module~environments}
+
+\keys_define:nn { stex / vardef } {
+  name    .str_set_x:N  = \l__stex_variables_name_str ,
+  args    .str_set_x:N  = \l__stex_variables_args_str ,
+  type    .tl_set:N     = \l__stex_variables_type_tl ,
+  def     .tl_set:N     = \l__stex_variables_def_tl ,
+  op      .tl_set:N     = \l__stex_variables_op_tl ,
+  prec    .str_set_x:N  = \l__stex_variables_prec_str ,
+  assoc   .choices:nn   =
+      {bin,binl,binr,pre,conj,pwconj}
+      {\str_set:Nx \l__stex_variables_assoctype_str {\l_keys_choice_tl}},
+  bind    .choices:nn   =
+      {forall,exists}
+      {\str_set:Nx \l__stex_variables_bind_str {\l_keys_choice_tl}}
+}
+
+\cs_new_protected:Nn \__stex_variables_args:n {
+  \str_clear:N \l__stex_variables_name_str
+  \str_clear:N \l__stex_variables_args_str
+  \str_clear:N \l__stex_variables_prec_str
+  \str_clear:N \l__stex_variables_assoctype_str
+  \str_clear:N \l__stex_variables_bind_str
+  \tl_clear:N \l__stex_variables_type_tl
+  \tl_clear:N \l__stex_variables_def_tl
+  \tl_clear:N \l__stex_variables_op_tl
+
+  \keys_set:nn { stex / vardef } { #1 }
+}
+
+\NewDocumentCommand \__stex_variables_do_simple:nnn { m O{}} {
+  \__stex_variables_args:n {#2}
+  \str_if_empty:NT \l__stex_variables_name_str {
+    \str_set:Nx \l__stex_variables_name_str { #1 }
+  }
+  \prop_clear:N \l_tmpa_prop
+  \prop_put:Nno \l_tmpa_prop { name } \l__stex_variables_name_str
+
+  \int_zero:N \l_tmpb_int
+  \bool_set_true:N \l_tmpa_bool
+  \str_map_inline:Nn \l__stex_variables_args_str {
+    \token_case_meaning:NnF ##1 {
+      0 {} 1 {} 2 {} 3 {} 4 {} 5 {} 6 {} 7 {} 8 {} 9 {}
+      {\tl_to_str:n i} { \bool_set_false:N \l_tmpa_bool }
+      {\tl_to_str:n b} { \bool_set_false:N \l_tmpa_bool }
+      {\tl_to_str:n a} {
+        \bool_set_false:N \l_tmpa_bool
+        \int_incr:N \l_tmpb_int
+      }
+      {\tl_to_str:n B} {
+        \bool_set_false:N \l_tmpa_bool
+        \int_incr:N \l_tmpb_int
+      }
+    }{
+      \msg_error:nnxx{stex}{error/wrongargs}{
+        variable~\l__stex_variables_name_str
+      }{##1}
+    }
+  }
+  \bool_if:NTF \l_tmpa_bool {
+    % possibly numeric
+    \str_if_empty:NTF \l__stex_variables_args_str {
+      \prop_put:Nnn \l_tmpa_prop { args } {}
+      \prop_put:Nnn \l_tmpa_prop { arity } { 0 }
+    }{
+      \int_set:Nn \l_tmpa_int { \l__stex_variables_args_str }
+      \prop_put:Nnx \l_tmpa_prop { arity } { \int_use:N \l_tmpa_int }
+      \str_clear:N \l_tmpa_str
+      \int_step_inline:nn \l_tmpa_int {
+        \str_put_right:Nn \l_tmpa_str i
+      }
+      \str_set_eq:NN \l__stex_variables_args_str \l_tmpa_str
+      \prop_put:Nnx \l_tmpa_prop { args } { \l__stex_variables_args_str }
+    }
+  } {
+    \prop_put:Nnx \l_tmpa_prop { args } { \l__stex_variables_args_str }
+    \prop_put:Nnx \l_tmpa_prop { arity }
+      { \str_count:N \l__stex_variables_args_str }
+  }
+  \prop_put:Nnx \l_tmpa_prop { assocs } { \int_use:N \l_tmpb_int }
+  \tl_set:cx { #1 }{ \stex_invoke_variable:n { \l__stex_variables_name_str } }
+
+  \prop_set_eq:cN { l_stex_variable_\l__stex_variables_name_str _prop} \l_tmpa_prop
+
+  \tl_if_empty:NF \l__stex_variables_op_tl {
+    \cs_set:cpx {
+      stex_var_op_notation_ \l__stex_variables_name_str _cs
+    } {
+      \_stex_term_omv:nn {
+        var://\l__stex_variables_name_str
+      }{ \comp{ \exp_args:No \exp_not:n { \l__stex_variables_op_tl } } }
+    }
+  }
+
+  \tl_set:Nn \l_stex_notation_after_do_tl {
+    \exp_args:Nne \use:nn {
+      \cs_generate_from_arg_count:cNnn { stex_var_notation_\l__stex_variables_name_str _cs }
+        \cs_set:Npn { \prop_item:Nn \l_tmpa_prop { arity } }
+    } {{
+      \exp_after:wN \exp_after:wN \exp_after:wN
+      \exp_not:n \exp_after:wN \exp_after:wN \exp_after:wN
+      { \exp_after:wN \l_stex_notation_macrocode_cs \l_stex_notation_dummyargs_tl \stex_symbol_after_invocation_tl}
+    }}
+    \stex_if_do_html:T {
+      \stex_annotate_invisible:nnn {vardecl}{\l__stex_variables_name_str}{
+        \stex_annotate_invisible:nnn { precedence }
+          { \l__stex_variables_prec_str }{}
+        \tl_if_empty:NF \l__stex_variables_type_tl {\stex_annotate_invisible:nnn{type}{}{$\l__stex_variables_type_tl$}}
+        \stex_annotate_invisible:nnn{args}{}{ \l__stex_variables_args_str }
+        \stex_annotate_invisible:nnn{macroname}{#1}{}
+        \tl_if_empty:NF \l__stex_variables_def_tl {
+          \stex_annotate_invisible:nnn{definiens}{}
+            {$\l__stex_variables_def_tl$}
+        }
+        \str_if_empty:NF \l__stex_variables_assoctype_str {
+          \stex_annotate_invisible:nnn{assoctype}{\l__stex_variables_assoctype_str}{}
+        }
+        \int_zero:N \l_tmpa_int
+        \str_set_eq:NN \l__stex_variables_remaining_args_str \l__stex_variables_args_str
+        \tl_clear:N \l_tmpa_tl
+        \int_step_inline:nn { \prop_item:Nn \l_tmpa_prop { arity } }{
+          \int_incr:N \l_tmpa_int
+          \str_set:Nx \l_tmpb_str { \str_head:N \l__stex_variables_remaining_args_str }
+          \str_set:Nx \l__stex_variables_remaining_args_str { \str_tail:N \l__stex_variables_remaining_args_str }
+          \str_if_eq:VnTF \l_tmpb_str a {
+            \tl_set:Nx \l_tmpa_tl { \l_tmpa_tl {
+              \c_hash_str \c_hash_str \int_use:N \l_tmpa_int a ,
+              \c_hash_str \c_hash_str \int_use:N \l_tmpa_int b
+            } }
+          }{
+            \str_if_eq:VnTF \l_tmpb_str B {
+              \tl_set:Nx \l_tmpa_tl { \l_tmpa_tl {
+                \c_hash_str \c_hash_str \int_use:N \l_tmpa_int a ,
+                \c_hash_str \c_hash_str \int_use:N \l_tmpa_int b
+              } }
+            }{
+              \tl_set:Nx \l_tmpa_tl { \l_tmpa_tl {
+                \c_hash_str \c_hash_str \int_use:N \l_tmpa_int
+              } }
+            }
+          }
+        }
+        \stex_annotate_invisible:nnn { notationcomp }{}{
+          \str_set:Nx \l_stex_current_symbol_str {var://\l__stex_variables_name_str }
+          $ \exp_args:Nno \use:nn { \use:c {
+            stex_var_notation_\l__stex_variables_name_str _cs
+          } } { \l_tmpa_tl } $
+        }
+      }
+    }
+  }
+
+  \stex_notation_do:nnnn { \l__stex_variables_args_str } { \prop_item:Nn \l_tmpa_prop { arity } } {}
+}
+
+\cs_new:Nn \__stex_variables_reset:N {
+  \tl_if_exist:NTF #1 {
+    \def \exp_not:N #1 { \exp_args:No \exp_not:n #1 }
+  }{
+    \let \exp_not:N #1 \exp_not:N \undefined
+  }
+}
+
+\NewDocumentCommand \__stex_variables_do_complex:nn { m m }{
+  \clist_set:Nx \l__stex_variables_names { \tl_to_str:n {#1} }
+  \exp_args:Nnx \use:nn {
+    % TODO
+    \stex_annotate_invisible:nnn {vardecls}{\clist_use:Nn\l__stex_variables_names,}{
+      #2
+    }
+  }{
+    \__stex_variables_reset:N \varnot
+    \__stex_variables_reset:N \vartype
+    \__stex_variables_reset:N \vardef
+  }
+}
+
+\NewDocumentCommand \vardef { s } {
+  \IfBooleanTF#1 {
+    \__stex_variables_do_complex:nn
+  }{
+    \__stex_variables_do_simple:nnn
+  }
+}
+
+\NewDocumentCommand \svar { O{} m }{
+  \tl_if_empty:nTF {#1}{
+    \str_set:Nn \l_tmpa_str { #2 }
+  }{
+    \str_set:Nn \l_tmpa_str { #1 }
+  }
+  \_stex_term_omv:nn {
+        var://\l_tmpa_str
+    }{ \comp{ #2 } }
+}
+
+
+
+%%%%%%%%%%%%%   terms.dtx   %%%%%%%%%%%%%
+
+\msg_new:nnn{stex}{error/nonotation}{
+  Symbol~#1~invoked,~but~has~no~notation#2!
+}
+\msg_new:nnn{stex}{error/notationarg}{
+  Error~in~parsing~notation~#1
+}
+\msg_new:nnn{stex}{error/noop}{
+  Symbol~#1~has~no~operator~notation~for~notation~#2
+}
+\msg_new:nnn{stex}{error/notallowed}{
+  Symbol~invocation~#1~not~allowed~in~notation~component~of~#2
+}
+
+\keys_define:nn { stex / terms } {
+  lang    .tl_set_x:N = \l__stex_terms_lang_str ,
+  variant .tl_set_x:N = \l__stex_terms_variant_str ,
+  unknown .code:n     = \str_set:Nx
+      \l__stex_terms_variant_str \l_keys_key_str
+}
+
+\cs_new_protected:Nn \__stex_terms_args:n {
+  \str_clear:N \l__stex_terms_lang_str
+  \str_clear:N \l__stex_terms_variant_str
+
+  \keys_set:nn { stex / terms } { #1 }
+}
+
+\cs_new:Nn \__stex_terms_reset:N {
+  \tl_if_exist:NTF #1 {
+    \def \exp_not:N #1 { \exp_args:No \exp_not:n #1 }
+  }{
+    \let \exp_not:N #1 \exp_not:N \undefined
+  }
+}
+
+\bool_new:N \l__stex_terms_allow_semantic_bool
+\bool_set_true:N \l__stex_terms_allow_semantic_bool
+
+\cs_new_protected:Nn \stex_invoke_symbol:n {
+  \bool_if:NTF \l__stex_terms_allow_semantic_bool {
+    \str_if_eq:eeF {
+      \prop_item:cn {
+        l_stex_symdecl_#1_prop
+      }{ deprecate }
+    }{}{
+      \msg_warning:nnxx{stex}{warning/deprecated}{
+        Symbol~#1
+      }{
+        \prop_item:cn {l_stex_symdecl_#1_prop}{ deprecate }
+      }
+    }
+    \if_mode_math:
+      \exp_after:wN \__stex_terms_invoke_math:n
+    \else:
+      \exp_after:wN \__stex_terms_invoke_text:n
+    \fi: { #1 }
+  }{
+    \msg_error:nnxx{stex}{error/notallowed}{#1}{\l_stex_current_symbol_str}
+  }
+}
+
+\cs_new_protected:Nn \__stex_terms_invoke_text:n {
+  \peek_charcode_remove:NTF ! {
+    \__stex_terms_invoke_op_custom:nn {#1}
+  }{
+    \__stex_terms_invoke_custom:nn {#1}
+  }
+}
+
+\cs_new_protected:Nn \__stex_terms_invoke_math:n {
+  \peek_charcode_remove:NTF ! {
+    % operator
+    \peek_charcode_remove:NTF * {
+      % custom op
+      \__stex_terms_invoke_op_custom:nn {#1}
+    }{
+      % op notation
+      \peek_charcode:NTF [ {
+        \__stex_terms_invoke_op_notation:nw {#1}
+      }{
+        \__stex_terms_invoke_op_notation:nw {#1}[]
+      }
+    }
+  }{
+    \peek_charcode_remove:NTF * {
+      \__stex_terms_invoke_custom:nn {#1}
+      % custom
+    }{
+      % normal
+      \peek_charcode:NTF [ {
+        \__stex_terms_invoke_notation:nw {#1}
+      }{
+        \__stex_terms_invoke_notation:nw {#1}[]
+      }
+    }
+  }
+}
+
+\cs_new_protected:Nn \__stex_terms_invoke_op_custom:nn {
+  \exp_args:Nnx \use:nn {
+    \str_set:Nn \l_stex_current_symbol_str { #1 }
+    \bool_set_false:N \l__stex_terms_allow_semantic_bool
+    \_stex_term_oms:nnn {#1 \c_hash_str\c_hash_str}{#1}{
+      \comp{ #2 }
+    }
+  }{
+    \__stex_terms_reset:N \l_stex_current_symbol_str
+    \bool_set_true:N \l__stex_terms_allow_semantic_bool
+  }
+}
+
+\cs_new_protected:Nn \__stex_terms_find_notation:nn {
+  \str_set:Nn \l_stex_current_symbol_str { #1 }
+  \__stex_terms_args:n { #2 }
+  \seq_if_empty:cTF {
+    l_stex_symdecl_ #1 _notations
+  } {
+    \msg_error:nnxx{stex}{error/nonotation}{#1}{s}
+  } {
+    \bool_lazy_all:nTF {
+      {\str_if_empty_p:N \l__stex_terms_variant_str}
+      {\str_if_empty_p:N \l__stex_terms_lang_str}
+    }{
+      \seq_get_left:cN {l_stex_symdecl_#1_notations}\l__stex_terms_variant_str
+    }{
+      \seq_if_in:cxTF {l_stex_symdecl_#1_notations}{
+        \l__stex_terms_variant_str \c_hash_str \l__stex_terms_lang_str
+      }{
+        \str_set:Nx \l__stex_terms_variant_str { \l__stex_terms_variant_str \c_hash_str \l__stex_terms_lang_str }
+      }{
+        \msg_error:nnxx{stex}{error/nonotation}{#1}{
+          ~\l__stex_terms_variant_str \c_hash_str \l__stex_terms_lang_str
+        }
+      }
+    }
+  }
+}
+
+\cs_new_protected:Npn \__stex_terms_invoke_op_notation:nw #1 [#2] {
+  \__stex_terms_find_notation:nn { #1 }{ #2 }
+  \bool_set_false:N \l__stex_terms_allow_semantic_bool
+  \cs_if_exist:cTF {
+    stex_op_notation_ #1 \c_hash_str \l__stex_terms_variant_str _cs
+  }{
+    \use:c{stex_op_notation_ #1 \c_hash_str \l__stex_terms_variant_str _cs}
+  }{
+    \msg_error:nnxx{stex}{error/noop}{#1}{\l__stex_terms_variant_str}
+  }
+  \bool_set_true:N \l__stex_terms_allow_semantic_bool
+}
+
+\cs_new_protected:Npn \__stex_terms_invoke_notation:nw #1 [#2] {
+  \__stex_terms_find_notation:nn { #1 }{ #2 }
+  \cs_if_exist:cTF {
+    stex_notation_ #1 \c_hash_str \l__stex_terms_variant_str _cs
+  }{
+    \tl_set:Nx \stex_symbol_after_invocation_tl {
+      \__stex_terms_reset:N \stex_symbol_after_invocation_tl
+      \__stex_terms_reset:N \l_stex_current_symbol_str
+      \bool_set_true:N \l__stex_terms_allow_semantic_bool
+    }
+    \bool_set_false:N \l__stex_terms_allow_semantic_bool
+    \use:c{stex_notation_ #1 \c_hash_str \l__stex_terms_variant_str _cs}
+  }{
+    \msg_error:nnxx{stex}{error/nonotation}{#1}{
+      ~\l__stex_terms_variant_str
+    }
+  }
+}
+
+\prop_new:N \l__stex_terms_custom_args_prop
+
+\cs_new_protected:Nn \__stex_terms_invoke_custom:nn {
+  \exp_args:Nnx \use:nn {
+    \bool_set_false:N \l__stex_terms_allow_semantic_bool
+    \str_set:Nn \l_stex_current_symbol_str { #1 }
+    \prop_clear:N \l__stex_terms_custom_args_prop
+    \prop_put:Nnn \l__stex_terms_custom_args_prop {currnum} {1}
+    \prop_get:cnN {
+      l_stex_symdecl_#1 _prop
+    }{ args } \l_tmpa_str
+    \prop_put:Nno \l__stex_terms_custom_args_prop {args} \l_tmpa_str
+    \tl_set:Nn \arg { \__stex_terms_arg: }
+    \str_if_empty:NTF \l_tmpa_str {
+      \_stex_term_oms:nnn {#1}{#1}{#2}
+    }{
+      \str_if_in:NnTF \l_tmpa_str b {
+        \_stex_term_ombind:nnn {#1}{#1}{#2}
+      }{
+        \str_if_in:NnTF \l_tmpa_str B {
+          \_stex_term_ombind:nnn {#1}{#1}{#2}
+        }{
+          \_stex_term_oma:nnn {#1}{#1}{#2}
+        }
+      }
+    }
+    % TODO check that all arguments exist
+  }{
+    \__stex_terms_reset:N \l_stex_current_symbol_str
+    \__stex_terms_reset:N \arg
+    \__stex_terms_reset:N \l__stex_terms_custom_args_prop
+    \bool_set_true:N \l__stex_terms_allow_semantic_bool
+  }
+}
+
+\NewDocumentCommand \__stex_terms_arg: { s O{} m}{
+  \tl_if_empty:nTF {#2}{
+    \int_set:Nn \l_tmpa_int {\prop_item:Nn \l__stex_terms_custom_args_prop {currnum}}
+    \bool_set_true:N \l_tmpa_bool
+    \bool_do_while:Nn \l_tmpa_bool {
+      \exp_args:NNx \prop_if_in:NnTF \l__stex_terms_custom_args_prop {\int_use:N \l_tmpa_int} {
+        \int_incr:N \l_tmpa_int
+      }{
+        \bool_set_false:N \l_tmpa_bool
+      }
+    }
+  }{
+    \int_set:Nn \l_tmpa_int { #2 }
+    \exp_args:NNx \prop_if_in:NnT \l__stex_terms_custom_args_prop {\int_use:N \l_tmpa_int} {
+      % TODO throw error
+    }
+  }
+  \str_set:Nx \l_tmpa_str {\prop_item:Nn \l__stex_terms_custom_args_prop {args} }
+  \int_compare:nNnT \l_tmpa_int > {\str_count:N \l_tmpa_str} {
+    % TODO throw error
+  }
+  \IfBooleanTF#1{
+    \stex_annotate_invisible:n {
+      \exp_args:No \_stex_term_arg:nn {\l_stex_current_symbol_str}{#3}
+    }
+  }{
+    \exp_args:No \_stex_term_arg:nn {\l_stex_current_symbol_str}{#3}
+  }
+}
+
+\cs_new_protected:Nn \_stex_term_arg:nn {
+  \exp_args:Nnx \use:nn {
+    \bool_set_true:N \l__stex_terms_allow_semantic_bool
+    \stex_annotate:nnn{ arg }{ #1 }{ #2 }
+  }{
+    \bool_set_false:N \l__stex_terms_allow_semantic_bool
+  }
+}
+
+\cs_new_protected:Nn \_stex_term_math_arg:nnn {
+  \exp_args:Nnx \use:nn
+    { \int_set:Nn \l__stex_terms_downprec { #2 }
+        \_stex_term_arg:nn { #1 }{ #3 }
+    }
+    { \int_set:Nn \exp_not:N \l__stex_terms_downprec { \int_use:N \l__stex_terms_downprec } }
+}
+
+\tl_const:Nx \infprec {\int_use:N \c_max_int}
+\tl_const:Nx \neginfprec {-\int_use:N \c_max_int}
+\int_new:N \l__stex_terms_downprec
+\int_set_eq:NN \l__stex_terms_downprec \infprec
+\tl_set:Nn \l__stex_terms_left_bracket_str (
+\tl_set:Nn \l__stex_terms_right_bracket_str )
+\cs_new_protected:Nn \__stex_terms_maybe_brackets:nn {
+  \bool_if:NTF \l__stex_terms_brackets_done_bool {
+    \bool_set_false:N \l__stex_terms_brackets_done_bool
+    #2
+  } {
+    \int_compare:nNnTF { #1 } > \l__stex_terms_downprec {
+      \bool_if:NTF \l_stex_inparray_bool { #2 }{
+        \stex_debug:nn{dobrackets}{\number#1 > \number\l__stex_terms_downprec; \detokenize{#2}}
+        \dobrackets { #2 }
+      }
+    }{ #2 }
+  }
+}
+\bool_new:N \l__stex_terms_brackets_done_bool
+\cs_new_protected:Npn \dobrackets #1 {
+  %\ThisStyle{\if D\m@switch
+  %    \exp_args:Nnx \use:nn
+  %    { \exp_after:wN \left\l__stex_terms_left_bracket_str #1 }
+  %    { \exp_not:N\right\l__stex_terms_right_bracket_str }
+  %  \else
+      \exp_args:Nnx \use:nn
+      {
+        \bool_set_true:N \l__stex_terms_brackets_done_bool
+        \int_set:Nn \l__stex_terms_downprec \infprec
+        \l__stex_terms_left_bracket_str
+        #1
+      }
+      {
+        \bool_set_false:N \l__stex_terms_brackets_done_bool
+        \l__stex_terms_right_bracket_str
+        \int_set:Nn \l__stex_terms_downprec { \int_use:N \l__stex_terms_downprec }
+      }
+  %\fi}
+}
+\cs_new_protected:Npn \withbrackets #1 #2 #3 {
+  \exp_args:Nnx \use:nn
+  {
+    \tl_set:Nx \l__stex_terms_left_bracket_str { #1 }
+    \tl_set:Nx \l__stex_terms_right_bracket_str { #2 }
+    #3
+  }
+  {
+    \tl_set:Nn \exp_not:N \l__stex_terms_left_bracket_str
+      {\l__stex_terms_left_bracket_str}
+    \tl_set:Nn \exp_not:N \l__stex_terms_right_bracket_str
+      {\l__stex_terms_right_bracket_str}
+  }
+}
+\cs_new_protected:Npn \STEXinvisible #1 {
+  \stex_annotate_invisible:n { #1 }
+}
+\cs_new_protected:Nn \_stex_term_oms:nnn {
+  \stex_annotate:nnn{ OMID }{ #2 }{
+    \stex_highlight_term:nn { #1 } { #3 }
+  }
+}
+
+\cs_new_protected:Nn \_stex_term_math_oms:nnnn {
+  \__stex_terms_maybe_brackets:nn { #3 }{
+    \_stex_term_oms:nnn { #1 } { #1\c_hash_str#2 } { #4 }
+  }
+}
+\cs_new_protected:Nn \_stex_term_omv:nn {
+  \stex_annotate:nnn{ OMID }{ #1 }{
+    \stex_highlight_term:nn { #1 } { #2 }
+  }
+}
+\cs_new_protected:Nn \_stex_term_oma:nnn {
+  \stex_annotate:nnn{ OMA }{ #2 }{
+    \stex_highlight_term:nn { #1 } { #3 }
+  }
+}
+
+\cs_new_protected:Nn \_stex_term_math_oma:nnnn {
+  \__stex_terms_maybe_brackets:nn { #3 }{
+    \_stex_term_oma:nnn { #1 } { #1\c_hash_str#2 } { #4 }
+  }
+}
+\cs_new_protected:Nn \_stex_term_ombind:nnn {
+  \stex_annotate:nnn{ OMBIND }{ #2 }{
+    \stex_highlight_term:nn { #1 } { #3 }
+  }
+}
+
+\cs_new_protected:Nn \_stex_term_math_omb:nnnn {
+  \__stex_terms_maybe_brackets:nn { #3 }{
+    \_stex_term_ombind:nnn { #1 } { #1\c_hash_str#2 } { #4 }
+  }
+}
+\cs_new_protected:Nn \_stex_term_math_assoc_arg:nnnn {
+  % TODO sequences
+  \clist_set:Nn \l_tmpa_clist{ #3 }
+  \int_compare:nNnTF { \clist_count:N \l_tmpa_clist } < 2 {
+    \tl_set:Nn \l_tmpa_tl { #3 }
+  }{
+    \cs_set:Npn \l_tmpa_cs ##1 ##2 { #4 }
+    \clist_reverse:N \l_tmpa_clist
+    \clist_pop:NN \l_tmpa_clist \l_tmpa_tl
+
+    \clist_map_inline:Nn \l_tmpa_clist {
+      \exp_args:NNNo \exp_args:NNo \tl_set:No \l_tmpa_tl {
+        \exp_args:Nno
+        \l_tmpa_cs { ##1 } \l_tmpa_tl
+      }
+    }
+  }
+  \exp_args:Nnno
+   \_stex_term_math_arg:nnn{#1}{#2}\l_tmpa_tl
+}
+\cs_new_protected:Nn \stex_term_custom:nn {
+  \str_set:Nn \l__stex_terms_custom_uri { #1 }
+  \str_set:Nn \l_tmpa_str { #2 }
+  \tl_clear:N \l_tmpa_tl
+  \int_zero:N \l_tmpa_int
+  \int_set:Nn \l_tmpb_int { \str_count:N \l_tmpa_str }
+  \__stex_terms_custom_loop:
+}
+\cs_new_protected:Nn \__stex_terms_custom_loop: {
+  \bool_set_false:N \l_tmpa_bool
+  \bool_while_do:nn {
+    \str_if_eq_p:ee X {
+      \str_item:Nn \l_tmpa_str { \l_tmpa_int + 1 }
+    }
+  }{
+    \int_incr:N \l_tmpa_int
+  }
+
+  \peek_charcode:NTF [ {
+    % notation/text component
+    \__stex_terms_custom_component:w
+  } {
+    \int_compare:nNnTF \l_tmpa_int = \l_tmpb_int {
+      % all arguments read => finish
+      \__stex_terms_custom_final:
+    } {
+      % arguments missing
+      \peek_charcode_remove:NTF * {
+        % invisible, specific argument position or both
+        \peek_charcode:NTF [ {
+          % visible specific argument position
+          \__stex_terms_custom_arg:wn
+        } {
+          % invisible
+          \peek_charcode_remove:NTF * {
+            % invisible specific argument position
+            \__stex_terms_custom_arg_inv:wn
+          } {
+            % invisible next argument
+            \__stex_terms_custom_arg_inv:wn [ \l_tmpa_int + 1 ]
+          }
+        }
+      } {
+        % next normal argument
+        \__stex_terms_custom_arg:wn [ \l_tmpa_int + 1 ]
+      }
+    }
+  }
+}
+\cs_new_protected:Npn \__stex_terms_custom_arg_inv:wn [ #1 ] #2 {
+  \bool_set_true:N \l_tmpa_bool
+  \__stex_terms_custom_arg:wn [ #1 ] { #2 }
+}
+\cs_new_protected:Npn \__stex_terms_custom_arg:wn [ #1 ] #2 {
+  \str_set:Nx \l_tmpb_str {
+    \str_item:Nn \l_tmpa_str { #1 }
+  }
+  \str_case:VnTF \l_tmpb_str {
+    { X } {
+      \msg_error:nnx{stex}{error/notationarg}{\l__stex_terms_custom_uri}
+    }
+    { i } { \__stex_terms_custom_set_X:n { #1 } }
+    { b } { \__stex_terms_custom_set_X:n { #1 } }
+    { a } { \__stex_terms_custom_set_X:n { #1 } } % TODO ?
+    { B } { \__stex_terms_custom_set_X:n { #1 } } % TODO ?
+  }{}{
+    \msg_error:nnx{stex}{error/notationarg}{\l__stex_terms_custom_uri}
+  }
+
+  \bool_if:nTF \l_tmpa_bool {
+    \tl_put_right:Nx \l_tmpa_tl {
+      \stex_annotate_invisible:n {
+        \_stex_term_arg:nn { \int_eval:n { #1 } }
+          \exp_not:n { { #2 } }
+      }
+    }
+  } {
+    \tl_put_right:Nx \l_tmpa_tl {
+      \_stex_term_arg:nn { \int_eval:n { #1 } }
+        \exp_not:n { { #2 } }
+    }
+  }
+
+  \__stex_terms_custom_loop:
+}
+\cs_new_protected:Nn \__stex_terms_custom_set_X:n {
+  \str_set:Nx \l_tmpa_str {
+    \str_range:Nnn \l_tmpa_str 1 { #1 - 1 }
+    X
+    \str_range:Nnn \l_tmpa_str { #1 + 1 } { -1 }
+  }
+}
+\cs_new_protected:Npn \__stex_terms_custom_component:w [ #1 ] {
+  \tl_put_right:Nn \l_tmpa_tl { \comp{ #1 } }
+  \__stex_terms_custom_loop:
+}
+\cs_new_protected:Nn \__stex_terms_custom_final: {
+  \int_compare:nNnTF \l_tmpb_int = 0 {
+    \exp_args:Nnno \_stex_term_oms:nnn
+  }{
+    \str_if_in:NnTF \l_tmpa_str {b} {
+      \exp_args:Nnno \_stex_term_ombind:nnn
+    } {
+      \exp_args:Nnno \_stex_term_oma:nnn
+    }
+  }
+  { \l__stex_terms_custom_uri } { \l__stex_terms_custom_uri } { \l_tmpa_tl }
+}
+\cs_new:Nn \stex_capitalize:n { \uppercase{#1} }
+
+\keys_define:nn { stex / symname } {
+  pre     .tl_set_x:N    = \l__stex_terms_pre_tl ,
+  post    .tl_set_x:N    = \l__stex_terms_post_tl ,
+  root    .tl_set_x:N    = \l__stex_terms_root_tl
+}
+
+\cs_new_protected:Nn \stex_symname_args:n {
+  \tl_clear:N \l__stex_terms_post_tl
+  \tl_clear:N \l__stex_terms_pre_tl
+  \tl_clear:N \l__stex_terms_root_str
+  \keys_set:nn { stex / symname } { #1 }
+}
+
+\NewDocumentCommand \symref { m m }{
+  \let\compemph_uri_prev:\compemph@uri
+  \let\compemph@uri\symrefemph@uri
+  \STEXsymbol{#1}!{ #2 }
+  \let\compemph@uri\compemph_uri_prev:
+}
+
+\NewDocumentCommand \synonym { O{} m m}{
+  \stex_symname_args:n { #1 }
+  \let\compemph_uri_prev:\compemph@uri
+  \let\compemph@uri\symrefemph@uri
+  % TODO
+  \STEXsymbol{#2}!{\l__stex_terms_pre_tl #3 \l__stex_terms_post_tl}
+  \let\compemph@uri\compemph_uri_prev:
+}
+
+\NewDocumentCommand \symname { O{} m }{
+  \stex_symname_args:n { #1 }
+  \stex_get_symbol:n { #2 }
+  \str_set:Nx \l_tmpa_str {
+    \prop_item:cn { l_stex_symdecl_ \l_stex_get_symbol_uri_str _prop } { name }
+  }
+  \exp_args:NNno \str_replace_all:Nnn \l_tmpa_str {-} {~}
+
+  \let\compemph_uri_prev:\compemph@uri
+  \let\compemph@uri\symrefemph@uri
+  \exp_args:NNx \use:nn
+  \stex_invoke_symbol:n { { \l_stex_get_symbol_uri_str }!{
+    \l__stex_terms_pre_tl \l_tmpa_str \l__stex_terms_post_tl
+   } }
+  \let\compemph@uri\compemph_uri_prev:
+}
+
+\NewDocumentCommand \Symname { O{} m }{
+  \stex_symname_args:n { #1 }
+  \stex_get_symbol:n { #2 }
+  \str_set:Nx \l_tmpa_str {
+    \prop_item:cn { l_stex_symdecl_ \l_stex_get_symbol_uri_str _prop } { name }
+  }
+  \exp_args:NNno \str_replace_all:Nnn \l_tmpa_str {-} {~}
+  \let\compemph_uri_prev:\compemph@uri
+  \let\compemph@uri\symrefemph@uri
+  \exp_args:NNx \use:nn
+  \stex_invoke_symbol:n { { \l_stex_get_symbol_uri_str }!{
+    \exp_after:wN \stex_capitalize:n \l_tmpa_str
+      \l__stex_terms_post_tl
+   } }
+  \let\compemph@uri\compemph_uri_prev:
+}
+
+\str_new:N \l_stex_current_symbol_str
+\cs_new_protected:Nn \stex_highlight_term:nn {
+  \exp_args:Nnx
+  \use:nn {
+    \str_set:Nx \l_stex_current_symbol_str { #1 }
+    #2
+  } {
+    \str_set:Nx \exp_not:N \l_stex_current_symbol_str
+      { \l_stex_current_symbol_str }
+  }
+}
+
+\cs_new_protected:Nn \stex_unhighlight_term:n {
+      #1 %\iffalse{{\fi}} #1 {{\iffalse}}\fi
+}
+\cs_new_protected:Npn \comp #1 {
+  \str_if_empty:NF \l_stex_current_symbol_str {
+    \rustex_if:TF {
+      \stex_annotate:nnn { comp }{ \l_stex_current_symbol_str }{ #1 }
+    }{
+      \exp_args:Nnx \compemph@uri { #1 } { \l_stex_current_symbol_str }
+    }
+  }
+}
+
+\cs_new_protected:Npn \compemph@uri #1 #2 {
+    \compemph{ #1 }
+}
+
+\cs_new_protected:Npn \compemph #1 {
+    #1
+}
+
+\cs_new_protected:Npn \defemph@uri #1 #2 {
+    \defemph{#1}
+}
+
+\cs_new_protected:Npn \defemph #1 {
+    \textbf{#1}
+}
+
+\cs_new_protected:Npn \symrefemph@uri #1 #2 {
+    \symrefemph{#1}
+}
+
+\cs_new_protected:Npn \symrefemph #1 {
+    \textbf{#1}
+}
+\NewDocumentCommand \ellipses {} { \ldots }
+\bool_new:N \l_stex_inparray_bool
+\bool_set_false:N \l_stex_inparray_bool
+\NewDocumentCommand \parray { m m } {
+  \begingroup
+  \bool_set_true:N \l_stex_inparray_bool
+  \begin{array}{#1}
+    #2
+  \end{array}
+  \endgroup
+}
+
+\NewDocumentCommand \prmatrix { m } {
+  \begingroup
+  \bool_set_true:N \l_stex_inparray_bool
+  \begin{matrix}
+    #1
+  \end{matrix}
+  \endgroup
+}
+
+\def \maybephline {
+  \bool_if:NT \l_stex_inparray_bool {\hline}
+}
+
+\def \parrayline #1 #2 {
+  #1 #2 \bool_if:NT \l_stex_inparray_bool {\\}
+}
+
+\def \pmrow #1 { \parrayline{}{ #1 } }
+
+\def \parraylineh #1 #2 {
+  #1 #2 \bool_if:NT \l_stex_inparray_bool {\\\hline}
+}
+
+\def \parraycell #1 {
+  #1 \bool_if:NT \l_stex_inparray_bool {&}
+}
+\cs_new_protected:Nn \stex_invoke_variable:n {
+  \if_mode_math:
+    \exp_after:wN \__stex_variables_invoke_math:n
+  \else:
+    \exp_after:wN \__stex_variables_invoke_text:n
+  \fi: {#1}
+}
+
+\cs_new_protected:Nn \__stex_variables_invoke_text:n {
+  %TODO
+}
+
+\cs_new_protected:Nn \__stex_variables_invoke_math:n {
+  \peek_charcode_remove:NTF ! {
+    \peek_charcode_remove:NTF ! {
+      \peek_charcode:NTF [ {
+        \__stex_variables_invoke_op_custom:nw
+      }{
+        % TODO throw error
+      }
+    }{
+      \__stex_variables_invoke_op:n { #1 }
+    }
+  }{
+    \peek_charcode_remove:NTF * {
+      \__stex_variables_invoke_text:n { #1 }
+    }{
+      \__stex_variables_invoke_math_ii:n { #1 }
+    }
+  }
+}
+
+\cs_new_protected:Nn \__stex_variables_invoke_op:n {
+  \cs_if_exist:cTF {
+    stex_var_op_notation_ #1 _cs
+  }{
+    \use:c{stex_var_op_notation_ #1  _cs }
+  }{
+    \msg_error:nnxx{stex}{error/noop}{variable~#1}{}
+  }
+}
+
+\cs_new_protected:Npn \__stex_variables_invoke_math_ii:n  #1 {
+  \cs_if_exist:cTF {
+    stex_var_notation_#1_cs
+  }{
+    \str_set:Nn \l_stex_current_symbol_str { #1 }
+    \use:c{stex_var_notation_#1_cs}
+  }{
+    \msg_error:nnxx{stex}{error/nonotation}{variable~#1}{s}
+  }
+}
+
+
+%%%%%%%%%%%%%   features.dtx   %%%%%%%%%%%%%
+
+\msg_new:nnn{stex}{error/copymodule/notallowed}{
+  Symbol~#1~can~not~be~assigned~in~copymodule~#2
+}
+\msg_new:nnn{stex}{error/interpretmodule/nodefiniens}{
+  Symbol~#1~not~assigned~in~interpretmodule~#2
+}
+
+\cs_new_protected:Nn \stex_get_symbol_in_copymodule:n {
+  \tl_if_head_eq_catcode:nNTF { #1 } \relax {
+    \__stex_features_get_symbol_from_cs:n { #1 }
+  }{
+    % argument is a string
+    % is it a command name?
+    \cs_if_exist:cTF { #1 }{
+      \cs_set_eq:Nc \l_tmpa_tl { #1 }
+      \str_set:Nx \l_tmpa_str { \cs_argument_spec:N \l_tmpa_tl }
+      \str_if_empty:NTF \l_tmpa_str {
+        \exp_args:Nx \cs_if_eq:NNTF {
+          \tl_head:N \l_tmpa_tl
+        } \stex_invoke_symbol:n {
+          \exp_args:No \__stex_features_get_symbol_from_cs:n { \use:c { #1 } }
+        }{
+          \__stex_features_get_symbol_from_string:n { #1 }
+        }
+      } {
+        \__stex_features_get_symbol_from_string:n { #1 }
+      }
+    }{
+      % argument is not a command name
+      \__stex_features_get_symbol_from_string:n { #1 }
+      % \l_stex_all_symbols_seq
+    }
+  }
+}
+
+\cs_new_protected:Nn \__stex_features_get_symbol_from_string:n {
+  \str_set:Nn \l_tmpa_str { #1 }
+  \bool_set_false:N \l_tmpa_bool
+  \bool_if:NF \l_tmpa_bool {
+    \tl_set:Nn \l_tmpa_tl {
+      \msg_set:nnn{stex}{error/unknownsymbol}{
+        No~symbol~#1~found!
+      }
+      \msg_error:nn{stex}{error/unknownsymbol}
+    }
+    \str_set:Nn \l_tmpa_str { #1 }
+    \int_set:Nn \l_tmpa_int { \str_count:N \l_tmpa_str }
+    \seq_map_inline:Nn \l__stex_features_copymodule_fields_seq {
+      \str_set:Nn \l_tmpb_str { ##1 }
+      \str_if_eq:eeT { \l_tmpa_str } {
+        \str_range:Nnn \l_tmpb_str { -\l_tmpa_int } { -1 }
+      } {
+        \seq_map_break:n {
+          \tl_set:Nn \l_tmpa_tl {
+            \str_set:Nn \l_stex_get_symbol_uri_str {
+              ##1
+            }
+            \__stex_features_get_symbol_check:
+          }
+        }
+      }
+    }
+    \l_tmpa_tl
+  }
+}
+
+\cs_new_protected:Nn \__stex_features_get_symbol_from_cs:n {
+  \exp_args:NNx \tl_set:Nn \l_tmpa_tl
+    { \tl_tail:N \l_tmpa_tl }
+  \tl_if_single:NTF \l_tmpa_tl {
+    \exp_args:No \tl_if_head_is_group:nTF \l_tmpa_tl {
+      \exp_after:wN \str_set:Nn \exp_after:wN
+        \l_stex_get_symbol_uri_str \l_tmpa_tl
+      \__stex_features_get_symbol_check:
+    }{
+      % TODO
+      % tail is not a single group
+    }
+  }{
+    % TODO
+    % tail is not a single group
+  }
+}
+
+\cs_new_protected:Nn \__stex_features_get_symbol_check: {
+  \exp_args:NNno \seq_set_split:Nnn \l_tmpa_seq {?} \l_stex_get_symbol_uri_str
+  \int_compare:nNnTF {\seq_count:N \l_tmpa_seq} = 3 {
+    \seq_pop_right:NN \l_tmpa_seq \l_tmpb_str
+    \str_set:Nx \l_tmpa_str {\seq_use:Nn \l_tmpa_seq ?}
+    \seq_if_in:NoF \l__stex_features_copymodule_modules_seq \l_tmpa_str {
+      \msg_error:nnxx{stex}{error/copymodule/notallowed}{\l_stex_get_symbol_uri_str}{
+        \l_stex_current_copymodule_name_str\\Allowed:~\seq_use:Nn \l__stex_features_copymodule_modules_seq {,~}
+        }
+    }
+  }{
+    \msg_error:nnxx{stex}{error/copymodule/notallowed}{\l_stex_get_symbol_uri_str}{
+      \l_stex_current_copymodule_name_str~(inexplicably)
+    }
+  }
+}
+
+\cs_new_protected:Nn \stex_copymodule_start:nnnn {
+  \stex_import_module_uri:nn { #1 } { #2 }
+  \str_set:Nx \l_stex_current_copymodule_name_str {#3}
+  \stex_import_require_module:nnnn
+    { \l_stex_import_ns_str } { \l_stex_import_archive_str }
+    { \l_stex_import_path_str } { \l_stex_import_name_str }
+  \stex_collect_imports:n {\l_stex_import_ns_str ?\l_stex_import_name_str }
+  \seq_set_eq:NN \l__stex_features_copymodule_modules_seq \l_stex_collect_imports_seq
+  \seq_clear:N \l__stex_features_copymodule_fields_seq
+  \seq_map_inline:Nn \l__stex_features_copymodule_modules_seq {
+    \seq_map_inline:cn {c_stex_module_##1_constants}{
+      \exp_args:NNx \seq_put_right:Nn \l__stex_features_copymodule_fields_seq {
+        ##1 ? ####1
+      }
+    }
+  }
+  \seq_clear:N \l_tmpa_seq
+  \exp_args:NNx \prop_set_from_keyval:Nn \l_stex_current_copymodule_prop {
+    name      = \l_stex_current_copymodule_name_str ,
+    module    = \l_stex_current_module_str ,
+    from      = \l_stex_import_ns_str ?\l_stex_import_name_str ,
+    includes  = \l_tmpa_seq ,
+    fields    = \l_tmpa_seq
+  }
+  \stex_debug:nn{copymodule}{#4~for~module~{\l_stex_import_ns_str ?\l_stex_import_name_str}
+    as~\l_stex_current_module_str?\l_stex_current_copymodule_name_str}
+    \stex_debug:nn{copymodule}{modules:\seq_use:Nn \l__stex_features_copymodule_modules_seq {,~}}
+  \stex_debug:nn{copymodule}{fields:\seq_use:Nn \l__stex_features_copymodule_fields_seq {,~}}
+  \stex_if_smsmode:F {
+    \begin{stex_annotate_env} {#4} {
+      \l_stex_current_module_str?\l_stex_current_copymodule_name_str
+    }
+    \stex_annotate_invisible:nnn{from}{\l_stex_import_ns_str ?\l_stex_import_name_str}{}
+  }
+  \bool_set_eq:NN \l__stex_features_oldhtml_bool \_stex_html_do_output_bool
+  \bool_set_false:N \_stex_html_do_output_bool
+}
+\cs_new_protected:Nn \stex_copymodule_end:n {
+  \def \l_tmpa_cs ##1 ##2 {#1}
+  \bool_set_eq:NN \_stex_html_do_output_bool \l__stex_features_oldhtml_bool
+  \tl_clear:N \l_tmpa_tl
+  \tl_clear:N \l_tmpb_tl
+  \prop_get:NnN \l_stex_current_copymodule_prop {fields} \l_tmpa_seq
+  \seq_map_inline:Nn \l__stex_features_copymodule_modules_seq {
+    \seq_map_inline:cn {c_stex_module_##1_constants}{
+      \tl_clear:N \l_tmpc_tl
+      \l_tmpa_cs{##1}{####1}
+      \str_if_exist:cTF {l__stex_features_copymodule_##1?####1_name_str} {
+        \tl_put_right:Nx \l_tmpa_tl {
+          \prop_set_from_keyval:cn {
+            l_stex_symdecl_\l_stex_current_module_str ? \use:c{l__stex_features_copymodule_##1?####1_name_str}_prop
+          }{
+            \exp_after:wN \prop_to_keyval:N \csname
+              l_stex_symdecl_\l_stex_current_module_str ? \use:c{l__stex_features_copymodule_##1?####1_name_str}_prop
+            \endcsname
+          }
+          \seq_clear:c {
+            l_stex_symdecl_
+            \l_stex_current_module_str ? \use:c{l__stex_features_copymodule_##1?####1_name_str}
+            _notations
+          }
+        }
+        \tl_put_right:Nx \l_tmpc_tl {
+          \stex_copy_notations:nn {\l_stex_current_module_str ? \use:c{l__stex_features_copymodule_##1?####1_name_str}}{##1?####1}
+          \stex_annotate_invisible:nnn{alias}{\use:c{l__stex_features_copymodule_##1?####1_name_str}}{}
+        }
+        \seq_put_right:Nx \l_tmpa_seq {\l_stex_current_module_str ? \use:c{l__stex_features_copymodule_##1?####1_name_str}}
+        \str_if_exist:cT {l__stex_features_copymodule_##1?####1_macroname_str} {
+          \tl_put_right:Nx \l_tmpc_tl {
+            \stex_annotate_invisible:nnn{macroname}{\use:c{l__stex_features_copymodule_##1?####1_macroname_str}}{}
+          }
+          \tl_put_right:Nx \l_tmpa_tl {
+            \tl_set:cx {\use:c{l__stex_features_copymodule_##1?####1_macroname_str}}{
+              \stex_invoke_symbol:n {
+                \l_stex_current_module_str ? \use:c{l__stex_features_copymodule_##1?####1_name_str}
+              }
+            }
+          }
+        }
+      }{
+        \tl_put_right:Nx \l_tmpc_tl {
+          \stex_copy_notations:nn {\l_stex_current_module_str ? \l_stex_current_copymodule_name_str / ####1 }{##1?####1}
+        }
+        \prop_set_eq:Nc \l_tmpa_prop {l_stex_symdecl_ ##1?####1 _prop}
+        \prop_put:Nnx \l_tmpa_prop { name }{ \l_stex_current_copymodule_name_str / ####1 }
+        \prop_put:Nnx \l_tmpa_prop { module }{ \l_stex_current_module_str }
+        \tl_put_right:Nx \l_tmpa_tl {
+          \prop_set_from_keyval:cn {
+            l_stex_symdecl_\l_stex_current_module_str ? \l_stex_current_copymodule_name_str / ####1_prop
+          }{
+            \prop_to_keyval:N \l_tmpa_prop
+          }
+          \seq_clear:c {
+            l_stex_symdecl_
+            \l_stex_current_module_str ? \l_stex_current_copymodule_name_str / ####1
+            _notations
+          }
+        }
+        \seq_put_right:Nx \l_tmpa_seq {\l_stex_current_module_str ? \l_stex_current_copymodule_name_str / ####1 }
+        \str_if_exist:cT {l__stex_features_copymodule_##1?####1_macroname_str} {
+          \tl_put_right:Nx \l_tmpc_tl {
+            \stex_annotate_invisible:nnn{macroname}{\use:c{l__stex_features_copymodule_##1?####1_macroname_str}}{}
+          }
+          \tl_put_right:Nx \l_tmpa_tl {
+            \tl_set:cx {\use:c{l__stex_features_copymodule_##1?####1_macroname_str}}{
+              \stex_invoke_symbol:n {
+                \l_stex_current_module_str ? \l_stex_current_copymodule_name_str / ####1
+              }
+            }
+          }
+        }
+      }
+      \tl_if_exist:cT {l__stex_features_copymodule_##1?####1_def_tl}{
+        \tl_put_right:Nx \l_tmpc_tl {
+          \stex_annotate_invisible:nnn{definiens}{}{$\use:c{l__stex_features_copymodule_##1?####1_def_tl}$}
+        }
+      }
+      \tl_put_right:Nx \l_tmpb_tl {
+        \stex_annotate:nnn{assignment} {##1?####1} { \l_tmpc_tl }
+      }
+    }
+  }
+  \prop_put:Nno \l_stex_current_copymodule_prop {fields} \l_tmpa_seq
+  \tl_put_left:Nx \l_tmpa_tl {
+    \prop_set_from_keyval:cn {
+      l_stex_copymodule_ \l_stex_current_module_str?\l_stex_current_copymodule_name_str _prop
+    }{
+      \prop_to_keyval:N \l_stex_current_copymodule_prop
+    }
+  }
+  \exp_args:No \stex_add_to_current_module:n \l_tmpa_tl
+  \stex_debug:nn{copymodule}{result:\meaning \l_tmpa_tl}
+  \exp_args:Nx \stex_do_up_to_module:n {
+      \exp_args:No \exp_not:n \l_tmpa_tl
+  }
+  \l_tmpb_tl
+  \stex_if_smsmode:F {
+    \end{stex_annotate_env}
+  }
+}
+
+\NewDocumentEnvironment {copymodule} { O{} m m}{
+  \stex_copymodule_start:nnnn { #1 }{ #2 }{ #3 }{ structure }
+  \stex_deactivate_macro:Nn \symdecl {module~environments}
+  \stex_deactivate_macro:Nn \symdef {module~environments}
+  \stex_deactivate_macro:Nn \notation {module~environments}
+  \stex_reactivate_macro:N \assign
+  \stex_reactivate_macro:N \renamedecl
+  \stex_reactivate_macro:N \donotcopy
+  \stex_smsmode_do:
+}{
+  \stex_copymodule_end:n {}
+}
+
+\NewDocumentEnvironment {interpretmodule} { O{} m m}{
+  \stex_copymodule_start:nnnn { #1 }{ #2 }{ #3 }{ realization }
+  \stex_deactivate_macro:Nn \symdecl {module~environments}
+  \stex_deactivate_macro:Nn \symdef {module~environments}
+  \stex_deactivate_macro:Nn \notation {module~environments}
+  \stex_reactivate_macro:N \assign
+  \stex_reactivate_macro:N \renamedecl
+  \stex_reactivate_macro:N \donotcopy
+  \stex_smsmode_do:
+}{
+  \stex_copymodule_end:n {
+    \tl_if_exist:cF {
+      l__stex_features_copymodule_##1?##2_def_tl
+    }{
+      \msg_error:nnxx{stex}{error/interpretmodule/nodefiniens}{
+        ##1?##2
+      }{\l_stex_current_copymodule_name_str}
+    }
+  }
+}
+
+\NewDocumentCommand \donotcopy { O{} m}{
+  \stex_import_module_uri:nn { #1 } { #2 }
+  \stex_collect_imports:n {\l_stex_import_ns_str ?\l_stex_import_name_str }
+  \seq_map_inline:Nn \l_stex_collect_imports_seq {
+    \seq_remove_all:Nn \l__stex_features_copymodule_modules_seq { ##1 }
+    \seq_map_inline:cn {c_stex_module_##1_constants}{
+      \seq_remove_all:Nn \l__stex_features_copymodule_fields_seq { ##1 ? ####1 }
+      \bool_lazy_any_p:nT {
+        { \cs_if_exist_p:c {l__stex_features_copymodule_##1?####1_name_str}}
+        { \cs_if_exist_p:c {l__stex_features_copymodule_##1?####1_macroname_str}}
+        { \cs_if_exist_p:c {l__stex_features_copymodule_##1?####1_def_tl}}
+      }{
+        % TODO throw error
+      }
+    }
+  }
+
+  \prop_get:NnN \l_stex_current_copymodule_prop { includes } \l_tmpa_seq
+  \seq_put_right:Nx \l_tmpa_seq {\l_stex_import_ns_str ?\l_stex_import_name_str }
+  \prop_put:Nnx \l_stex_current_copymodule_prop {includes} \l_tmpa_seq
+}
+
+\NewDocumentCommand \assign { m m }{
+  \stex_get_symbol_in_copymodule:n {#1}
+  \stex_debug:nn{assign}{defining~{\l_stex_get_symbol_uri_str}~as~\detokenize{#2}}
+  \tl_set:cn {l__stex_features_copymodule_\l_stex_get_symbol_uri_str _def_tl}{#2}
+}
+
+\keys_define:nn { stex / renamedecl } {
+  name        .str_set_x:N  = \l_stex_renamedecl_name_str
+}
+\cs_new_protected:Nn \__stex_features_renamedecl_args:n {
+  \str_clear:N \l_stex_renamedecl_name_str
+
+  \keys_set:nn { stex / renamedecl } { #1 }
+}
+
+\NewDocumentCommand \renamedecl { O{} m m}{
+  \__stex_features_renamedecl_args:n { #1 }
+  \stex_get_symbol_in_copymodule:n {#2}
+  \stex_debug:nn{renamedecl}{renaming~{\l_stex_get_symbol_uri_str}~to~#3}
+  \str_set:cx {l__stex_features_copymodule_\l_stex_get_symbol_uri_str _macroname_str}{#3}
+  \str_if_empty:NTF \l_stex_renamedecl_name_str {
+    \tl_set:cx { #3 }{ \stex_invoke_symbol:n {
+      \l_stex_get_symbol_uri_str
+    } }
+  } {
+    \str_set:cx {l__stex_features_copymodule_\l_stex_get_symbol_uri_str _name_str}{\l_stex_renamedecl_name_str}
+    \stex_debug:nn{renamedecl}{@~\l_stex_current_module_str ? \l_stex_renamedecl_name_str}
+    \prop_set_eq:cc {l_stex_symdecl_
+      \l_stex_current_module_str ? \l_stex_renamedecl_name_str
+      _prop
+    }{l_stex_symdecl_ \l_stex_get_symbol_uri_str _prop}
+    \seq_set_eq:cc {l_stex_symdecl_
+      \l_stex_current_module_str ? \l_stex_renamedecl_name_str
+      _notations
+    }{l_stex_symdecl_ \l_stex_get_symbol_uri_str _notations}
+    \prop_put:cnx {l_stex_symdecl_
+      \l_stex_current_module_str ? \l_stex_renamedecl_name_str
+      _prop
+    }{ name }{ \l_stex_renamedecl_name_str }
+    \prop_put:cnx {l_stex_symdecl_
+      \l_stex_current_module_str ? \l_stex_renamedecl_name_str
+      _prop
+    }{ module }{ \l_stex_current_module_str }
+    \exp_args:NNx \seq_put_left:Nn \l__stex_features_copymodule_fields_seq {
+      \l_stex_current_module_str ? \l_stex_renamedecl_name_str
+    }
+    \tl_set:cx { #3 }{ \stex_invoke_symbol:n {
+      \l_stex_current_module_str ? \l_stex_renamedecl_name_str
+    } }
+  }
+}
+\stex_deactivate_macro:Nn \assign {copymodules}
+\stex_deactivate_macro:Nn \renamedecl {copymodules}
+\stex_deactivate_macro:Nn \donotcopy {copymodules}
+
+\seq_new:N \l_stex_implicit_morphisms_seq
+\NewDocumentCommand \implicitmorphism { O{} m m}{
+  \stex_import_module_uri:nn { #1 } { #2 }
+  \stex_debug:nn{implicits}{
+    Implicit~morphism:~
+    \l_stex_module_ns_str ? \l__stex_features_name_str
+  }
+  \exp_args:NNx \seq_if_in:NnT \l_stex_all_modules_seq {
+    \l_stex_module_ns_str ? \l__stex_features_name_str
+  }{
+    \msg_error:nnn{stex}{error/conflictingmodules}{
+      \l_stex_module_ns_str ? \l__stex_features_name_str
+    }
+  }
+
+  % TODO
+
+  \seq_put_right:Nx \l_stex_implicit_morphisms_seq {
+    \l_stex_module_ns_str ? \l__stex_features_name_str
+  }
+}
+
+
+\NewDocumentEnvironment{structural@feature}{ m m m }{
+  \stex_if_in_module:F {
+    \msg_set:nnn{stex}{error/nomodule}{
+      Structural~Feature~has~to~occur~in~a~module:\\
+      Feature~#2~of~type~#1\\
+      In~File:~\stex_path_to_string:N \g_stex_currentfile_seq
+    }
+    \msg_error:nn{stex}{error/nomodule}
+  }
+
+  \str_set:Nx \l_stex_module_name_str {
+    \prop_item:Nn \l_stex_current_module_prop
+      { name } / #2 - feature
+  }
+
+  \str_set:Nx \l_stex_module_ns_str {
+    \prop_item:Nn \l_stex_current_module_prop
+      { ns }
+  }
+
+  \str_clear:N \l_tmpa_str
+  \seq_clear:N \l_tmpa_seq
+  \tl_clear:N \l_tmpa_tl
+  \exp_args:NNx \prop_set_from_keyval:Nn \l_stex_current_module_prop {
+    origname  = #2,
+    name      = \l_stex_module_name_str ,
+    ns        = \l_stex_module_ns_str ,
+    imports   = \exp_not:o { \l_tmpa_seq } ,
+    constants = \exp_not:o { \l_tmpa_seq } ,
+    content   = \exp_not:o { \l_tmpa_tl }  ,
+    file      = \exp_not:o { \g_stex_currentfile_seq } ,
+    lang      = \l_stex_module_lang_str ,
+    sig       = \l_tmpa_str ,
+    meta      = \l_tmpa_str ,
+    feature   = #1 ,
+  }
+
+  \stex_if_smsmode:F {
+    \begin{stex_annotate_env}{ feature:#1 }{}
+      \stex_annotate_invisible:nnn{header}{}{ #3 }
+  }
+}{
+  \str_set:Nx \l_tmpa_str {
+    c_stex_feature_
+    \prop_item:Nn \l_stex_current_module_prop { ns } ?
+    \prop_item:Nn \l_stex_current_module_prop { name }
+    _prop
+  }
+  \prop_gset_eq:cN { \l_tmpa_str } \l_stex_current_module_prop
+  \prop_gset_eq:NN \g_stex_last_feature_prop \l_stex_current_module_prop
+  \stex_if_smsmode:F {
+    \end{stex_annotate_env}
+  }
+}
+
+
+\prop_new:N \l_stex_all_structures_prop
+
+\keys_define:nn { stex / features / structure } {
+  name         .str_set_x:N  = \l__stex_features_structure_name_str ,
+}
+
+\cs_new_protected:Nn \__stex_features_structure_args:n {
+  \str_clear:N \l__stex_features_structure_name_str
+  \keys_set:nn { stex / features / structure } { #1 }
+}
+
+
+\NewDocumentEnvironment{mathstructure}{ O{} m }{
+  \__stex_features_structure_args:n { #1 }
+  \str_if_empty:NT \l__stex_features_structure_name_str {
+    \str_set:Nx \l__stex_features_structure_name_str { #2 }
+  }
+  \exp_args:Nnnx
+  \begin{structural@feature}{ structure }
+    { \l__stex_features_structure_name_str }{}
+    \seq_clear:N \l_tmpa_seq
+    \prop_put:Nno \l_stex_current_module_prop { fields } \l_tmpa_seq
+  \stex_smsmode_do:
+}{
+    \prop_get:NnN \l_stex_current_module_prop { constants } \l_tmpa_seq
+    \prop_get:NnN \l_stex_current_module_prop { fields } \l_tmpb_seq
+    \str_set:Nx \l_tmpa_str {
+      \prop_item:Nn \l_stex_current_module_prop { ns } ?
+      \prop_item:Nn \l_stex_current_module_prop { name }
+    }
+    \seq_map_inline:Nn \l_tmpa_seq {
+      \exp_args:NNx \seq_put_right:Nn \l_tmpb_seq { \l_tmpa_str ? ##1 }
+    }
+    \prop_put:Nno \l_stex_current_module_prop { fields } { \l_tmpb_seq }
+    \exp_args:Nnx
+    \AddToHookNext { env / mathstructure / after }{
+      \symdecl{ #2 }[type = \exp_not:N\collection,def={\STEXsymbol{module-type}{
+        \_stex_term_math_oms:nnnn { \l_tmpa_str }{}{0}{}
+      }}, name = \prop_item:Nn \l_stex_current_module_prop { origname }]
+      \STEXexport {
+        \prop_put:Nno \exp_not:N \l_stex_all_structures_prop
+          {\prop_item:Nn \l_stex_current_module_prop { origname }}
+          {\l_tmpa_str}
+          \prop_put:Nno \exp_not:N \l_stex_all_structures_prop
+            {#2}{\l_tmpa_str}
+      }
+    }
+
+  \end{structural@feature}
+  % \g_stex_last_feature_prop
+}
+\seq_new:N \l__stex_features_structure_field_seq
+\str_new:N \l__stex_features_structure_field_str
+\str_new:N \l__stex_features_structure_def_tl
+\prop_new:N \l__stex_features_structure_prop
+\NewDocumentCommand \instantiate { m O{} m }{
+  \prop_get:NnN \l_stex_all_structures_prop {#1} \l_tmpa_str
+  \prop_set_eq:Nc \l__stex_features_structure_prop {
+    c_stex_feature_\l_tmpa_str _prop
+  }
+  \seq_set_from_clist:Nn \l__stex_features_structure_field_seq { #2 }
+  \seq_map_inline:Nn \l__stex_features_structure_field_seq {
+    \seq_set_split:Nnn \l_tmpa_seq{=}{ ##1 }
+    \int_compare:nNnTF {\seq_count:N \l_tmpa_seq} > 1 {
+      \seq_get_left:NN \l_tmpa_seq \l_tmpa_tl
+      \exp_args:NNno \seq_set_split:Nnn \l_tmpb_seq
+        {!} \l_tmpa_tl
+      \int_compare:nNnTF {\seq_count:N \l_tmpb_seq} > 1 {
+        \str_set:Nx \l__stex_features_structure_field_str {\seq_item:Nn \l_tmpb_seq 1}
+        \seq_get_right:NN \l_tmpb_seq \l_tmpb_tl
+        \seq_get_right:NN \l_tmpa_seq \l_tmpa_tl
+      }{
+        \str_set:Nx \l__stex_features_structure_field_str \l_tmpa_tl
+        \seq_get_right:NN \l_tmpa_seq \l_tmpa_tl
+        \exp_args:NNno \seq_set_split:Nnn \l_tmpb_seq{!}
+          \l_tmpa_tl
+        \int_compare:nNnTF {\seq_count:N \l_tmpb_seq} > 1 {
+          \seq_get_left:NN \l_tmpb_seq \l_tmpa_tl
+          \seq_get_right:NN \l_tmpb_seq \l_tmpb_tl
+        }{
+          \tl_clear:N \l_tmpb_tl
+        }
+      }
+    }{
+      \seq_set_split:Nnn \l_tmpa_seq{!}{ ##1 }
+      \int_compare:nNnTF {\seq_count:N \l_tmpa_seq} > 1 {
+        \str_set:Nx \l__stex_features_structure_field_str {\seq_item:Nn \l_tmpa_seq 1}
+        \seq_get_right:NN \l_tmpa_seq \l_tmpb_tl
+        \tl_clear:N \l_tmpa_tl
+      }{
+        % TODO throw error
+      }
+    }
+    % \l_tmpa_str: name
+    % \l_tmpa_tl: definiens
+    % \l_tmpb_tl: notation
+    \tl_if_empty:NT \l__stex_features_structure_field_str {
+      % TODO throw error
+    }
+    \str_clear:N \l_tmpb_str
+
+    \prop_get:NnN \l__stex_features_structure_prop { fields } \l_tmpa_seq
+    \seq_map_inline:Nn \l_tmpa_seq {
+      \seq_set_split:Nnn \l_tmpb_seq ? { ####1 }
+      \seq_get_right:NN \l_tmpb_seq \l_tmpb_str
+      \str_if_eq:NNT \l__stex_features_structure_field_str \l_tmpb_str {
+        \seq_map_break:n {
+          \str_set:Nn \l_tmpb_str { ####1 }
+        }
+      }
+    }
+    \prop_get:cnN { l_stex_symdecl_ \l_tmpb_str _prop } {args}
+      \l_tmpb_str
+
+    \tl_if_empty:NTF \l_tmpb_tl {
+      \tl_if_empty:NF \l_tmpa_tl {
+        \exp_args:Nx \use:n {
+          \symdecl{#3/\l__stex_features_structure_field_str}[args=\l_tmpb_str,def={\exp_args:No\exp_not:n{\l_tmpa_tl}}]
+        }
+      }
+    }{
+      \tl_if_empty:NTF \l_tmpa_tl {
+        \exp_args:Nx \use:n {
+          \symdef{#3/\l__stex_features_structure_field_str}[args=\l_tmpb_str]\exp_after:wN\exp_not:n\exp_after:wN{\l_tmpb_tl}
+        }
+
+      }{
+        \exp_args:Nx \use:n {
+          \symdef{#3/\l__stex_features_structure_field_str}[args=\l_tmpb_str,def={\exp_args:No\exp_not:n{\l_tmpa_tl}}]
+          \exp_after:wN\exp_not:n\exp_after:wN{\l_tmpb_tl}
+        }
+      }
+    }
+  }
+
+  \tl_clear:N \l__stex_features_structure_def_tl
+
+  \prop_get:NnN \l__stex_features_structure_prop { fields } \l_tmpa_seq
+  \seq_map_inline:Nn \l_tmpa_seq {
+    \seq_set_split:Nnn \l_tmpb_seq ? { ##1 }
+    \seq_get_right:NN \l_tmpb_seq \l_tmpa_str
+    \exp_args:Nx \use:n {
+      \tl_put_right:Nn \exp_not:N \l__stex_features_structure_def_tl {
+
+      }
+    }
+
+    \prop_if_exist:cF {
+      l_stex_symdecl_
+      \prop_item:Nn \l_stex_current_module_prop {ns} ?
+      \prop_item:Nn \l_stex_current_module_prop {name} ?
+      #3/\l_tmpa_str
+      _prop
+    }{
+      \prop_get:cnN { l_stex_symdecl_ ##1 _prop } {args}
+        \l_tmpb_str
+      \exp_args:Nx \use:n {
+        \symdecl{#3/\l_tmpa_str}[args=\l_tmpb_str]
+      }
+    }
+  }
+
+  \symdecl*{#3}[type={\STEXsymbol{module-type}{
+    \_stex_term_math_oms:nnnn {
+      \prop_item:Nn \l__stex_features_structure_prop {ns} ?
+      \prop_item:Nn \l__stex_features_structure_prop {name}
+      }{}{0}{}
+  }}]
+
+  % TODO: -> sms file
+
+  \tl_set:cx{ #3 }{
+    \stex_invoke_structure:nnn {
+      \prop_item:Nn \l_stex_current_module_prop {ns} ?
+      \prop_item:Nn \l_stex_current_module_prop {name} ? #3
+    } {
+      \prop_item:Nn \l__stex_features_structure_prop {ns} ?
+      \prop_item:Nn \l__stex_features_structure_prop {name}
+    }
+  }
+  \stex_smsmode_do:
+}
+\cs_new_protected:Nn \stex_invoke_structure:nnn {
+  \tl_if_empty:nTF{ #3 }{
+    \prop_set_eq:Nc \l__stex_features_structure_prop {
+      c_stex_feature_ #2 _prop
+    }
+    \tl_clear:N \l_tmpa_tl
+    \prop_get:NnN \l__stex_features_structure_prop { fields } \l_tmpa_seq
+    \seq_map_inline:Nn \l_tmpa_seq {
+      \seq_set_split:Nnn \l_tmpb_seq ? { ##1 }
+      \seq_get_right:NN \l_tmpb_seq \l_tmpa_str
+      \cs_if_exist:cT {
+        stex_notation_ #1/\l_tmpa_str \c_hash_str\c_hash_str _cs
+      }{
+        \tl_if_empty:NF \l_tmpa_tl {
+          \tl_put_right:Nn \l_tmpa_tl {,}
+        }
+        \tl_put_right:Nx \l_tmpa_tl {
+          \stex_invoke_symbol:n {#1/\l_tmpa_str}!
+        }
+      }
+    }
+    \exp_args:No \mathstruct \l_tmpa_tl
+  }{
+    \stex_invoke_symbol:n{#1/#3}
+  }
+}
+
+%%%%%%%%%%%%%   features.dtx   %%%%%%%%%%%%%
+
+
+\def\titleemph#1{\textbf{#1}}
+\keys_define:nn {stex / definiendum }{
+  pre     .tl_set:N     = \l__stex_statements_definiendum_pre_tl,
+  post    .tl_set:N     = \l__stex_statements_definiendum_post_tl,
+  root    .str_set_x:N  = \l__stex_statements_definiendum_root_str,
+  gfa     .str_set_x:N  = \l__stex_statements_definiendum_gfa_str
+}
+\cs_new_protected:Nn \__stex_statements_definiendum_args:n {
+  \str_clear:N \l__stex_statements_definiendum_root_str
+  \tl_clear:N \l__stex_statements_definiendum_post_tl
+  \str_clear:N \l__stex_statements_definiendum_gfa_str
+  \keys_set:nn { stex / definiendum }{ #1 }
+}
+\NewDocumentCommand \definiendum { O{} m m} {
+  \__stex_statements_definiendum_args:n { #1 }
+  \stex_get_symbol:n { #2 }
+  \stex_ref_new_sym_target:n \l_stex_get_symbol_uri_str
+  \str_if_empty:NTF \l__stex_statements_definiendum_root_str {
+    \tl_if_empty:NTF \l__stex_statements_definiendum_post_tl {
+      \tl_set:Nn \l_tmpa_tl { #3 }
+    } {
+      \str_set:Nx \l__stex_statements_definiendum_root_str { #3 }
+      \tl_set:Nn \l_tmpa_tl {
+        \l__stex_statements_definiendum_pre_tl\l__stex_statements_definiendum_root_str\l__stex_statements_definiendum_post_tl
+       }
+    }
+  } {
+    \tl_set:Nn \l_tmpa_tl { #3 }
+  }
+
+  % TODO root
+  \rustex_if:TF {
+    \stex_annotate:nnn { definiendum } { \l_stex_get_symbol_uri_str } { \l_tmpa_tl }
+  } {
+    \exp_args:Nnx \defemph@uri { \l_tmpa_tl } { \l_stex_get_symbol_uri_str }
+  }
+}
+\stex_deactivate_macro:Nn \definiendum {definition~environments}
+
+\NewDocumentCommand \definame { O{} m } {
+  \__stex_statements_definiendum_args:n { #1 }
+  % TODO: root
+  \stex_get_symbol:n { #2 }
+  \stex_ref_new_sym_target:n \l_stex_get_symbol_uri_str
+  \str_set:Nx \l_tmpa_str {
+    \prop_item:cn { l_stex_symdecl_ \l_stex_get_symbol_uri_str _prop } { name }
+  }
+  \exp_args:NNno \str_replace_all:Nnn \l_tmpa_str {-} {~}
+  \rustex_if:TF {
+    \stex_annotate:nnn { definiendum } { \l_stex_get_symbol_uri_str } {
+      \l_tmpa_str\l__stex_statements_definiendum_post_tl
+      }
+  } {
+    \defemph@uri {
+      \l_tmpa_str\l__stex_statements_definiendum_post_tl
+    } { \l_stex_get_symbol_uri_str }
+  }
+}
+\stex_deactivate_macro:Nn \definame {definition~environments}
+
+\NewDocumentCommand \Definame { O{} m } {
+  \__stex_statements_definiendum_args:n { #1 }
+  \stex_get_symbol:n { #2 }
+  \str_set:Nx \l_tmpa_str {
+    \prop_item:cn { l_stex_symdecl_ \l_stex_get_symbol_uri_str _prop } { name }
+  }
+  \exp_args:NNno \str_replace_all:Nnn \l_tmpa_str {-} {~}
+  \stex_ref_new_sym_target:n \l_stex_get_symbol_uri_str
+  \rustex_if:TF {
+    \stex_annotate:nnn { definiendum } { \l_stex_get_symbol_uri_str } {
+      \l_tmpa_str\l__stex_statements_definiendum_post_tl
+     }
+  } {
+    \defemph@uri {
+      \exp_after:wN \stex_capitalize:n \l_tmpa_str\l__stex_statements_definiendum_post_tl
+    } { \l_stex_get_symbol_uri_str }
+  }
+}
+\stex_deactivate_macro:Nn \Definame {definition~environments}
+
+\NewDocumentCommand \premise { m }{
+  \stex_annotate:nnn{ premise }{}{ #1 }
+}
+\NewDocumentCommand \conclusion { m }{
+  \stex_annotate:nnn{ conclusion }{}{ #1 }
+}
+\NewDocumentCommand \definiens { m }{
+  \stex_annotate:nnn{ definiens }{}{ #1 }
+}
+
+\stex_deactivate_macro:Nn \premise {definition,~example~or~assertion~environments}
+\stex_deactivate_macro:Nn \conclusion {example~or~assertion~environments}
+\stex_deactivate_macro:Nn \definiens {definition~environments}
+
+
+\keys_define:nn {stex / sdefinition }{
+  type    .str_set_x:N  = \sdefinitiontype,
+  id      .str_set_x:N  = \sdefinitionid,
+  name    .str_set_x:N  = \sdefinitionname,
+  for     .clist_set:N  = \l__stex_statements_sdefinition_for_clist ,
+  title   .tl_set:N     = \sdefinitiontitle
+}
+\cs_new_protected:Nn \__stex_statements_sdefinition_args:n {
+  \str_clear:N \sdefinitiontype
+  \str_clear:N \sdefinitionid
+  \str_clear:N \sdefinitionname
+  \clist_clear:N \l__stex_statements_sdefinition_for_clist
+  \tl_clear:N \sdefinitiontitle
+  \keys_set:nn { stex / sdefinition }{ #1 }
+}
+
+\NewDocumentEnvironment{sdefinition}{O{}}{
+  \__stex_statements_sdefinition_args:n{ #1 }
+  \stex_reactivate_macro:N \definiendum
+  \stex_reactivate_macro:N \definame
+  \stex_reactivate_macro:N \Definame
+  \stex_reactivate_macro:N \premise
+  \stex_reactivate_macro:N \definiens
+  \stex_if_smsmode:F{
+    \seq_clear:N \l_tmpa_seq
+    \clist_map_inline:Nn \l__stex_statements_sdefinition_for_clist {
+      \tl_if_empty:nF{ ##1 }{
+        \stex_get_symbol:n { ##1 }
+        \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
+          \l_stex_get_symbol_uri_str
+        }
+      }
+    }
+    \exp_args:Nnnx
+    \begin{stex_annotate_env}{definition}{\seq_use:Nn \l_tmpa_seq {,}}
+    \str_if_empty:NF \sdefinitiontype {
+      \stex_annotate_invisible:nnn{type}{\sdefinitiontype}{}
+    }
+    \clist_set:No \l_tmpa_clist \sdefinitiontype
+    \tl_clear:N \l_tmpa_tl
+    \clist_map_inline:Nn \l_tmpa_clist {
+      \tl_if_exist:cT {__stex_statements_sdefinition_##1_start:}{
+        \tl_set:Nn \l_tmpa_tl {\use:c{__stex_statements_sdefinition_##1_start:}}
+      }
+    }
+    \tl_if_empty:NTF \l_tmpa_tl {
+      \__stex_statements_sdefinition_start:
+    }{
+      \l_tmpa_tl
+    }
+  }
+  \stex_ref_new_doc_target:n \sdefinitionid
+  \stex_smsmode_do:
+}{
+  \str_if_empty:NF \sdefinitionname { \stex_symdecl_do:nn{}{\sdefinitionname} }
+  \stex_if_smsmode:F {
+    \clist_set:No \l_tmpa_clist \sdefinitiontype
+    \tl_clear:N \l_tmpa_tl
+    \clist_map_inline:Nn \l_tmpa_clist {
+      \tl_if_exist:cT {__stex_statements_sdefinition_##1_end:}{
+        \tl_set:Nn \l_tmpa_tl {\use:c{__stex_statements_sdefinition_##1_end:}}
+      }
+    }
+    \tl_if_empty:NTF \l_tmpa_tl {
+      \__stex_statements_sdefinition_end:
+    }{
+      \l_tmpa_tl
+    }
+    \end{stex_annotate_env}
+  }
+}
+\cs_new_protected:Nn \__stex_statements_sdefinition_start: {
+  \par\noindent\titleemph{Definition\tl_if_empty:NF \sdefinitiontitle {
+    ~(\sdefinitiontitle)
+  }~}
+}
+\cs_new_protected:Nn \__stex_statements_sdefinition_end: {\par\medskip}
+
+\newcommand\stexpatchdefinition[3][] {
+    \str_set:Nx \l_tmpa_str{ #1 }
+    \str_if_empty:NTF \l_tmpa_str {
+      \tl_set:Nn \__stex_statements_sdefinition_start: { #2 }
+      \tl_set:Nn \__stex_statements_sdefinition_end: { #3 }
+    }{
+      \exp_after:wN \tl_set:Nn \csname __stex_statements_sdefinition_#1_start:\endcsname{ #2 }
+      \exp_after:wN \tl_set:Nn \csname __stex_statements_sdefinition_#1_end:\endcsname{ #3 }
+    }
+}
+\keys_define:nn {stex / inlinedef }{
+  type    .str_set_x:N  = \sdefinitiontype,
+  id      .str_set_x:N  = \sdefinitionid,
+  for     .clist_set:N  = \l__stex_statements_sdefinition_for_clist ,
+  name    .str_set_x:N  = \sdefinitionname
+}
+\cs_new_protected:Nn \__stex_statements_inlinedef_args:n {
+  \str_clear:N \sdefinitiontype
+  \str_clear:N \sdefinitionid
+  \str_clear:N \sdefinitionname
+  \clist_clear:N \l__stex_statements_sdefinition_for_clist
+  \keys_set:nn { stex / inlinedef }{ #1 }
+}
+\NewDocumentCommand \inlinedef { O{} m } {
+  \begingroup
+  \__stex_statements_inlinedef_args:n{ #1 }
+  \stex_reactivate_macro:N \definiendum
+  \stex_reactivate_macro:N \definame
+  \stex_reactivate_macro:N \Definame
+  \stex_reactivate_macro:N \premise
+  \stex_reactivate_macro:N \definiens
+  \stex_ref_new_doc_target:n \sdefinitionid
+  \stex_if_smsmode:TF{
+    \str_if_empty:NF \sdefinitionname { \stex_symdecl_do:nn{}{\sdefinitionname} }
+  }{
+    \seq_clear:N \l_tmpa_seq
+    \clist_map_inline:Nn \l__stex_statements_sdefinition_for_clist {
+      \tl_if_empty:nF{ ##1 }{
+        \stex_get_symbol:n { ##1 }
+        \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
+          \l_stex_get_symbol_uri_str
+        }
+      }
+    }
+    \exp_args:Nnx
+    \stex_annotate:nnn{definition}{\seq_use:Nn \l_tmpa_seq {,}}{
+      \str_if_empty:NF \sdefinitiontype {
+        \stex_annotate_invisible:nnn{type}{\sdefinitiontype}{}
+      }
+      #2
+      \str_if_empty:NF \sdefinitionname { \stex_symdecl_do:nn{}{\sdefinitionname} }
+    }
+  }
+  \endgroup
+  \stex_smsmode_do:
+}
+
+\keys_define:nn {stex / sassertion }{
+  type    .str_set_x:N  = \sassertiontype,
+  id      .str_set_x:N  = \sassertionid,
+  title   .tl_set:N     = \sassertiontitle ,
+  for     .clist_set:N  = \l__stex_statements_sassertion_for_clist ,
+  name    .str_set_x:N  = \sassertionname
+}
+\cs_new_protected:Nn \__stex_statements_sassertion_args:n {
+  \str_clear:N \sassertiontype
+  \str_clear:N \sassertionid
+  \str_clear:N \sassertionname
+  \clist_clear:N \l__stex_statements_sassertion_for_clist
+  \tl_clear:N \sassertiontitle
+  \keys_set:nn { stex / sassertion }{ #1 }
+}
+
+
+\NewDocumentEnvironment{sassertion}{O{}}{
+  \__stex_statements_sassertion_args:n{ #1 }
+  \stex_reactivate_macro:N \premise
+  \stex_reactivate_macro:N \conclusion
+  \stex_if_smsmode:F {
+    \seq_clear:N \l_tmpa_seq
+    \clist_map_inline:Nn \l__stex_statements_sassertion_for_clist {
+      \tl_if_empty:nF{ ##1 }{
+        \stex_get_symbol:n { ##1 }
+        \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
+          \l_stex_get_symbol_uri_str
+        }
+      }
+    }
+    \exp_args:Nnnx
+    \begin{stex_annotate_env}{assertion}{\seq_use:Nn \l_tmpa_seq {,}}
+    \str_if_empty:NF \sassertiontype {
+      \stex_annotate_invisible:nnn{type}{\sassertiontype}{}
+    }
+    \clist_set:No \l_tmpa_clist \sassertiontype
+    \tl_clear:N \l_tmpa_tl
+    \clist_map_inline:Nn \l_tmpa_clist {
+      \tl_if_exist:cT {__stex_statements_sassertion_##1_start:}{
+        \tl_set:Nn \l_tmpa_tl {\use:c{__stex_statements_sassertion_##1_start:}}
+      }
+    }
+    \tl_if_empty:NTF \l_tmpa_tl {
+      \__stex_statements_sassertion_start:
+    }{
+      \l_tmpa_tl
+    }
+  }
+  \str_if_empty:NTF \sassertionid {
+    \str_if_empty:NF \sassertionname {
+      \stex_ref_new_doc_target:n {}
+    }
+  } {
+    \stex_ref_new_doc_target:n \sassertionid
+  }
+  \stex_smsmode_do:
+}{
+  \str_if_empty:NF \sassertionname {
+    \stex_symdecl_do:nn{}{\sassertionname}
+    \stex_ref_new_sym_target:n {\l_stex_current_module_str ? \sassertionname}
+  }
+  \stex_if_smsmode:F {
+    \clist_set:No \l_tmpa_clist \sassertiontype
+    \tl_clear:N \l_tmpa_tl
+    \clist_map_inline:Nn \l_tmpa_clist {
+      \tl_if_exist:cT {__stex_statements_sassertion_##1_end:}{
+        \tl_set:Nn \l_tmpa_tl {\use:c{__stex_statements_sassertion_##1_end:}}
+      }
+    }
+    \tl_if_empty:NTF \l_tmpa_tl {
+      \__stex_statements_sassertion_end:
+    }{
+      \l_tmpa_tl
+    }
+    \end{stex_annotate_env}
+  }
+}
+
+\cs_new_protected:Nn \__stex_statements_sassertion_start: {
+  \par\noindent\titleemph{Assertion~\tl_if_empty:NF \sassertiontitle {
+    (\sassertiontitle)
+  }~}
+}
+\cs_new_protected:Nn \__stex_statements_sassertion_end: {\par\medskip}
+
+\newcommand\stexpatchassertion[3][] {
+    \str_set:Nx \l_tmpa_str{ #1 }
+    \str_if_empty:NTF \l_tmpa_str {
+      \tl_set:Nn \__stex_statements_sassertion_start: { #2 }
+      \tl_set:Nn \__stex_statements_sassertion_end: { #3 }
+    }{
+      \exp_after:wN \tl_set:Nn \csname __stex_statements_sassertion_#1_start:\endcsname{ #2 }
+      \exp_after:wN \tl_set:Nn \csname __stex_statements_sassertion_#1_end:\endcsname{ #3 }
+    }
+}
+\keys_define:nn {stex / inlineass }{
+  type    .str_set_x:N  = \sassertiontype,
+  id      .str_set_x:N  = \sassertionid,
+  for     .clist_set:N  = \l__stex_statements_sassertion_for_clist ,
+  name    .str_set_x:N  = \sassertionname
+}
+\cs_new_protected:Nn \__stex_statements_inlineass_args:n {
+  \str_clear:N \sassertiontype
+  \str_clear:N \sassertionid
+  \str_clear:N \sassertionname
+  \clist_clear:N \l__stex_statements_sassertion_for_clist
+  \keys_set:nn { stex / inlineass }{ #1 }
+}
+\NewDocumentCommand \inlineass { O{} m } {
+  \begingroup
+  \stex_reactivate_macro:N \premise
+  \stex_reactivate_macro:N \conclusion
+  \__stex_statements_inlineass_args:n{ #1 }
+  \str_if_empty:NTF \sassertionid {
+    \str_if_empty:NF \sassertionname {
+      \stex_ref_new_doc_target:n {}
+    }
+  } {
+    \stex_ref_new_doc_target:n \sassertionid
+  }
+
+  \stex_if_smsmode:TF{
+    \str_if_empty:NF \sassertionname {
+      \stex_symdecl_do:nn{}{\sassertionname}
+      \stex_ref_new_sym_target:n {\l_stex_current_module_str ? \sassertionname}
+    }
+  }{
+    \seq_clear:N \l_tmpa_seq
+    \clist_map_inline:Nn \l__stex_statements_sassertion_for_clist {
+      \tl_if_empty:nF{ ##1 }{
+        \stex_get_symbol:n { ##1 }
+        \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
+          \l_stex_get_symbol_uri_str
+        }
+      }
+    }
+    \exp_args:Nnx
+    \stex_annotate:nnn{assertion}{\seq_use:Nn \l_tmpa_seq {,}}{
+      \str_if_empty:NF \sassertiontype {
+        \stex_annotate_invisible:nnn{type}{\sassertiontype}{}
+      }
+      #2
+      \str_if_empty:NF \sassertionname {
+        \stex_symdecl_do:nn{}{\sassertionname}
+        \stex_ref_new_sym_target:n {\l_stex_current_module_str ? \sassertionname}
+      }
+    }
+  }
+  \endgroup
+  \stex_smsmode_do:
+}
+
+\keys_define:nn {stex / sexample }{
+  type    .str_set_x:N  = \exampletype,
+  id      .str_set_x:N  = \sexampleid,
+  title   .tl_set:N     = \sexampletitle,
+  for     .clist_set:N  = \l__stex_statements_sexample_for_clist,
+}
+\cs_new_protected:Nn \__stex_statements_sexample_args:n {
+  \str_clear:N \sexampletype
+  \str_clear:N \sexampleid
+  \tl_clear:N \sexampletitle
+  \clist_clear:N \l__stex_statements_sexample_for_clist
+  \keys_set:nn { stex / sexample }{ #1 }
+}
+
+\NewDocumentEnvironment{sexample}{O{}}{
+  \__stex_statements_sexample_args:n{ #1 }
+  \stex_reactivate_macro:N \premise
+  \stex_reactivate_macro:N \conclusion
+  \stex_if_smsmode:F {
+    \seq_clear:N \l_tmpa_seq
+    \clist_map_inline:Nn \l__stex_statements_sexample_for_clist {
+      \tl_if_empty:nF{ ##1 }{
+        \stex_get_symbol:n { ##1 }
+        \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
+          \l_stex_get_symbol_uri_str
+        }
+      }
+    }
+    \exp_args:Nnnx
+    \begin{stex_annotate_env}{example}{\seq_use:Nn \l_tmpa_seq {,}}
+    \str_if_empty:NF \sexampletype {
+      \stex_annotate_invisible:nnn{type}{\sexampletype}{}
+    }
+    \clist_set:No \l_tmpa_clist \sexampletype
+    \tl_clear:N \l_tmpa_tl
+    \clist_map_inline:Nn \l_tmpa_clist {
+      \tl_if_exist:cT {__stex_statements_sexample_##1_start:}{
+        \tl_set:Nn \l_tmpa_tl {\use:c{__stex_statements_sexample_##1_start:}}
+      }
+    }
+    \tl_if_empty:NTF \l_tmpa_tl {
+      \__stex_statements_sexample_start:
+    }{
+      \l_tmpa_tl
+    }
+  }
+  \str_if_empty:NF \sexampleid {
+    \stex_ref_new_doc_target:n \sexampleid
+  }
+  \stex_smsmode_do:
+}{
+  \str_if_empty:NF \sexamplename { \stex_symdecl_do:nn{}{\sexamplename} }
+  \stex_if_smsmode:F {
+    \clist_set:No \l_tmpa_clist \sexampletype
+    \tl_clear:N \l_tmpa_tl
+    \clist_map_inline:Nn \l_tmpa_clist {
+      \tl_if_exist:cT {__stex_statements_sexample_##1_end:}{
+        \tl_set:Nn \l_tmpa_tl {\use:c{__stex_statements_sexample_##1_end:}}
+      }
+    }
+    \tl_if_empty:NTF \l_tmpa_tl {
+      \__stex_statements_sexample_end:
+    }{
+      \l_tmpa_tl
+    }
+    \end{stex_annotate_env}
+  }
+}
+
+\cs_new_protected:Nn \__stex_statements_sexample_start: {
+  \par\noindent\titleemph{Example~\tl_if_empty:NF \sexampletitle {
+    (\sexampletitle)
+  }~}
+}
+\cs_new_protected:Nn \__stex_statements_sexample_end: {\par\medskip}
+
+\newcommand\stexpatchexample[3][] {
+    \str_set:Nx \l_tmpa_str{ #1 }
+    \str_if_empty:NTF \l_tmpa_str {
+      \tl_set:Nn \__stex_statements_sexample_start: { #2 }
+      \tl_set:Nn \__stex_statements_sexample_end: { #3 }
+    }{
+      \exp_after:wN \tl_set:Nn \csname __stex_statements_sexample_#1_start:\endcsname{ #2 }
+      \exp_after:wN \tl_set:Nn \csname __stex_statements_sexample_#1_end:\endcsname{ #3 }
+    }
+}
+\keys_define:nn {stex / inlineex }{
+  type    .str_set_x:N  = \sexampletype,
+  id      .str_set_x:N  = \sexampleid,
+  for     .clist_set:N  = \l__stex_statements_sexample_for_clist ,
+  name    .str_set_x:N  = \sexamplename
+}
+\cs_new_protected:Nn \__stex_statements_inlineex_args:n {
+  \str_clear:N \sexampletype
+  \str_clear:N \sexampleid
+  \str_clear:N \sexamplename
+  \clist_clear:N \l__stex_statements_sexample_for_clist
+  \keys_set:nn { stex / inlineex }{ #1 }
+}
+\NewDocumentCommand \inlineex { O{} m } {
+  \begingroup
+  \stex_reactivate_macro:N \premise
+  \stex_reactivate_macro:N \conclusion
+  \__stex_statements_inlineex_args:n{ #1 }
+  \str_if_empty:NF \sexampleid {
+    \stex_ref_new_doc_target:n \sexampleid
+  }
+  \stex_if_smsmode:TF{
+    \str_if_empty:NF \sexamplename { \stex_symdecl_do:nn{}{\examplename} }
+  }{
+    \seq_clear:N \l_tmpa_seq
+    \clist_map_inline:Nn \l__stex_statements_sexample_for_clist {
+      \tl_if_empty:nF{ ##1 }{
+        \stex_get_symbol:n { ##1 }
+        \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
+          \l_stex_get_symbol_uri_str
+        }
+      }
+    }
+    \exp_args:Nnx
+    \stex_annotate:nnn{example}{\seq_use:Nn \l_tmpa_seq {,}}{
+      \str_if_empty:NF \sexampletype {
+        \stex_annotate_invisible:nnn{type}{\sexampletype}{}
+      }
+      #2
+      \str_if_empty:NF \sexamplename { \stex_symdecl_do:nn{}{\sexamplename} }
+    }
+  }
+  \endgroup
+  \stex_smsmode_do:
+}
+\keys_define:nn { stex / sparagraph} {
+  id      .str_set_x:N   = \sparagraphid ,
+  title   .tl_set:N      = \l_stex_sparagraph_title_tl ,
+  type    .str_set_x:N   = \sparagraphtype ,
+  for     .clist_set:N   = \l__stex_statements_sparagraph_for_clist ,
+  from    .tl_set:N      = \sparagraphfrom ,
+  to      .tl_set:N      = \sparagraphto ,
+  start   .tl_set:N      = \l_stex_sparagraph_start_tl ,
+  name    .str_set:N     = \sparagraphname
+}
+
+\cs_new_protected:Nn \stex_sparagraph_args:n {
+  \tl_clear:N \l_stex_sparagraph_title_tl
+  \tl_clear:N \sparagraphfrom
+  \tl_clear:N \sparagraphto
+  \tl_clear:N \l_stex_sparagraph_start_tl
+  \str_clear:N \sparagraphid
+  \str_clear:N \sparagraphtype
+  \clist_clear:N \l__stex_statements_sparagraph_for_clist
+  \str_clear:N \sparagraphname
+  \keys_set:nn { stex / sparagraph }{ #1 }
+}
+\newif\if@in@omtext\@in@omtextfalse
+
+\NewDocumentEnvironment {sparagraph} { O{} } {
+  \stex_sparagraph_args:n { #1 }
+  \tl_if_empty:NTF \l_stex_sparagraph_start_tl {
+    \tl_set_eq:NN \sparagraphtitle \l_stex_sparagraph_title_tl
+  }{
+    \tl_set_eq:NN \sparagraphtitle \l_stex_sparagraph_start_tl
+  }
+  \@in@omtexttrue
+  \stex_if_smsmode:F {
+    \seq_clear:N \l_tmpa_seq
+    \clist_map_inline:Nn \l__stex_statements_sparagraph_for_clist {
+      \tl_if_empty:nF{ ##1 }{
+        \stex_get_symbol:n { ##1 }
+        \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
+          \l_stex_get_symbol_uri_str
+        }
+      }
+    }
+    \exp_args:Nnnx
+    \begin{stex_annotate_env}{paragraph}{\seq_use:Nn \l_tmpa_seq {,}}
+    \str_if_empty:NF \sparagraphtype {
+      \stex_annotate_invisible:nnn{type}{\sparagraphtype}{}
+    }
+    \str_if_empty:NF \sparagraphfrom {
+      \stex_annotate_invisible:nnn{from}{\sparagraphfrom}{}
+    }
+    \str_if_empty:NF \sparagraphto {
+      \stex_annotate_invisible:nnn{to}{\sparagraphto}{}
+    }
+    \clist_set:No \l_tmpa_clist \sparagraphtype
+    \tl_clear:N \l_tmpa_tl
+    \clist_map_inline:Nn \sparagraphtype {
+      \tl_if_exist:cT {__stex_statements_sparagraph_##1_start:}{
+        \tl_set:Nn \l_tmpa_tl {\use:c{__stex_statements_sparagraph_##1_start:}}
+      }
+    }
+    \tl_if_empty:NTF \l_tmpa_tl {
+      \__stex_statements_sparagraph_start:
+    }{
+      \l_tmpa_tl
+    }
+  }
+  \clist_set:No \l_tmpa_clist \sparagraphtype
+  \str_if_empty:NTF \sparagraphid {
+    \str_if_empty:NTF \sparagraphname {
+      \exp_args:NNx \clist_if_in:NnT \l_tmpa_clist {\tl_to_str:n{symdoc}}{
+        \stex_ref_new_doc_target:n {}
+      }
+    } {
+      \stex_ref_new_doc_target:n {}
+    }
+  } {
+    \stex_ref_new_doc_target:n \sparagraphid
+  }
+  \exp_args:NNx
+  \clist_if_in:NnT \l_tmpa_clist {\tl_to_str:n{symdoc}}{
+    \clist_map_inline:Nn \l__stex_statements_sparagraph_for_clist {
+      \tl_if_empty:nF{ ##1 }{
+        \stex_get_symbol:n { ##1 }
+        \stex_ref_new_sym_target:n \l_stex_get_symbol_uri_str
+      }
+    }
+  }
+  \stex_smsmode_do:
+  \ignorespacesandpars
+}{
+  \str_if_empty:NF \sparagraphname {
+    \stex_symdecl_do:nn{}{\sparagraphname}
+    \stex_ref_new_sym_target:n {\l_stex_current_module_str ? \sparagraphname}
+  }
+  \stex_if_smsmode:F {
+    \clist_set:No \l_tmpa_clist \sparagraphtype
+    \tl_clear:N \l_tmpa_tl
+    \clist_map_inline:Nn \l_tmpa_clist {
+      \tl_if_exist:cT {__stex_statements_sparagraph_##1_end:}{
+        \tl_set:Nn \l_tmpa_tl {\use:c{__stex_statements_sparagraph_##1_end:}}
+      }
+    }
+    \tl_if_empty:NTF \l_tmpa_tl {
+      \__stex_statements_sparagraph_end:
+    }{
+      \l_tmpa_tl
+    }
+    \end{stex_annotate_env}
+  }
+}
+
+\cs_new_protected:Nn \__stex_statements_sparagraph_start: {
+  \par\noindent\tl_if_empty:NTF \l_stex_sparagraph_start_tl {
+    \tl_if_empty:NF \l_stex_sparagraph_title_tl {
+      \titleemph{\l_stex_sparagraph_title_tl}:~
+    }
+  }{
+    \titleemph{\l_stex_sparagraph_start_tl}~
+  }
+}
+\cs_new_protected:Nn \__stex_statements_sparagraph_end: {\par\medskip}
+
+\newcommand\stexpatchparagraph[3][] {
+    \str_set:Nx \l_tmpa_str{ #1 }
+    \str_if_empty:NTF \l_tmpa_str {
+      \tl_set:Nn \__stex_statements_sparagraph_start: { #2 }
+      \tl_set:Nn \__stex_statements_sparagraph_end: { #3 }
+    }{
+      \exp_after:wN \tl_set:Nn \csname __stex_statements_sparagraph_#1_start:\endcsname{ #2 }
+      \exp_after:wN \tl_set:Nn \csname __stex_statements_sparagraph_#1_end:\endcsname{ #3 }
+    }
+}
+
+\keys_define:nn { stex / inlinepara} {
+  id      .str_set_x:N   = \sparagraphid ,
+  type    .str_set_x:N   = \sparagraphtype ,
+  for     .clist_set:N   = \l__stex_statements_sparagraph_for_clist ,
+  from    .tl_set:N      = \sparagraphfrom ,
+  to      .tl_set:N      = \sparagraphto ,
+  name    .str_set:N     = \sparagraphname
+}
+\cs_new_protected:Nn \__stex_statements_inlinepara_args:n {
+  \tl_clear:N \sparagraphfrom
+  \tl_clear:N \sparagraphto
+  \str_clear:N \sparagraphid
+  \str_clear:N \sparagraphtype
+  \clist_clear:N \l__stex_statements_sparagraph_for_clist
+  \str_clear:N \sparagraphname
+  \keys_set:nn { stex / inlinepara }{ #1 }
+}
+\NewDocumentCommand \inlinepara { O{} m } {
+  \begingroup
+  \__stex_statements_inlinepara_args:n{ #1 }
+  \clist_set:No \l_tmpa_clist \sparagraphtype
+  \str_if_empty:NTF \sparagraphid {
+    \str_if_empty:NTF \sparagraphname {
+      \exp_args:NNx \clist_if_in:NnT \l_tmpa_clist {\tl_to_str:n{symdoc}}{
+        \stex_ref_new_doc_target:n {}
+      }
+    } {
+      \stex_ref_new_doc_target:n {}
+    }
+  } {
+    \stex_ref_new_doc_target:n \sparagraphid
+  }
+  \stex_if_smsmode:TF{
+    \str_if_empty:NF \sparagraphname {
+      \stex_symdecl_do:nn{}{\sparagraphname}
+      \stex_ref_new_sym_target:n {\l_stex_current_module_str ? \sparagraphname}
+    }
+  }{
+    \seq_clear:N \l_tmpa_seq
+    \clist_map_inline:Nn \l__stex_statements_sparagraph_for_clist {
+      \tl_if_empty:nF{ ##1 }{
+        \stex_get_symbol:n { ##1 }
+        \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
+          \l_stex_get_symbol_uri_str
+        }
+      }
+    }
+    \exp_args:Nnx
+    \stex_annotate:nnn{paragraph}{\seq_use:Nn \l_tmpa_seq {,}}{
+      \str_if_empty:NF \sparagraphtype {
+        \stex_annotate_invisible:nnn{type}{\sparagraphtype}{}
+      }
+      \str_if_empty:NF \sparagraphfrom {
+        \stex_annotate_invisible:nnn{from}{\sparagraphfrom}{}
+      }
+      \str_if_empty:NF \sparagraphto {
+        \stex_annotate_invisible:nnn{to}{\sparagraphto}{}
+      }
+      \str_if_empty:NF \sparagraphname {
+        \stex_symdecl_do:nn{}{\sparagraphname}
+        \stex_ref_new_sym_target:n {\l_stex_current_module_str ? \sparagraphname}
+      }
+      \exp_args:NNx \clist_if_in:NnT \l_tmpa_clist {\tl_to_str:n{symdoc}}{
+        \clist_map_inline:Nn \l_tmpa_seq {
+          \stex_ref_new_sym_target:n {##1}
+        }
+      }
+      #2
+    }
+  }
+  \endgroup
+  \stex_smsmode_do:
+}
+
+
+
+%%%%%%%%%%%%%   sproof.dtx   %%%%%%%%%%%%%
+
+\keys_define:nn { stex / spf } {
+  id          .str_set_x:N  = \spfid,
+  for         .clist_set:N  = \l__stex_sproof_spf_for_clist ,
+  from        .tl_set:N     = \l__stex_sproof_spf_from_tl ,
+  proofend    .tl_set:N     = \l__stex_sproof_spf_proofend_tl,
+  type        .str_set_x:N  = \spftype,
+  title       .tl_set:N     = \spftitle,
+  continues   .tl_set:N     = \l__stex_sproof_spf_continues_tl,
+  functions   .tl_set:N     = \l__stex_sproof_spf_functions_tl,
+  method      .tl_set:N     = \l__stex_sproof_spf_method_tl
+}
+\cs_new_protected:Nn \__stex_sproof_spf_args:n {
+\str_clear:N \spfid
+\tl_clear:N \l__stex_sproof_spf_for_tl
+\tl_clear:N \l__stex_sproof_spf_from_tl
+\tl_set:Nn \l__stex_sproof_spf_proofend_tl {\sproof@box}
+\str_clear:N \spftype
+\tl_clear:N \spftitle
+\tl_clear:N \l__stex_sproof_spf_continues_tl
+\tl_clear:N \l__stex_sproof_spf_functions_tl
+\tl_clear:N \l__stex_sproof_spf_method_tl
+\keys_set:nn { stex / spf }{ #1 }
+}
+\str_set:Nn\c__stex_sproof_flow_str{inline}
+\intarray_new:Nn\l__stex_sproof_counter_intarray{50}
+\cs_new_protected:Npn \sproofnumber {
+  \int_set:Nn \l_tmpa_int {1}
+  \bool_while_do:nn {
+    \int_compare_p:nNn {
+      \intarray_item:Nn \l__stex_sproof_counter_intarray \l_tmpa_int
+    } > 0
+  }{
+    \intarray_item:Nn \l__stex_sproof_counter_intarray \l_tmpa_int .
+    \int_incr:N \l_tmpa_int
+  }
+}
+\cs_new_protected:Npn \__stex_sproof_inc_counter: {
+  \int_set:Nn \l_tmpa_int {1}
+  \bool_while_do:nn {
+    \int_compare_p:nNn {
+      \intarray_item:Nn \l__stex_sproof_counter_intarray \l_tmpa_int
+    } > 0
+  }{
+    \int_incr:N \l_tmpa_int
+  }
+  \int_compare:nNnF \l_tmpa_int = 1 {
+    \int_decr:N \l_tmpa_int
+  }
+  \intarray_gset:Nnn \l__stex_sproof_counter_intarray \l_tmpa_int {
+    \intarray_item:Nn \l__stex_sproof_counter_intarray \l_tmpa_int + 1
+  }
+}
+
+\cs_new_protected:Npn \__stex_sproof_add_counter: {
+  \int_set:Nn \l_tmpa_int {1}
+  \bool_while_do:nn {
+    \int_compare_p:nNn {
+      \intarray_item:Nn \l__stex_sproof_counter_intarray \l_tmpa_int
+    } > 0
+  }{
+    \int_incr:N \l_tmpa_int
+  }
+  \intarray_gset:Nnn \l__stex_sproof_counter_intarray \l_tmpa_int { 1 }
+}
+
+\cs_new_protected:Npn \__stex_sproof_remove_counter: {
+  \int_set:Nn \l_tmpa_int {1}
+  \bool_while_do:nn {
+    \int_compare_p:nNn {
+      \intarray_item:Nn \l__stex_sproof_counter_intarray \l_tmpa_int
+    } > 0
+  }{
+    \int_incr:N \l_tmpa_int
+  }
+  \int_decr:N \l_tmpa_int
+  \intarray_gset:Nnn \l__stex_sproof_counter_intarray \l_tmpa_int { 0 }
+}
+\def\sproof@box{
+  \hbox{\vrule\vbox{\hrule width 6 pt\vskip 6pt\hrule}\vrule}
+}
+\def\sproofend{
+  \tl_if_empty:NF \l__stex_sproof_spf_proofend_tl {
+    \hfil\null\nobreak\hfill\l__stex_sproof_spf_proofend_tl\par\smallskip
+  }
+}
+\def\spf@proofsketch@kw{Proof~Sketch}
+\def\spf@proof@kw{Proof}
+\def\spf@step@kw{Step}
+\AddToHook{begindocument}{
+  \ltx@ifpackageloaded{babel}{
+    \makeatletter
+    \clist_set:Nx \l_tmpa_clist {\bbl@loaded}
+    \clist_if_in:NnT \l_tmpa_clist {ngerman}{
+      \input{sproof-ngerman.ldf}
+    }
+    \clist_if_in:NnT \l_tmpa_clist {finnish}{
+      \input{sproof-finnish.ldf}
+    }
+    \clist_if_in:NnT \l_tmpa_clist {french}{
+      \input{sproof-french.ldf}
+    }
+    \clist_if_in:NnT \l_tmpa_clist {russian}{
+      \input{sproof-russian.ldf}
+    }
+    \makeatother
+  }{}
+}
+\newcommand\spfsketch[2][]{
+  \begingroup
+  \let \premise \stex_proof_premise:
+  \__stex_sproof_spf_args:n{#1}
+  \stex_if_smsmode:TF {
+    \str_if_empty:NF \spfid {
+      \stex_ref_new_doc_target:n \spfid
+    }
+  }{
+    \seq_clear:N \l_tmpa_seq
+    \clist_map_inline:Nn \l__stex_sproof_spf_for_clist {
+      \tl_if_empty:nF{ ##1 }{
+        \stex_get_symbol:n { ##1 }
+        \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
+          \l_stex_get_symbol_uri_str
+        }
+      }
+    }
+    \exp_args:Nnx
+    \stex_annotate:nnn{proofsketch}{\seq_use:Nn \l_tmpa_seq {,}}{
+      \str_if_empty:NF \spftype {
+        \stex_annotate_invisible:nnn{type}{\spftype}{}
+      }
+      \clist_set:No \l_tmpa_clist \spftype
+      \tl_set:Nn \l_tmpa_tl {
+        \titleemph{
+          \tl_if_empty:NTF \spftitle {
+            \spf@proofsketch@kw
+          }{
+            \spftitle
+          }
+        }:~
+      }
+      \clist_map_inline:Nn \l_tmpa_clist {
+        \exp_args:No \str_if_eq:nnT \c__stex_sproof_flow_str {##1} {
+          \tl_clear:N \l_tmpa_tl
+        }
+      }
+      \str_if_empty:NF \spfid {
+        \stex_ref_new_doc_target:n \spfid
+      }
+      \l_tmpa_tl #2 \sproofend
+    }
+  }
+  \endgroup
+  \stex_smsmode_do:
+}
+
+\newenvironment{spfeq}[2][]{
+  \__stex_sproof_spf_args:n{#1}
+  \let \premise \stex_proof_premise:
+  \stex_if_smsmode:TF {
+    \str_if_empty:NF \spfid {
+      \stex_ref_new_doc_target:n \spfid
+    }
+  }{
+    \seq_clear:N \l_tmpa_seq
+    \clist_map_inline:Nn \l__stex_sproof_spf_for_clist {
+      \tl_if_empty:nF{ ##1 }{
+        \stex_get_symbol:n { ##1 }
+        \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
+          \l_stex_get_symbol_uri_str
+        }
+      }
+    }
+    \exp_args:Nnnx
+    \begin{stex_annotate_env}{spfeq}{\seq_use:Nn \l_tmpa_seq {,}}
+    \str_if_empty:NF \spftype {
+      \stex_annotate_invisible:nnn{type}{\spftype}{}
+    }
+
+    \clist_set:No \l_tmpa_clist \spftype
+    \tl_clear:N \l_tmpa_tl
+    \clist_map_inline:Nn \l_tmpa_clist {
+      \tl_if_exist:cT {__stex_sproof_spfeq_##1_start:}{
+        \tl_set:Nn \l_tmpa_tl {\use:c{__stex_sproof_spfeq_##1_start:}}
+      }
+      \exp_args:No \str_if_eq:nnT \c__stex_sproof_flow_str {##1} {
+        \tl_set:Nn \l_tmpa_tl {\use:n{}}
+      }
+    }
+    \tl_if_empty:NTF \l_tmpa_tl {
+      \__stex_sproof_spfeq_start:
+    }{
+      \l_tmpa_tl
+    }{~#2}
+    \str_if_empty:NF \spfid {
+      \stex_ref_new_doc_target:n \spfid
+    }
+    \begin{displaymath}\begin{array}{rcll}
+  }
+  \stex_smsmode_do:
+}{
+  \stex_if_smsmode:F {
+    \end{array}\end{displaymath}
+    \clist_set:No \l_tmpa_clist \spftype
+    \tl_clear:N \l_tmpa_tl
+    \clist_map_inline:Nn \l_tmpa_clist {
+      \tl_if_exist:cT {__stex_sproof_spfeq_##1_end:}{
+        \tl_set:Nn \l_tmpa_tl {\use:c{__stex_sproof_spfeq_##1_end:}}
+      }
+    }
+    \tl_if_empty:NTF \l_tmpa_tl {
+      \__stex_sproof_spfeq_end:
+    }{
+      \l_tmpa_tl
+    }
+    \end{stex_annotate_env}
+  }
+}
+
+\cs_new_protected:Nn \__stex_sproof_spfeq_start: {
+  \titleemph{
+    \tl_if_empty:NTF \spftitle {
+      \spf@proof@kw
+    }{
+      \spftitle
+    }
+  }:
+}
+\cs_new_protected:Nn \__stex_sproof_spfeq_end: {\sproofend}
+
+\newcommand\stexpatchspfeq[3][] {
+    \str_set:Nx \l_tmpa_str{ #1 }
+    \str_if_empty:NTF \l_tmpa_str {
+      \tl_set:Nn \__stex_sproof_spfeq_start: { #2 }
+      \tl_set:Nn \__stex_sproof_spfeq_end: { #3 }
+    }{
+      \exp_after:wN \tl_set:Nn \csname __stex_sproof_spfeq_#1_start:\endcsname{ #2 }
+      \exp_after:wN \tl_set:Nn \csname __stex_sproof_spfeq_#1_end:\endcsname{ #3 }
+    }
+}
+
+\newenvironment{sproof}[2][]{
+  \let \premise \stex_proof_premise:
+  \intarray_gzero:N \l__stex_sproof_counter_intarray
+  \intarray_gset:Nnn \l__stex_sproof_counter_intarray 1 1
+  \__stex_sproof_spf_args:n{#1}
+  \stex_if_smsmode:TF {
+    \str_if_empty:NF \spfid {
+      \stex_ref_new_doc_target:n \spfid
+    }
+  }{
+    \seq_clear:N \l_tmpa_seq
+    \clist_map_inline:Nn \l__stex_sproof_spf_for_clist {
+      \tl_if_empty:nF{ ##1 }{
+        \stex_get_symbol:n { ##1 }
+        \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
+          \l_stex_get_symbol_uri_str
+        }
+      }
+    }
+    \exp_args:Nnnx
+    \begin{stex_annotate_env}{sproof}{\seq_use:Nn \l_tmpa_seq {,}}
+    \str_if_empty:NF \spftype {
+      \stex_annotate_invisible:nnn{type}{\spftype}{}
+    }
+
+    \clist_set:No \l_tmpa_clist \spftype
+    \tl_clear:N \l_tmpa_tl
+    \clist_map_inline:Nn \l_tmpa_clist {
+      \tl_if_exist:cT {__stex_sproof_sproof_##1_start:}{
+        \tl_set:Nn \l_tmpa_tl {\use:c{__stex_sproof_sproof_##1_start:}}
+      }
+      \exp_args:No \str_if_eq:nnT \c__stex_sproof_flow_str {##1} {
+        \tl_set:Nn \l_tmpa_tl {\use:n{}}
+      }
+    }
+    \tl_if_empty:NTF \l_tmpa_tl {
+      \__stex_sproof_sproof_start:
+    }{
+      \l_tmpa_tl
+    }{~#2}
+    \str_if_empty:NF \spfid {
+      \stex_ref_new_doc_target:n \spfid
+    }
+    \begin{description}
+  }
+  \stex_smsmode_do:
+}{
+  \stex_if_smsmode:F{
+    \end{description}
+    \clist_set:No \l_tmpa_clist \spftype
+    \tl_clear:N \l_tmpa_tl
+    \clist_map_inline:Nn \l_tmpa_clist {
+      \tl_if_exist:cT {__stex_sproof_sproof_##1_end:}{
+        \tl_set:Nn \l_tmpa_tl {\use:c{__stex_sproof_sproof_##1_end:}}
+      }
+    }
+    \tl_if_empty:NTF \l_tmpa_tl {
+      \__stex_sproof_sproof_end:
+    }{
+      \l_tmpa_tl
+    }
+    \end{stex_annotate_env}
+  }
+}
+
+\cs_new_protected:Nn \__stex_sproof_sproof_start: {
+  \par\noindent\titleemph{
+    \tl_if_empty:NTF \spftype {
+      \spf@proof@kw
+    }{
+      \spftype
+    }
+  }:
+}
+\cs_new_protected:Nn \__stex_sproof_sproof_end: {\sproofend}
+
+\newcommand\stexpatchsproof[3][] {
+  \str_set:Nx \l_tmpa_str{ #1 }
+  \str_if_empty:NTF \l_tmpa_str {
+    \tl_set:Nn \__stex_sproof_sproof_start: { #2 }
+    \tl_set:Nn \__stex_sproof_sproof_end: { #3 }
+  }{
+    \exp_after:wN \tl_set:Nn \csname __stex_sproof_sproof_#1_start:\endcsname{ #2 }
+    \exp_after:wN \tl_set:Nn \csname __stex_sproof_sproof_#1_end:\endcsname{ #3 }
+  }
+}
+\newcommand\spfidea[2][]{
+  \__stex_sproof_spf_args:n{#1}
+  \titleemph{
+    \tl_if_empty:NTF \spftype {Proof~Idea}{
+      \spftype
+    }:
+  }~#2
+  \sproofend
+}
+\newenvironment{spfstep}[1][]{
+  \__stex_sproof_spf_args:n{#1}
+  \stex_if_smsmode:TF {
+    \str_if_empty:NF \spfid {
+      \stex_ref_new_doc_target:n \spfid
+    }
+  }{
+    \@in@omtexttrue
+    \seq_clear:N \l_tmpa_seq
+    \clist_map_inline:Nn \l__stex_sproof_spf_for_clist {
+      \tl_if_empty:nF{ ##1 }{
+        \stex_get_symbol:n { ##1 }
+        \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
+          \l_stex_get_symbol_uri_str
+        }
+      }
+    }
+    \exp_args:Nnnx
+    \begin{stex_annotate_env}{spfstep}{\seq_use:Nn \l_tmpa_seq {,}}
+    \str_if_empty:NF \spftype {
+      \stex_annotate_invisible:nnn{type}{\spftype}{}
+    }
+    \clist_set:No \l_tmpa_clist \spftype
+    \tl_set:Nn \l_tmpa_tl {
+      \item[\sproofnumber]
+    }
+    \clist_map_inline:Nn \l_tmpa_clist {
+      \exp_args:No \str_if_eq:nnT \c__stex_sproof_flow_str {##1} {
+        \tl_clear:N \l_tmpa_tl
+      }
+    }
+    \l_tmpa_tl
+    \tl_if_empty:NF \spftitle {
+      {(\titleemph{\spftitle})\enspace}
+    }
+    \str_if_empty:NF \spfid {
+      \stex_ref_new_doc_target:n \spfid
+    }
+  }
+  \__stex_sproof_inc_counter:
+  \stex_smsmode_do:
+  \ignorespacesandpars
+}{
+  \stex_if_smsmode:F {
+    \end{stex_annotate_env}
+  }
+}
+\newenvironment{sproofcomment}[1][]{
+  \__stex_sproof_spf_args:n{#1}
+  \clist_set:No \l_tmpa_clist \spftype
+  \tl_set:Nn \l_tmpa_tl {
+    \item[\sproofnumber]
+  }
+  \clist_map_inline:Nn \l_tmpa_clist {
+    \exp_args:No \str_if_eq:nnT \c__stex_sproof_flow_str {##1} {
+      \tl_clear:N \l_tmpa_tl
+    }
+  }
+  \l_tmpa_tl
+}{
+}
+\newenvironment{subproof}[2][]{
+  \__stex_sproof_spf_args:n{#1}
+  \stex_if_smsmode:TF{
+    \str_if_empty:NF \spfid {
+      \stex_ref_new_doc_target:n \spfid
+    }
+  }{
+    \seq_clear:N \l_tmpa_seq
+    \clist_map_inline:Nn \l__stex_sproof_spf_for_clist {
+      \tl_if_empty:nF{ ##1 }{
+        \stex_get_symbol:n { ##1 }
+        \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
+          \l_stex_get_symbol_uri_str
+        }
+      }
+    }
+    \exp_args:Nnnx
+    \begin{stex_annotate_env}{subproof}{\seq_use:Nn \l_tmpa_seq {,}}
+    \str_if_empty:NF \spftype {
+      \stex_annotate_invisible:nnn{type}{\spftype}{}
+    }
+
+    \clist_set:No \l_tmpa_clist \spftype
+    \tl_set:Nn \l_tmpa_tl {
+      \item[\sproofnumber]
+    }
+    \clist_map_inline:Nn \l_tmpa_clist {
+      \exp_args:No \str_if_eq:nnT \c__stex_sproof_flow_str {##1} {
+        \tl_clear:N \l_tmpa_tl
+      }
+    }
+    \l_tmpa_tl
+    \tl_if_empty:NF \spftitle {
+      {(\titleemph{\spftitle})\enspace}
+    }
+    {~#2}
+    \str_if_empty:NF \spfid {
+      \stex_ref_new_doc_target:n \spfid
+    }
+  }
+  \__stex_sproof_add_counter:
+  \stex_smsmode_do:
+}{
+  \__stex_sproof_remove_counter:
+  \__stex_sproof_inc_counter:
+  \stex_if_smsmode:F{
+    \end{stex_annotate_env}
+  }
+}
+\newenvironment{spfcases}[2][]{
+  \tl_if_empty:nTF{#1}{
+    \begin{subproof}[method=by-cases]{#2}
+  }{
+    \begin{subproof}[#1,method=by-cases]{#2}
+  }
+}{
+  \end{subproof}
+}
+\newenvironment{spfcase}[2][]{
+  \__stex_sproof_spf_args:n{#1}
+  \stex_if_smsmode:TF {
+    \str_if_empty:NF \spfid {
+      \stex_ref_new_doc_target:n \spfid
+    }
+  }{
+    \seq_clear:N \l_tmpa_seq
+    \clist_map_inline:Nn \l__stex_sproof_spf_for_clist {
+      \tl_if_empty:nF{ ##1 }{
+        \stex_get_symbol:n { ##1 }
+        \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
+          \l_stex_get_symbol_uri_str
+        }
+      }
+    }
+    \exp_args:Nnnx
+    \begin{stex_annotate_env}{spfcase}{\seq_use:Nn \l_tmpa_seq {,}}
+    \str_if_empty:NF \spftype {
+      \stex_annotate_invisible:nnn{type}{\spftype}{}
+    }
+    \clist_set:No \l_tmpa_clist \spftype
+    \tl_set:Nn \l_tmpa_tl {
+      \item[\sproofnumber]
+    }
+    \clist_map_inline:Nn \l_tmpa_clist {
+      \exp_args:No \str_if_eq:nnT \c__stex_sproof_flow_str {##1} {
+        \tl_clear:N \l_tmpa_tl
+      }
+    }
+    \l_tmpa_tl
+    \tl_if_empty:nF{#2}{
+      \titleemph{#2}:~
+    }
+  }
+  \__stex_sproof_inc_counter:
+  \stex_smsmode_do:
+}{
+  \stex_if_smsmode:F{
+    \clist_set:No \l_tmpa_clist \spftype
+    \tl_set:Nn \l_tmpa_tl{\sproofend}
+    \clist_map_inline:Nn \l_tmpa_clist {
+      \exp_args:No \str_if_eq:nnT \c__stex_sproof_flow_str {##1} {
+        \tl_clear:N \l_tmpa_tl
+      }
+    }
+    \l_tmpa_tl
+    \end{stex_annotate_env}
+  }
+}
+\newcommand\spfcasesketch[3][]{
+  \begin{spfcase}[#1]{#2}#3\end{spfcase}
+}
+\keys_define:nn { stex / just }{
+  id        .str_set_x:N  = \l__stex_sproof_just_id_str,
+  method    .tl_set:N     = \l__stex_sproof_just_method_tl,
+  premises  .tl_set:N     = \l__stex_sproof_just_premises_tl,
+  args      .tl_set:N     = \l__stex_sproof_just_args_tl
+}
+\newenvironment{justification}[1][]{}{}
+\newcommand\stex_proof_premise:[2][]{#2}
+\newcommand\justarg[2][]{#2}
+
+%%%%%%%%%%%%%   others.dtx   %%%%%%%%%%%%%
+
+  % None
+\NewDocumentCommand \MSC {m} {
+  % TODO
+}
+\@ifpackageloaded{tikzinput}{
+  \RequirePackage{stex-tikzinput}
+}{}
+
+%%%%%%%%%%%%%   metatheory.dtx   %%%%%%%%%%%%%
+
+\str_const:Nn \c_stex_metatheory_ns_str {http://mathhub.info/sTeX}
+\begingroup
+\stex_module_setup:nn{
+  ns=\c_stex_metatheory_ns_str,
+  meta=NONE
+}{Metatheory}
+\stex_reactivate_macro:N \symdecl
+\stex_reactivate_macro:N \notation
+\stex_reactivate_macro:N \symdef
+\ExplSyntaxOff
+\csname stex_suppress_html:n\endcsname{
+  % is-a (a:A, a \in A, a is an A, etc.)
+  \symdecl{isa}[args=ai]
+  \notation{isa}[typed]{#1 \comp{:} #2}{##1 \comp, ##2}
+  \notation{isa}[in]{#1 \comp\in #2}{##1 \comp, ##2}
+  \notation{isa}[pred]{#2\comp(#1 \comp)}{##1 \comp, ##2}
+
+  % bind (\forall, \Pi, \lambda etc.)
+  \symdecl{bind}[args=Bi]
+  \notation{bind}[forall]{\comp\forall #1.\;#2}{##1 \comp, ##2}
+  \notation{bind}[Pi]{\comp\prod_{#1}#2}{##1 \comp, ##2}
+  \notation{bind}[depfun]{\comp( #1 \comp{)\;\to\;} #2}{##1 \comp, ##2}
+
+  % dummy variable
+  \symdecl{dummyvar}
+  \notation{dummyvar}[underscore]{\comp\_}
+  \notation{dummyvar}[dot]{\comp\cdot}
+  \notation{dummyvar}[dash]{\comp{{\rm --}}}
+
+  %fromto (function space, Hom-set, implication etc.)
+  \symdecl{fromto}[args=ai]
+  \notation{fromto}[xarrow]{#1 \comp\to #2}{##1 \comp\times ##2}
+  \notation{fromto}[arrow]{#1 \comp\to #2}{##1 \comp\to ##2}
+
+  % mapto (lambda etc.)
+  %\symdecl{mapto}[args=Bi]
+  %\notation{mapto}[mapsto]{#1 \comp\mapsto #2}{#1 \comp, #2}
+  %\notation{mapto}[lambda]{\comp\lambda #1 \comp.\; #2}{#1 \comp, #2}
+  %\notation{mapto}[lambdau]{\comp\lambda_{#1} \comp.\; #2}{#1 \comp, #2}
+
+  % function/operator application
+  \symdecl{apply}[args=ia]
+  \notation{apply}[prec=0;0x\infprec,parens]{#1 \comp( #2 \comp)}{##1 \comp, ##2}
+  \notation{apply}[prec=0;0x\infprec,lambda]{#1 \; #2 }{##1 \; ##2}
+
+  % ``type'' of all collections (sets,classes,types,kinds)
+  \symdecl{collection}
+  \notation{collection}[U]{\comp{\mathcal{U}}}
+  \notation{collection}[set]{\comp{\textsf{Set}}}
+
+  % collection of propositions/booleans/truth values
+  \symdecl{prop}[name=proposition]
+  \notation{prop}[prop]{\comp{{\rm prop}}}
+  \notation{prop}[BOOL]{\comp{{\rm BOOL}}}
+
+  % sequences
+  \symdecl{seqtype}[args=1]
+  \notation{seqtype}[kleene]{#1^{\comp\ast}}
+
+  \symdef{sequence-index}[args=2,li,prec=nobrackets]{{#1}_{#2}}
+  \notation{sequence-index}[ui,prec=nobrackets]{{#1}^{#2}}
+
+  \symdef{aseqdots}[args=a,prec=nobrackets]{#1\comp{,\ellipses}}{##1\comp,##2}
+  \symdef{aseqfromto}[args=ai,prec=nobrackets]{#1\comp{,\ellipses,}#2}{##1\comp,##2}
+  \symdef{aseqfromtovia}[args=aii,prec=nobrackets]{#1\comp{,\ellipses,}#2\comp{,\ellipses,}#3}{##1\comp,##2}
+
+  % letin (``let'', local definitions, variable substitution)
+  \symdecl{letin}[args=bii]
+  \notation{letin}[let]{\comp{{\rm let}}\;#1\comp{=}#2\;\comp{{\rm in}}\;#3}
+  \notation{letin}[subst]{#3 \comp[ #1 \comp/ #2 \comp]}
+  \notation{letin}[frac]{#3 \comp[ \frac{#2}{#1} \comp]}
+
+  % structures
+  \symdecl*{module-type}[args=1]
+  \notation{module-type}{\mathtt{MOD} #1}
+  \symdecl{mathstruct}[name=mathematical-structure,args=a] % TODO
+  \notation{mathstruct}[angle,prec=nobrackets]{\comp\langle #1 \comp\rangle}{##1 \comp, ##2}
+
+}
+  \ExplSyntaxOn
+  \stex_add_to_current_module:n{
+    \let\nappa\apply
+    \def\nappli#1#2#3#4{\apply{#1}{\naseqli{#2}{#3}{#4}}}
+    \def\nappui#1#2#3#4{\apply{#1}{\nasequi{#2}{#3}{#4}}}
+    \def\livar{\csname sequence-index\endcsname[li]}
+    \def\uivar{\csname sequence-index\endcsname[ui]}
+    \def\naseqli#1#2#3{\aseqfromto{\livar{#1}{#2}}{\livar{#1}{#3}}}
+    \def\nasequi#1#2#3{\aseqfromto{\uivar{#1}{#2}}{\uivar{#1}{#3}}}
+    \def\nappe#1#2#3{\apply{#1}{\aseqfromto{#2}{#3}}}
+  }
+\__stex_modules_end_module:
+\endgroup
+
+\endinput
+%%
+%% End of file `stex.sty'.

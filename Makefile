@@ -1,5 +1,5 @@
 # recurse into the directories. 
-MAKEDIRS = sty doc
+MAKEDIRS = source doc
 DISTDIRS = $(MAKEDIRS) lib
 
 all package doc: 
