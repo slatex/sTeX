@@ -6,7 +6,7 @@
 %%
 %% document-structure.dtx  (with options: `cls')
 %% 
-\ProvidesExplClass{document-structure}{2022/02/10}{3.0}{Modular Document Structure Class}
+\ProvidesExplClass{document-structure}{2022/02/24}{3.0.0}{Modular Document Structure Class}
 \RequirePackage{l3keys2e}
 \keys_define:nn{ document-structure / pkg }{
   class       .str_set_x:N  = \c_document_structure_class_str,

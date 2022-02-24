@@ -1,8 +1,10 @@
 STY = stex extensions
-SPATH = $(STY:%=../sty/%)
+SPATH = $(STY:%=../source/%)
 DTX =  $(shell ls $(SPATH:%=%/*.dtx))
 INS =  $(shell ls $(SPATH:%=%/*.ins))
 DOC = stex.pdf manual.pdf
+TEXDIR = ../tex
+TEXINPUTS = $(TEXDIR)//:
 
 PDFLATEX = pdflatex -interaction=batchmode
 

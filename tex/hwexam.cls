@@ -6,7 +6,7 @@
 %%
 %% hwexam.dtx  (with options: `cls')
 %% 
-\ProvidesExplClass{hwexam}{2019/03/20}{1.1}{homework assignments and exams}
+\ProvidesExplClass{hwexam}{2022/02/24}{3.0.0}{homework assignments and exams}
 \RequirePackage{l3keys2e}
 \DeclareOption*{
   \PassOptionsToClass{\CurrentOption}{document-structure}
