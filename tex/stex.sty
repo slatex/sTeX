@@ -1318,6 +1318,9 @@
       \l_stex_module_deprecate_str
     }
   }
+  \seq_put_right:Nx \l_stex_all_modules_seq {
+    \l_stex_module_ns_str ? \l_stex_module_name_str
+  }
 }
 \cs_new_protected:Nn \__stex_modules_begin_module: {
   \stex_reactivate_macro:N \STEXexport
@@ -1334,10 +1337,6 @@
     Signature:~\l_stex_module_sig_str\\
     Metatheory:~\l_stex_module_meta_str\\
     File:~\stex_path_to_string:N \g_stex_currentfile_seq
-  }
-
-  \seq_put_right:Nx \l_stex_all_modules_seq {
-    \l_stex_module_ns_str ? \l_stex_module_name_str
   }
 
   \stex_if_smsmode:F{
@@ -1790,7 +1789,15 @@
   args~value~in~symbol~declaration~for~#1~
   needs~to~be~i,~a,~b~or~B,~but~#2~given
 }
-\seq_new:N \l_stex_all_symbols_seq
+\cs_new_protected:Nn \stex_all_symbols:n {
+  \def \__stex_symdecl_all_symbols_cs ##1 {#1}
+  \seq_map_inline:Nn \l_stex_all_modules_seq {
+    \seq_map_inline:cn{c_stex_module_##1_constants}{
+     % \message{^^JHere: ##1?####1^^J}
+      \__stex_symdecl_all_symbols_cs{##1?####1}
+    }
+  }
+}
 \NewDocumentCommand \STEXsymbol { m } {
   \stex_get_symbol:n { #1 }
   \exp_args:No
@@ -1942,13 +1949,6 @@
 
   % add to all symbols
 
-  \bool_if:NF \l_stex_symdecl_local_bool {
-    \exp_args:Nx \stex_add_to_current_module:n {
-      \seq_put_right:Nn \exp_not:N \l_stex_all_symbols_seq {
-        \l_stex_current_module_str ? \l_stex_symdecl_name_str
-      }
-    }
-  }
 
   \stex_debug:nn{symbols}{New~symbol:~
     \l_stex_current_module_str ? \l_stex_symdecl_name_str^^J
@@ -2000,11 +2000,6 @@
   }
 
   \stex_if_smsmode:F {
-    \exp_args:Nx \stex_do_up_to_module:n {
-        \seq_put_right:Nn \exp_not:N \l_stex_all_symbols_seq {
-        \l_stex_current_module_str ? \l_stex_symdecl_name_str
-      }
-    }
     \stex_if_do_html:T {
       \stex_annotate_invisible:nnn {symdecl} {
         \l_stex_current_module_str ? \l_stex_symdecl_name_str
@@ -2068,16 +2063,6 @@
 
 \cs_new_protected:Nn \__stex_symdecl_get_symbol_from_string:n {
   \str_set:Nn \l_tmpa_str { #1 }
-  \bool_set_false:N \l_tmpa_bool
-  \stex_if_in_module:T {
-    \exp_args:Nno \seq_if_in:cnT {c_stex_module_\l_stex_current_module_str _constants} { \l_tmpa_str } {
-      \bool_set_true:N \l_tmpa_bool
-      \str_set:Nx \l_stex_get_symbol_uri_str {
-        \l_stex_current_module_str ? #1
-      }
-    }
-  }
-  \bool_if:NF \l_tmpa_bool {
     \tl_set:Nn \l_tmpa_tl {
       \msg_set:nnn{stex}{error/unknownsymbol}{
         No~symbol~#1~found!
@@ -2086,22 +2071,33 @@
     }
     \str_set:Nn \l_tmpa_str { #1 }
     \int_set:Nn \l_tmpa_int { \str_count:N \l_tmpa_str }
-    \seq_map_inline:Nn \l_stex_all_symbols_seq {
-      \str_set:Nn \l_tmpb_str { ##1 }
-      \str_if_eq:eeT { \l_tmpa_str } {
-        \str_range:Nnn \l_tmpb_str { -\l_tmpa_int } { -1 }
-      } {
-        \seq_map_break:n {
+
+    \stex_all_symbols:n {
+      \str_if_eq:eeT { \l_tmpa_str }{ \str_range:nnn {##1}{-\l_tmpa_int}{-1}}{
+        \seq_map_break:n{\seq_map_break:n{
           \tl_set:Nn \l_tmpa_tl {
-            \str_set:Nn \l_stex_get_symbol_uri_str {
-              ##1
-            }
+            \str_set:Nn \l_stex_get_symbol_uri_str { ##1 }
           }
-        }
+        }}
       }
     }
+
+ %   \seq_map_inline:Nn \l_stex_all_symbols_seq {
+ %     \str_set:Nn \l_tmpb_str { ##1 }
+ %     \str_if_eq:eeT { \l_tmpa_str } {
+ %       \str_range:Nnn \l_tmpb_str { -\l_tmpa_int } { -1 }
+ %     } {
+ %       \seq_map_break:n {
+ %         \tl_set:Nn \l_tmpa_tl {
+ %           \str_set:Nn \l_stex_get_symbol_uri_str {
+ %             ##1
+ %           }
+ %         }
+ %       }
+ %     }
+ %   }
+
     \l_tmpa_tl
-  }
 }
 
 \cs_new_protected:Nn \__stex_symdecl_get_symbol_from_cs:n {

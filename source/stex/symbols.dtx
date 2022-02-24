@@ -93,10 +93,10 @@
 %   \end{itemize}
 % \end{function}
 %
-% \begin{variable}{\l_stex_all_symbols_seq}
-%   Stores full URIs for all
-%   modules currently in scope.
-% \end{variable}
+% \begin{function}{\stex_all_symbols:n}
+%   Iterates over all currently available symbols.
+%   Requires two |\seq_map_break:| to break fully.
+% \end{function}
 %
 % \begin{function}{\stex_get_symbol:n}
 %   Computes the full URI of a symbol from a macro argument, e.g.
@@ -159,12 +159,19 @@
 %<@@=stex_symdecl>
 %    \end{macrocode}
 %
-% \begin{variable}{\l_stex_all_symbols_seq}
-%   Stores all available symbols
+% \begin{macro}{\stex_all_symbols:n}
+%   Map over all available symbols
 %    \begin{macrocode}
-\seq_new:N \l_stex_all_symbols_seq
+\cs_new_protected:Nn \stex_all_symbols:n {
+  \def \_@@_all_symbols_cs ##1 {#1}
+  \seq_map_inline:Nn \l_stex_all_modules_seq {
+    \seq_map_inline:cn{c_stex_module_##1_constants}{
+      \_@@_all_symbols_cs{##1?####1}
+    }
+  } 
+}
 %    \end{macrocode}
-% \end{variable}
+% \end{macro}
 %
 % \begin{macro}{\STEXsymbol}
 %    \begin{macrocode}
@@ -339,19 +346,6 @@
     }
   }
 
-  % add to all symbols
-
-  \bool_if:NF \l_stex_symdecl_local_bool {
-    \exp_args:Nx \stex_add_to_current_module:n {
-      \seq_put_right:Nn \exp_not:N \l_stex_all_symbols_seq {
-        \l_stex_current_module_str ? \l_stex_symdecl_name_str
-      }
-    }
-%    \exp_args:Nx \stex_add_field_to_current_module:n {
-%      \l_stex_current_module_str ? \l_stex_symdecl_name_str
-%    }
-  }
-
   \stex_debug:nn{symbols}{New~symbol:~
     \l_stex_current_module_str ? \l_stex_symdecl_name_str^^J
     Type:~\exp_not:o { \l_stex_symdecl_type_tl }^^J
@@ -402,11 +396,11 @@
   }
 
   \stex_if_smsmode:F {
-    \exp_args:Nx \stex_do_up_to_module:n {
-        \seq_put_right:Nn \exp_not:N \l_stex_all_symbols_seq {
-        \l_stex_current_module_str ? \l_stex_symdecl_name_str
-      }
-    }
+%    \exp_args:Nx \stex_do_up_to_module:n {
+%        \seq_put_right:Nn \exp_not:N \l_stex_all_symbols_seq {
+%        \l_stex_current_module_str ? \l_stex_symdecl_name_str
+%      }
+%    }
     \stex_if_do_html:T {
       \stex_annotate_invisible:nnn {symdecl} {
         \l_stex_current_module_str ? \l_stex_symdecl_name_str
@@ -475,41 +469,26 @@
 }
 
 \cs_new_protected:Nn \_@@_get_symbol_from_string:n {
+  \tl_set:Nn \l_tmpa_tl {
+    \msg_set:nnn{stex}{error/unknownsymbol}{
+      No~symbol~#1~found!
+    }
+    \msg_error:nn{stex}{error/unknownsymbol}
+  }
   \str_set:Nn \l_tmpa_str { #1 }
-  \bool_set_false:N \l_tmpa_bool
-  \stex_if_in_module:T {
-    \exp_args:Nno \seq_if_in:cnT {c_stex_module_\l_stex_current_module_str _constants} { \l_tmpa_str } {
-      \bool_set_true:N \l_tmpa_bool
-      \str_set:Nx \l_stex_get_symbol_uri_str {
-        \l_stex_current_module_str ? #1
-      }
-    }
-  }
-  \bool_if:NF \l_tmpa_bool {
-    \tl_set:Nn \l_tmpa_tl {
-      \msg_set:nnn{stex}{error/unknownsymbol}{
-        No~symbol~#1~found!
-      }
-      \msg_error:nn{stex}{error/unknownsymbol}
-    }
-    \str_set:Nn \l_tmpa_str { #1 }
-    \int_set:Nn \l_tmpa_int { \str_count:N \l_tmpa_str }
-    \seq_map_inline:Nn \l_stex_all_symbols_seq {
-      \str_set:Nn \l_tmpb_str { ##1 }
-      \str_if_eq:eeT { \l_tmpa_str } {
-        \str_range:Nnn \l_tmpb_str { -\l_tmpa_int } { -1 }
-      } {
-        \seq_map_break:n {
-          \tl_set:Nn \l_tmpa_tl {
-            \str_set:Nn \l_stex_get_symbol_uri_str {
-              ##1
-            }
-          }
+  \int_set:Nn \l_tmpa_int { \str_count:N \l_tmpa_str }
+
+  \stex_all_symbols:n {
+    \str_if_eq:eeT { \l_tmpa_str }{ \str_range:nnn {##1}{-\l_tmpa_int}{-1}}{
+      \seq_map_break:n{\seq_map_break:n{
+        \tl_set:Nn \l_tmpa_tl {
+          \str_set:Nn \l_stex_get_symbol_uri_str { ##1 }
         }
-      }
+      }}
     }
-    \l_tmpa_tl
   }
+
+  \l_tmpa_tl
 }
 
 \cs_new_protected:Nn \_@@_get_symbol_from_cs:n {
