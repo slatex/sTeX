@@ -7,12 +7,16 @@ to markup TeX/LaTeX documents semantically without leaving the document format,
 essentially turning it into a document format for mathematical knowledge management (MKM).
 
 ## Copyright & License
+
 Copyright (c) 2022 Michael Kohlhase
 The package is distributed under the terms of the LaTeX Project Public License (LPPL)
 
+## Maintainers
+Michael Kohlhase, Dennis Müller, FAU Erlangen-Nürnberg. 
+
 ## Documentation
 See the
-[documentation of the sTeX package](https://github.com/slatex/sTeX/blob/main/doc/stex.pdf)
+[documentation of the sTeX package](https://github.com/slatex/sTeX/blob/main/doc/stex-manual.pdf)
 for details.
 
 ## Setup
@@ -30,10 +34,8 @@ export TEXINPUTS="$(TEXINPUTS):<sTeXDIR>//:
 Similarly, set your `MATHHUB` environment variable to where you intend to keep your sTeX archives. For details, see the documentation linked above.
 
 For a LaTeX IDE, update the directory path where `pdflatex` looks for paths. 
-
-It is usually a good idea to enlarge the internal memory allocation of the TEX/LATEX executables. This can be done by adding the following configurations in `texmf.cnf` (or changing them, if they already exist). 
+For larger documents it may be necessary to enlarge the internal memory allocation of the TEX/LATEX executables. This can be done by adding the following configurations in `texmf.cnf` (or changing them, if they already exist). 
 ```
-max_in_open = 50        % simultaneous input files and error insertions, 
 param_size = 20000      % simultaneous macro parameters, also applies to MP
 nest_size = 1000        % simultaneous semantic levels (e.g., groups)
 stack_size = 10000      % simultaneous input sources
@@ -44,12 +46,9 @@ Note that you will probably need `sudo` to do this. After that, you have to run 
 sudo fmtutil-sys --all
 ```
 
-## OMDoc/RichHTML Transformation 
-
-TODO
-
 ## Manifest
-The sTeX distribution contains the following directories
-* `sty`: The packages and classes of the sTeX distribution
-* `lib`: bibTeX bibliography and Makefile inputs for the package/class generation and documentation
-* `doc`: a space for documentation, currently only blue notes (ideas for the future)
+The sTeX distribution contains the following directories (conformant with the CTAN organization
+* `source`: The [Documented LaTeX sources (dtx files)](https://texfaq.org/FAQ-dtx)
+* `tex`: packages and classes of the sTeX distribution
+* `lib`: bibTeX bibliography
+* `doc`: the sTeX manual  and further documentation
