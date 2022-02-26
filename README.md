@@ -16,7 +16,7 @@ Michael Kohlhase, Dennis Müller, FAU Erlangen-Nürnberg.
 
 ## Documentation
 See the
-[documentation of the sTeX package](https://github.com/slatex/sTeX/blob/main/doc/stex-manual.pdf)
+[documentation of the sTeX package](https://github.com/slatex/sTeX/blob/main/doc/stex-doc.pdf)
 for details.
 
 ## Setup
