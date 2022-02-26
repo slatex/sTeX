@@ -4,7 +4,7 @@
 %%
 %% The original source files were:
 %%
-%% basics.dtx  (with options: `cls')
+%% stex-basics.dtx  (with options: `cls')
 %% 
 
 %%%%%%%%%%%%%   basics.dtx   %%%%%%%%%%%%%

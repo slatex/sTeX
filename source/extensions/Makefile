@@ -1,6 +1,6 @@
 DTX =  $(shell ls *.dtx)
 DOC =  $(DTX:%.dtx=%.pdf)
-INS =  extensions.ins
+INS =  stex-extensions.ins
 
 PDFLATEX = pdflatex -interaction=batchmode
 TEXDIR = ../../tex
