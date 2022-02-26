@@ -10,7 +10,7 @@
 %%%%%%%%%%%%%   basics.dtx   %%%%%%%%%%%%%
 
 \RequirePackage{expl3,l3keys2e}
-\ProvidesExplClass{stex}{2022/02/24}{3.0.0}{sTeX document class}
+\ProvidesExplClass{stex}{2022/02/26}{3.0.1}{sTeX document class}
 \LoadClass[border=1px,varwidth]{standalone}
 \setlength\textwidth{15cm}
 
