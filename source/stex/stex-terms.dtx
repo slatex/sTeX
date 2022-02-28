@@ -40,6 +40,7 @@
 % \fi
 %
 % \begin{documentation}\label{pkg:terms:doc}
+% \changes{3.1.0}{2022/02/28}{Fix bug with \detokenize{\l_stex_current_symbol_str} in variable annotations}
 %
 % Code related to symbolic expressions, typesetting notations,
 % notation components, etc.
@@ -180,7 +181,7 @@
   Symbol~#1~has~no~operator~notation~for~notation~#2
 }
 \msg_new:nnn{stex}{error/notallowed}{
-  Symbol~invocation~#1~not~allowed~in~notation~component~of~#2
+  Symbol~invokation~#1~not~allowed~in~notation~component~of~#2
 }
 
 %    \end{macrocode}
@@ -214,11 +215,11 @@
   }
 }
 
-\bool_new:N \l_@@_allow_semantic_bool
-\bool_set_true:N \l_@@_allow_semantic_bool
+\bool_new:N \l_stex_allow_semantic_bool
+\bool_set_true:N \l_stex_allow_semantic_bool
 
 \cs_new_protected:Nn \stex_invoke_symbol:n {
-  \bool_if:NTF \l_@@_allow_semantic_bool {
+  \bool_if:NTF \l_stex_allow_semantic_bool {
     \str_if_eq:eeF {
       \prop_item:cn {
         l_stex_symdecl_#1_prop
@@ -281,18 +282,17 @@
 \cs_new_protected:Nn \_@@_invoke_op_custom:nn {
   \exp_args:Nnx \use:nn {
     \str_set:Nn \l_stex_current_symbol_str { #1 }
-    \bool_set_false:N \l_@@_allow_semantic_bool
+    \bool_set_false:N \l_stex_allow_semantic_bool
     \_stex_term_oms:nnn {#1 \c_hash_str\c_hash_str}{#1}{
       \comp{ #2 }
     }
   }{
     \_@@_reset:N \l_stex_current_symbol_str
-    \bool_set_true:N \l_@@_allow_semantic_bool
+    \bool_set_true:N \l_stex_allow_semantic_bool
   }
 }
 
 \cs_new_protected:Nn \_@@_find_notation:nn {
-  \str_set:Nn \l_stex_current_symbol_str { #1 }
   \_@@_args:n { #2 }
   \seq_if_empty:cTF {
     l_stex_symdecl_ #1 _notations 
@@ -319,16 +319,21 @@
 }
 
 \cs_new_protected:Npn \_@@_invoke_op_notation:nw #1 [#2] {
-  \_@@_find_notation:nn { #1 }{ #2 }
-  \bool_set_false:N \l_@@_allow_semantic_bool
-  \cs_if_exist:cTF {
-    stex_op_notation_ #1 \c_hash_str \l_@@_variant_str _cs
+  \exp_args:Nnx \use:nn {
+    \str_set:Nn \l_stex_current_symbol_str { #1 }
+    \_@@_find_notation:nn { #1 }{ #2 }
+    \bool_set_false:N \l_stex_allow_semantic_bool
+    \cs_if_exist:cTF {
+      stex_op_notation_ #1 \c_hash_str \l_@@_variant_str _cs
+    }{
+      \use:c{stex_op_notation_ #1 \c_hash_str \l_@@_variant_str _cs}
+    }{
+      \msg_error:nnxx{stex}{error/noop}{#1}{\l_@@_variant_str}
+    }
   }{
-    \use:c{stex_op_notation_ #1 \c_hash_str \l_@@_variant_str _cs}
-  }{
-    \msg_error:nnxx{stex}{error/noop}{#1}{\l_@@_variant_str}
+    \_@@_reset:N \l_stex_current_symbol_str
+    \bool_set_true:N \l_stex_allow_semantic_bool
   }
-  \bool_set_true:N \l_@@_allow_semantic_bool
 }
 
 \cs_new_protected:Npn \_@@_invoke_notation:nw #1 [#2] {
@@ -336,12 +341,13 @@
   \cs_if_exist:cTF {
     stex_notation_ #1 \c_hash_str \l_@@_variant_str _cs
   }{
-    \tl_set:Nx \stex_symbol_after_invocation_tl {
-      \_@@_reset:N \stex_symbol_after_invocation_tl
+    \tl_set:Nx \stex_symbol_after_invokation_tl {
+      \_@@_reset:N \stex_symbol_after_invokation_tl
       \_@@_reset:N \l_stex_current_symbol_str
-      \bool_set_true:N \l_@@_allow_semantic_bool
+      \bool_set_true:N \l_stex_allow_semantic_bool
     }
-    \bool_set_false:N \l_@@_allow_semantic_bool
+    \str_set:Nn \l_stex_current_symbol_str { #1 }
+    \bool_set_false:N \l_stex_allow_semantic_bool
     \use:c{stex_notation_ #1 \c_hash_str \l_@@_variant_str _cs}
   }{
     \msg_error:nnxx{stex}{error/nonotation}{#1}{
@@ -354,7 +360,7 @@
 
 \cs_new_protected:Nn \_@@_invoke_custom:nn {
   \exp_args:Nnx \use:nn {
-    \bool_set_false:N \l_@@_allow_semantic_bool
+    \bool_set_false:N \l_stex_allow_semantic_bool
     \str_set:Nn \l_stex_current_symbol_str { #1 }
     \prop_clear:N \l_@@_custom_args_prop
     \prop_put:Nnn \l_@@_custom_args_prop {currnum} {1}
@@ -381,7 +387,7 @@
     \_@@_reset:N \l_stex_current_symbol_str
     \_@@_reset:N \arg
     \_@@_reset:N \l_@@_custom_args_prop
-    \bool_set_true:N \l_@@_allow_semantic_bool
+    \bool_set_true:N \l_stex_allow_semantic_bool
   }
 }
 
@@ -406,6 +412,7 @@
   \int_compare:nNnT \l_tmpa_int > {\str_count:N \l_tmpa_str} {
     % TODO throw error
   }
+  \bool_set_true:N \l_stex_allow_semantic_bool
   \IfBooleanTF#1{
     \stex_annotate_invisible:n {
       \exp_args:No \_stex_term_arg:nn {\l_stex_current_symbol_str}{#3}
@@ -413,16 +420,14 @@
   }{
     \exp_args:No \_stex_term_arg:nn {\l_stex_current_symbol_str}{#3}
   }
+  \bool_set_false:N \l_stex_allow_semantic_bool
 }
 
 
 \cs_new_protected:Nn \_stex_term_arg:nn {
-  \exp_args:Nnx \use:nn {
-    \bool_set_true:N \l_@@_allow_semantic_bool
-    \stex_annotate:nnn{ arg }{ #1 }{ #2 }
-  }{
-    \bool_set_false:N \l_@@_allow_semantic_bool
-  }
+  \bool_set_true:N \l_stex_allow_semantic_bool
+  \stex_annotate:nnn{ arg }{ #1 }{ #2 }
+  \bool_set_false:N \l_stex_allow_semantic_bool
 }
 
 \cs_new_protected:Nn \_stex_term_math_arg:nnn {
@@ -432,8 +437,31 @@
     }
     { \int_set:Nn \exp_not:N \l_@@_downprec { \int_use:N \l_@@_downprec } }
 }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\_stex_term_math_assoc_arg:nnnn}
+%    \begin{macrocode}
+\cs_new_protected:Nn \_stex_term_math_assoc_arg:nnnn {
+  % TODO sequences
+  \clist_set:Nn \l_tmpa_clist{ #3 }
+  \int_compare:nNnTF { \clist_count:N \l_tmpa_clist } < 2 {
+    \tl_set:Nn \l_tmpa_tl { #3 }
+  }{
+    \cs_set:Npn \l_tmpa_cs ##1 ##2 { #4 }
+    \clist_reverse:N \l_tmpa_clist
+    \clist_pop:NN \l_tmpa_clist \l_tmpa_tl
 
-
+    \clist_map_inline:Nn \l_tmpa_clist {
+      \exp_args:NNNo \exp_args:NNo \tl_set:No \l_tmpa_tl {
+        \exp_args:Nno 
+        \l_tmpa_cs { ##1 } \l_tmpa_tl 
+      }
+    }
+  }
+  \exp_args:Nnno
+    \_stex_term_math_arg:nnn{#1}{#2}\l_tmpa_tl
+}
 %    \end{macrocode}
 % \end{macro}
 %
@@ -589,31 +617,6 @@
   \_@@_maybe_brackets:nn { #3 }{ 
     \_stex_term_ombind:nnn { #1 } { #1\c_hash_str#2 } { #4 }
   }
-}
-%    \end{macrocode}
-% \end{macro}
-%
-% \begin{macro}{\_stex_term_math_assoc_arg:nnnn}
-%    \begin{macrocode}
-\cs_new_protected:Nn \_stex_term_math_assoc_arg:nnnn {
-  % TODO sequences
-  \clist_set:Nn \l_tmpa_clist{ #3 }
-  \int_compare:nNnTF { \clist_count:N \l_tmpa_clist } < 2 {
-    \tl_set:Nn \l_tmpa_tl { #3 }
-  }{
-    \cs_set:Npn \l_tmpa_cs ##1 ##2 { #4 }
-    \clist_reverse:N \l_tmpa_clist
-    \clist_pop:NN \l_tmpa_clist \l_tmpa_tl
-
-    \clist_map_inline:Nn \l_tmpa_clist {
-      \exp_args:NNNo \exp_args:NNo \tl_set:No \l_tmpa_tl {
-        \exp_args:Nno 
-        \l_tmpa_cs { ##1 } \l_tmpa_tl 
-      }
-    }
-  }
-  \exp_args:Nnno
-   \_stex_term_math_arg:nnn{#1}{#2}\l_tmpa_tl
 }
 %    \end{macrocode}
 % \end{macro}
@@ -839,17 +842,8 @@
 %
 % \begin{macro}{\stex_highlight_term:nn}
 %    \begin{macrocode}
-
-\str_new:N \l_stex_current_symbol_str
 \cs_new_protected:Nn \stex_highlight_term:nn {
-  \exp_args:Nnx
-  \use:nn {
-    \str_set:Nx \l_stex_current_symbol_str { #1 }
-    #2
-  } {
-    \str_set:Nx \exp_not:N \l_stex_current_symbol_str
-      { \l_stex_current_symbol_str }
-  }
+  #2
 }
 
 \cs_new_protected:Nn \stex_unhighlight_term:n {
@@ -1002,7 +996,12 @@
   \cs_if_exist:cTF {
     stex_var_op_notation_ #1 _cs
   }{
+    \exp_args:Nnx \use:nn {
+    \str_set:Nn \l_stex_current_symbol_str { #1 }
     \use:c{stex_var_op_notation_ #1  _cs }
+    }{
+      \str_set:Nn \exp_not:N \l_stex_current_symbol_str {\l_stex_current_symbol_str}
+    }
   }{
     \msg_error:nnxx{stex}{error/noop}{variable~#1}{}
   }
@@ -1012,7 +1011,13 @@
   \cs_if_exist:cTF {
     stex_var_notation_#1_cs
   }{
+    \tl_set:Nx \stex_symbol_after_invokation_tl {
+      \_@@_reset:N \stex_symbol_after_invokation_tl
+      \_@@_reset:N \l_stex_current_symbol_str
+      \bool_set_true:N \l_stex_allow_semantic_bool
+    }
     \str_set:Nn \l_stex_current_symbol_str { #1 }
+    \bool_set_false:N \l_stex_allow_semantic_bool
     \use:c{stex_var_notation_#1_cs}
   }{
     \msg_error:nnxx{stex}{error/nonotation}{variable~#1}{s}

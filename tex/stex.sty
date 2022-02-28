@@ -21,7 +21,7 @@
 %%%%%%%%%%%%%   basics.dtx   %%%%%%%%%%%%%
 
 \RequirePackage{expl3,l3keys2e,ltxcmds}
-\ProvidesExplPackage{stex}{2022/02/26}{3.0.1}{sTeX package}
+\ProvidesExplPackage{stex}{2022/02/28}{3.1.0}{sTeX package}
 
 
 \keys_define:nn { stex } {
@@ -2136,7 +2136,7 @@
 \seq_new:N \l__stex_notation_precedences_seq
 \tl_new:N \l__stex_notation_opprec_tl
 \int_new:N \l__stex_notation_currarg_int
-\tl_new:N \stex_symbol_after_invocation_tl
+\tl_new:N \stex_symbol_after_invokation_tl
 
 \cs_new_protected:Nn \stex_notation_do:nnnn {
   \let\l_stex_current_symbol_str\relax
@@ -2320,7 +2320,7 @@
     \cs_set:Npn \l__stex_notation_arity_str } { {
       \exp_after:wN \exp_after:wN \exp_after:wN
       \exp_not:n \exp_after:wN \exp_after:wN \exp_after:wN
-      { \exp_after:wN \l_stex_notation_macrocode_cs \l_stex_notation_dummyargs_tl \stex_symbol_after_invocation_tl}
+      { \exp_after:wN \l_stex_notation_macrocode_cs \l_stex_notation_dummyargs_tl \stex_symbol_after_invokation_tl}
   } }
 
   \tl_if_empty:NF \l__stex_notation_op_tl {
@@ -2346,7 +2346,7 @@
     } \cs_set:Npn {\l__stex_notation_arity_str} {
         \exp_after:wN \exp_after:wN \exp_after:wN
         \exp_not:n \exp_after:wN \exp_after:wN \exp_after:wN
-        { \exp_after:wN \l_stex_notation_macrocode_cs \l_stex_notation_dummyargs_tl \stex_symbol_after_invocation_tl}
+        { \exp_after:wN \l_stex_notation_macrocode_cs \l_stex_notation_dummyargs_tl \stex_symbol_after_invokation_tl}
     }
     \tl_if_empty:NF \l__stex_notation_op_tl {
       \cs_set:cpn {
@@ -2679,7 +2679,7 @@
     } {{
       \exp_after:wN \exp_after:wN \exp_after:wN
       \exp_not:n \exp_after:wN \exp_after:wN \exp_after:wN
-      { \exp_after:wN \l_stex_notation_macrocode_cs \l_stex_notation_dummyargs_tl \stex_symbol_after_invocation_tl}
+      { \exp_after:wN \l_stex_notation_macrocode_cs \l_stex_notation_dummyargs_tl \stex_symbol_after_invokation_tl}
     }}
     \stex_if_do_html:T {
       \stex_annotate_invisible:nnn {vardecl}{\l__stex_variables_name_str}{
@@ -2788,7 +2788,7 @@
   Symbol~#1~has~no~operator~notation~for~notation~#2
 }
 \msg_new:nnn{stex}{error/notallowed}{
-  Symbol~invocation~#1~not~allowed~in~notation~component~of~#2
+  Symbol~invokation~#1~not~allowed~in~notation~component~of~#2
 }
 
 \keys_define:nn { stex / terms } {
@@ -2813,11 +2813,11 @@
   }
 }
 
-\bool_new:N \l__stex_terms_allow_semantic_bool
-\bool_set_true:N \l__stex_terms_allow_semantic_bool
+\bool_new:N \l_stex_allow_semantic_bool
+\bool_set_true:N \l_stex_allow_semantic_bool
 
 \cs_new_protected:Nn \stex_invoke_symbol:n {
-  \bool_if:NTF \l__stex_terms_allow_semantic_bool {
+  \bool_if:NTF \l_stex_allow_semantic_bool {
     \str_if_eq:eeF {
       \prop_item:cn {
         l_stex_symdecl_#1_prop
@@ -2879,18 +2879,17 @@
 \cs_new_protected:Nn \__stex_terms_invoke_op_custom:nn {
   \exp_args:Nnx \use:nn {
     \str_set:Nn \l_stex_current_symbol_str { #1 }
-    \bool_set_false:N \l__stex_terms_allow_semantic_bool
+    \bool_set_false:N \l_stex_allow_semantic_bool
     \_stex_term_oms:nnn {#1 \c_hash_str\c_hash_str}{#1}{
       \comp{ #2 }
     }
   }{
     \__stex_terms_reset:N \l_stex_current_symbol_str
-    \bool_set_true:N \l__stex_terms_allow_semantic_bool
+    \bool_set_true:N \l_stex_allow_semantic_bool
   }
 }
 
 \cs_new_protected:Nn \__stex_terms_find_notation:nn {
-  \str_set:Nn \l_stex_current_symbol_str { #1 }
   \__stex_terms_args:n { #2 }
   \seq_if_empty:cTF {
     l_stex_symdecl_ #1 _notations
@@ -2917,16 +2916,21 @@
 }
 
 \cs_new_protected:Npn \__stex_terms_invoke_op_notation:nw #1 [#2] {
-  \__stex_terms_find_notation:nn { #1 }{ #2 }
-  \bool_set_false:N \l__stex_terms_allow_semantic_bool
-  \cs_if_exist:cTF {
-    stex_op_notation_ #1 \c_hash_str \l__stex_terms_variant_str _cs
+  \exp_args:Nnx \use:nn {
+    \str_set:Nn \l_stex_current_symbol_str { #1 }
+    \__stex_terms_find_notation:nn { #1 }{ #2 }
+    \bool_set_false:N \l_stex_allow_semantic_bool
+    \cs_if_exist:cTF {
+      stex_op_notation_ #1 \c_hash_str \l__stex_terms_variant_str _cs
+    }{
+      \use:c{stex_op_notation_ #1 \c_hash_str \l__stex_terms_variant_str _cs}
+    }{
+      \msg_error:nnxx{stex}{error/noop}{#1}{\l__stex_terms_variant_str}
+    }
   }{
-    \use:c{stex_op_notation_ #1 \c_hash_str \l__stex_terms_variant_str _cs}
-  }{
-    \msg_error:nnxx{stex}{error/noop}{#1}{\l__stex_terms_variant_str}
+    \__stex_terms_reset:N \l_stex_current_symbol_str
+    \bool_set_true:N \l_stex_allow_semantic_bool
   }
-  \bool_set_true:N \l__stex_terms_allow_semantic_bool
 }
 
 \cs_new_protected:Npn \__stex_terms_invoke_notation:nw #1 [#2] {
@@ -2934,12 +2938,13 @@
   \cs_if_exist:cTF {
     stex_notation_ #1 \c_hash_str \l__stex_terms_variant_str _cs
   }{
-    \tl_set:Nx \stex_symbol_after_invocation_tl {
-      \__stex_terms_reset:N \stex_symbol_after_invocation_tl
+    \tl_set:Nx \stex_symbol_after_invokation_tl {
+      \__stex_terms_reset:N \stex_symbol_after_invokation_tl
       \__stex_terms_reset:N \l_stex_current_symbol_str
-      \bool_set_true:N \l__stex_terms_allow_semantic_bool
+      \bool_set_true:N \l_stex_allow_semantic_bool
     }
-    \bool_set_false:N \l__stex_terms_allow_semantic_bool
+    \str_set:Nn \l_stex_current_symbol_str { #1 }
+    \bool_set_false:N \l_stex_allow_semantic_bool
     \use:c{stex_notation_ #1 \c_hash_str \l__stex_terms_variant_str _cs}
   }{
     \msg_error:nnxx{stex}{error/nonotation}{#1}{
@@ -2952,7 +2957,7 @@
 
 \cs_new_protected:Nn \__stex_terms_invoke_custom:nn {
   \exp_args:Nnx \use:nn {
-    \bool_set_false:N \l__stex_terms_allow_semantic_bool
+    \bool_set_false:N \l_stex_allow_semantic_bool
     \str_set:Nn \l_stex_current_symbol_str { #1 }
     \prop_clear:N \l__stex_terms_custom_args_prop
     \prop_put:Nnn \l__stex_terms_custom_args_prop {currnum} {1}
@@ -2979,7 +2984,7 @@
     \__stex_terms_reset:N \l_stex_current_symbol_str
     \__stex_terms_reset:N \arg
     \__stex_terms_reset:N \l__stex_terms_custom_args_prop
-    \bool_set_true:N \l__stex_terms_allow_semantic_bool
+    \bool_set_true:N \l_stex_allow_semantic_bool
   }
 }
 
@@ -3004,6 +3009,7 @@
   \int_compare:nNnT \l_tmpa_int > {\str_count:N \l_tmpa_str} {
     % TODO throw error
   }
+  \bool_set_true:N \l_stex_allow_semantic_bool
   \IfBooleanTF#1{
     \stex_annotate_invisible:n {
       \exp_args:No \_stex_term_arg:nn {\l_stex_current_symbol_str}{#3}
@@ -3011,15 +3017,13 @@
   }{
     \exp_args:No \_stex_term_arg:nn {\l_stex_current_symbol_str}{#3}
   }
+  \bool_set_false:N \l_stex_allow_semantic_bool
 }
 
 \cs_new_protected:Nn \_stex_term_arg:nn {
-  \exp_args:Nnx \use:nn {
-    \bool_set_true:N \l__stex_terms_allow_semantic_bool
-    \stex_annotate:nnn{ arg }{ #1 }{ #2 }
-  }{
-    \bool_set_false:N \l__stex_terms_allow_semantic_bool
-  }
+  \bool_set_true:N \l_stex_allow_semantic_bool
+  \stex_annotate:nnn{ arg }{ #1 }{ #2 }
+  \bool_set_false:N \l_stex_allow_semantic_bool
 }
 
 \cs_new_protected:Nn \_stex_term_math_arg:nnn {
@@ -3029,7 +3033,26 @@
     }
     { \int_set:Nn \exp_not:N \l__stex_terms_downprec { \int_use:N \l__stex_terms_downprec } }
 }
+\cs_new_protected:Nn \_stex_term_math_assoc_arg:nnnn {
+  % TODO sequences
+  \clist_set:Nn \l_tmpa_clist{ #3 }
+  \int_compare:nNnTF { \clist_count:N \l_tmpa_clist } < 2 {
+    \tl_set:Nn \l_tmpa_tl { #3 }
+  }{
+    \cs_set:Npn \l_tmpa_cs ##1 ##2 { #4 }
+    \clist_reverse:N \l_tmpa_clist
+    \clist_pop:NN \l_tmpa_clist \l_tmpa_tl
 
+    \clist_map_inline:Nn \l_tmpa_clist {
+      \exp_args:NNNo \exp_args:NNo \tl_set:No \l_tmpa_tl {
+        \exp_args:Nno
+        \l_tmpa_cs { ##1 } \l_tmpa_tl
+      }
+    }
+  }
+  \exp_args:Nnno
+    \_stex_term_math_arg:nnn{#1}{#2}\l_tmpa_tl
+}
 \tl_const:Nx \infprec {\int_use:N \c_max_int}
 \tl_const:Nx \neginfprec {-\int_use:N \c_max_int}
 \int_new:N \l__stex_terms_downprec
@@ -3124,26 +3147,6 @@
   \__stex_terms_maybe_brackets:nn { #3 }{
     \_stex_term_ombind:nnn { #1 } { #1\c_hash_str#2 } { #4 }
   }
-}
-\cs_new_protected:Nn \_stex_term_math_assoc_arg:nnnn {
-  % TODO sequences
-  \clist_set:Nn \l_tmpa_clist{ #3 }
-  \int_compare:nNnTF { \clist_count:N \l_tmpa_clist } < 2 {
-    \tl_set:Nn \l_tmpa_tl { #3 }
-  }{
-    \cs_set:Npn \l_tmpa_cs ##1 ##2 { #4 }
-    \clist_reverse:N \l_tmpa_clist
-    \clist_pop:NN \l_tmpa_clist \l_tmpa_tl
-
-    \clist_map_inline:Nn \l_tmpa_clist {
-      \exp_args:NNNo \exp_args:NNo \tl_set:No \l_tmpa_tl {
-        \exp_args:Nno
-        \l_tmpa_cs { ##1 } \l_tmpa_tl
-      }
-    }
-  }
-  \exp_args:Nnno
-   \_stex_term_math_arg:nnn{#1}{#2}\l_tmpa_tl
 }
 \cs_new_protected:Nn \stex_term_custom:nn {
   \str_set:Nn \l__stex_terms_custom_uri { #1 }
@@ -3317,17 +3320,8 @@
    } }
   \let\compemph@uri\compemph_uri_prev:
 }
-
-\str_new:N \l_stex_current_symbol_str
 \cs_new_protected:Nn \stex_highlight_term:nn {
-  \exp_args:Nnx
-  \use:nn {
-    \str_set:Nx \l_stex_current_symbol_str { #1 }
-    #2
-  } {
-    \str_set:Nx \exp_not:N \l_stex_current_symbol_str
-      { \l_stex_current_symbol_str }
-  }
+  #2
 }
 
 \cs_new_protected:Nn \stex_unhighlight_term:n {
@@ -3440,7 +3434,12 @@
   \cs_if_exist:cTF {
     stex_var_op_notation_ #1 _cs
   }{
+    \exp_args:Nnx \use:nn {
+    \str_set:Nn \l_stex_current_symbol_str { #1 }
     \use:c{stex_var_op_notation_ #1  _cs }
+    }{
+      \str_set:Nn \exp_not:N \l_stex_current_symbol_str {\l_stex_current_symbol_str}
+    }
   }{
     \msg_error:nnxx{stex}{error/noop}{variable~#1}{}
   }
@@ -3450,7 +3449,13 @@
   \cs_if_exist:cTF {
     stex_var_notation_#1_cs
   }{
+    \tl_set:Nx \stex_symbol_after_invokation_tl {
+      \__stex_variables_reset:N \stex_symbol_after_invokation_tl
+      \__stex_variables_reset:N \l_stex_current_symbol_str
+      \bool_set_true:N \l_stex_allow_semantic_bool
+    }
     \str_set:Nn \l_stex_current_symbol_str { #1 }
+    \bool_set_false:N \l_stex_allow_semantic_bool
     \use:c{stex_var_notation_#1_cs}
   }{
     \msg_error:nnxx{stex}{error/nonotation}{variable~#1}{s}
@@ -4685,6 +4690,14 @@
     }
   }
   \clist_set:No \l_tmpa_clist \sparagraphtype
+  \exp_args:NNx \clist_if_in:NnT \l_tmpa_clist {\tl_to_str:n{symdoc}}
+  {
+    \stex_reactivate_macro:N \definiendum
+    \stex_reactivate_macro:N \definame
+    \stex_reactivate_macro:N \Definame
+    \stex_reactivate_macro:N \premise
+    \stex_reactivate_macro:N \definiens
+  }
   \str_if_empty:NTF \sparagraphid {
     \str_if_empty:NTF \sparagraphname {
       \exp_args:NNx \clist_if_in:NnT \l_tmpa_clist {\tl_to_str:n{symdoc}}{
