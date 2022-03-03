@@ -40,6 +40,8 @@
 % \fi
 %
 % \begin{documentation}\label{pkg:symbols:doc}
+% \changes{3.1.0}{2022/03/01}{Fixed bug with precedences in variables}
+% \changes{3.1.0}{2022/03/01}{Introduced \detokenize{\varemph, \varemph@uri}}
 %
 % Code related to symbol declarations and notations
 %
@@ -151,6 +153,9 @@
 \msg_new:nnn{stex}{error/wrongargs}{
   args~value~in~symbol~declaration~for~#1~
   needs~to~be~i,~a,~b~or~B,~but~#2~given
+}
+\msg_new:nnn{stex}{error/unknownsymbol}{
+  No~symbol~#1~found!
 }
 %    \end{macrocode}
 %
@@ -359,11 +364,13 @@
     \l_stex_current_module_str ? \l_stex_symdecl_name_str
     _prop 
   } {
-    \prop_set_eq:cN {
-      l_stex_symdecl_ 
-      \l_stex_current_module_str ? \l_stex_symdecl_name_str
-      _prop 
-    } \l_tmpa_prop
+    \exp_args:Nx \stex_do_up_to_module:n {
+      \prop_set_from_keyval:cn {
+        l_stex_symdecl_ 
+        \l_stex_current_module_str ? \l_stex_symdecl_name_str
+        _prop 
+      } {\prop_to_keyval:N \l_tmpa_prop}
+    }
   }
 
   \seq_clear:c {
@@ -431,7 +438,8 @@
 
 \cs_new_protected:Nn \stex_get_symbol:n {
   \tl_if_head_eq_catcode:nNTF { #1 } \relax {
-    \_@@_get_symbol_from_cs:n { #1 }
+    \tl_set:Nn \l_tmpa_tl { #1 }
+    \_@@_get_symbol_from_cs:
   }{
     % argument is a string
     % is it a command name?
@@ -442,7 +450,7 @@
         \exp_args:Nx \cs_if_eq:NNTF {
           \tl_head:N \l_tmpa_tl
         } \stex_invoke_symbol:n {
-          \exp_args:No \_@@_get_symbol_from_cs:n { \use:c { #1 } }
+          \_@@_get_symbol_from_cs:
         }{
           \_@@_get_symbol_from_string:n { #1 }
         }
@@ -470,10 +478,7 @@
 
 \cs_new_protected:Nn \_@@_get_symbol_from_string:n {
   \tl_set:Nn \l_tmpa_tl {
-    \msg_set:nnn{stex}{error/unknownsymbol}{
-      No~symbol~#1~found!
-    }
-    \msg_error:nn{stex}{error/unknownsymbol}
+    \msg_error:nnn{stex}{error/unknownsymbol}{#1}
   }
   \str_set:Nn \l_tmpa_str { #1 }
   \int_set:Nn \l_tmpa_int { \str_count:N \l_tmpa_str }
@@ -491,7 +496,7 @@
   \l_tmpa_tl
 }
 
-\cs_new_protected:Nn \_@@_get_symbol_from_cs:n {
+\cs_new_protected:Nn \_@@_get_symbol_from_cs: {
   \exp_args:NNx \tl_set:Nn \l_tmpa_tl 
     { \tl_tail:N \l_tmpa_tl }
   \tl_if_single:NTF \l_tmpa_tl {
@@ -555,29 +560,31 @@
     }{}
     \stex_smsmode_do:
   }
-  \stex_notation_do:nnnn
+  \stex_notation_do:nnnnn
     { \prop_item:cn {l_stex_symdecl_\l_stex_get_symbol_uri_str _prop } { args } }
     { \prop_item:cn { l_stex_symdecl_\l_stex_get_symbol_uri_str _prop } { arity } }
     { \l_@@_variant_str \c_hash_str \l_@@_lang_str }
+    { \l_@@_prec_str}
 }
 \stex_deactivate_macro:Nn \notation {module~environments}
 %    \end{macrocode}
 % \end{macro}
 %
-% \begin{macro}{\stex_notation_do:nnnn}
+% \begin{macro}{\stex_notation_do:nnnnn}
 %    \begin{macrocode}
 \seq_new:N \l_@@_precedences_seq
 \tl_new:N \l_@@_opprec_tl
 \int_new:N \l_@@_currarg_int
 \tl_new:N \stex_symbol_after_invokation_tl
 
-\cs_new_protected:Nn \stex_notation_do:nnnn {
+\cs_new_protected:Nn \stex_notation_do:nnnnn {
   \let\l_stex_current_symbol_str\relax
   \seq_clear:N \l_@@_precedences_seq
   \tl_clear:N \l_@@_opprec_tl
   \str_set:Nx \l_@@_args_str { #1 }
   \str_set:Nx \l_@@_arity_str { #2 }
-  \str_set:Nx \_@@_suffix_str { #3 }
+  \str_set:Nx \l_@@_suffix_str { #3 }
+  \str_set:Nx \l_@@_prec_str { #4 }
 
   % precedences
   \str_if_empty:NTF \l_@@_prec_str {
@@ -629,9 +636,9 @@
     \exp_args:NNe
     \cs_set:Npn \l_stex_notation_macrocode_cs {
       \_stex_term_math_oms:nnnn { \l_stex_current_symbol_str } 
-        { \_@@_suffix_str }
+        { \l_@@_suffix_str }
         { \l_@@_opprec_tl } 
-        { \exp_not:n { #4 } }
+        { \exp_not:n { #5 } }
     }
     \l_stex_notation_after_do_tl
   }{
@@ -641,9 +648,9 @@
       \cs_generate_from_arg_count:NNnn \l_stex_notation_macrocode_cs
       \cs_set:Npn \l_@@_arity_str } { {
         \_stex_term_math_omb:nnnn { \l_stex_current_symbol_str } 
-          { \_@@_suffix_str }
+          { \l_@@_suffix_str }
           { \l_@@_opprec_tl } 
-          { \exp_not:n { #4 } }
+          { \exp_not:n { #5 } }
       }}
     }{
       \str_if_in:NnTF \l_@@_args_str B {
@@ -652,9 +659,9 @@
         \cs_generate_from_arg_count:NNnn \l_stex_notation_macrocode_cs
         \cs_set:Npn \l_@@_arity_str } { {
           \_stex_term_math_omb:nnnn { \l_stex_current_symbol_str } 
-            { \_@@_suffix_str }
+            { \l_@@_suffix_str }
             { \l_@@_opprec_tl } 
-            { \exp_not:n { #4 } }
+            { \exp_not:n { #5 } }
         } }
       }{
         \exp_args:Nne \use:nn
@@ -662,9 +669,9 @@
         \cs_generate_from_arg_count:NNnn \l_stex_notation_macrocode_cs
         \cs_set:Npn \l_@@_arity_str } { {
           \_stex_term_math_oma:nnnn { \l_stex_current_symbol_str } 
-            { \_@@_suffix_str }
+            { \l_@@_suffix_str }
             { \l_@@_opprec_tl } 
-            { \exp_not:n { #4 } }
+            { \exp_not:n { #5 } }
         } }
       }
     }
@@ -769,7 +776,7 @@
   {
   \cs_generate_from_arg_count:cNnn {
       stex_notation_ \l_stex_get_symbol_uri_str \c_hash_str 
-      \_@@_suffix_str
+      \l_@@_suffix_str
       _cs
     }
     \cs_set:Npn \l_@@_arity_str } { {
@@ -781,22 +788,16 @@
   \tl_if_empty:NF \l_@@_op_tl {
     \cs_set:cpx {
       stex_op_notation_ \l_stex_get_symbol_uri_str \c_hash_str
-      \_@@_suffix_str
+      \l_@@_suffix_str
       _cs
-    } {
-      \_stex_term_oms:nnn {
-        \l_stex_get_symbol_uri_str \c_hash_str \_@@_suffix_str
-      }{
-        \l_stex_get_symbol_uri_str
-      }{ \comp{ \exp_args:No \exp_not:n { \l_@@_op_tl } } }
-    }
+    } { \exp_not:N \comp{ \exp_args:No \exp_not:n { \l_@@_op_tl } } }
   }
 
   \exp_args:Ne
   \stex_add_to_current_module:n {
     \cs_generate_from_arg_count:cNnn {
       stex_notation_ \l_stex_get_symbol_uri_str \c_hash_str 
-      \_@@_suffix_str
+      \l_@@_suffix_str
       _cs
     } \cs_set:Npn {\l_@@_arity_str} {
         \exp_after:wN \exp_after:wN \exp_after:wN
@@ -806,15 +807,9 @@
     \tl_if_empty:NF \l_@@_op_tl {
       \cs_set:cpn {
         stex_op_notation_\l_stex_get_symbol_uri_str \c_hash_str
-        \_@@_suffix_str
+        \l_@@_suffix_str
         _cs
-      } {
-        \_stex_term_oms:nnn {
-          \l_stex_get_symbol_uri_str\c_hash_str \_@@_suffix_str
-        }{
-          \l_stex_get_symbol_uri_str
-        }{ \comp{ \exp_args:No \exp_not:n { \l_@@_op_tl } } }
-      }
+      } { \exp_not:N \comp{ \exp_args:No \exp_not:n { \l_@@_op_tl } } }
     }
   }
   %\exp_args:Nx
@@ -823,19 +818,19 @@
       l_stex_symdecl_ \l_stex_get_symbol_uri_str
       _notations
     } {
-      \_@@_suffix_str
+      \l_@@_suffix_str
     }
  % }
 
   \stex_debug:nn{symbols}{
-    Notation~\_@@_suffix_str
+    Notation~\l_@@_suffix_str
     ~for~\l_stex_get_symbol_uri_str^^J
     Operator~precedence:~\l_@@_opprec_tl^^J
     Argument~precedences:~
       \seq_use:Nn \l_@@_precedences_seq {,~}^^J
     Notation: \cs_meaning:c {
       stex_notation_ \l_stex_get_symbol_uri_str \c_hash_str 
-      \_@@_suffix_str
+      \l_@@_suffix_str
       _cs
     }
   }
@@ -845,7 +840,7 @@
     \seq_put_right:cn {
       l_stex_symdecl_\l_stex_get_symbol_uri_str
       _notations
-    } { \_@@_suffix_str }
+    } { \l_@@_suffix_str }
   }
 
   \stex_if_smsmode:F {
@@ -855,7 +850,7 @@
       \stex_annotate_invisible:nnn { notation }
       { \l_stex_get_symbol_uri_str } {
         \stex_annotate_invisible:nnn { notationfragment }
-          { \_@@_suffix_str }{}
+          { \l_@@_suffix_str }{}
         \stex_annotate_invisible:nnn { precedence }
           { \l_@@_prec_str }{}
 
@@ -888,7 +883,7 @@
           \str_set:Nx \l_stex_current_symbol_str {\l_stex_get_symbol_uri_str }
           $ \exp_args:Nno \use:nn { \use:c {
             stex_notation_ \l_stex_current_symbol_str
-            \c_hash_str \_@@_suffix_str _cs
+            \c_hash_str \l_@@_suffix_str _cs
           } } { \l_tmpa_tl } $
         }
       }
@@ -1038,10 +1033,11 @@
   \str_set:Nx \l_stex_get_symbol_uri_str {
     \l_stex_current_module_str ? \l_stex_symdecl_name_str
   }
-  \exp_args:Nx \stex_notation_do:nnnn
+  \exp_args:Nx \stex_notation_do:nnnnn
     { \prop_item:cn {l_stex_symdecl_\l_stex_get_symbol_uri_str _prop } { args } }
     { \prop_item:cn { l_stex_symdecl_\l_stex_get_symbol_uri_str _prop } { arity } }
     { \l_@@_variant_str \c_hash_str \l_@@_lang_str }
+    { \l_@@_prec_str}
 }
 \stex_deactivate_macro:Nn \symdef {module~environments}
 %    \end{macrocode}
@@ -1137,11 +1133,7 @@
   \tl_if_empty:NF \l_@@_op_tl {
     \cs_set:cpx {
       stex_var_op_notation_ \l_@@_name_str _cs
-    } {
-      \_stex_term_omv:nn {
-        var://\l_@@_name_str
-      }{ \comp{ \exp_args:No \exp_not:n { \l_@@_op_tl } } }
-    }
+    } { \exp_not:N\comp{ \exp_args:No \exp_not:n { \l_@@_op_tl } } }
   }
 
   \tl_set:Nn \l_stex_notation_after_do_tl {
@@ -1202,7 +1194,7 @@
     }
   }
 
-  \stex_notation_do:nnnn { \l_@@_args_str } { \prop_item:Nn \l_tmpa_prop { arity } } {}
+  \stex_notation_do:nnnnn { \l_@@_args_str } { \prop_item:Nn \l_tmpa_prop { arity } } {}{ \l_@@_prec_str}
 }
 
 \cs_new:Nn \_@@_reset:N {

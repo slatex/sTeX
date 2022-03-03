@@ -40,7 +40,9 @@
 % \fi
 %
 % \begin{documentation}\label{pkg:terms:doc}
-% \changes{3.1.0}{2022/02/28}{Fix bug with \detokenize{\l_stex_current_symbol_str} in variable annotations}
+% \changes{3.1.0}{2022/03/01}{!-Notation now works for symbols with arity=0 without needing an op-notation}
+% \changes{3.1.0}{2022/03/01}{Introduced \detokenize{\varemph, \varemph@uri}}
+% \changes{3.1.0}{2022/02/28}{Fixed bug with \detokenize{\l_stex_current_symbol_str} in variable annotations}
 %
 % Code related to symbolic expressions, typesetting notations,
 % notation components, etc.
@@ -129,7 +131,7 @@
 % so that \cs{comp} knows which symbol governs the current notation.
 % \end{function}
 %
-% \begin{function}{\comp, \compemph,\compemph@uri, \defemph, \defemph@uri, \symrefemph,\symrefemph@uri}
+% \begin{function}{\comp, \compemph,\compemph@uri, \defemph, \defemph@uri, \symrefemph,\symrefemph@uri,\varemph,\varemph@uri}
 %   \begin{syntax} \cs{comp}\Arg{args}\end{syntax}
 % Marks \meta{args} as a notation component of the current symbol for
 % highlighting, linking, etc.
@@ -193,19 +195,6 @@
 %  Invokes a semantic macro
 %
 %    \begin{macrocode}
-\keys_define:nn { stex / terms } {
-  lang    .tl_set_x:N = \l_@@_lang_str ,
-  variant .tl_set_x:N = \l_@@_variant_str ,
-  unknown .code:n     = \str_set:Nx 
-      \l_@@_variant_str \l_keys_key_str
-}
-
-\cs_new_protected:Nn \_@@_args:n {
-  \str_clear:N \l_@@_lang_str
-  \str_clear:N \l_@@_variant_str
-  
-  \keys_set:nn { stex / terms } { #1 }
-}
 
 \cs_new:Nn \_@@_reset:N {
   \tl_if_exist:NTF #1 {
@@ -281,18 +270,34 @@
 
 \cs_new_protected:Nn \_@@_invoke_op_custom:nn {
   \exp_args:Nnx \use:nn {
+    \def\comp{\_comp}
     \str_set:Nn \l_stex_current_symbol_str { #1 }
     \bool_set_false:N \l_stex_allow_semantic_bool
     \_stex_term_oms:nnn {#1 \c_hash_str\c_hash_str}{#1}{
       \comp{ #2 }
     }
   }{
+    \_@@_reset:N \comp
     \_@@_reset:N \l_stex_current_symbol_str
     \bool_set_true:N \l_stex_allow_semantic_bool
   }
 }
 
-\cs_new_protected:Nn \_@@_find_notation:nn {
+\keys_define:nn { stex / terms } {
+  lang    .tl_set_x:N = \l_stex_notation_lang_str ,
+  variant .tl_set_x:N = \l_stex_notation_variant_str ,
+  unknown .code:n     = \str_set:Nx 
+      \l_stex_notation_variant_str \l_keys_key_str
+}
+
+\cs_new_protected:Nn \_@@_args:n {
+  \str_clear:N \l_stex_notation_lang_str
+  \str_clear:N \l_stex_notation_variant_str
+  
+  \keys_set:nn { stex / terms } { #1 }
+}
+
+\cs_new_protected:Nn \stex_find_notation:nn {
   \_@@_args:n { #2 }
   \seq_if_empty:cTF {
     l_stex_symdecl_ #1 _notations 
@@ -300,18 +305,18 @@
     \msg_error:nnxx{stex}{error/nonotation}{#1}{s}
   } {
     \bool_lazy_all:nTF {
-      {\str_if_empty_p:N \l_@@_variant_str}
-      {\str_if_empty_p:N \l_@@_lang_str}
+      {\str_if_empty_p:N \l_stex_notation_variant_str}
+      {\str_if_empty_p:N \l_stex_notation_lang_str}
     }{
-      \seq_get_left:cN {l_stex_symdecl_#1_notations}\l_@@_variant_str
+      \seq_get_left:cN {l_stex_symdecl_#1_notations}\l_stex_notation_variant_str
     }{
       \seq_if_in:cxTF {l_stex_symdecl_#1_notations}{
-        \l_@@_variant_str \c_hash_str \l_@@_lang_str
+        \l_stex_notation_variant_str \c_hash_str \l_stex_notation_lang_str
       }{
-        \str_set:Nx \l_@@_variant_str { \l_@@_variant_str \c_hash_str \l_@@_lang_str }
+        \str_set:Nx \l_stex_notation_variant_str { \l_stex_notation_variant_str \c_hash_str \l_stex_notation_lang_str }
       }{
         \msg_error:nnxx{stex}{error/nonotation}{#1}{
-          ~\l_@@_variant_str \c_hash_str \l_@@_lang_str
+          ~\l_stex_notation_variant_str \c_hash_str \l_stex_notation_lang_str
         }
       }
     }
@@ -320,38 +325,67 @@
 
 \cs_new_protected:Npn \_@@_invoke_op_notation:nw #1 [#2] {
   \exp_args:Nnx \use:nn {
+    \def\comp{\_comp}
     \str_set:Nn \l_stex_current_symbol_str { #1 }
-    \_@@_find_notation:nn { #1 }{ #2 }
+    \stex_find_notation:nn { #1 }{ #2 }
     \bool_set_false:N \l_stex_allow_semantic_bool
     \cs_if_exist:cTF {
-      stex_op_notation_ #1 \c_hash_str \l_@@_variant_str _cs
+      stex_op_notation_ #1 \c_hash_str \l_stex_notation_variant_str _cs
     }{
-      \use:c{stex_op_notation_ #1 \c_hash_str \l_@@_variant_str _cs}
+      \_stex_term_oms:nnn {
+        #1 \c_hash_str \l_stex_notation_variant_str
+      }{ #1 }{
+        \use:c{stex_op_notation_ #1 \c_hash_str \l_stex_notation_variant_str _cs}
+      }
     }{
-      \msg_error:nnxx{stex}{error/noop}{#1}{\l_@@_variant_str}
+      \int_compare:nNnTF {\prop_item:cn {l_stex_symdecl_#1_prop}{arity}} = 0{
+        \cs_if_exist:cTF {
+          stex_notation_ #1 \c_hash_str \l_stex_notation_variant_str _cs
+        }{
+          \tl_set:Nx \stex_symbol_after_invokation_tl {
+            \_@@_reset:N \comp
+            \_@@_reset:N \stex_symbol_after_invokation_tl
+            \_@@_reset:N \l_stex_current_symbol_str
+            \bool_set_true:N \l_stex_allow_semantic_bool
+          }
+          \def\comp{\_comp}
+          \str_set:Nn \l_stex_current_symbol_str { #1 }
+          \bool_set_false:N \l_stex_allow_semantic_bool
+          \use:c{stex_notation_ #1 \c_hash_str \l_stex_notation_variant_str _cs}
+        }{
+          \msg_error:nnxx{stex}{error/nonotation}{#1}{
+            ~\l_stex_notation_variant_str
+          }
+        }
+      }{
+        \msg_error:nnxx{stex}{error/noop}{#1}{\l_stex_notation_variant_str}
+      }
     }
   }{
+    \_@@_reset:N \comp
     \_@@_reset:N \l_stex_current_symbol_str
     \bool_set_true:N \l_stex_allow_semantic_bool
   }
 }
 
 \cs_new_protected:Npn \_@@_invoke_notation:nw #1 [#2] {
-  \_@@_find_notation:nn { #1 }{ #2 }
+  \stex_find_notation:nn { #1 }{ #2 }
   \cs_if_exist:cTF {
-    stex_notation_ #1 \c_hash_str \l_@@_variant_str _cs
+    stex_notation_ #1 \c_hash_str \l_stex_notation_variant_str _cs
   }{
     \tl_set:Nx \stex_symbol_after_invokation_tl {
+      \_@@_reset:N \comp
       \_@@_reset:N \stex_symbol_after_invokation_tl
       \_@@_reset:N \l_stex_current_symbol_str
       \bool_set_true:N \l_stex_allow_semantic_bool
     }
+    \def\comp{\_comp}
     \str_set:Nn \l_stex_current_symbol_str { #1 }
     \bool_set_false:N \l_stex_allow_semantic_bool
-    \use:c{stex_notation_ #1 \c_hash_str \l_@@_variant_str _cs}
+    \use:c{stex_notation_ #1 \c_hash_str \l_stex_notation_variant_str _cs}
   }{
     \msg_error:nnxx{stex}{error/nonotation}{#1}{
-      ~\l_@@_variant_str
+      ~\l_stex_notation_variant_str
     }
   }
 }
@@ -361,6 +395,7 @@
 \cs_new_protected:Nn \_@@_invoke_custom:nn {
   \exp_args:Nnx \use:nn {
     \bool_set_false:N \l_stex_allow_semantic_bool
+    \def\comp{\_comp}
     \str_set:Nn \l_stex_current_symbol_str { #1 }
     \prop_clear:N \l_@@_custom_args_prop
     \prop_put:Nnn \l_@@_custom_args_prop {currnum} {1}
@@ -386,6 +421,7 @@
   }{
     \_@@_reset:N \l_stex_current_symbol_str
     \_@@_reset:N \arg
+    \_@@_reset:N \comp
     \_@@_reset:N \l_@@_custom_args_prop
     \bool_set_true:N \l_stex_allow_semantic_bool
   }
@@ -621,148 +657,7 @@
 %    \end{macrocode}
 % \end{macro}
 %
-% \begin{macro}{\stex_term_custom:nn}
-%    \begin{macrocode}
-\cs_new_protected:Nn \stex_term_custom:nn {
-  \str_set:Nn \l_@@_custom_uri { #1 }
-  \str_set:Nn \l_tmpa_str { #2 }
-  \tl_clear:N \l_tmpa_tl
-  \int_zero:N \l_tmpa_int
-  \int_set:Nn \l_tmpb_int { \str_count:N \l_tmpa_str }
-  \_@@_custom_loop:
-}
-%    \end{macrocode}
-% \end{macro}
 %
-% \begin{macro}{\_@@_custom_loop:}
-%    \begin{macrocode}
-\cs_new_protected:Nn \_@@_custom_loop: {
-  \bool_set_false:N \l_tmpa_bool
-  \bool_while_do:nn {
-    \str_if_eq_p:ee X {
-      \str_item:Nn \l_tmpa_str { \l_tmpa_int + 1 }
-    }
-  }{
-    \int_incr:N \l_tmpa_int
-  }
-
-  \peek_charcode:NTF [ {
-    % notation/text component
-    \_@@_custom_component:w
-  } {
-    \int_compare:nNnTF \l_tmpa_int = \l_tmpb_int {
-      % all arguments read => finish
-      \_@@_custom_final:
-    } {
-      % arguments missing
-      \peek_charcode_remove:NTF * {
-        % invisible, specific argument position or both
-        \peek_charcode:NTF [ {
-          % visible specific argument position
-          \_@@_custom_arg:wn
-        } {
-          % invisible
-          \peek_charcode_remove:NTF * {
-            % invisible specific argument position
-            \_@@_custom_arg_inv:wn
-          } {
-            % invisible next argument
-            \_@@_custom_arg_inv:wn [ \l_tmpa_int + 1 ]
-          }
-        } 
-      } {
-        % next normal argument
-        \_@@_custom_arg:wn [ \l_tmpa_int + 1 ]
-      }
-    }
-  }
-}
-%    \end{macrocode}
-% \end{macro}
-%
-% \begin{macro}{\_@@_custom_arg_inv:wn}
-%    \begin{macrocode}
-\cs_new_protected:Npn \_@@_custom_arg_inv:wn [ #1 ] #2 {
-  \bool_set_true:N \l_tmpa_bool
-  \_@@_custom_arg:wn [ #1 ] { #2 }
-}
-%    \end{macrocode}
-% \end{macro}
-%
-% \begin{macro}{\_@@_custom_arg:wn}
-%    \begin{macrocode}
-\cs_new_protected:Npn \_@@_custom_arg:wn [ #1 ] #2 {
-  \str_set:Nx \l_tmpb_str { 
-    \str_item:Nn \l_tmpa_str { #1 }
-  }
-  \str_case:VnTF \l_tmpb_str {
-    { X } {
-      \msg_error:nnx{stex}{error/notationarg}{\l_@@_custom_uri}
-    }
-    { i } { \_@@_custom_set_X:n { #1 } }
-    { b } { \_@@_custom_set_X:n { #1 } }
-    { a } { \_@@_custom_set_X:n { #1 } } % TODO ?
-    { B } { \_@@_custom_set_X:n { #1 } } % TODO ?
-  }{}{
-    \msg_error:nnx{stex}{error/notationarg}{\l_@@_custom_uri}
-  }
-
-  \bool_if:nTF \l_tmpa_bool {
-    \tl_put_right:Nx \l_tmpa_tl {
-      \stex_annotate_invisible:n {
-        \_stex_term_arg:nn { \int_eval:n { #1 } } 
-          \exp_not:n { { #2 } }
-      }
-    }
-  } {
-    \tl_put_right:Nx \l_tmpa_tl {
-      \_stex_term_arg:nn { \int_eval:n { #1 } } 
-        \exp_not:n { { #2 } }
-    }
-  }
-
-  \_@@_custom_loop:
-}
-%    \end{macrocode}
-% \end{macro}
-%
-% \begin{macro}{\_@@_custom_set_X:n}
-%    \begin{macrocode}
-\cs_new_protected:Nn \_@@_custom_set_X:n {
-  \str_set:Nx \l_tmpa_str {
-    \str_range:Nnn \l_tmpa_str 1 { #1 - 1 }
-    X
-    \str_range:Nnn \l_tmpa_str { #1 + 1 } { -1 }
-  }
-}
-%    \end{macrocode}
-% \end{macro}
-%
-% \begin{macro}{\_@@_custom_component:}
-%    \begin{macrocode}
-\cs_new_protected:Npn \_@@_custom_component:w [ #1 ] {
-  \tl_put_right:Nn \l_tmpa_tl { \comp{ #1 } }
-  \_@@_custom_loop:
-}
-%    \end{macrocode}
-% \end{macro}
-%
-% \begin{macro}{\_@@_custom_final:}
-%    \begin{macrocode}
-\cs_new_protected:Nn \_@@_custom_final: {
-  \int_compare:nNnTF \l_tmpb_int = 0 {
-    \exp_args:Nnno \_stex_term_oms:nnn
-  }{
-    \str_if_in:NnTF \l_tmpa_str {b} {
-      \exp_args:Nnno \_stex_term_ombind:nnn
-    } {
-      \exp_args:Nnno \_stex_term_oma:nnn
-    }
-  }
-  { \l_@@_custom_uri } { \l_@@_custom_uri } { \l_tmpa_tl }
-}
-%    \end{macrocode}
-% \end{macro}
 %
 % \begin{macro}{\symref,\symname}
 %    \begin{macrocode}
@@ -860,9 +755,9 @@
 %    \end{macrocode}
 % \end{macro}
 %
-% \begin{macro}{\comp,\compemph@uri,\compemph,\defemph,\defemph@uri,\symrefemph,\symrefemph@uri}
+% \begin{macro}{\comp,\compemph@uri,\compemph,\defemph,\defemph@uri,\symrefemph,\symrefemph@uri,\varemph,\varemph@uri}
 %    \begin{macrocode}
-\cs_new_protected:Npn \comp #1 {
+\cs_new_protected:Npn \_comp #1 {
   \str_if_empty:NF \l_stex_current_symbol_str {
     \rustex_if:TF {
       \stex_annotate:nnn { comp }{ \l_stex_current_symbol_str }{ #1 }
@@ -871,6 +766,18 @@
     }
   }
 }
+
+\cs_new_protected:Npn \_varcomp #1 {
+  \str_if_empty:NF \l_stex_current_symbol_str {
+    \rustex_if:TF {
+      \stex_annotate:nnn { varcomp }{ \l_stex_current_symbol_str }{ #1 }
+    }{
+      \exp_args:Nnx \varemph@uri { #1 } { \l_stex_current_symbol_str }
+    }
+  }
+}
+
+\def\comp{\_comp}
 
 \cs_new_protected:Npn \compemph@uri #1 #2 {
     \compemph{ #1 }
@@ -895,6 +802,14 @@
 
 \cs_new_protected:Npn \symrefemph #1 {
     \textbf{#1}
+}
+
+\cs_new_protected:Npn \varemph@uri #1 #2 {
+    \varemph{#1}
+}
+
+\cs_new_protected:Npn \varemph #1 {
+    #1
 }
 %    \end{macrocode}
 % \end{macro}
@@ -997,13 +912,21 @@
     stex_var_op_notation_ #1 _cs
   }{
     \exp_args:Nnx \use:nn {
-    \str_set:Nn \l_stex_current_symbol_str { #1 }
-    \use:c{stex_var_op_notation_ #1  _cs }
+      \def\comp{\_varcomp}
+      \str_set:Nn \l_stex_current_symbol_str { var://#1 }
+      \_stex_term_omv:nn { var://#1 }{
+        \use:c{stex_var_op_notation_ #1 _cs }
+      }
     }{
+      \_@@_reset:N \comp
       \str_set:Nn \exp_not:N \l_stex_current_symbol_str {\l_stex_current_symbol_str}
     }
   }{
-    \msg_error:nnxx{stex}{error/noop}{variable~#1}{}
+    \int_compare:nNnTF {\prop_item:cn {l_stex_variable_#1_prop}{arity}} = 0{
+      \_@@_invoke_math_ii:n {#1}
+    }{
+      \msg_error:nnxx{stex}{error/noop}{variable~#1}{}
+    }
   }
 }
 
@@ -1012,11 +935,13 @@
     stex_var_notation_#1_cs
   }{
     \tl_set:Nx \stex_symbol_after_invokation_tl {
+      \_@@_reset:N \comp
       \_@@_reset:N \stex_symbol_after_invokation_tl
       \_@@_reset:N \l_stex_current_symbol_str
       \bool_set_true:N \l_stex_allow_semantic_bool
     }
-    \str_set:Nn \l_stex_current_symbol_str { #1 }
+    \def\comp{\_varcomp}
+    \str_set:Nn \l_stex_current_symbol_str { var://#1 }
     \bool_set_false:N \l_stex_allow_semantic_bool
     \use:c{stex_var_notation_#1_cs}
   }{
