@@ -40,6 +40,7 @@
 % \fi
 %
 % \begin{documentation}\label{pkg:symbols:doc}
+% \changes{3.1.0}{2022/03/03}{Introduced sequence variables}
 % \changes{3.1.0}{2022/03/01}{Fixed bug with precedences in variables}
 % \changes{3.1.0}{2022/03/01}{Introduced \detokenize{\varemph, \varemph@uri}}
 %
@@ -156,6 +157,9 @@
 }
 \msg_new:nnn{stex}{error/unknownsymbol}{
   No~symbol~#1~found!
+}
+\msg_new:nnn{stex}{error/seqlength}{
+  Expected~#1~arguments;~got~#2!
 }
 %    \end{macrocode}
 %
@@ -1198,7 +1202,7 @@
   \stex_notation_do:nnnnn { \l_@@_args_str } { \prop_item:Nn \l_tmpa_prop { arity } } {}{ \l_@@_prec_str}
 }
 
-\cs_new:Nn \_@@_reset:N {
+\cs_new:Nn \_stex_reset:N {
   \tl_if_exist:NTF #1 {
     \def \exp_not:N #1 { \exp_args:No \exp_not:n #1 }
   }{
@@ -1214,9 +1218,9 @@
       #2
     }
   }{
-    \_@@_reset:N \varnot
-    \_@@_reset:N \vartype
-    \_@@_reset:N \vardefi
+    \_stex_reset:N \varnot
+    \_stex_reset:N \vartype
+    \_stex_reset:N \vardefi
   }
 }
 
@@ -1237,6 +1241,103 @@
   \_stex_term_omv:nn {
         var://\l_tmpa_str
     }{ \comp{ #2 } }
+}
+
+
+
+\keys_define:nn { stex / varseq } {
+  name    .str_set_x:N  = \l_@@_name_str ,
+  args    .int_set:N    = \l_@@_args_int ,
+  type    .tl_set:N     = \l_@@_type_tl  ,
+  mid     .tl_set:N     = \l_@@_mid_tl   ,
+  bind    .choices:nn   =
+      {forall,exists}
+      {\str_set:Nx \l_@@_bind_str {\l_keys_choice_tl}}
+}
+
+\cs_new_protected:Nn \_@@_seq_args:n {
+  \str_clear:N \l_@@_name_str
+  \int_set:Nn \l_@@_args_int 1
+  \tl_clear:N \l_@@_type_tl
+  \str_clear:N \l_@@_bind_str
+
+  \keys_set:nn { stex / varseq } { #1 }
+}
+
+\NewDocumentCommand \varseq {m O{} m m m}{
+  \_@@_seq_args:n { #2 }
+  \str_if_empty:NT \l_@@_name_str {
+    \str_set:Nx \l_@@_name_str { #1 }
+  }
+  \prop_clear:N \l_tmpa_prop
+  \prop_put:Nnx \l_tmpa_prop { arity }{\int_use:N \l_@@_args_int}
+
+  \seq_set_from_clist:Nn \l_tmpa_seq {#3}
+  \int_compare:nNnF {\seq_count:N \l_tmpa_seq} = \l_@@_args_int {
+    \msg_error:nnxx{stex}{error/seqlength}
+      {\int_use:N \l_@@_args_int}
+      {\seq_count:N \l_tmpa_seq}
+  }
+  \seq_set_from_clist:Nn \l_tmpb_seq {#4}
+  \int_compare:nNnF {\seq_count:N \l_tmpb_seq} = \l_@@_args_int {
+    \msg_error:nnxx{stex}{error/seqlength}
+      {\int_use:N \l_@@_args_int}
+      {\seq_count:N \l_tmpb_seq}
+  }
+  \prop_put:Nnn \l_tmpa_prop {starts} {#3}
+  \prop_put:Nnn \l_tmpa_prop {ends} {#4}
+
+  \cs_generate_from_arg_count:cNnn {stex_varseq_\l_@@_name_str _cs}
+    \cs_set:Npn  {\int_use:N \l_@@_args_int} { #5 }
+  
+  \exp_args:NNo \tl_set:No \l_tmpa_tl {\use:c{stex_varseq_\l_@@_name_str _cs}}
+  \int_step_inline:nn \l_@@_args_int {
+    \tl_put_right:Nx \l_tmpa_tl { {\seq_item:Nn \l_tmpa_seq {##1}} }
+  }
+  \tl_set:Nx \l_tmpa_tl {\exp_args:NNo \exp_args:No \exp_not:n{\l_tmpa_tl}}
+  \tl_put_right:Nn \l_tmpa_tl {,\ellipses,}
+  \tl_if_empty:NF \l_@@_mid_tl {
+    \tl_put_right:No \l_tmpa_tl \l_@@_mid_tl
+    \tl_put_right:Nn \l_tmpa_tl {,\ellipses,}
+  }
+  \exp_args:NNo \tl_set:No \l_tmpb_tl {\use:c{stex_varseq_\l_@@_name_str _cs}}
+  \int_step_inline:nn \l_@@_args_int {
+    \tl_put_right:Nx \l_tmpb_tl { {\seq_item:Nn \l_tmpb_seq {##1}} }
+  }
+  \tl_set:Nx \l_tmpb_tl {\exp_args:NNo \exp_args:No \exp_not:n{\l_tmpb_tl}}
+  \tl_put_right:No \l_tmpa_tl \l_tmpb_tl
+  
+
+  \prop_put:Nno \l_tmpa_prop { notation }\l_tmpa_tl
+
+  \tl_set:cx {#1} {\stex_invoke_sequence:n {\l_@@_name_str}}
+
+  \exp_args:NNo \tl_set:No \l_tmpa_tl {\use:c{stex_varseq_\l_@@_name_str _cs}}
+
+  \int_step_inline:nn \l_@@_args_int {
+    \tl_set:Nx \l_tmpa_tl {\exp_args:No \exp_not:n \l_tmpa_tl {
+      \_stex_term_math_arg:nnn{##1}{0}{\exp_not:n{####}##1}
+    }}
+  }
+
+  \tl_set:Nx \l_tmpa_tl {
+    \_stex_term_math_oma:nnnn { varseq://\l_@@_name_str}{}{0}{
+      \exp_args:NNo \exp_args:No \exp_not:n {\l_tmpa_tl}
+    }
+  }
+
+  \tl_set:No \l_tmpa_tl { \exp_after:wN { \l_tmpa_tl \stex_symbol_after_invokation_tl} }
+  
+  \exp_args:Nno \use:nn {
+  \cs_generate_from_arg_count:cNnn {stex_varseq_\l_@@_name_str _cs}
+    \cs_set:Npn {\int_use:N \l_@@_args_int}}{\l_tmpa_tl}
+
+  \stex_debug:nn{sequences}{New~Sequence:~
+    \expandafter\meaning\csname stex_varseq_\l_@@_name_str _cs\endcsname\\~\\
+    \prop_to_keyval:N \l_tmpa_prop
+  }
+
+  \prop_set_eq:cN {stex_varseq_\l_@@_name_str _prop}\l_tmpa_prop
 }
 
 %    \end{macrocode}

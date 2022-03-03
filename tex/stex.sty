@@ -1792,6 +1792,9 @@
 \msg_new:nnn{stex}{error/unknownsymbol}{
   No~symbol~#1~found!
 }
+\msg_new:nnn{stex}{error/seqlength}{
+  Expected~#1~arguments;~got~#2!
+}
 \cs_new_protected:Nn \stex_all_symbols:n {
   \def \__stex_symdecl_all_symbols_cs ##1 {#1}
   \seq_map_inline:Nn \l_stex_all_modules_seq {
@@ -2724,7 +2727,7 @@
   \stex_notation_do:nnnnn { \l__stex_variables_args_str } { \prop_item:Nn \l_tmpa_prop { arity } } {}{ \l__stex_variables_prec_str}
 }
 
-\cs_new:Nn \__stex_variables_reset:N {
+\cs_new:Nn \_stex_reset:N {
   \tl_if_exist:NTF #1 {
     \def \exp_not:N #1 { \exp_args:No \exp_not:n #1 }
   }{
@@ -2740,9 +2743,9 @@
       #2
     }
   }{
-    \__stex_variables_reset:N \varnot
-    \__stex_variables_reset:N \vartype
-    \__stex_variables_reset:N \vardefi
+    \_stex_reset:N \varnot
+    \_stex_reset:N \vartype
+    \_stex_reset:N \vardefi
   }
 }
 
@@ -2765,6 +2768,100 @@
     }{ \comp{ #2 } }
 }
 
+\keys_define:nn { stex / varseq } {
+  name    .str_set_x:N  = \l__stex_variables_name_str ,
+  args    .int_set:N    = \l__stex_variables_args_int ,
+  type    .tl_set:N     = \l__stex_variables_type_tl  ,
+  mid     .tl_set:N     = \l__stex_variables_mid_tl   ,
+  bind    .choices:nn   =
+      {forall,exists}
+      {\str_set:Nx \l__stex_variables_bind_str {\l_keys_choice_tl}}
+}
+
+\cs_new_protected:Nn \__stex_variables_seq_args:n {
+  \str_clear:N \l__stex_variables_name_str
+  \int_set:Nn \l__stex_variables_args_int 1
+  \tl_clear:N \l__stex_variables_type_tl
+  \str_clear:N \l__stex_variables_bind_str
+
+  \keys_set:nn { stex / varseq } { #1 }
+}
+
+\NewDocumentCommand \varseq {m O{} m m m}{
+  \__stex_variables_seq_args:n { #2 }
+  \str_if_empty:NT \l__stex_variables_name_str {
+    \str_set:Nx \l__stex_variables_name_str { #1 }
+  }
+  \prop_clear:N \l_tmpa_prop
+  \prop_put:Nnx \l_tmpa_prop { arity }{\int_use:N \l__stex_variables_args_int}
+
+  \seq_set_from_clist:Nn \l_tmpa_seq {#3}
+  \int_compare:nNnF {\seq_count:N \l_tmpa_seq} = \l__stex_variables_args_int {
+    \msg_error:nnxx{stex}{error/seqlength}
+      {\int_use:N \l__stex_variables_args_int}
+      {\seq_count:N \l_tmpa_seq}
+  }
+  \seq_set_from_clist:Nn \l_tmpb_seq {#4}
+  \int_compare:nNnF {\seq_count:N \l_tmpb_seq} = \l__stex_variables_args_int {
+    \msg_error:nnxx{stex}{error/seqlength}
+      {\int_use:N \l__stex_variables_args_int}
+      {\seq_count:N \l_tmpb_seq}
+  }
+  \prop_put:Nnn \l_tmpa_prop {starts} {#3}
+  \prop_put:Nnn \l_tmpa_prop {ends} {#4}
+
+  \cs_generate_from_arg_count:cNnn {stex_varseq_\l__stex_variables_name_str _cs}
+    \cs_set:Npn  {\int_use:N \l__stex_variables_args_int} { #5 }
+
+  \exp_args:NNo \tl_set:No \l_tmpa_tl {\use:c{stex_varseq_\l__stex_variables_name_str _cs}}
+  \int_step_inline:nn \l__stex_variables_args_int {
+    \tl_put_right:Nx \l_tmpa_tl { {\seq_item:Nn \l_tmpa_seq {##1}} }
+  }
+  \tl_set:Nx \l_tmpa_tl {\exp_args:NNo \exp_args:No \exp_not:n{\l_tmpa_tl}}
+  \tl_put_right:Nn \l_tmpa_tl {,\ellipses,}
+  \tl_if_empty:NF \l__stex_variables_mid_tl {
+    \tl_put_right:No \l_tmpa_tl \l__stex_variables_mid_tl
+    \tl_put_right:Nn \l_tmpa_tl {,\ellipses,}
+  }
+  \exp_args:NNo \tl_set:No \l_tmpb_tl {\use:c{stex_varseq_\l__stex_variables_name_str _cs}}
+  \int_step_inline:nn \l__stex_variables_args_int {
+    \tl_put_right:Nx \l_tmpb_tl { {\seq_item:Nn \l_tmpb_seq {##1}} }
+  }
+  \tl_set:Nx \l_tmpb_tl {\exp_args:NNo \exp_args:No \exp_not:n{\l_tmpb_tl}}
+  \tl_put_right:No \l_tmpa_tl \l_tmpb_tl
+
+  \prop_put:Nno \l_tmpa_prop { notation }\l_tmpa_tl
+
+  \tl_set:cx {#1} {\stex_invoke_sequence:n {\l__stex_variables_name_str}}
+
+  \exp_args:NNo \tl_set:No \l_tmpa_tl {\use:c{stex_varseq_\l__stex_variables_name_str _cs}}
+
+  \int_step_inline:nn \l__stex_variables_args_int {
+    \tl_set:Nx \l_tmpa_tl {\exp_args:No \exp_not:n \l_tmpa_tl {
+      \_stex_term_math_arg:nnn{##1}{0}{\exp_not:n{####}##1}
+    }}
+  }
+
+  \tl_set:Nx \l_tmpa_tl {
+    \_stex_term_math_oma:nnnn { varseq://\l__stex_variables_name_str}{}{0}{
+      \exp_args:NNo \exp_args:No \exp_not:n {\l_tmpa_tl}
+    }
+  }
+
+  \tl_set:No \l_tmpa_tl { \exp_after:wN { \l_tmpa_tl \stex_symbol_after_invokation_tl} }
+
+  \exp_args:Nno \use:nn {
+  \cs_generate_from_arg_count:cNnn {stex_varseq_\l__stex_variables_name_str _cs}
+    \cs_set:Npn {\int_use:N \l__stex_variables_args_int}}{\l_tmpa_tl}
+
+  \stex_debug:nn{sequences}{New~Sequence:~
+    \expandafter\meaning\csname stex_varseq_\l__stex_variables_name_str _cs\endcsname\\~\\
+    \prop_to_keyval:N \l_tmpa_prop
+  }
+
+  \prop_set_eq:cN {stex_varseq_\l__stex_variables_name_str _prop}\l_tmpa_prop
+}
+
 
 
 %%%%%%%%%%%%%   terms.dtx   %%%%%%%%%%%%%
@@ -2782,14 +2879,6 @@
   Symbol~invokation~#1~not~allowed~in~notation~component~of~#2
 }
 
-
-\cs_new:Nn \__stex_terms_reset:N {
-  \tl_if_exist:NTF #1 {
-    \def \exp_not:N #1 { \exp_args:No \exp_not:n #1 }
-  }{
-    \let \exp_not:N #1 \exp_not:N \undefined
-  }
-}
 
 \bool_new:N \l_stex_allow_semantic_bool
 \bool_set_true:N \l_stex_allow_semantic_bool
@@ -2863,8 +2952,8 @@
       \comp{ #2 }
     }
   }{
-    \__stex_terms_reset:N \comp
-    \__stex_terms_reset:N \l_stex_current_symbol_str
+    \_stex_reset:N \comp
+    \_stex_reset:N \l_stex_current_symbol_str
     \bool_set_true:N \l_stex_allow_semantic_bool
   }
 }
@@ -2929,9 +3018,9 @@
           stex_notation_ #1 \c_hash_str \l_stex_notation_variant_str _cs
         }{
           \tl_set:Nx \stex_symbol_after_invokation_tl {
-            \__stex_terms_reset:N \comp
-            \__stex_terms_reset:N \stex_symbol_after_invokation_tl
-            \__stex_terms_reset:N \l_stex_current_symbol_str
+            \_stex_reset:N \comp
+            \_stex_reset:N \stex_symbol_after_invokation_tl
+            \_stex_reset:N \l_stex_current_symbol_str
             \bool_set_true:N \l_stex_allow_semantic_bool
           }
           \def\comp{\_comp}
@@ -2948,8 +3037,8 @@
       }
     }
   }{
-    \__stex_terms_reset:N \comp
-    \__stex_terms_reset:N \l_stex_current_symbol_str
+    \_stex_reset:N \comp
+    \_stex_reset:N \l_stex_current_symbol_str
     \bool_set_true:N \l_stex_allow_semantic_bool
   }
 }
@@ -2960,9 +3049,9 @@
     stex_notation_ #1 \c_hash_str \l_stex_notation_variant_str _cs
   }{
     \tl_set:Nx \stex_symbol_after_invokation_tl {
-      \__stex_terms_reset:N \comp
-      \__stex_terms_reset:N \stex_symbol_after_invokation_tl
-      \__stex_terms_reset:N \l_stex_current_symbol_str
+      \_stex_reset:N \comp
+      \_stex_reset:N \stex_symbol_after_invokation_tl
+      \_stex_reset:N \l_stex_current_symbol_str
       \bool_set_true:N \l_stex_allow_semantic_bool
     }
     \def\comp{\_comp}
@@ -3005,10 +3094,10 @@
     }
     % TODO check that all arguments exist
   }{
-    \__stex_terms_reset:N \l_stex_current_symbol_str
-    \__stex_terms_reset:N \arg
-    \__stex_terms_reset:N \comp
-    \__stex_terms_reset:N \l__stex_terms_custom_args_prop
+    \_stex_reset:N \l_stex_current_symbol_str
+    \_stex_reset:N \arg
+    \_stex_reset:N \comp
+    \_stex_reset:N \l__stex_terms_custom_args_prop
     \bool_set_true:N \l_stex_allow_semantic_bool
   }
 }
@@ -3059,12 +3148,70 @@
     { \int_set:Nn \exp_not:N \l__stex_terms_downprec { \int_use:N \l__stex_terms_downprec } }
 }
 \cs_new_protected:Nn \_stex_term_math_assoc_arg:nnnn {
-  % TODO sequences
-  \clist_set:Nn \l_tmpa_clist{ #3 }
-  \int_compare:nNnTF { \clist_count:N \l_tmpa_clist } < 2 {
-    \tl_set:Nn \l_tmpa_tl { #3 }
+  \cs_set:Npn \l_tmpa_cs ##1 ##2 { #4 }
+  \tl_set:Nn \l_tmpb_tl {\_stex_term_math_arg:nnn{#1}{#2}}
+  \exp_args:Nx \tl_if_empty:nTF { \tl_tail:n{ #3 }}{
+    \expandafter\if\expandafter\relax\noexpand#3
+      \expandafter\__stex_terms_math_assoc_arg_maybe_sequence:N\expandafter#3
+    \else\expandafter\__stex_terms_math_assoc_arg_simple:n\expandafter#3\fi
   }{
-    \cs_set:Npn \l_tmpa_cs ##1 ##2 { #4 }
+    \__stex_terms_math_assoc_arg_simple:n{#3}
+  }
+}
+
+\cs_new_protected:Nn \__stex_terms_math_assoc_arg_maybe_sequence:N {
+  \str_set:Nx \l_tmpa_str { \cs_argument_spec:N #1 }
+  \str_if_empty:NTF \l_tmpa_str {
+    \exp_args:Nx \cs_if_eq:NNTF {
+      \tl_head:N #1
+    } \stex_invoke_sequence:n {
+      \tl_set:Nx \l_tmpa_tl {\tl_tail:N #1}
+      \str_set:Nx \l_tmpa_str {\exp_after:wN \use:n \l_tmpa_tl}
+      \tl_set:Nx \l_tmpa_tl {\prop_item:cn {stex_varseq_\l_tmpa_str _prop}{notation}}
+      \exp_args:NNo \seq_set_from_clist:Nn \l_tmpa_seq \l_tmpa_tl
+      \tl_set:Nx \l_tmpa_tl {{\exp_not:N \exp_not:n{
+        \exp_not:n{\exp_args:Nnx \use:nn} {
+          \exp_not:n {
+            \def\comp{\_varcomp}
+            \str_set:Nn \l_stex_current_symbol_str
+          } {varseq://\l_tmpa_str}
+          \exp_not:n{ ##1 }
+        }{
+          \exp_not:n {
+            \_stex_reset:N \comp
+            \_stex_reset:N \l_stex_current_symbol_str
+          }
+        }
+      }}}
+      \exp_args:Nno \use:nn {\seq_set_map:NNn \l_tmpa_seq \l_tmpa_seq} \l_tmpa_tl
+      \seq_reverse:N \l_tmpa_seq
+      \seq_pop:NN \l_tmpa_seq \l_tmpa_tl
+      \seq_map_inline:Nn \l_tmpa_seq {
+        \exp_args:NNNo \exp_args:NNo \tl_set:No \l_tmpa_tl {
+          \exp_args:Nno
+          \l_tmpa_cs { ##1 } \l_tmpa_tl
+        }
+      }
+      \tl_set:Nx \l_tmpa_tl {
+        \_stex_term_omv:nn {varseq://\l_tmpa_str}{
+          \exp_args:No \exp_not:n \l_tmpa_tl
+        }
+      }
+      \exp_args:No\l_tmpb_tl\l_tmpa_tl
+    }{
+      \__stex_terms_math_assoc_arg_simple:n { #1 }
+    }
+  } {
+    \__stex_terms_math_assoc_arg_simple:n { #1 }
+  }
+
+}
+
+\cs_new_protected:Nn \__stex_terms_math_assoc_arg_simple:n {
+  \clist_set:Nn \l_tmpa_clist{ #1 }
+  \int_compare:nNnTF { \clist_count:N \l_tmpa_clist } < 2 {
+    \tl_set:Nn \l_tmpa_tl { #1 }
+  }{
     \clist_reverse:N \l_tmpa_clist
     \clist_pop:NN \l_tmpa_clist \l_tmpa_tl
 
@@ -3075,8 +3222,7 @@
       }
     }
   }
-  \exp_args:Nnno
-    \_stex_term_math_arg:nnn{#1}{#2}\l_tmpa_tl
+  \exp_args:No\l_tmpb_tl\l_tmpa_tl
 }
 \tl_const:Nx \infprec {\int_use:N \c_max_int}
 \tl_const:Nx \neginfprec {-\int_use:N \c_max_int}
@@ -3147,7 +3293,7 @@
   }
 }
 \cs_new_protected:Nn \_stex_term_omv:nn {
-  \stex_annotate:nnn{ OMID }{ #1 }{
+  \stex_annotate:nnn{ OMV }{ #1 }{
     \stex_highlight_term:nn { #1 } { #2 }
   }
 }
@@ -3378,8 +3524,8 @@
         \use:c{stex_var_op_notation_ #1 _cs }
       }
     }{
-      \__stex_variables_reset:N \comp
-      \str_set:Nn \exp_not:N \l_stex_current_symbol_str {\l_stex_current_symbol_str}
+      \_stex_reset:N \comp
+      \_stex_reset:N \l_stex_current_symbol_str
     }
   }{
     \int_compare:nNnTF {\prop_item:cn {l_stex_variable_#1_prop}{arity}} = 0{
@@ -3395,9 +3541,9 @@
     stex_var_notation_#1_cs
   }{
     \tl_set:Nx \stex_symbol_after_invokation_tl {
-      \__stex_variables_reset:N \comp
-      \__stex_variables_reset:N \stex_symbol_after_invokation_tl
-      \__stex_variables_reset:N \l_stex_current_symbol_str
+      \_stex_reset:N \comp
+      \_stex_reset:N \stex_symbol_after_invokation_tl
+      \_stex_reset:N \l_stex_current_symbol_str
       \bool_set_true:N \l_stex_allow_semantic_bool
     }
     \def\comp{\_varcomp}
@@ -3408,6 +3554,33 @@
     \msg_error:nnxx{stex}{error/nonotation}{variable~#1}{s}
   }
 }
+
+\cs_new_protected:Nn \stex_invoke_sequence:n {
+  \peek_charcode_remove:NTF ! {
+    \_stex_term_omv:nn {varseq://#1}{
+      \exp_args:Nnx \use:nn {
+        \def\comp{\_varcomp}
+        \str_set:Nn \l_stex_current_symbol_str {varseq://#1}
+        \prop_item:cn{stex_varseq_#1_prop}{notation}
+      }{
+        \_stex_reset:N \comp
+        \_stex_reset:N \l_stex_current_symbol_str
+      }
+    }
+  }{
+    \bool_set_false:N \l_stex_allow_semantic_bool
+    \def\comp{\_varcomp}
+    \str_set:Nn \l_stex_current_symbol_str {varseq://#1}
+    \tl_set:Nx \stex_symbol_after_invokation_tl {
+      \_stex_reset:N \comp
+      \_stex_reset:N \stex_symbol_after_invokation_tl
+      \_stex_reset:N \l_stex_current_symbol_str
+      \bool_set_true:N \l_stex_allow_semantic_bool
+    }
+    \use:c { stex_varseq_#1_cs }
+  }
+}
+
 
 
 %%%%%%%%%%%%%   features.dtx   %%%%%%%%%%%%%
@@ -3863,7 +4036,7 @@
     \l_stex_last_feature_str
   \exp_args:Nx \stex_symdecl_do:nn {
       name = \l__stex_structures_name_str ,
-      type = \collection ,
+      type = \metacollection ,
       def  = {\STEXsymbol{module-type}{
         \_stex_term_math_oms:nnnn { \l_stex_last_feature_str }{}{0}{}
       }}
