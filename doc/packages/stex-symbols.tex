@@ -1,1 +1,145 @@
-\textcolor{red}{TODO: symbols documentation}
+\begin{sfragment}{Declaring New Symbols and Notations}
+\begin{smodule}[ns=https://github.com/slatex/sTeX/doc]{SymbolsAndNotations}
+    Inside an \stexcode"smodule" environment, we can declare new
+    \sTeX symbols.
+
+    \begin{function}{\symdecl}
+        The most basic command for doing so is using
+        \stexcode"\symdecl{symbolname}". This introduces
+        a new symbol with name |symbolname|, arity $0$ and 
+        semantic macro \stexcode"\symbolname".
+
+        The starred variant \stexcode"\symdecl*{symbolname}" will
+        declare a symbol, but not introduce a semantic macro.
+        If we don't want to supply a notation (for example to introduce
+        concepts like ``abelian'', which is not something that
+        has a notation), the starred variant is likely to be what we
+        want.
+    \end{function}
+    \begin{mmtbox}
+        \stexcode"\symdecl" introduces a new \omdoc/\mmt
+        constant in the current module (=\omdoc/\mmt theory).
+    \end{mmtbox}
+
+    Without a semantic macro or a notation, the only 
+    meaningful way to reference a symbol
+    is via \stexcode"\symref",\stexcode"\symname" etc.
+
+    \stexexample{
+\symdecl*{foo}
+Given a \symname{foo}, we can...
+    }
+
+    Obviously, most semantic macros should take actual \emph{arguments},
+    implying that the symbol we introduce is an \emph{operator} or
+    \emph{function}. We can let \stexcode"\symdecl" know the
+    \emph{arity} (i.e. number of arguments) of a symbol like this:
+
+    \stexexample{
+\symdecl{binarysymbol}[args=2]
+\symref{binarysymbol}{this} is a symbol taking two arguments.
+    }
+
+    \begin{function}{\notation}
+        In that case, we probably want to supply a notation as well,
+        in which case we can finally actually use 
+        the semantic macro in math mode.
+        We can do so using the \stexcode"\notation" command, like this:
+        \stexexample{
+\notation{binarysymbol}{\text{First: }#1\text{; Second: }#2}
+$\binarysymbol{a}{b}$
+        }
+    \end{function}
+
+    \begin{function}{\comp}
+        Unfortunately, we have no highlighting whatsoever now.
+        That is because we need to tell \sTeX explicitly which parts
+        of the notation are \emph{notation components} which \emph{should}
+        be highlighted.
+        We can do so with the \stexcode"\comp" command.
+    \end{function}
+
+    We can introduce a new notation |highlight| for 
+    \stexcode"\binarysymbol" that fixes this flaw, which we can
+    subsequently use with \stexcode"\binarysymbol[highlight]":
+
+    \stexexample{
+\notation{binarysymbol}[highlight]
+    {\comp{\text{First: }}#1\comp{\text{; Second: }}#2}
+$\binarysymbol[highlight]{a}{b}$
+    }
+
+    \begin{dangerbox}
+        Ideally, \stexcode"\comp" would not be necessary: Everything
+        in a notation that is \emph{not} an argument should be a notation
+        component. Unfortunately, it is computationally expensive
+        to determine where an argument begins and ends, and
+        the argument markers |#n| may themselves be nested in other macro applications
+        or \TeX\xspace groups,
+        making it ultimately almost impossible to determine them automatically
+        while also remaining compatible with arbitrary highlighting customizations
+        (such as tooltips, hyperlinks, colors) that users might employ, and
+        that are ultimately invoked by \stexcode"\comp".
+    \end{dangerbox}
+    \begin{dangerbox}
+        Note that it is required that 
+        \begin{enumerate}
+            \item the argument markers |#n| never occur inside a \stexcode"\comp", and
+            \item no semantic arguments may ever occur inside a notation.
+        \end{enumerate}
+        Both criteria are not just required for technical reasons,
+        but conceptionally meaningful: 
+        
+        The underlying principle
+        is that the arguments to a semantic macro represent
+        \emph{arguments to the mathematical operation}
+        represented by a symbol. For example, a semantic macro
+        \stexcode"\addition{a}{b}" taking two arguments would represent
+        \emph{the actual addition of (mathematical objects) $a$ and $b$}.
+        It should therefore be impossible for $a$ or $b$ to be part
+        of a notation component of \stexcode"\addition".
+
+        Similarly, a semantic macro can not conceptually be
+        part of the notation of \stexcode"\addition", since
+        a semantic macro represents a \emph{distinct mathematical
+        concept} with \emph{its own semantics}, whereas notations
+        are syntactic representations of the very symbol 
+        to which the notation belongs.
+
+        If you want an argument to a semantic macro to be a purely
+        syntactic parameter, then you are likely
+        somewhat confused with respect to the distinction between
+        the precise \emph{syntax} and \emph{semantics} 
+        of the symbol you are trying to declare (which happens quite often
+        even to experienced \sTeX users), and might want to give
+        those another thought - quite likely, the macro you aim
+        to implement does not actually represent a semantically
+        maningful mathematical concept, and you will want to use 
+        \stexcode"\def" and similar native \LaTeX\xspace macro
+        definitions rather than
+        semantic macros.
+    \end{dangerbox}
+
+    \begin{function}{\symdef}
+        In the vast majority of cases where a symbol declaration
+        should come with a semantic macro, we will want to supply
+        a notation immediately. For that reason, the \stexcode"\symdef"
+        commands combines the functionality of both \stexcode"\symdecl"
+        and \stexcode"\notation" with the optional arguments of both:
+    \end{function}
+
+    \stexexample{
+\symdef{newbinarysymbol}[hl,args=2]
+    {\comp{\text{1.: }}#1\comp{\text{; 2.: }}#2}
+$\newbinarysymbol{a}{b}$
+    }
+
+    We just both declared a new symbol |newbinarysymbol|
+    and immediately provided it with a notation with identifier
+    |hl|. Since |hl| is the \emph{first} (and so far, only)
+    notation supplied for |newbinarysymbol|, using
+    \stexcode"\newbinarysymbol" without optional
+    argument defaults to this notation.
+        
+\end{smodule}
+\end{sfragment}

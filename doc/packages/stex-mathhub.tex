@@ -1,5 +1,6 @@
 \begin{sfragment}{The Local MathHub-Directory}
-    |\usemodule|, |\importmodule|, |\inputref| etc. allow for 
+    \stexcode"\usemodule", \stexcode"\importmodule", 
+    \stexcode"\inputref" etc. allow for 
     including content modularly without having to specify absolute
     paths, which would differ between users and machines. Instead,
     \sTeX uses \emph{archives} that determine the global
@@ -17,7 +18,7 @@
             set, but the macro |\mathhub| exists when the
             \sTeX-package is loaded, then this macro is
             assumed to point to the local |MathHub|-directory; i.e.
-            |\def\mathhub{/path/to/mathhub}\usepackage{stex}|
+            \stexcode"\def\mathhub{/path/to/mathhub}\usepackage{stex}"
             will set the |MathHub|-directory as |path/to/mathhub|.
         \item Otherwise, \sTeX will attempt to retrieve the
             system variable |MATHHUB|, assuming it will
@@ -43,12 +44,35 @@
             |MANIFEST.MF|, the content of which we will consider shortly
     \end{itemize}
     An additional |lib|-directory is optional, and is where \sTeX will
-    look for files included via |\libinput|.
+    look for files included via \stexcode"\libinput".
 
     Additionally a \emph{group} of archives |group/name| may have
     an additional archive |group/meta-inf|. If this |meta-inf|-archive
-    has a |/lib|-subdirectory, it too will be searched by |\libinput|
+    has a |/lib|-subdirectory, it too will be searched by \stexcode"\libinput"
     from all tex files in any archive in the |group/*|-group.
+
+    \paragraph{} We recommend this additional directory structure in the |source|-folder
+    of an \sTeX archive:
+    \begin{itemize}
+        \item |/source/mod/| -- individual \sTeX modules, containing
+            symbol declarations, notations, and 
+            \stexcode"\begin{sparagraph}[type=symdoc,for=...]"
+            environments for ``encyclopedic'' symbol documentations
+            \iffalse\end{sparagraph}\fi
+        \item |/source/def/| -- definitions
+        \item |/source/ex/| -- examples
+        \item |/source/thm/| -- theorems, lemmata and proofs; preferably
+            proofs in separate files to allow for multiple proofs for the
+            same statement
+        \item |/source/snip/| -- individual text snippets such as remarks,
+            explanations etc.
+        \item |/source/frag/| -- individual document fragments,
+            ideally only \stexcode"\inputref"ing snippets, definitions,
+            examples etc. in some desirable order
+        \item |/source/tikz/| -- tikz images, as individual |.tex|-files
+        \item |/source/pic/| -- image files.
+    \end{itemize}
+
 \end{sfragment}
 
 \begin{sfragment}{MANIFEST.MF-Files}
@@ -86,4 +110,81 @@
             e.g. for |lmh install|.  
     \end{itemize}
 
+\end{sfragment}
+
+\begin{sfragment}{Using Files in \sTeX Archives Directly}
+    Several macros provided by \sTeX allow for directly including
+    files in repositories. These are:
+    \begin{function}{\mhinput}
+        \stexcode"\mhinput[Some/Archive]{some/file}" directly
+        inputs the file |some/file| in the |source|-folder of
+        |Some/Archive|.
+    \end{function}
+    \begin{function}{\inputref}
+        \stexcode"\inputref[Some/Archive]{some/file}" behaves
+        like \stexcode"\mhinput", but wraps the input in
+        a |\begingroup ... \endgroup|. When converting
+        to |xhtml|, the file is not input at all, and instead
+        an |html|-annotation is inserted that references the file.
+
+        In the majority of cases \stexcode"\inputref" is likely
+        to be preferred over \stexcode"\mhinput".
+    \end{function}
+    \begin{function}{\ifinput}
+        Both \stexcode"\mhinput" and \stexcode"\inputref"
+        set \stexcode"\ifinput" to ``true'' during input. This allows
+        for selectively including e.g. bibliographies only if the
+        current file is not being currently included in a larger document.
+    \end{function}
+    \begin{function}{\addmhbibresource}
+        \stexcode"\addmhbibresource[Some/Archive]{some/file}"
+        searches for a file like \stexcode"\mhinput" does,
+        but calls |\addbibresource| to the result and looks for the
+        file in the archive root directory directly, rather than the
+        |source| directory.
+    \end{function}
+    \begin{function}{\libinput}
+        \stexcode"\libinput{some/file}" 
+        searches for a file |some/file| in
+        \begin{itemize}
+            \item the |lib|-directory of the current archive, and
+            \item the |lib|-directory of a |meta-inf|-archive in
+                (any of) the archive groups containing the current archive
+        \end{itemize}
+        and include all found files in reverse order; 
+        e.g. \stexcode"\libinput{preamble}" in a |.tex|-file in
+        |smglom/calculus| will \emph{first} input |.../smglom/meta-inf/lib/preamble.tex|
+        and then |../smglom/calculus/lib/preamble.tex|.
+
+        Will throw an error if \emph{no} candidate for |some/file|
+        is found.
+    \end{function}
+    \begin{function}{\libusepackage}
+        \stexcode"\libusepackage[package-options]{some/file}" 
+        searches for a file |some/file.sty| in the same
+        way that \stexcode"\libinput" does, but will
+        call |\usepackage[package-options]{path/to/some/file}|
+        instead of |\input|.
+
+        Will throw an error if not \emph{exactly one} candidate
+        for |some/file| is found.
+    \end{function}
+
+    \begin{remark}
+        A good practice is to have individual \sTeX fragments
+        follow basically this document frame:
+        \begin{latexcode}[gobble=12]
+            \documentclass{stex}
+            \libinput{preamble}
+            \begin{document}
+                ... 
+                \ifinputref \else \libinput{postamble} \fi
+            \end{document}
+        \end{latexcode}
+        Then the |preamble.tex| files can take care
+        of loading the generally required packages, setting
+        presentation customizations etc. (per archive
+        or archive group or both), and |postamble.tex|
+        can e.g. print the bibliography, index etc.
+    \end{remark}
 \end{sfragment}
