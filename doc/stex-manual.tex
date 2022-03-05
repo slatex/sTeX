@@ -137,11 +137,14 @@
 
 
 \begin{dangerbox}
-  Implementation Details
+  Boxes like this one contain implementation details that are
+  not immediately interesting, but might be useful 
+  to know when debugging (or to avoid) errors.
 \end{dangerbox}
 
 \begin{mmtbox}
-  \mmt/\omdoc Info
+  Boxes like this one explain how some \sTeX concept
+  relates to the \mmt/\omdoc system, philosophy or language.
 \end{mmtbox}
 
 
@@ -303,13 +306,9 @@ which can thus be integrated as additional services into the system.
       pieces of software; namely:
       \begin{itemize}
         \item \textbf{The \sTeX-Package} available 
-          \href{https://github.com/slatex/sTeX/blob/latex3/doc/stex.pdf}{here}%
-          \ednote{For now, we require the \texttt{latex3}-branch}.
-          Note, that the CTAN repository for \LaTeX{} packages
-          may contain outdated versions of the \sTeX package, so
-          make sure, that your |TEXMF| system variable is configured such
-          that the packages available in the linked repository are prioritized
-          over potential default packages that come with your \TeX{} distribution.
+          \href{https://github.com/slatex/sTeX/blob/latex3/doc/stex.pdf}{here}.
+
+          \sTeX is also available on CTAN and in \TeX Live.
 
         \item To make sure that \sTeX too knows where to find its
           archives, we need to set a global system variable |MATHHUB|,
@@ -349,115 +348,258 @@ which can thus be integrated as additional services into the system.
       \end{itemize}
     \end{sfragment}
 	\end{sfragment}
-	\begin{sfragment}{A First \sTeX Document}
+\end{sfragment}
+
+\begin{sfragment}{Using \sTeX}
+
+  \input{packages/stex-basics}
+
+  \begin{sfragment}{How Knowledge is Organized in \sTeX}
+
+    \sTeX content is organized on multiple levels:
+    \begin{itemize}
+      \item \sTeX \textbf{archives} (see \sref{sec.stexarchives})
+        contain individual |.tex|-files.
+      \item These may contain \sTeX \textbf{modules}, introduced via 
+      \stexcode"\begin{smodule}{ModuleName}".\iffalse\end{smodule}\fi
+      \item Modules contain \sTeX \textbf{symbol declarations}, introduced via
+        \stexcode"\symdecl{symbolname}", \stexcode"\symdef{symbolname}" and some other
+        constructions. Most symbols have a \emph{notation} that can
+        be used via a \emph{semantic macro} \stexcode"\symbolname" generated
+        by symbol declarations.
+      \item \sTeX \textbf{expressions} finally are built up from
+        usages of semantic macros.
+    \end{itemize}
+
+    \begin{mmtbox}
+      \sTeX archives are simultaneously \mmt archives, and the same
+      directory structure is consequently used.
+
+      \sTeX modules correspond to \omdoc/\mmt \emph{theories}.
+      \stexcode"\importmodule"s (and similar constructions) induce an 
+      \mmt |include|s and other \emph{theory mosphisms},
+      thus giving rise to a \emph{theory graph} in the \omdoc sense.
+
+      Symbol declarations induce \omdoc/\mmt \emph{constants},
+      with optional (formal) \emph{type} and \emph{definiens} components.
+
+      Finally, \sTeX expressions are converted to \omdoc/\mmt terms,
+      which use the syntax of \openmath.
+    \end{mmtbox}
+
+	\end{sfragment}
+
+  \begin{sfragment}{A First \sTeX Document}
     Having set everything up, we can write a first
     \sTeX document. As an example, we will use the
     |smglom/calculus| and |smglom/arithmetics| archives, 
-    which should be present in the designated |MathHub|-folder.
+    which should be present in the designated |MathHub|-folder,
+    and write a small fragment defining the \emph{geometric series}:
 
-    The document we will consider is the following:
     \begin{framed}\begin{latexcode}
     \documentclass{article}
-    \usepackage{stex}
-    \usepackage{xcolor}
-    \def\compemph#1{\textcolor{blue}{#1}}
+    \usepackage{stex,xcolor,stexthm}
 
     \begin{document}
-      \usemodule[smglom/calculus]{series}
-      \usemodule[smglom/arithmetics]{realarith}
+      \begin{smodule}{GeometricSeries}
+        \importmodule[smglom/calculus]{series}
+        \importmodule[smglom/arithmetics]{realarith}
 
-      The \symref{series}{series} $\infinitesum{n}{1}{
-        \realdivide[frac]{1}{
-          \realpower{2}{n}
-        }
-      }$ \symref{converges}{converges} towards $1$.
-        
+        \symdef{geometricSeries}[name=geometric-series]{\comp{S}}
+
+        \begin{sdefinition}[for=geometricSeries]
+            The \definame{geometricSeries} is the \symname{?series}
+            \[\defeq{\geometricSeries}{\definiens{\infinitesum{n}{1}{
+              \realdivide[frac]{1}{
+                \realpower{2}{n}
+              }
+            }}}.\]
+        \end{sdefinition}
+
+        \begin{sassertion}[name=geometricSeriesConverges,type=theorem]
+          The \symname{geometricSeries} \symname{converges} towards $1$.
+        \end{sassertion}
+      \end{smodule}
     \end{document}
     \end{latexcode}\end{framed}
 
     Compiling this document with |pdflatex| should yield
     the output
 
-    \begin{framed}
-        The \textbf{series} 
-        $\textcolor{blue}{\sum}_{n=1}^{\textcolor{blue}\infty} \frac{1}{2^n}$
-        \textbf{converges} towards $1$.
-    \end{framed}
+    \begin{mdframed}
+        \noindent\textbf{Definition 0.1. }\ The 
+        \pdftooltip{\textcolor{blue}{\textbf{geometric series}}}{URI: file://your/file/name/here?GeometricSeries?geometric-series}
+        is the \pdftooltip{\textcolor{blue}{series}}{URI: http://mathhub.info/smglom/calculus?series?series}
+        \[\pdftooltip{\textcolor{blue}S}{URI: file://your/file/name/here?GeometricSeries?geometric-series}
+        \pdftooltip{\textcolor{blue}{:=}}{URI: http://mathhub.info/smglom/mv?defeq?definitional-equation}
+          \mathop{\pdftooltip{\textcolor{blue}{\sum}}{URI: http://mathhub.info/smglom/calculus?series?infinitesum}}_{n=1}^{
+          \pdftooltip{\textcolor{blue}\infty}{URI: http://mathhub.info/smglom/calculus?series?infinitesum}} \frac{1}{2^n}.\]
+        
+        \noindent\textbf{Theorem 0.2. }\ The 
+        \pdftooltip{\textcolor{blue}{geometric series}}{URI: file://your/file/name/here?GeometricSeries?geometric-series}
+        \pdftooltip{\textcolor{blue}{converges}}{URI: http://mathhub.info/smglom/calculus?sequenceConvergence?converges} towards $1$.
+    \end{mdframed}
 
-    Note that the $\sum$ and $\infty$-symbols are highlighted in blue,
-    and the words ``series'' and ``converges'' in bold.
-    This signifies that these words and symbols 
-    reference \sTeX \emph{symbols}
-    formally declared somewhere; associating their 
-    \emph{presentation} in the document with their (formal)
-    definition - i.e. their semantics. The precise way
-    in which they are highlighted (if at all) can of course
-    be customized (see \ednote{somewhere later}).
+    \begin{sparagraph}[type=remark]
+      Note that all of the highlighting, tooltips, coloring and the environment headers
+      come from \pkg{stexthm} -- by default, the amount of additional packages loaded
+      is kept to a minimum and all the presentations can be customized.
+    \end{sparagraph}
+
+    Let's investigate this document in detail now:\bigskip
+
+    \begin{latexcode}[numbers=none,aboveskip=0pt,belowskip=0pt]
+    \begin{smodule}{GeometricSeries}
+      ...
+    \end{smodule}
+    \end{latexcode}
+    \begin{environment}{smodule}
+      First, we open a new \emph{module} called |GeometricSeries|.
+      This module is assigned a \emph{globally unique} identifier (URI),
+      which (depending on your pdf viewer) should pop up in a tooltip
+      if you hover over the word 
+      \pdftooltip{\textcolor{blue}{\textbf{geometric series}}}{URI: file://your/file/name/here?GeometricSeries?geometric-series}.
+    \end{environment}\bigskip
+
+    \begin{latexcode}[numbers=none,aboveskip=0pt,belowskip=0pt]
+    \importmodule[smglom/calculus]{series}
+    \importmodule[smglom/arithmetics]{realarith}
+    \end{latexcode}
+    \begin{function}{\importmodule}
+      Next, we \emph{import} two modules -- 
+      |series| in the |smglom/calculus|-archive, and |realarith| in
+      the |smglom/arithmetics|-archive. If we investigate these archives,
+      we find the files |series.en.tex| and |realarith.en.tex| (respectively) 
+      in their respective |source|-folders, which contain 
+      the statements \stexcode"\begin{smodule}{series}" and \stexcode"\begin{smodule}{realarith}"
+      (respectively).
+      \iffalse\end{smodule}\end{smodule}\fi
+
+      The \stexcode"\importmodule"-statements make all \stex symbols and associated
+      semantic macros (e.g. \stexcode"\infinitesum", \stexcode"\realdivide", 
+      \stexcode"\realpower")
+      in the desired module available. Additionally, they ``export''
+      these symbols to all further modules which include the \emph{current}
+      module -- i.e. if in some future module we would put
+      \stexcode"\importmodule{GeometricSeries}", we would also have \stexcode"\infinitesum"
+      etc. at our disposal.
+    \end{function}
 
     \begin{function}{\usemodule}
-      The command |\usemodule[some/archive]{modulename}|
-      finds some module in the appropriate archive -- in the first
-      case (|\usemodule[smglom/calculus]{series}|), \sTeX
-      looks for the archive |smglom/calculus| in our local
-      MathHub-directory (see \sref{sec.stexarchives}), and
-      in its source-folder for a file |series.tex|. Since no such
-      file exists, and by default the document is assumed to be
-      in \emph{english}, it picks the file |series.en.tex|, and
-      indeed, in here we find a statement |\begin{smodule}{series}|.
-      \iffalse\end{smodule}\fi
+      If we only want to \emph{use} the content of some module |Foo|,
+      e.g. in remarks or examples, but none
+      of the symbols in our current module actually \emph{depend} on
+      the content of |Foo|, we can use \stexcode"\usemodule" instead -- like
+      \stexcode"\importmodule", this will make the module content available,
+      but will \emph{not} export it to other modules.
+    \end{function}\bigskip
+
+    \begin{latexcode}[numbers=none,aboveskip=0pt,belowskip=0pt]
+    \symdef{GeometricSeries}[name=geometric-series]{\comp{S}}
+    \end{latexcode}
+    \begin{function}{\symdef}
+      Next, we introduce a new \emph{symbol} with name
+      |geometric-series| and assign it the semantic macro
+      \stexcode"\geometricSeries".
+      \stexcode"\symdef" also immediately assigns this symbol a \emph{notation},
+      namely $S$.
+    \end{function}
+
+    \begin{function}{\comp}
+      The macro \stexcode"\comp" marks the $S$ in the notation as a
+      \emph{notational component}, as opposed to e.g. arguments
+      to \stexcode"\geometricSeries".
+      It is the notational components that get highlighted
+      and associated with the corresponding symbol (i.e. in this
+      case |geometricSeries|). Since \stexcode"\geometricSeries" takes
+      no arguments, we can wrap the whole notation in a \stexcode"\comp".
+    \end{function}\bigskip
+
+    \begin{latexcode}[numbers=none,aboveskip=0pt,belowskip=0pt]
+    \begin{sdefinition}[for=geometricSeries]
+      ...
+    \end{sdefinition}
+    \begin{sassertion}[name=geometricSeriesConverges,type=theorem]
+      ...
+    \end{sassertion}
+    \end{latexcode}
+    What follows are two \sTeX-\emph{statements} (e.g. definitions,
+    theorems, examples, proofs, ...). These are semantically marked-up
+    variants of the usual environments, which take additional optional
+    arguments (e.g. |for=|, |type=|, |name=|). Since many \LaTeX\xspace templates
+    predefine environments like |definition| or |theorem| with
+    different syntax, we use \stexcode"sdefinition", 
+    \stexcode"sassertion", \stexcode"sexample"
+    etc. instead. You can customize these environments to e.g.
+    simply wrap around some predefined |theorem|-environment.
+    That way, we can still use \stexcode"sassertion" to provide semantic
+    information, while being fully compatible with (and using
+    the document presentation of) predefined environments.
+
+    In our case, the \pkg{stexthm}-package patches
+    e.g. \stexcode"\begin{sassertion}[type=theorem]" to use
+    a |theorem|-environment defined (as usual) using \pkg{amsthm}.
+    \bigskip \iffalse \end{sassertion}\fi
+
+    \begin{latexcode}[numbers=none,aboveskip=0pt,belowskip=0pt]
+    The \definame{geometricSeries} is the \symname{?series}
+    \end{latexcode}
+    \begin{function}{\symname}
+      The \stexcode"\symname"-command prints the name of a symbol,
+      highlights it (based on customizable settings)
+      and associates the text printed with the corresponding
+      symbol. If you hover over the word
+      \pdftooltip{\textcolor{blue}{series}}{URI: http://mathhub.info/smglom/calculus?series?series}
+      in the pdf output, you should see a tooltip showing the full URI
+      of the symbol used.
+    \end{function}
+    \begin{function}{\symref}
+      The \stexcode"\symname"-command is a special case of the more general
+      \stexcode"\symref"-command, which allows customizing the precise
+      text associated with a symbol.
+    \end{function}
+    \begin{function}{\definame,\definiendum}
+      The \stexcode"sdefinition"-environment provides two additional
+      macros, \stexcode"\definame" and \stexcode"\definiendum" which behave
+      similar to \stexcode"\symname" and \stexcode"\symref", but explicitly mark
+      the symbols as \emph{being defined} in this environment,
+      to allow for special highlighting.
+    \end{function}\bigskip
+
+    \begin{latexcode}[numbers=none,aboveskip=0pt,belowskip=0pt]
+    \[\defeq{\geometricSeries}{\definiens{\infinitesum{n}{1}{
+      \realdivide[frac]{1}{
+        \realpower{2}{n}
+      }
+    }}}.\]
+    \end{latexcode}
+    The next snippet -- set in a math environment -- uses
+    several semantic macros imported from (or recursively via) 
+    |series| and |realarithmetics|, such as \stexcode"\defeq", 
+    \stexcode"\infinitesum",
+    etc. In math mode, using a semantic macro inserts its (default)
+    definition. A semantic macro can have several notations -- in
+    that case, we can explicitly choose a specific notation by
+    providing its identifier as an optional argument; e.g.
+    \stexcode"\realdivide[frac]{a}{b}" will use the explicit notation named |frac|
+    of the semantic macro \stexcode"\realdivide", which yields $\frac ab$
+    instead of $a/b$.
+    \begin{function}{\definiens}
+      The \stexcode"sdefinition"-environment additionally provides the
+      \stexcode"\definiens"-command, which allows for explicitly
+      marking up its argument as the \emph{definiens} of the
+      symbol currently being defined.
+    \end{function}
+
+    \begin{sfragment}{\omdoc/xhtml Conversion}
+
+    \end{sfragment}
       
-      \sTeX now reads this file and makes all semantic macros therein
-      available to use, along with all its dependencies.
-      This enables the usage of |\infinitesum| later on.
-
-      Analogously, |\usemodule[smglom/arithmetics]{realarith}|
-      opens the file |realarith.en.tex| in the |.../smglom/arithmetics/source|-folder
-      and makes its contents available, e.g. |\realdivide| and |\realpower|.
-    \end{function}
-
-    \begin{function}{\symref,\symname}
-      The command |\symref{symbolname}{text}| marks the |text|
-      in the second argument as representing the |symbolname|
-      in the first argument -- which is why the word ``series''
-      is set in boldface. In the pdf, this is all that happens.
-      In the |xhtml| (which we will investigate shortly) however,
-      we will note that the word ``series'' is now annotated with the
-      full URI of the symbol denoting the \emph{mathematical concept of
-      a series}. In other words, the word is associated with an unambiguous
-      semantics.
-
-      Notably, in both cases above (\emph{series} and \emph{converges})
-      the text that \emph{references} the symbol and the name of the symbol
-      are identical. Since this occurs quite often, the shorthand
-      |\symname{converges}| would have worked as well, where
-      |\symname{foo-bar}| behaves exactly like |\symref{foo-bar}{foo bar}|
-      - i.e. the text is simply the name of the symbol with ``|-|'' replaced by
-      a space.
-    \end{function}
-
-    \begin{function}{\importmodule}
-      If you investigated the contents of the imported modules 
-      (|realarith| and |series|) more closely, you'll note that
-      none of them contain a symbol ``|converges|''. Yet, we
-      can use |\symref| to refer to ``converges''. That is because
-      the symbol |converges| is found in 
-      |smglom/calculus/source/sequenceConvergence.en.tex|, and
-      |series.en.tex| contains the line
-      |\importmodule{sequenceConvergence}|. The |\importmodule|-statement
-      makes the module referenced available to all documents
-      that include the current module. As such, a ``current module''
-      has to exist for |\importmodule| to work, which is why the command
-      is only allowed within a |module|-environment.
-    \end{function}
 
     \textcolor{red}{TODO} explain |xhtml| conversion, MMT compilation
     (requires an archive...?).
 
 	\end{sfragment}
-\end{sfragment}
-
-\begin{sfragment}{Using \sTeX}
-  \input{packages/stex-basics}
   
   \input{packages/stex-terms}
 

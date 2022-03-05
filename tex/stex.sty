@@ -49,13 +49,13 @@
 }
 \cs_new_protected:Nn \stex_debug:nn {
   \clist_if_in:NnTF \c_stex_debug_clist { all } {
-    \exp_args:Nnnx\msg_set:nnn{stex}{debug / #1}{
+    \msg_set:nnn{stex}{debug / #1}{
       \\Debug~#1:~#2\\
     }
     \msg_none:nn{stex}{debug / #1}
   }{
     \clist_if_in:NnT \c_stex_debug_clist { #1 } {
-      \exp_args:Nnnx\msg_set:nnn{stex}{debug / #1}{
+      \msg_set:nnn{stex}{debug / #1}{
         \\Debug~#1:~#2\\
       }
       \msg_none:nn{stex}{debug / #1}
@@ -4130,7 +4130,7 @@
   \keys_set:nn { stex / instantiate } { #1 }
 }
 
-\NewDocumentCommand \instantiate {m O{} m m}{
+\NewDocumentCommand \instantiate {m O{} m m m}{
   \begingroup
     \stex_get_structure:n {#4}
     \__stex_structures_instantiate_args:n { #2 }
@@ -4176,7 +4176,7 @@
         domain = \l_stex_get_structure_module_str ,
         \prop_to_keyval:N \l_tmpa_prop
       }
-      \tl_set:cn{ #1 }{\stex_invoke_instance:nn{ \l_stex_current_module_str?\l__stex_structures_name_str} }
+      \tl_set:cn{ #1 }{\stex_invoke_instance:n{ \l_stex_current_module_str?\l__stex_structures_name_str} }
     }
     \exp_args:Nx
     \stex_do_up_to_module:n {
@@ -4184,7 +4184,8 @@
         domain = \l_stex_get_structure_module_str ,
         \prop_to_keyval:N \l_tmpa_prop
       }
-      \tl_set:cn{ #1 }{\stex_invoke_instance:nn{\l_stex_current_module_str?\l__stex_structures_name_str} }
+      \tl_set:cn{ #1 }{\stex_invoke_instance:n{\l_stex_current_module_str?\l__stex_structures_name_str} }
+      \notation{\l__stex_structures_name_str}{\exp_not:n{\comp{#5}}}
     }
     \exp_args:Nxx \stex_symdecl_do:nn {
       type={\STEXsymbol{module-type}{
@@ -4232,7 +4233,7 @@
   }
 }
 
-\NewDocumentCommand \varinstantiate {m O{} m m}{
+\NewDocumentCommand \varinstantiate {m O{} m m m}{
   \begingroup
     \stex_get_structure:n {#4}
     \__stex_structures_instantiate_args:n { #2 }
@@ -4314,14 +4315,42 @@
         domain = \l_stex_get_structure_module_str ,
         \prop_to_keyval:N \l_tmpa_prop
       }
-      \tl_set:cn { #1 }{\stex_invoke_varinstance:nn {\l__stex_structures_name_str}}
+      \tl_set:cn { #1 }{\stex_invoke_varinstance:n {\l__stex_structures_name_str}}
+      \tl_set:cn {l_stex_varinstance_\l__stex_structures_name_str _op_tl}{
+        \exp_args:Nnx \exp_not:N \use:nn {
+          \str_set:Nn \exp_not:N \l_stex_current_symbol_str {var://\l__stex_structures_name_str}
+          \_stex_term_omv:nn {var://\l__stex_structures_name_str}{
+            \exp_not:n{
+              \_varcomp{#5}
+            }
+          }
+        }{
+          \exp_not:n{\_stex_reset:N \l_stex_current_symbol_str}
+        }
+      }
     }
     \aftergroup\g__stex_structures_aftergroup_tl
   \endgroup
   \stex_smsmode_do:\ignorespacesandpars
 }
 
-\cs_new_protected:Nn \stex_invoke_instance:nn {
+\cs_new_protected:Nn \stex_invoke_instance:n {
+  \peek_charcode_remove:NTF ! {
+    \STEXsymbol{?#1}
+  }{
+    \_stex_invoke_instance:nn {#1}
+  }
+}
+
+\cs_new_protected:Nn \stex_invoke_varinstance:n {
+  \peek_charcode_remove:NTF ! {
+    \use:c{l_stex_varinstance_#1_op_tl}
+  }{
+    \_stex_invoke_varinstance:nn {#1}
+  }
+}
+
+\cs_new_protected:Nn \_stex_invoke_instance:nn {
   \prop_if_in:cnTF {l_stex_instance_ #1 _prop}{#2}{
     \exp_args:Nx \stex_invoke_symbol:n {\prop_item:cn{l_stex_instance_ #1 _prop}{#2}}
   }{
@@ -4329,10 +4358,9 @@
   }
 }
 
-\cs_new_protected:Nn \stex_invoke_varinstance:nn {
+\cs_new_protected:Nn \_stex_invoke_varinstance:nn {
   \prop_if_in:cnTF {l_stex_varinstance_ #1 _prop}{#2}{
     \prop_get:cnN{l_stex_varinstance_ #1 _prop}{#2}\l_tmpa_tl
-
     \l_tmpa_tl
   }{
     \msg_error:nnnn{stex}{error/unknownfield}{#2}{#1}
@@ -4421,7 +4449,7 @@
       \l_tmpa_str\l__stex_statements_definiendum_post_tl
       }
   } {
-    \defemph@uri {
+    \exp_args:Nnx \defemph@uri {
       \l_tmpa_str\l__stex_statements_definiendum_post_tl
     } { \l_stex_get_symbol_uri_str }
   }
@@ -4441,7 +4469,7 @@
       \l_tmpa_str\l__stex_statements_definiendum_post_tl
      }
   } {
-    \defemph@uri {
+    \exp_args:Nnx \defemph@uri {
       \exp_after:wN \stex_capitalize:n \l_tmpa_str\l__stex_statements_definiendum_post_tl
     } { \l_stex_get_symbol_uri_str }
   }
