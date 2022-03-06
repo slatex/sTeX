@@ -138,8 +138,9 @@
 
 \begin{dangerbox}
   Boxes like this one contain implementation details that are
-  not immediately interesting, but might be useful 
-  to know when debugging (or to avoid) errors.
+  mostly relevant for more advanced use cases, might be useful 
+  to know when debugging, or might be good to know to better understand
+  how something works. They can easiyl be skipped on a first read.
 \end{dangerbox}
 
 \begin{mmtbox}
@@ -379,8 +380,8 @@ which can thus be integrated as additional services into the system.
         \item \sTeX archives are simultaneously \mmt archives, and the same
           directory structure is consequently used.
         \item \sTeX modules correspond to \omdoc/\mmt \emph{theories}.
-          \stexcode"\importmodule"s (and similar constructions) induce an 
-          \mmt |include|s and other \emph{theory mosphisms},
+          \stexcode"\importmodule"s (and similar constructions) induce 
+          \mmt |include|s and other \emph{theory morphisms},
           thus giving rise to a \emph{theory graph} in the \omdoc sense.
         \item Symbol declarations induce \omdoc/\mmt \emph{constants},
           with optional (formal) \emph{type} and \emph{definiens} components.
@@ -401,15 +402,85 @@ which can thus be integrated as additional services into the system.
     \input{packages/stex-symbols}
   \end{sfragment}
 
-  \begin{sfragment}[id=sec.usingsymbols]{Using Semantic Macros and Referencing Symbols}
-    \input{packages/stex-terms}
-  
-    \input{packages/stex-references}
-  \end{sfragment}
+  \begin{sfragment}{Module Inheritance and Structures}
 
-  \input{packages/stex-inheritance}
+    \begin{sfragment}{Multilinguality and Translations}
 
-  \begin{sfragment}{Advanced Structuring Mechanisms}
+      If we load the \sTeX document class or package with the option
+      |lang=<lang>|, \sTeX will load the appropriate \pkg{babel}
+      language for you -- e.g. |lang=de| will load the babel
+      language |ngerman|. Additionally, it makes \sTeX aware
+      of the current document being set in (in this example)
+      \emph{german}. This matters for reasons other than mere
+      \pkg{babel}-purposes, though:
+
+      Every \emph{module} is assigned a language. If no \sTeX
+      package option is set that allows for inferring a language,
+      \sTeX will check whether the current file name ends in
+      e.g. |.en.tex| (or |.de.tex| or |.fr.tex|, or...) and
+      set the language accordingly. Alternatively, a language
+      can be explicitly assigned via 
+      \stexcode"\begin{smodule}[lang=<language>]{Foo}".
+      \iffalse\end{smodule}\fi
+
+      \begin{mmtbox}
+        Technically, each |smodule|-environment induces \emph{two}
+        \omdoc/\mmt theories:
+        \stexcode"\begin{smodule}[lang=<lang>]{Foo}"
+        \iffalse\end{smodule}\fi
+        generates a theory |some/namespace?Foo| that only contains
+        the ``formal'' part of the module -- i.e. exactly the
+        content that is exported when using \stexcode"\importmodule".
+
+        Additionally, \mmt generates a \emph{language theory} 
+        |some/namespace/Foo?<lang>| that includes |some/namespace?Foo|
+        and contains all the other document content -- variable
+        declarations, includes for each \stexcode"\usemodule", etc.
+      \end{mmtbox}
+
+      Notably, the language suffix in a filename is ignored
+      for \stexcode"\usemodule", \stexcode"\importmodule"
+      and in generating/computing URIs for modules. This however
+      allows for providing \emph{translations} for modules
+      between languages without needing to duplicate content:
+
+      If a module |Foo| exists in e.g. english in a file |Foo.en.tex|,
+      we can provide a file |Foo.de.tex| right next to it, and write
+      \stexcode"\begin{smodule}[sig=en]{Foo}".
+      \iffalse\end{smodule}\fi
+      The |sig|-key then signifies, that the ``signature'' of the
+      module is contained in the \emph{english} version of the module,
+      which is immediately imported from there, just like
+      \stexcode"\importmodule" would.
+
+      Additionally to translating the informal content of a module
+      file to different languages, it also allows for customizing
+      notations between languages. For example,
+      the \emph{least common multiple} of two numbers is often
+      denoted as $\mathtt{lcm}(a,b)$ in english, but is
+      called \emph{kleinstes gemeinsames Vielfaches} in german
+      and consequently denoted as $\mathtt{kgV}(a,b)$ there.
+
+      We can therefore imagine a german version of an lcm-module
+      looking something like this:
+
+      \begin{latexcode}[gobble=8]
+        \begin{smodule}[sig=en]{lcm}
+          \notation*{lcm}[de]{\comp{\mathtt{kgV}}(#1,#2)}
+
+          Das \symref{lcm}{kleinste gemeinsame Vielfache}
+          $\lcm{a,b}$ von zwei Zahlen $a,b$ ist... 
+        \end{smodule}
+      \end{latexcode}
+
+      If we now do \stexcode"\importmodule{lcm}"
+      (or \stexcode"\usemodule{lcm}") within a \emph{german} document,
+      it will also load the content of the german translation,
+      including the |de|-notation for \stexcode"\lcm".
+
+    \end{sfragment}
+
+    \input{packages/stex-inheritance}
     \input{packages/stex-features}
   \end{sfragment}
 
@@ -419,17 +490,11 @@ which can thus be integrated as additional services into the system.
   
 \end{sfragment}
 
-%\begin{sfragment}{Creating New Modules and Symbols}
-%	\textcolor{red}{TODO}
+\begin{sfragment}[id=sec.textsymbols]{Using \sTeX Symbols}
+  \input{packages/stex-terms}
 
-%  \stexexample{
-%    \begin{smodule}{assoctest}
-%      \symdef{foo}[args=iia]{\comp{a:}#1\comp{;b:}#2\comp{;c:}#3}{\comp[#1\comp{;}##1\comp+##2\comp;#2\comp]}
-%      $\foo {w_1}{w_2}{x,y,z}$
-%    \end{smodule}
-%   }
-%
-%\end{sfragment}
+  \input{packages/stex-references}
+\end{sfragment}
 
 \begin{sfragment}{\sTeX Statements (Definitions, Theorems, Examples, ...)}
   \input{packages/stex-statements}
@@ -696,77 +761,11 @@ $\plus{a}{\times{b}{c}}$ and $\times{a}{\plus{b}{c}}$
  \subsection{Archives and Imports}
 
  \subsubsection{Namespaces}
-   Ideally, \sTeX would use arbitrary URIs for modules, with no
-   forced relationships between the \emph{logical} namespace
-   of a module and the \emph{physical} location of the file
-   declaring the module -- like \mmt does things.
-
-   Unfortunately, \TeX\ only provides very restricted access to
-   the file system, so we are forced to generate namespaces
-   systematically in such a way that they reflect the physical
-   location of the associated files, so that \sTeX can resolve
-   them accordingly. Largely, users need not concern themselves
-   with namespaces at all, but for completenesses sake, we describe
-   how they are constructed:
-
-   \begin{itemize}
-     \item If \cs{begin}|{module}{Foo}| occurs in a file
-       |/path/to/file/Foo[.|\meta{lang}|].tex| which does not belong
-       to an archive, the namespace is |file://path/to/file|.
-     \item If the same statement occurs in a file
-       |/path/to/file/bar[.|\meta{lang}|].tex|, the namespace is 
-       |file://path/to/file/bar|.
-   \end{itemize}
-
-   In other words: outside of archives, the namespace corresponds to
-   the file URI with the filename dropped iff it is equal to the
-   module name, and ignoring the (optional) language suffix^^A
-   \footnote{which is internally attached to the module name instead,
-   but a user need not worry about that.}.
-
-   If the current file is in an archive, the procedure is the same
-   except that the initial segment of the file path up to the archive's
-   |source|-folder is replaced by the archive's namespace URI.
+   
 
  \subsubsection{Paths in Import-Statements}
 
- Conversely, here is how namespaces/URIs and file paths are computed
- in import statements, examplary \cs{importmodule}:
-
- \begin{itemize}
-   \item \cs{importmodule}|{Foo}| outside of an archive refers 
-     to module |Foo| in the current namespace. Consequently, |Foo|
-     must have been declared earlier in the same document or, if not,
-     in a file |Foo[.|\meta{lang}|].tex| in the same directory.
-   \item The same statement \emph{within} an archive refers to either
-     the module |Foo| declared earlier in the same document, or
-     otherwise to the module |Foo| in the archive's top-level namespace.
-     In the latter case, is has to be declared in a file |Foo[.|\meta{lang}|].tex|
-     directly in the archive's |source|-folder.
-   \item Similarly, in \cs{importmodule}|{some/path?Foo}| the path
-     |some/path| refers to either the sub-directory and relative 
-     namespace path of the current directory and namespace outside of an archive,
-     or relative to the current archive's top-level namespace and |source|-folder,
-     respectively.
-
-     The module |Foo| must either be declared in the file
-     \meta{top-directory}|/some/path/Foo[.|\meta{lang}|].tex|, or in
-     \meta{top-directory}|/some/path[.|\meta{lang}|].tex| (which are
-     checked in that order).
-   \item Similarly, \cs{importmodule}|[Some/Archive]{some/path?Foo}|
-     is resolved like the previous cases, but relative to the archive
-     |Some/Archive| in the mathhub-directory.
-   \item Finally, \cs{importmodule}|{full://uri?Foo}| naturally refers to the
-     module |Foo| in the namespace |full://uri|. Since the file this module
-     is declared in can not be determined directly from the URI, the module
-     must be in memory already, e.g. by being referenced earlier in the
-     same document.
-
-     Since this is less compatible with a modular development, using full
-     URIs directly is discouraged.
-
- \end{itemize} 
-
+ 
 
 	
 	

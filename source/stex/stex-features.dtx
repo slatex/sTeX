@@ -80,7 +80,7 @@
 }
 
 \msg_new:nnn{stex}{error/unknownfield}{
-  No~field~#1~in~instance~#2~found!
+  No~field~#1~in~instance~#2~found!\\#3
 }
 
 \msg_new:nnn{stex}{error/keyval}{
@@ -349,9 +349,14 @@
     \tl_if_exist:cF {
       l_@@_copymodule_##1?##2_def_tl
     }{
-      \msg_error:nnxx{stex}{error/interpretmodule/nodefiniens}{
-        ##1?##2
-      }{\l_stex_current_copymodule_name_str}
+      \str_if_eq:eeF {
+        \prop_item:cn{
+          l_stex_symdecl_ ##1 ? ##2 _prop }{ defined }
+      }{ true }{
+        \msg_error:nnxx{stex}{error/interpretmodule/nodefiniens}{
+          ##1?##2
+        }{\l_stex_current_copymodule_name_str}
+      }
     }
   }
 }
@@ -706,7 +711,10 @@
         \prop_to_keyval:N \l_tmpa_prop
       }
       \tl_set:cn{ #1 }{\stex_invoke_instance:n{\l_stex_current_module_str?\l_@@_name_str} }
-      \notation{\l_@@_name_str}{\exp_not:n{\comp{#5}}}
+    }
+    \stex_debug:nn{instantiate}{
+      Instance~\l_stex_current_module_str?\l_@@_name_str \\
+      \prop_to_keyval:N \l_tmpa_prop
     }
     \exp_args:Nxx \stex_symdecl_do:nn {
       type={\STEXsymbol{module-type}{
@@ -715,6 +723,7 @@
         }{}{0}{}
       }}
     }{\l_@@_name_str}
+    \exp_args:Nx \notation{\l_@@_name_str}{\comp{#5}}
   \endgroup
   \stex_smsmode_do:\ignorespacesandpars
 }
@@ -858,7 +867,7 @@
 
 \cs_new_protected:Nn \stex_invoke_instance:n {
   \peek_charcode_remove:NTF ! {
-    \STEXsymbol{?#1}
+    \stex_invoke_symbol:n{#1}
   }{
     \_stex_invoke_instance:nn {#1}
   }
@@ -877,7 +886,10 @@
   \prop_if_in:cnTF {l_stex_instance_ #1 _prop}{#2}{
     \exp_args:Nx \stex_invoke_symbol:n {\prop_item:cn{l_stex_instance_ #1 _prop}{#2}}
   }{
-    \msg_error:nnnn{stex}{error/unknownfield}{#2}{#1}
+    \prop_set_eq:Nc \l_tmpa_prop{l_stex_instance_ #1 _prop}
+    \msg_error:nnnnn{stex}{error/unknownfield}{#2}{#1}{
+      \prop_to_keyval:N \l_tmpa_prop
+    }
   }
 }
 
@@ -886,7 +898,7 @@
     \prop_get:cnN{l_stex_varinstance_ #1 _prop}{#2}\l_tmpa_tl
     \l_tmpa_tl
   }{
-    \msg_error:nnnn{stex}{error/unknownfield}{#2}{#1}
+    \msg_error:nnnnn{stex}{error/unknownfield}{#2}{#1}{}
   }
 }
 %    \end{macrocode}

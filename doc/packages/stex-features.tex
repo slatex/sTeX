@@ -1,3 +1,151 @@
+\begin{sfragment}{The \texttt{mathstructure} Environment}
+\begin{smodule}[ns=https://github.com/slatex/sTeX/doc]{MathStructures}
+    A common occurence in mathematics is bundling several
+    interrelated ``declarations'' together into \emph{structures}.
+    For example:
+    \begin{itemize}
+        \item A \emph{monoid} is a structure $\mathstruct{M,\circ,e}$
+            with $\circ:M\times M\to M$ and $e\in M$ such that...
+        \item A \emph{topological space} is a structure
+            $\mathstruct{X,\mathcal T}$ where $X$ is a set and
+            $\mathcal T$ is a topology on $X$
+        \item A \emph{partial order} is a structure $\mathstruct{S,\leq}$
+            where $\leq$ is a binary relation on $S$ such that...
+    \end{itemize}
+
+    This phenomenon is important and common enough to warrant special
+    support, in particular because it requires being able
+    to \emph{instantiate} such structures (or, ratherer,
+    structure \emph{signatures}) in order to talk about (concrete
+    or variable) \emph{particular} monoids, topological spaces,
+    partial orders etc.
+
+    \begin{environment}{mathstructure}
+        The \stexcode"mathstructure" environment allows us to do
+        exactly that. It behaves exactly like the
+        \stexcode"smodule" environment, but is itself only allowed
+        inside an \stexcode"smodule" environment, and allows
+        for instantiation later on.
+    \end{environment}
+
+    How this works is again best demonstrated by example:
+        \symdef{funtype}[args=ai]{#1 \comp\to #2}{##1 \comp\times ##2}
+        \symdef{fun}[args=bi]{#1 \comp\mapsto #2}
+        \symdecl{set}
+
+        \stexexample{
+\begin{mathstructure}{monoid}
+    \symdef{universe}[type=\set]{\comp{U}}
+    \symdef{op}[
+        args=2,
+        type=\funtype{\universe,\universe}{\universe},
+        op=\circ
+    ]{#1 \comp{\circ} #2}
+    \symdef{unit}[type=\universe]{\comp{e}}
+\end{mathstructure}
+
+A \symname{monoid} is...
+        }
+        Note that the \stexcode"\symname{monoid}" is appropriately
+        highlighted and (depending on your pdf viewer)
+        shows a URI on hovering -- implying that the \stexcode"mathstructure"
+        environment has generated a \emph{symbol} |monoid| for us.
+        It has not generated a semantic macro though, since
+        we can not use the |monoid|-symbol \emph{directly}. Instead,
+        we can instantiate it, for example for integers:
+
+        \stexexample{
+\symdef{Int}[type=\set]{\comp{\mathbb Z}}
+\symdef{addition}[
+    type=\funtype{\Int,\Int}{\Int},
+    args=2,
+    op=+
+]{##1 \comp{+} ##2}
+\symdef{zero}[type=\Int]{\comp{0}}
+
+$\mathstruct{\Int,\addition!,\zero}$ is a \symname{monoid}.
+        }
+
+        So far, we have not actually instantiated |monoid|, but now
+        that we have all the symbols to do so, we can:
+
+        \stexexample{
+\instantiate{intmonoid}{
+    universe = Int ,
+    op = addition ,
+    unit = zero
+}{monoid}{\mathbb{Z}_{+,0}}
+
+    $\intmonoid{universe}$, $\intmonoid{unit}$ and $\intmonoid{op}{a}{b}$.
+
+    Also: $\intmonoid!$
+        }
+        \begin{function}{\instantiate}
+            So summarizing:
+            \stexcode"\instantiate" takes four arguments: The 
+            (macro-)name of the instance, a key-value pair assigning
+            declarations in the corresponding \stexcode"mathstructure"
+            to symbols currently in scope, the name of the \stexcode"mathstructure"
+            to instantiate, and lastly a notation for the instance itself.
+
+            It then generates a semantic macro that takes as argument
+            the name of a declaration in the instantiated \stexcode"mathstructure"
+            and resolves it to the corresponding instance of that particular declaration.
+        \end{function}
+
+        \begin{mmtbox}
+            \stexcode"\instantiate" and \stexcode"mathstructure"
+            make use of the \emph{Theories-as-Types} paradigm:
+
+            \stexcode"mathstructure{<name>}" does in fact simply create
+            a nested theory with name |<name>-structure|. The \emph{constant}
+            |<name>| is defined as |Mod(<name>-structure)| -- 
+            a \emph{dependent record type with manifest fields}, the fields
+            of which are generated from (and correspond to) the constants
+            in |<name>-structure|.
+
+            \stexcode"\instantiate" appropriately generates a constant
+            whose definiens is a record term of type |Mod(<name>-structure)|,
+            with the fields assigned appropriately based on the key-value-list.
+        \end{mmtbox}
+
+        Notably, \stexcode"\instantiate" throws an error if not \emph{every}
+        declaration in the instantiated \stexcode"mathstructure" is being assigned.
+        
+        You might consequently ask what the usefulness of \stexcode"mathstructure"
+        even is.
+
+        \begin{function}{\varinstantiate}
+            The answer is that we can also instantiate a 
+            \stexcode"mathstructure" with a \emph{variable}.
+            The syntax of \stexcode"\varianstantiate" is equivalent
+            to that of \stexcode"\instantiate", but all of the key-value-pairs
+            are optional, and if not explicitly assigned (to a symbol \emph{or}
+            a variable declared with \stexcode"\vardef") inherit their notation
+            from the one in the \stexcode"mathstructure" environment.
+        \end{function}
+
+        This allows us to do things like:
+
+        \stexexample{
+\varinstantiate{varM}{}{monoid}{M}
+
+A \symname{monoid} is a structure 
+$\varM!:=\mathstruct{\varM{universe},\varM{op}!,\varM{unit}}$
+such that 
+$\varM{op}!:\funtype{\varM{universe},\varM{universe}}{\varM{universe}}$
+ and...
+        }
+
+        We will return to this example later, when we also know
+        how to handle the \emph{axioms} of a monoid.
+\end{smodule}
+\end{sfragment}
+
+\begin{sfragment}{The \texttt{copymodule} Environment}
+
+    \textcolor{red}{TODO: explain}
+
 Given modules:
 
 \stexexample{
@@ -48,7 +196,12 @@ same universe:
 }
 
 \textcolor{red}{TODO: explain donotclone}
+    
+\end{sfragment}
 
+\begin{sfragment}{The \texttt{interpretmodule} Environment}
+
+    \textcolor{red}{TODO: explain}
 
 \stexexample{
     \begin{smodule}{int}
@@ -65,3 +218,5 @@ same universe:
         \end{interpretmodule}
     \end{smodule}
 }
+    
+\end{sfragment}

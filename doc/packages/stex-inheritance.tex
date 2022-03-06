@@ -1,1 +1,94 @@
-\textcolor{red}{TODO: inheritance documentation}
+\begin{sfragment}{Simple Inheritance and Namespaces}
+
+    \begin{function}{\importmodule,\usemodule}
+        \stexcode"\importmodule[Some/Archive]{path?ModuleName}"
+        is only allowed within an \stexcode"smodule"-environment
+        and makes the symbols declared therein available. Additionally
+        the content of |ModuleName| will be exported if the
+        current module is imported somewhere else via
+        \stexcode"\importmodule".
+
+        \stexcode"\usemodule" behaves the same way, but without exporting
+        the content of the used module.
+    \end{function}
+
+    It is worth going into some detail how exactly \stexcode"\importmodule"
+    and \stexcode"\usemodule" resolve their arguments to find
+    the desired module -- which is closely related to the
+    \emph{namespace} generated for a module, that is used to generate
+    its URI.
+
+    \begin{dangerbox}
+        Ideally, \sTeX would use arbitrary URIs for modules, with no
+   forced relationships between the \emph{logical} namespace
+   of a module and the \emph{physical} location of the file
+   declaring the module -- like \mmt does things.
+
+   Unfortunately, \TeX\ only provides very restricted access to
+   the file system, so we are forced to generate namespaces
+   systematically in such a way that they reflect the physical
+   location of the associated files, so that \sTeX can resolve
+   them accordingly. Largely, users need not concern themselves
+   with namespaces at all, but for completenesses sake, we describe
+   how they are constructed:
+
+   \begin{itemize}
+     \item If \stexcode"\begin{smodule}{Foo}"
+        \iffalse\end{smodule}\fi occurs in a file
+       |/path/to/file/Foo[.|\meta{lang}|].tex| which does not belong
+       to an archive, the namespace is |file://path/to/file|.
+     \item If the same statement occurs in a file
+       |/path/to/file/bar[.|\meta{lang}|].tex|, the namespace is 
+       |file://path/to/file/bar|.
+   \end{itemize}
+
+   In other words: outside of archives, the namespace corresponds to
+   the file URI with the filename dropped iff it is equal to the
+   module name, and ignoring the (optional) language suffix.
+
+   If the current file is in an archive, the procedure is the same
+   except that the initial segment of the file path up to the archive's
+   |source|-folder is replaced by the archive's namespace URI.
+\end{dangerbox}
+
+\begin{dangerbox}
+        Conversely, here is how namespaces/URIs and file paths are computed
+ in import statements, examplary \stexcode"\importmodule":
+
+ \begin{itemize}
+   \item \stexcode"\importmodule{Foo}" outside of an archive refers 
+     to module |Foo| in the current namespace. Consequently, |Foo|
+     must have been declared earlier in the same document or, if not,
+     in a file |Foo[.|\meta{lang}|].tex| in the same directory.
+   \item The same statement \emph{within} an archive refers to either
+     the module |Foo| declared earlier in the same document, or
+     otherwise to the module |Foo| in the archive's top-level namespace.
+     In the latter case, is has to be declared in a file |Foo[.|\meta{lang}|].tex|
+     directly in the archive's |source|-folder.
+   \item Similarly, in \stexcode"\importmodule{some/path?Foo}" the path
+     |some/path| refers to either the sub-directory and relative 
+     namespace path of the current directory and namespace outside of an archive,
+     or relative to the current archive's top-level namespace and |source|-folder,
+     respectively.
+
+     The module |Foo| must either be declared in the file
+     \meta{top-directory}|/some/path/Foo[.|\meta{lang}|].tex|, or in
+     \meta{top-directory}|/some/path[.|\meta{lang}|].tex| (which are
+     checked in that order).
+   \item Similarly, \stexcode"\importmodule[Some/Archive]{some/path?Foo}"
+     is resolved like the previous cases, but relative to the archive
+     |Some/Archive| in the mathhub-directory.
+   \item Finally, \stexcode"\importmodule{full://uri?Foo}" naturally refers to the
+     module |Foo| in the namespace |full://uri|. Since the file this module
+     is declared in can not be determined directly from the URI, the module
+     must be in memory already, e.g. by being referenced earlier in the
+     same document.
+
+     Since this is less compatible with a modular development, using full
+     URIs directly is strongly discouraged, unless the module is delared in
+     the current file directly.
+ \end{itemize} 
+
+    \end{dangerbox}
+
+\end{sfragment}
