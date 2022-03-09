@@ -245,7 +245,7 @@
 \cs_new_protected:Nn \stex_deactivate_macro:Nn {
   \exp_after:wN\let\csname \detokenize{#1} - orig\endcsname#1
   \def#1{
-    \msg_error:nnnn{stex}{error/deactivated-macro}{#1}{#2}
+    \msg_error:nnnn{stex}{error/deactivated-macro}{\detokenize{#1}}{#2}
   }
 }
 \cs_new_protected:Nn \stex_reactivate_macro:N {
@@ -635,7 +635,11 @@
     }{
       \begingroup
         \inputreftrue
-        \input{ \c_stex_mathhub_str / ##1 / source / #2 }
+        \tl_if_empty:nTF{ ##1 }{
+          \input{#2}
+        }{
+          \input{ \c_stex_mathhub_str / ##1 / source / #2 }
+        }
       \endgroup
     }
   }
@@ -3897,7 +3901,7 @@
     \seq_remove_all:Nn \l__stex_copymodule_copymodule_modules_seq { ##1 }
     \seq_map_inline:cn {c_stex_module_##1_constants}{
       \seq_remove_all:Nn \l__stex_copymodule_copymodule_fields_seq { ##1 ? ####1 }
-      \bool_lazy_any_p:nT {
+      \bool_lazy_any:nT {
         { \cs_if_exist_p:c {l__stex_copymodule_copymodule_##1?####1_name_str}}
         { \cs_if_exist_p:c {l__stex_copymodule_copymodule_##1?####1_macroname_str}}
         { \cs_if_exist_p:c {l__stex_copymodule_copymodule_##1?####1_def_tl}}
@@ -3909,7 +3913,7 @@
 
   \prop_get:NnN \l_stex_current_copymodule_prop { includes } \l_tmpa_seq
   \seq_put_right:Nx \l_tmpa_seq {\l_stex_import_ns_str ?\l_stex_import_name_str }
-  \prop_put:Nnx \l_stex_current_copymodule_prop {includes} \l_tmpa_seq
+  \prop_put:Nno \l_stex_current_copymodule_prop {includes} \l_tmpa_seq
 }
 
 \NewDocumentCommand \assign { m m }{
@@ -4268,10 +4272,23 @@
   }
 }
 
+\keys_define:nn { stex / varinstantiate } {
+  name        .str_set_x:N  = \l__stex_structures_name_str,
+  bind        .choices:nn   =
+      {forall,exists}
+      {\str_set:Nx \l__stex_structures_bind_str {\l_keys_choice_tl}}
+
+}
+\cs_new_protected:Nn \__stex_structures_varinstantiate_args:n {
+  \str_clear:N \l__stex_structures_name_str
+  \str_clear:N \l__stex_structures_bind_str
+  \keys_set:nn { stex / varinstantiate } { #1 }
+}
+
 \NewDocumentCommand \varinstantiate {m O{} m m m}{
   \begingroup
     \stex_get_structure:n {#4}
-    \__stex_structures_instantiate_args:n { #2 }
+    \__stex_structures_varinstantiate_args:n { #2 }
     \str_if_empty:NT \l__stex_structures_name_str {
       \str_set:Nn \l__stex_structures_name_str { #1 }
     }
@@ -4323,12 +4340,14 @@
     \tl_gclear:N \g__stex_structures_aftergroup_tl
     \seq_map_inline:Nn \l__stex_structures_fields_seq {
       \str_set:Nx \l_tmpa_str {\l__stex_structures_name_str . \prop_item:cn {l_stex_symdecl_##1_prop}{name} }
-      \stex_find_notation:nn{##1}{}
-      \cs_gset_eq:cc{g__stex_structures_tmpa_\l_tmpa_str _cs}
-        {stex_notation_##1\c_hash_str \l_stex_notation_variant_str _cs}
-      \cs_if_exist:cT{stex_op_notation_##1\c_hash_str \l_stex_notation_variant_str _cs}{
-        \cs_gset_eq:cc {g__stex_structures_tmpa_op_\l_tmpa_str _cs}
-          {stex_op_notation_##1\c_hash_str \l_stex_notation_variant_str _cs}
+      \seq_if_empty:cF{l_stex_symdecl_##1_notations}{
+        \stex_find_notation:nn{##1}{}
+        \cs_gset_eq:cc{g__stex_structures_tmpa_\l_tmpa_str _cs}
+          {stex_notation_##1\c_hash_str \l_stex_notation_variant_str _cs}
+        \cs_if_exist:cT{stex_op_notation_##1\c_hash_str \l_stex_notation_variant_str _cs}{
+          \cs_gset_eq:cc {g__stex_structures_tmpa_op_\l_tmpa_str _cs}
+            {stex_op_notation_##1\c_hash_str \l_stex_notation_variant_str _cs}
+        }
       }
 
       \exp_args:NNx \tl_gput_right:Nn \g__stex_structures_aftergroup_tl {
@@ -4379,7 +4398,12 @@
 
 \cs_new_protected:Nn \stex_invoke_varinstance:n {
   \peek_charcode_remove:NTF ! {
-    \use:c{l_stex_varinstance_#1_op_tl}
+    \exp_args:Nnx \use:nn {
+      \def\comp{\_varcomp}
+      \use:c{l_stex_varinstance_#1_op_tl}
+    }{
+      \_stex_reset:N \comp
+    }
   }{
     \_stex_invoke_varinstance:nn {#1}
   }
