@@ -38,6 +38,7 @@
 % \fi
 %
 % \begin{documentation}\label{pkg:inheritance:doc}
+% \changes{3.1.0}{2022/03/10}{SMS mode now loads recursive dependencies \emph{first}}
 %
 % Code related to Module Inheritance, in particular \emph{sms mode}.
 %
@@ -266,10 +267,43 @@
 %    \begin{macrocode}
 \quark_new:N \q_@@_break
 
+\NewDocumentCommand \_@@_importmodule: { O{} m} {
+  \seq_gput_right:Nn \l_@@_importmodules_seq {{#1}{#2}}
+  \stex_smsmode_do:
+}
+
 \cs_new_protected:Nn \stex_file_in_smsmode:nn {
   \stex_filestack_push:n{#1}
+  \seq_gclear:N \l_@@_importmodules_seq
+  % ----- new -----------------------------
+  \_@@_in_smsmode:nn{#1}{
+    \let\importmodule\_@@_importmodule:
+    \seq_clear:N \g_stex_smsmode_allowedenvs_seq
+    \tl_clear:N \g_stex_smsmode_allowedmacros_tl
+    \tl_clear:N \g_stex_smsmode_allowedmacros_escape_tl
+    \tl_put_right:Nn \g_stex_smsmode_allowedmacros_escape_tl {\importmodule}
+    \everyeof{\q_@@_break\noexpand}
+    \expandafter\expandafter\expandafter
+    \stex_smsmode_do:
+    \csname @ @ input\endcsname "#1"\relax
+  }
+  % ----- new -----------------------------
   \_@@_in_smsmode:nn{#1} {
     #2
+    % ----- new -----------------------------
+    \begingroup
+    \stex_debug:nn{smsmode}{Here:~\seq_use:Nn\l_@@_importmodules_seq, }
+    \seq_map_inline:Nn \l_@@_importmodules_seq {
+      \stex_import_module_uri:nn ##1
+      \stex_import_require_module:nnnn
+        \l_stex_import_ns_str
+        \l_stex_import_archive_str
+        \l_stex_import_path_str
+        \l_stex_import_name_str
+    }
+    \endgroup
+    \stex_debug:nn{smsmode}{Actually~loading~file~#1}
+    % ----- new -----------------------------
     \everyeof{\q_@@_break\noexpand}
     \expandafter\expandafter\expandafter
     \stex_smsmode_do:
@@ -527,10 +561,10 @@
   \stex_debug:nn{modules}{Importing~module:~
     \l_stex_import_ns_str ? \l_stex_import_name_str
   }
+  \stex_import_require_module:nnnn 
+  { \l_stex_import_ns_str } { \l_stex_import_archive_str } 
+  { \l_stex_import_path_str } { \l_stex_import_name_str }
   \stex_if_smsmode:F {
-    \stex_import_require_module:nnnn 
-    { \l_stex_import_ns_str } { \l_stex_import_archive_str } 
-    { \l_stex_import_path_str } { \l_stex_import_name_str }
     \stex_annotate_invisible:nnn 
       {import} {\l_stex_import_ns_str ? \l_stex_import_name_str} {}
   }

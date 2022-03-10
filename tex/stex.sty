@@ -1534,10 +1534,43 @@
 }
 \quark_new:N \q__stex_smsmode_break
 
+\NewDocumentCommand \__stex_smsmode_importmodule: { O{} m} {
+  \seq_gput_right:Nn \l__stex_smsmode_importmodules_seq {{#1}{#2}}
+  \stex_smsmode_do:
+}
+
 \cs_new_protected:Nn \stex_file_in_smsmode:nn {
   \stex_filestack_push:n{#1}
+  \seq_gclear:N \l__stex_smsmode_importmodules_seq
+  % ----- new -----------------------------
+  \__stex_smsmode_in_smsmode:nn{#1}{
+    \let\importmodule\__stex_smsmode_importmodule:
+    \seq_clear:N \g_stex_smsmode_allowedenvs_seq
+    \tl_clear:N \g_stex_smsmode_allowedmacros_tl
+    \tl_clear:N \g_stex_smsmode_allowedmacros_escape_tl
+    \tl_put_right:Nn \g_stex_smsmode_allowedmacros_escape_tl {\importmodule}
+    \everyeof{\q__stex_smsmode_break\noexpand}
+    \expandafter\expandafter\expandafter
+    \stex_smsmode_do:
+    \csname @ @ input\endcsname "#1"\relax
+  }
+  % ----- new -----------------------------
   \__stex_smsmode_in_smsmode:nn{#1} {
     #2
+    % ----- new -----------------------------
+    \begingroup
+    \stex_debug:nn{smsmode}{Here:~\seq_use:Nn\l__stex_smsmode_importmodules_seq, }
+    \seq_map_inline:Nn \l__stex_smsmode_importmodules_seq {
+      \stex_import_module_uri:nn ##1
+      \stex_import_require_module:nnnn
+        \l_stex_import_ns_str
+        \l_stex_import_archive_str
+        \l_stex_import_path_str
+        \l_stex_import_name_str
+    }
+    \endgroup
+    \stex_debug:nn{smsmode}{Actually~loading~file~#1}
+    % ----- new -----------------------------
     \everyeof{\q__stex_smsmode_break\noexpand}
     \expandafter\expandafter\expandafter
     \stex_smsmode_do:
@@ -1758,10 +1791,10 @@
   \stex_debug:nn{modules}{Importing~module:~
     \l_stex_import_ns_str ? \l_stex_import_name_str
   }
+  \stex_import_require_module:nnnn
+  { \l_stex_import_ns_str } { \l_stex_import_archive_str }
+  { \l_stex_import_path_str } { \l_stex_import_name_str }
   \stex_if_smsmode:F {
-    \stex_import_require_module:nnnn
-    { \l_stex_import_ns_str } { \l_stex_import_archive_str }
-    { \l_stex_import_path_str } { \l_stex_import_name_str }
     \stex_annotate_invisible:nnn
       {import} {\l_stex_import_ns_str ? \l_stex_import_name_str} {}
   }
@@ -2474,10 +2507,10 @@
       \exp_args:Nx \stex_add_to_current_module:n {
         \exp_args:Nnx \seq_remove_all:cn { l_stex_symdecl_#1 _notations }
           { \l__stex_notation_variant_str \c_hash_str \l__stex_notation_lang_str }
-        \exp_args:Nnx \seq_put_left:cn { l_stex_symdecl_#1 _notations }
-          { \l__stex_notation_variant_str \c_hash_str \l__stex_notation_lang_str }
         \exp_args:Nnx \seq_remove_all:cn { l_stex_symdecl_#1 _notations }
           { \c_hash_str }
+        \exp_args:Nnx \seq_put_left:cn { l_stex_symdecl_#1 _notations }
+          { \l__stex_notation_variant_str \c_hash_str \l__stex_notation_lang_str }
       }
       \stex_debug:nn {notations}{
         Setting~default~notation~
@@ -4340,13 +4373,16 @@
     \tl_gclear:N \g__stex_structures_aftergroup_tl
     \seq_map_inline:Nn \l__stex_structures_fields_seq {
       \str_set:Nx \l_tmpa_str {\l__stex_structures_name_str . \prop_item:cn {l_stex_symdecl_##1_prop}{name} }
+      \stex_debug:nn{varinstantiate}{Field~\l_tmpa_str :~##1}
       \seq_if_empty:cF{l_stex_symdecl_##1_notations}{
         \stex_find_notation:nn{##1}{}
         \cs_gset_eq:cc{g__stex_structures_tmpa_\l_tmpa_str _cs}
           {stex_notation_##1\c_hash_str \l_stex_notation_variant_str _cs}
+        \stex_debug:nn{varinstantiate}{Notation:~\cs_meaning:c{g__stex_structures_tmpa_\l_tmpa_str _cs}}
         \cs_if_exist:cT{stex_op_notation_##1\c_hash_str \l_stex_notation_variant_str _cs}{
           \cs_gset_eq:cc {g__stex_structures_tmpa_op_\l_tmpa_str _cs}
             {stex_op_notation_##1\c_hash_str \l_stex_notation_variant_str _cs}
+            \stex_debug:nn{varinstantiate}{Operator~Notation:~\cs_meaning:c{g__stex_structures_tmpa_op_\l_tmpa_str _cs}}
         }
       }
 
@@ -4383,6 +4419,7 @@
         }
       }
     }
+    \stex_debug:nn{varianstantiate}{\expandafter\detokenize\expandafter{\g__stex_structures_aftergroup_tl}}
     \aftergroup\g__stex_structures_aftergroup_tl
   \endgroup
   \stex_smsmode_do:\ignorespacesandpars
