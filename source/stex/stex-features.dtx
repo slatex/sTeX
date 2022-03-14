@@ -213,14 +213,14 @@
     \begin{stex_annotate_env} {#4} {
       \l_stex_current_module_str?\l_stex_current_copymodule_name_str
     }
-    \stex_annotate_invisible:nnn{from}{\l_stex_import_ns_str ?\l_stex_import_name_str}{}
+    \stex_annotate_invisible:nnn{domain}{\l_stex_import_ns_str ?\l_stex_import_name_str}{}
   }
-  \bool_set_eq:NN \l_@@_oldhtml_bool \_stex_html_do_output_bool
-  \bool_set_false:N \_stex_html_do_output_bool
+  %\bool_set_eq:NN \l_@@_oldhtml_bool \_stex_html_do_output_bool
+  %\bool_set_false:N \_stex_html_do_output_bool
 }
 \cs_new_protected:Nn \stex_copymodule_end:n {
   \def \l_tmpa_cs ##1 ##2 {#1}
-  \bool_set_eq:NN \_stex_html_do_output_bool \l_@@_oldhtml_bool
+  %\bool_set_eq:NN \_stex_html_do_output_bool \l_@@_oldhtml_bool
   \tl_clear:N \l_tmpa_tl
   \tl_clear:N \l_tmpb_tl
   \prop_get:NnN \l_stex_current_copymodule_prop {fields} \l_tmpa_seq
@@ -295,11 +295,11 @@
       }
       \tl_if_exist:cT {l_@@_copymodule_##1?####1_def_tl}{
         \tl_put_right:Nx \l_tmpc_tl { 
-          \stex_annotate_invisible:nnn{definiens}{}{$\use:c{l_@@_copymodule_##1?####1_def_tl}$}
+          $\stex_annotate_invisible:nnn{definiens}{}{\exp_after:wN \exp_not:N\csname l_@@_copymodule_##1?####1_def_tl\endcsname}$
         }
       }
       \tl_put_right:Nx \l_tmpb_tl {
-        \stex_annotate:nnn{assignment} {##1?####1} { \l_tmpc_tl }
+        \stex_annotate:nnn{assignment} {##1?####1} { \exp_after:wN \exp_not:n \exp_after:wN {\l_tmpc_tl} }
       }
     }
   }
@@ -311,11 +311,15 @@
       \prop_to_keyval:N \l_stex_current_copymodule_prop
     }
   }
+  \seq_gput_right:cx{c_stex_module_\l_stex_current_module_str _copymodules}{
+    \l_stex_current_module_str?\l_stex_current_copymodule_name_str
+  }
   \exp_args:No \stex_add_to_current_module:n \l_tmpa_tl
   \stex_debug:nn{copymodule}{result:\meaning \l_tmpa_tl}
   \exp_args:Nx \stex_do_up_to_module:n { 
       \exp_args:No \exp_not:n \l_tmpa_tl
   }
+  \stex_debug:nn{copymodule}{output:\meaning \l_tmpb_tl}
   \l_tmpb_tl
   \stex_if_smsmode:F {
     \end{stex_annotate_env}
@@ -323,7 +327,7 @@
 }
 
 \NewDocumentEnvironment {copymodule} { O{} m m}{
-  \stex_copymodule_start:nnnn { #1 }{ #2 }{ #3 }{ structure }
+  \stex_copymodule_start:nnnn { #1 }{ #2 }{ #3 }{ copymodule }
   \stex_deactivate_macro:Nn \symdecl {module~environments}
   \stex_deactivate_macro:Nn \symdef {module~environments}
   \stex_deactivate_macro:Nn \notation {module~environments}
@@ -336,7 +340,7 @@
 }
 
 \NewDocumentEnvironment {interpretmodule} { O{} m m}{
-  \stex_copymodule_start:nnnn { #1 }{ #2 }{ #3 }{ realization }
+  \stex_copymodule_start:nnnn { #1 }{ #2 }{ #3 }{ interpretmodule }
   \stex_deactivate_macro:Nn \symdecl {module~environments}
   \stex_deactivate_macro:Nn \symdef {module~environments}
   \stex_deactivate_macro:Nn \notation {module~environments}
@@ -361,32 +365,77 @@
   }
 }
 
-\NewDocumentCommand \donotcopy { O{} m}{
-  \stex_import_module_uri:nn { #1 } { #2 }
-  \stex_collect_imports:n {\l_stex_import_ns_str ?\l_stex_import_name_str }
-  \seq_map_inline:Nn \l_stex_collect_imports_seq {
-    \seq_remove_all:Nn \l_@@_copymodule_modules_seq { ##1 }
-    \seq_map_inline:cn {c_stex_module_##1_constants}{
-      \seq_remove_all:Nn \l_@@_copymodule_fields_seq { ##1 ? ####1 }
-      \bool_lazy_any:nT {
-        { \cs_if_exist_p:c {l_@@_copymodule_##1?####1_name_str}}
-        { \cs_if_exist_p:c {l_@@_copymodule_##1?####1_macroname_str}}
-        { \cs_if_exist_p:c {l_@@_copymodule_##1?####1_def_tl}}
-      }{
-        % TODO throw error
+\NewDocumentCommand \donotcopy { m }{
+  \str_clear:N \l_stex_import_name_str
+  \str_set:Nn \l_tmpa_str { #1 }
+  \int_set:Nn \l_tmpa_int { \str_count:N \l_tmpa_str }
+  \seq_map_inline:Nn \l_stex_all_modules_seq {
+    \str_set:Nn \l_tmpb_str { ##1 }
+    \str_if_eq:eeT { \l_tmpa_str } {
+      \str_range:Nnn \l_tmpb_str { -\l_tmpa_int } { -1 }
+    } {
+      \seq_map_break:n {
+        \stex_if_do_html:T {
+          \stex_if_smsmode:F {
+            \stex_annotate_invisible:nnn{donotcopy}{##1}{
+              \stex_annotate:nnn{domain}{##1}{}
+            }
+          }
+        }
+        \str_set_eq:NN \l_stex_import_name_str \l_tmpb_str
+      }
+    }
+    \seq_map_inline:cn {c_stex_module_##1_copymodules}{
+      \str_set:Nn \l_tmpb_str { ####1 }
+      \str_if_eq:eeT { \l_tmpa_str } {
+        \str_range:Nnn \l_tmpb_str { -\l_tmpa_int } { -1 }
+      } {
+        \seq_map_break:n {\seq_map_break:n {
+          \stex_if_do_html:T {
+            \stex_if_smsmode:F {
+              \stex_annotate_invisible:nnn{donotcopy}{####1}{
+                \stex_annotate:nnn{domain}{
+                  \prop_item:cn {l_stex_copymodule_ ####1 _prop}{module}
+                }{}
+              }
+            }
+          }
+          \str_set:Nx \l_stex_import_name_str {
+            \prop_item:cn {l_stex_copymodule_ ####1 _prop}{module}
+          }
+        }}
       }
     }
   }
-
-  \prop_get:NnN \l_stex_current_copymodule_prop { includes } \l_tmpa_seq
-  \seq_put_right:Nx \l_tmpa_seq {\l_stex_import_ns_str ?\l_stex_import_name_str }
-  \prop_put:Nno \l_stex_current_copymodule_prop {includes} \l_tmpa_seq
+  \str_if_empty:NTF \l_stex_import_name_str {
+    % TODO throw error
+  }{
+    \stex_collect_imports:n {\l_stex_import_name_str }
+    \seq_map_inline:Nn \l_stex_collect_imports_seq {
+      \seq_remove_all:Nn \l_@@_copymodule_modules_seq { ##1 }
+      \seq_map_inline:cn {c_stex_module_##1_constants}{
+        \seq_remove_all:Nn \l_@@_copymodule_fields_seq { ##1 ? ####1 }
+        \bool_lazy_any:nT {
+          { \cs_if_exist_p:c {l_@@_copymodule_##1?####1_name_str}}
+          { \cs_if_exist_p:c {l_@@_copymodule_##1?####1_macroname_str}}
+          { \cs_if_exist_p:c {l_@@_copymodule_##1?####1_def_tl}}
+        }{
+          % TODO throw error
+        }
+      }
+    }
+    \prop_get:NnN \l_stex_current_copymodule_prop { includes } \l_tmpa_seq
+    \seq_put_right:Nx \l_tmpa_seq {\l_stex_import_name_str }
+    \prop_put:Nno \l_stex_current_copymodule_prop {includes} \l_tmpa_seq
+  }
+  \stex_smsmode_do:
 }
 
 \NewDocumentCommand \assign { m m }{
   \stex_get_symbol_in_seq:nn {#1} \l_@@_copymodule_fields_seq
   \stex_debug:nn{assign}{defining~{\l_stex_get_symbol_uri_str}~as~\detokenize{#2}}
   \tl_set:cn {l_@@_copymodule_\l_stex_get_symbol_uri_str _def_tl}{#2}
+  \stex_smsmode_do:
 }
 
 \keys_define:nn { stex / renamedecl } {
@@ -432,6 +481,7 @@
       \l_stex_current_module_str ? \l_stex_renamedecl_name_str
     } }
   }
+  \stex_smsmode_do:
 }
 
 \stex_deactivate_macro:Nn \assign {copymodules}
@@ -487,10 +537,12 @@
     \msg_error:nn{stex}{error/nomodule}
   }
 
+  \str_set_eq:NN \l_tmpa_str \l_stex_current_module_str
+
   \stex_module_setup:nn{meta=NONE}{#2 - #1}
 
   \stex_if_smsmode:F {
-    \begin{stex_annotate_env}{ feature:#1 }{}
+    \begin{stex_annotate_env}{ feature:#1 }{\l_tmpa_str ? #2 - #1}
       \stex_annotate_invisible:nnn{header}{}{ #3 }
   }
 }{
@@ -533,18 +585,19 @@
   \str_if_empty:NT \l_@@_name_str {
     \str_set:Nx \l_@@_name_str { #1 }
   }
-  \exp_args:Nx \stex_symdecl_do:nn {
+  \stex_suppress_html:n {
+    \exp_args:Nx \stex_symdecl_do:nn {
       name = \l_@@_name_str ,
-      type = \metacollection ,
       def  = {\STEXsymbol{module-type}{
         \_stex_term_math_oms:nnnn { 
-          \prop_get:cn {c_stex_module_\l_stex_current_module_str _prop}
+          \prop_item:cn {c_stex_module_\l_stex_current_module_str _prop}
             { ns } ? 
             \prop_item:cn {c_stex_module_\l_stex_current_module_str _prop}
               { name } / \l_@@_name_str - structure
          }{}{0}{}
       }}
     }{ #1 }
+  }
   \exp_args:Nnnx
   \begin{structural_feature_module}{ structure }
     { \l_@@_name_str }{}
@@ -578,7 +631,6 @@
     }
   }
 }
-\seq_put_right:Nx \g_stex_smsmode_allowedenvs_seq { \tl_to_str:n {mathstructure}}
 
 \cs_new:Nn \stex_invoke_structure:nn {
   \stex_invoke_symbol:n { #1?#2 }
@@ -733,7 +785,6 @@
   \endgroup
   \stex_smsmode_do:\ignorespacesandpars
 }
-\tl_put_right:Nx \g_stex_smsmode_allowedmacros_escape_tl {\instantiate}
 
 \cs_new_protected:Nn \stex_symbol_or_var:n {
   \cs_if_exist:cTF{#1}{
@@ -789,101 +840,112 @@
     \str_if_empty:NT \l_@@_name_str {
       \str_set:Nn \l_@@_name_str { #1 }
     }
-    \seq_clear:N \l_@@_fields_seq
-    \exp_args:Nx \stex_collect_imports:n \l_stex_get_structure_module_str
-    \seq_map_inline:Nn \l_stex_collect_imports_seq {
-      \seq_map_inline:cn {c_stex_module_##1_constants}{
-        \seq_put_right:Nx \l_@@_fields_seq { ##1 ? ####1 }
+    \stex_if_do_html:TF{
+      \stex_annotate:nnn{varinstance}{\l_@@_name_str}
+    }{\use:n}
+    {
+      \stex_if_do_html:T{
+        \stex_annotate:nnn{domain}{\l_stex_get_structure_module_str}{}
       }
-    }
-    \exp_args:No \stex_activate_module:n \l_stex_get_structure_module_str
-    \prop_clear:N \l_tmpa_prop
-    \tl_if_empty:nF {#3} {
-      \seq_set_split:Nnn \l_tmpa_seq , {#3}
-      \seq_map_inline:Nn \l_tmpa_seq {
-        \seq_set_split:Nnn \l_tmpb_seq = { ##1 }
-        \int_compare:nNnF { \seq_count:N \l_tmpb_seq } = 2 {
-          \msg_error:nnn{stex}{error/keyval}{##1}
+      \seq_clear:N \l_@@_fields_seq
+      \exp_args:Nx \stex_collect_imports:n \l_stex_get_structure_module_str
+      \seq_map_inline:Nn \l_stex_collect_imports_seq {
+        \seq_map_inline:cn {c_stex_module_##1_constants}{
+          \seq_put_right:Nx \l_@@_fields_seq { ##1 ? ####1 }
         }
-        \exp_args:Nx \stex_get_symbol_in_seq:nn {\seq_item:Nn \l_tmpb_seq 1} \l_@@_fields_seq
-        \str_set_eq:NN \l_@@_dom_str \l_stex_get_symbol_uri_str
-        \exp_args:NNx \seq_remove_all:Nn \l_@@_fields_seq \l_stex_get_symbol_uri_str
-        \exp_args:Nx \stex_symbol_or_var:n {\seq_item:Nn \l_tmpb_seq 2}
-        \bool_if:NTF \l_stex_symbol_or_var_bool {
-          \exp_args:Nxx \str_if_eq:nnF 
-            {\prop_item:cn{l_stex_symdecl_\l_@@_dom_str _prop}{args}}
-            {\prop_item:cn{l_stex_variable_\l_stex_get_symbol_uri_str _prop}{args}}{
-            \msg_error:nnxxxx{stex}{error/incompatible}
-              {\l_@@_dom_str}
-              {\prop_item:cn{l_stex_symdecl_\l_@@_dom_str _prop}{args}}
-              {\l_stex_get_symbol_uri_str}
-              {\prop_item:cn{l_stex_variable_\l_stex_get_symbol_uri_str _prop}{args}}
+      }
+      \exp_args:No \stex_activate_module:n \l_stex_get_structure_module_str
+      \prop_clear:N \l_tmpa_prop
+      \tl_if_empty:nF {#3} {
+        \seq_set_split:Nnn \l_tmpa_seq , {#3}
+        \seq_map_inline:Nn \l_tmpa_seq {
+          \seq_set_split:Nnn \l_tmpb_seq = { ##1 }
+          \int_compare:nNnF { \seq_count:N \l_tmpb_seq } = 2 {
+            \msg_error:nnn{stex}{error/keyval}{##1}
           }
-          \prop_put:Nxx \l_tmpa_prop {\seq_item:Nn \l_tmpb_seq 1} {\stex_invoke_variable:n {\l_stex_get_symbol_uri_str}}
-        }{
-          \exp_args:Nxx \str_if_eq:nnF 
-            {\prop_item:cn{l_stex_symdecl_\l_@@_dom_str _prop}{args}}
-            {\prop_item:cn{l_stex_symdecl_\l_stex_get_symbol_uri_str _prop}{args}}{
-            \msg_error:nnxxxx{stex}{error/incompatible}
-              {\l_@@_dom_str}
-              {\prop_item:cn{l_stex_symdecl_\l_@@_dom_str _prop}{args}}
-              {\l_stex_get_symbol_uri_str}
-              {\prop_item:cn{l_stex_symdecl_\l_stex_get_symbol_uri_str _prop}{args}}
+          \exp_args:Nx \stex_get_symbol_in_seq:nn {\seq_item:Nn \l_tmpb_seq 1} \l_@@_fields_seq
+          \str_set_eq:NN \l_@@_dom_str \l_stex_get_symbol_uri_str
+          \exp_args:NNx \seq_remove_all:Nn \l_@@_fields_seq \l_stex_get_symbol_uri_str
+          \exp_args:Nx \stex_symbol_or_var:n {\seq_item:Nn \l_tmpb_seq 2}
+          \stex_if_do_html:T{
+            \stex_annotate:nnn{assign}{\l_@@_dom_str,\l_stex_get_symbol_uri_str}{}
           }
-          \prop_put:Nxx \l_tmpa_prop {\seq_item:Nn \l_tmpb_seq 1} {\stex_invoke_symbol:n {\l_stex_get_symbol_uri_str}}
-        }
-      }
-    }
-    \tl_gclear:N \g_@@_aftergroup_tl
-    \seq_map_inline:Nn \l_@@_fields_seq {
-      \str_set:Nx \l_tmpa_str {\l_@@_name_str . \prop_item:cn {l_stex_symdecl_##1_prop}{name} }
-      \stex_debug:nn{varinstantiate}{Field~\l_tmpa_str :~##1}
-      \seq_if_empty:cF{l_stex_symdecl_##1_notations}{
-        \stex_find_notation:nn{##1}{}
-        \cs_gset_eq:cc{g_@@_tmpa_\l_tmpa_str _cs}
-          {stex_notation_##1\c_hash_str \l_stex_notation_variant_str _cs}
-        \stex_debug:nn{varinstantiate}{Notation:~\cs_meaning:c{g_@@_tmpa_\l_tmpa_str _cs}}
-        \cs_if_exist:cT{stex_op_notation_##1\c_hash_str \l_stex_notation_variant_str _cs}{
-          \cs_gset_eq:cc {g_@@_tmpa_op_\l_tmpa_str _cs}
-            {stex_op_notation_##1\c_hash_str \l_stex_notation_variant_str _cs}
-            \stex_debug:nn{varinstantiate}{Operator~Notation:~\cs_meaning:c{g_@@_tmpa_op_\l_tmpa_str _cs}}
-        }
-      }
-
-      \exp_args:NNx \tl_gput_right:Nn \g_@@_aftergroup_tl {
-        \prop_set_from_keyval:cn { l_stex_variable_ \l_tmpa_str _prop}{
-          name   = \l_tmpa_str ,
-          args   = \prop_item:cn {l_stex_symdecl_##1_prop}{args} ,
-          arity  = \prop_item:cn {l_stex_symdecl_##1_prop}{arity} ,
-          assocs = \prop_item:cn {l_stex_symdecl_##1_prop}{assocs}
-        }
-        \cs_set_eq:cc {stex_var_notation_\l_tmpa_str _cs}
-          {g_@@_tmpa_\l_tmpa_str _cs}
-        \cs_set_eq:cc {stex_var_op_notation_\l_tmpa_str _cs}
-          {g_@@_tmpa_op_\l_tmpa_str _cs}
-      }
-      \prop_put:Nxx \l_tmpa_prop {\prop_item:cn {l_stex_symdecl_##1_prop}{name}}{\stex_invoke_variable:n {\l_tmpa_str}}
-    }
-    \exp_args:NNx \tl_gput_right:Nn \g_@@_aftergroup_tl {
-      \prop_set_from_keyval:cn {l_stex_varinstance_\l_@@_name_str _prop }{
-        domain = \l_stex_get_structure_module_str ,
-        \prop_to_keyval:N \l_tmpa_prop
-      }
-      \tl_set:cn { #1 }{\stex_invoke_varinstance:n {\l_@@_name_str}}
-      \tl_set:cn {l_stex_varinstance_\l_@@_name_str _op_tl}{
-        \exp_args:Nnx \exp_not:N \use:nn {
-          \str_set:Nn \exp_not:N \l_stex_current_symbol_str {var://\l_@@_name_str}
-          \_stex_term_omv:nn {var://\l_@@_name_str}{
-            \exp_not:n{
-              \_varcomp{#5}
+          \bool_if:NTF \l_stex_symbol_or_var_bool {
+            \exp_args:Nxx \str_if_eq:nnF 
+              {\prop_item:cn{l_stex_symdecl_\l_@@_dom_str _prop}{args}}
+              {\prop_item:cn{l_stex_variable_\l_stex_get_symbol_uri_str _prop}{args}}{
+              \msg_error:nnxxxx{stex}{error/incompatible}
+                {\l_@@_dom_str}
+                {\prop_item:cn{l_stex_symdecl_\l_@@_dom_str _prop}{args}}
+                {\l_stex_get_symbol_uri_str}
+                {\prop_item:cn{l_stex_variable_\l_stex_get_symbol_uri_str _prop}{args}}
             }
+            \prop_put:Nxx \l_tmpa_prop {\seq_item:Nn \l_tmpb_seq 1} {\stex_invoke_variable:n {\l_stex_get_symbol_uri_str}}
+          }{
+            \exp_args:Nxx \str_if_eq:nnF 
+              {\prop_item:cn{l_stex_symdecl_\l_@@_dom_str _prop}{args}}
+              {\prop_item:cn{l_stex_symdecl_\l_stex_get_symbol_uri_str _prop}{args}}{
+              \msg_error:nnxxxx{stex}{error/incompatible}
+                {\l_@@_dom_str}
+                {\prop_item:cn{l_stex_symdecl_\l_@@_dom_str _prop}{args}}
+                {\l_stex_get_symbol_uri_str}
+                {\prop_item:cn{l_stex_symdecl_\l_stex_get_symbol_uri_str _prop}{args}}
+            }
+            \prop_put:Nxx \l_tmpa_prop {\seq_item:Nn \l_tmpb_seq 1} {\stex_invoke_symbol:n {\l_stex_get_symbol_uri_str}}
           }
-        }{
-          \exp_not:n{\_stex_reset:N \l_stex_current_symbol_str}
+        }
+      }
+      \tl_gclear:N \g_@@_aftergroup_tl
+      \seq_map_inline:Nn \l_@@_fields_seq {
+        \str_set:Nx \l_tmpa_str {\l_@@_name_str . \prop_item:cn {l_stex_symdecl_##1_prop}{name} }
+        \stex_debug:nn{varinstantiate}{Field~\l_tmpa_str :~##1}
+        \seq_if_empty:cF{l_stex_symdecl_##1_notations}{
+          \stex_find_notation:nn{##1}{}
+          \cs_gset_eq:cc{g_@@_tmpa_\l_tmpa_str _cs}
+            {stex_notation_##1\c_hash_str \l_stex_notation_variant_str _cs}
+          \stex_debug:nn{varinstantiate}{Notation:~\cs_meaning:c{g_@@_tmpa_\l_tmpa_str _cs}}
+          \cs_if_exist:cT{stex_op_notation_##1\c_hash_str \l_stex_notation_variant_str _cs}{
+            \cs_gset_eq:cc {g_@@_tmpa_op_\l_tmpa_str _cs}
+              {stex_op_notation_##1\c_hash_str \l_stex_notation_variant_str _cs}
+              \stex_debug:nn{varinstantiate}{Operator~Notation:~\cs_meaning:c{g_@@_tmpa_op_\l_tmpa_str _cs}}
+          }
+        }
+
+        \exp_args:NNx \tl_gput_right:Nn \g_@@_aftergroup_tl {
+          \prop_set_from_keyval:cn { l_stex_variable_ \l_tmpa_str _prop}{
+            name   = \l_tmpa_str ,
+            args   = \prop_item:cn {l_stex_symdecl_##1_prop}{args} ,
+            arity  = \prop_item:cn {l_stex_symdecl_##1_prop}{arity} ,
+            assocs = \prop_item:cn {l_stex_symdecl_##1_prop}{assocs}
+          }
+          \cs_set_eq:cc {stex_var_notation_\l_tmpa_str _cs}
+            {g_@@_tmpa_\l_tmpa_str _cs}
+          \cs_set_eq:cc {stex_var_op_notation_\l_tmpa_str _cs}
+            {g_@@_tmpa_op_\l_tmpa_str _cs}
+        }
+        \prop_put:Nxx \l_tmpa_prop {\prop_item:cn {l_stex_symdecl_##1_prop}{name}}{\stex_invoke_variable:n {\l_tmpa_str}}
+      }
+      \exp_args:NNx \tl_gput_right:Nn \g_@@_aftergroup_tl {
+        \prop_set_from_keyval:cn {l_stex_varinstance_\l_@@_name_str _prop }{
+          domain = \l_stex_get_structure_module_str ,
+          \prop_to_keyval:N \l_tmpa_prop
+        }
+        \tl_set:cn { #1 }{\stex_invoke_varinstance:n {\l_@@_name_str}}
+        \tl_set:cn {l_stex_varinstance_\l_@@_name_str _op_tl}{
+          \exp_args:Nnx \exp_not:N \use:nn {
+            \str_set:Nn \exp_not:N \l_stex_current_symbol_str {var://\l_@@_name_str}
+            \_stex_term_omv:nn {var://\l_@@_name_str}{
+              \exp_not:n{
+                \_varcomp{#5}
+              }
+            }
+          }{
+            \exp_not:n{\_stex_reset:N \l_stex_current_symbol_str}
+          }
         }
       }
     }
-    \stex_debug:nn{varianstantiate}{\expandafter\detokenize\expandafter{\g_@@_aftergroup_tl}}
+    \stex_debug:nn{varinstantiate}{\expandafter\detokenize\expandafter{\g_@@_aftergroup_tl}}
     \aftergroup\g_@@_aftergroup_tl
   \endgroup
   \stex_smsmode_do:\ignorespacesandpars

@@ -185,6 +185,12 @@
 \msg_new:nnn{stex}{error/notallowed}{
   Symbol~invokation~#1~not~allowed~in~notation~component~of~#2
 }
+\msg_new:nnn{stex}{error/doubleargument}{
+  Argument~#1~of~symbol~#2~already~assigned
+}
+\msg_new:nnn{stex}{error/overarity}{
+  Argument~#1~invalid~for~symbol~#2~with~arity~#3
+}
 
 %    \end{macrocode}
 % \subsection{Symbol Invocations}
@@ -266,7 +272,7 @@
     \def\comp{\_comp}
     \str_set:Nn \l_stex_current_symbol_str { #1 }
     \bool_set_false:N \l_stex_allow_semantic_bool
-    \_stex_term_oms:nnn {#1 \c_hash_str\c_hash_str}{#1}{
+    \_stex_term_oms:nnn {#1}{#1 \c_hash_str CUSTOM-}{
       \comp{ #2 }
     }
   }{
@@ -325,9 +331,9 @@
     \cs_if_exist:cTF {
       stex_op_notation_ #1 \c_hash_str \l_stex_notation_variant_str _cs
     }{
-      \_stex_term_oms:nnn {
+      \_stex_term_oms:nnn { #1 }{
         #1 \c_hash_str \l_stex_notation_variant_str
-      }{ #1 }{
+      }{
         \use:c{stex_op_notation_ #1 \c_hash_str \l_stex_notation_variant_str _cs}
       }
     }{
@@ -398,15 +404,15 @@
     \prop_put:Nno \l_@@_custom_args_prop {args} \l_tmpa_str
     \tl_set:Nn \arg { \_@@_arg: }
     \str_if_empty:NTF \l_tmpa_str {
-      \_stex_term_oms:nnn {#1}{#1}{#2}
+      \_stex_term_oms:nnn {#1}{#1\c_hash_str CUSTOM-}{#2}
     }{
       \str_if_in:NnTF \l_tmpa_str b {
-        \_stex_term_ombind:nnn {#1}{#1}{#2}
+        \_stex_term_ombind:nnn {#1}{#1\c_hash_str CUSTOM-\l_tmpa_str}{#2}
       }{
         \str_if_in:NnTF \l_tmpa_str B {
-          \_stex_term_ombind:nnn {#1}{#1}{#2}
+          \_stex_term_ombind:nnn {#1}{#1\c_hash_str CUSTOM-\l_tmpa_str}{#2}
         }{
-          \_stex_term_oma:nnn {#1}{#1}{#2}
+          \_stex_term_oma:nnn {#1}{#1\c_hash_str CUSTOM-\l_tmpa_str}{#2}
         }
       }
     }
@@ -433,21 +439,33 @@
     }
   }{
     \int_set:Nn \l_tmpa_int { #2 }
-    \exp_args:NNx \prop_if_in:NnT \l_@@_custom_args_prop {\int_use:N \l_tmpa_int} {
-      % TODO throw error
-    }
   }
   \str_set:Nx \l_tmpa_str {\prop_item:Nn \l_@@_custom_args_prop {args} }
   \int_compare:nNnT \l_tmpa_int > {\str_count:N \l_tmpa_str} {
-    % TODO throw error
+    \msg_error:nnxxx{stex}{error/overarity}
+      {\int_use:N \l_tmpa_int}
+      {\l_stex_current_symbol_str}
+      {\str_count:N \l_tmpa_str}
   }
+  \str_set:Nx \l_tmpa_str {\str_item:Nn \l_tmpa_str \l_tmpa_int}
+  \exp_args:NNx \prop_if_in:NnT \l_@@_custom_args_prop {\int_use:N \l_tmpa_int} {
+    \bool_lazy_any:nF {
+      {\str_if_eq_p:Vn \l_tmpa_str {a}}
+      {\str_if_eq_p:Vn \l_tmpa_str {B}}
+    }{
+      \msg_error:nnxx{stex}{error/doubleargument}
+        {\int_use:N \l_tmpa_int}
+        {\l_stex_current_symbol_str}
+    }
+  }
+  \exp_args:NNx \prop_put:Nnn \l_@@_custom_args_prop {\int_use:N \l_tmpa_int} {#3}
   \bool_set_true:N \l_stex_allow_semantic_bool
   \IfBooleanTF#1{
-    \stex_annotate_invisible:n {
-      \exp_args:No \_stex_term_arg:nn {\l_stex_current_symbol_str}{#3}
+    \stex_annotate_invisible:n { %TODO
+      \exp_args:No \_stex_term_arg:nn {\l_tmpa_str\int_use:N \l_tmpa_int}{#3}
     }
-  }{
-    \exp_args:No \_stex_term_arg:nn {\l_stex_current_symbol_str}{#3}
+  }{ %TODO
+    \exp_args:No \_stex_term_arg:nn {\l_tmpa_str\int_use:N \l_tmpa_int}{#3}
   }
   \bool_set_false:N \l_stex_allow_semantic_bool
 }
@@ -477,9 +495,10 @@
   \exp_args:Nx \tl_if_empty:nTF { \tl_tail:n{ #3 }}{
     \expandafter\if\expandafter\relax\noexpand#3
       \expandafter\_@@_math_assoc_arg_maybe_sequence:N\expandafter#3
-    \else\expandafter\_@@_math_assoc_arg_simple:n\expandafter#3\fi
+    \else\expandafter\_@@_math_assoc_arg_simple:nn
+    \expandafter{\expandafter}\expandafter#3\fi
   }{
-    \_@@_math_assoc_arg_simple:n{#3}
+    \_@@_math_assoc_arg_simple:nn{#1}{#3}
   }
 }
 
@@ -523,26 +542,28 @@
       }
       \exp_args:No\l_tmpb_tl\l_tmpa_tl
     }{
-      \_@@_math_assoc_arg_simple:n { #1 }
+      \_@@_math_assoc_arg_simple:nn{} { #1 }
     }
   } {
-    \_@@_math_assoc_arg_simple:n { #1 }
+    \_@@_math_assoc_arg_simple:nn{} { #1 }
   }
 
 }
 
-\cs_new_protected:Nn \_@@_math_assoc_arg_simple:n {
-  \clist_set:Nn \l_tmpa_clist{ #1 }
+\cs_new_protected:Nn \_@@_math_assoc_arg_simple:nn {
+  \clist_set:Nn \l_tmpa_clist{ #2 }
   \int_compare:nNnTF { \clist_count:N \l_tmpa_clist } < 2 {
-    \tl_set:Nn \l_tmpa_tl { #1 }
+    \tl_set:Nn \l_tmpa_tl { #2 }
   }{
     \clist_reverse:N \l_tmpa_clist
     \clist_pop:NN \l_tmpa_clist \l_tmpa_tl
-
+    \tl_set:Nx \l_tmpa_tl { \_stex_term_arg:nn{A#1}{
+      \exp_args:No \exp_not:n \l_tmpa_tl
+    }}
     \clist_map_inline:Nn \l_tmpa_clist {
       \exp_args:NNNo \exp_args:NNo \tl_set:No \l_tmpa_tl {
         \exp_args:Nno 
-        \l_tmpa_cs { ##1 } \l_tmpa_tl 
+        \l_tmpa_cs { \_stex_term_arg:nn{A#1}{##1} } \l_tmpa_tl 
       }
     }
   }

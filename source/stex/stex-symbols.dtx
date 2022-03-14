@@ -390,8 +390,6 @@
     }
   }
 
-
-
   \bool_if:NF \l_stex_symdecl_local_bool {
     \exp_args:Nx
     \stex_add_to_current_module:n {
@@ -410,7 +408,8 @@
         type      = \prop_item:Nn \l_tmpa_prop { type }       ,
         args      = \prop_item:Nn \l_tmpa_prop { args }       ,
         arity     = \prop_item:Nn \l_tmpa_prop { arity }      ,
-        assocs    = \prop_item:Nn \l_tmpa_prop { assocs }
+        assocs    = \prop_item:Nn \l_tmpa_prop { assocs }     ,
+        defined   = \prop_item:Nn \l_tmpa_prop { defined }
       }
     }
   }
@@ -425,7 +424,9 @@
       \stex_annotate_invisible:nnn {symdecl} {
         \l_stex_current_module_str ? \l_stex_symdecl_name_str
       } {
-        \tl_if_empty:NF \l_stex_symdecl_type_tl {\stex_annotate_invisible:nnn{type}{}{$\l_stex_symdecl_type_tl$}}
+        \tl_if_empty:NF \l_stex_symdecl_type_tl {
+          \stex_annotate_invisible:nnn{type}{}{$\l_stex_symdecl_type_tl$}
+        }
         \stex_annotate_invisible:nnn{args}{}{
           \prop_item:Nn \l_tmpa_prop { args }
         }
@@ -712,16 +713,16 @@
     \str_set:Nx \l_tmpa_str { \str_head:N \l_@@_remaining_args_str }
     \str_set:Nx \l_@@_remaining_args_str { \str_tail:N \l_@@_remaining_args_str }
     \str_if_eq:VnTF \l_tmpa_str a {
-      \_@@_argument_assoc:n
+      \_@@_argument_assoc:nn{a}
     }{
       \str_if_eq:VnTF \l_tmpa_str B {
-        \_@@_argument_assoc:n
+        \_@@_argument_assoc:nn{B}
       }{
-        \seq_pop_left:NN \l_@@_remaining_precs_seq \l_tmpa_str
+        \seq_pop_left:NN \l_@@_remaining_precs_seq \l_tmpb_str
         \tl_put_right:Nx \l_stex_notation_dummyargs_tl {
           { \_stex_term_math_arg:nnn
-            { \int_use:N \l_@@_currarg_int }
-            { \l_tmpa_str }
+            { \l_tmpa_str\int_use:N \l_@@_currarg_int }
+            { \l_tmpb_str }
             { ####\int_use:N \l_@@_currarg_int }
           }
         }
@@ -733,13 +734,13 @@
 %    \end{macrocode}
 % \end{macro}
 %
-% \begin{macro}{\_@@_argument_assoc:n}
+% \begin{macro}{\_@@_argument_assoc:nn}
 %    \begin{macrocode}
-\cs_new_protected:Nn \_@@_argument_assoc:n {
+\cs_new_protected:Nn \_@@_argument_assoc:nn {
 
   \cs_generate_from_arg_count:NNnn \l_tmpa_cs \cs_set:Npn 
     {\l_@@_arity_str}{
-    #1
+    #2
   }
   \int_zero:N \l_tmpa_int
   \tl_clear:N \l_tmpa_tl
@@ -748,7 +749,7 @@
     \tl_put_right:Nx \l_tmpa_tl {
       \str_if_eq:nnTF {##1}{a}{ {} }{
         \str_if_eq:nnTF {##1}{B}{ {} }{
-          {\_stex_term_arg:nn{\int_use:N \l_tmpa_int}{################ \int_use:N \l_tmpa_int}}
+          {\_stex_term_arg:nn{##1\int_use:N \l_tmpa_int}{################ \int_use:N \l_tmpa_int}}
         }
       }
     }
@@ -769,7 +770,7 @@
   \seq_pop_left:NN \l_@@_remaining_precs_seq \l_tmpa_str
   \tl_put_right:Nx \l_stex_notation_dummyargs_tl { {
     \_stex_term_math_assoc_arg:nnnn
-      { \int_use:N \l_@@_currarg_int }
+      { #1\int_use:N \l_@@_currarg_int }
       { \l_tmpa_str }
       { ####\int_use:N \l_@@_currarg_int }
       { \l_tmpa_cs {####1} {####2} }
@@ -895,18 +896,18 @@
           \str_set:Nx \l_@@_remaining_args_str { \str_tail:N \l_@@_remaining_args_str }
           \str_if_eq:VnTF \l_tmpb_str a {
             \tl_set:Nx \l_tmpa_tl { \l_tmpa_tl { 
-              \c_hash_str \c_hash_str \int_use:N \l_tmpa_int a ,
-              \c_hash_str \c_hash_str \int_use:N \l_tmpa_int b
+              \stex_annotate:nnn{argmarker}{\int_use:N \l_tmpa_int a}{} ,
+              \stex_annotate:nnn{argmarker}{\int_use:N \l_tmpa_int b}{}
             } }
           }{
             \str_if_eq:VnTF \l_tmpb_str B {
               \tl_set:Nx \l_tmpa_tl { \l_tmpa_tl { 
-                \c_hash_str \c_hash_str \int_use:N \l_tmpa_int a ,
-                \c_hash_str \c_hash_str \int_use:N \l_tmpa_int b
+                \stex_annotate:nnn{argmarker}{\int_use:N \l_tmpa_int a}{} ,
+                \stex_annotate:nnn{argmarker}{\int_use:N \l_tmpa_int b}{}
               } }
             }{
               \tl_set:Nx \l_tmpa_tl { \l_tmpa_tl { 
-                \c_hash_str \c_hash_str \int_use:N \l_tmpa_int
+                \stex_annotate:nnn{argmarker}{\int_use:N \l_tmpa_int}{}
               } }
             }
           }
@@ -1191,6 +1192,9 @@
         \str_if_empty:NF \l_@@_assoctype_str {
           \stex_annotate_invisible:nnn{assoctype}{\l_@@_assoctype_str}{}
         }
+        \str_if_empty:NF \l_@@_bind_str {
+          \stex_annotate:nnn {bindtype}{\l_@@_bind_str}{}
+        }
         \int_zero:N \l_tmpa_int
         \str_set_eq:NN \l_@@_remaining_args_str \l_@@_args_str
         \tl_clear:N \l_tmpa_tl
@@ -1200,18 +1204,18 @@
           \str_set:Nx \l_@@_remaining_args_str { \str_tail:N \l_@@_remaining_args_str }
           \str_if_eq:VnTF \l_tmpb_str a {
             \tl_set:Nx \l_tmpa_tl { \l_tmpa_tl { 
-              \c_hash_str \c_hash_str \int_use:N \l_tmpa_int a ,
-              \c_hash_str \c_hash_str \int_use:N \l_tmpa_int b
+              \stex_annotate:nnn{argmarker}{\int_use:N \l_tmpa_int a}{} ,
+              \stex_annotate:nnn{argmarker}{\int_use:N \l_tmpa_int b}{}
             } }
           }{
             \str_if_eq:VnTF \l_tmpb_str B {
               \tl_set:Nx \l_tmpa_tl { \l_tmpa_tl { 
-                \c_hash_str \c_hash_str \int_use:N \l_tmpa_int a ,
-                \c_hash_str \c_hash_str \int_use:N \l_tmpa_int b
+                \stex_annotate:nnn{argmarker}{\int_use:N \l_tmpa_int a}{} ,
+                \stex_annotate:nnn{argmarker}{\int_use:N \l_tmpa_int b}{}
               } }
             }{
               \tl_set:Nx \l_tmpa_tl { \l_tmpa_tl { 
-                \c_hash_str \c_hash_str \int_use:N \l_tmpa_int
+                \stex_annotate:nnn{argmarker}{\int_use:N \l_tmpa_int}{}
               } }
             }
           }
@@ -1241,7 +1245,7 @@
   \clist_set:Nx \l_@@_names { \tl_to_str:n {#1} }
   \exp_args:Nnx \use:nn {
     % TODO
-    \stex_annotate_invisible:nnn {vardecls}{\clist_use:Nn\l_@@_names,}{
+    \stex_annotate_invisible:nnn {vardecl}{\clist_use:Nn\l_@@_names,}{
       #2
     }
   }{
@@ -1352,7 +1356,7 @@
 
   \int_step_inline:nn \l_@@_args_int {
     \tl_set:Nx \l_tmpa_tl {\exp_args:No \exp_not:n \l_tmpa_tl {
-      \_stex_term_math_arg:nnn{##1}{0}{\exp_not:n{####}##1}
+      \_stex_term_math_arg:nnn{i##1}{0}{\exp_not:n{####}##1}
     }}
   }
 
@@ -1372,6 +1376,15 @@
     \expandafter\meaning\csname stex_varseq_\l_@@_name_str _cs\endcsname\\~\\
     \prop_to_keyval:N \l_tmpa_prop
   }
+  \stex_if_do_html:T{\stex_annotate_invisible:nnn{varseq}{\l_@@_name_str}{
+    \tl_if_empty:NF \l_@@_type_tl {
+      \stex_annotate:nnn {type}{}{$\seqtype\l_@@_type_tl$}
+    }
+    \stex_annotate:nnn {args}{\int_use:N \l_@@_args_int}{}
+    \str_if_empty:NF \l_@@_bind_str {
+      \stex_annotate:nnn {bindtype}{\l_@@_bind_str}{}
+    }
+  }}
 
   \prop_set_eq:cN {stex_varseq_\l_@@_name_str _prop}\l_tmpa_prop
   \ignorespacesandpars

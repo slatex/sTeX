@@ -177,6 +177,23 @@
   \tl_if_empty:nF {#1} {
     \stex_get_symbol:n { #1 }
   }
+  \str_if_empty:NT \l_stex_get_symbol_uri_str {
+    \int_compare:nNnTF {\clist_count:N \l_@@_sdefinition_for_clist} = 1 {
+      \str_set:Nx \l_stex_get_symbol_uri_str {\clist_item:Nn \l_@@_sdefinition_for_clist 1}
+    }{
+      % TODO throw error
+    }
+  }
+  \str_if_eq:eeT {\prop_item:cn {l_stex_symdecl_ \l_stex_get_symbol_uri_str _prop}{module}}
+    {\l_stex_current_module_str}{
+      \str_if_eq:eeF {\prop_item:cn {l_stex_symdecl_ \l_stex_get_symbol_uri_str _prop}{defined}}
+      {true}{
+        \prop_put:cnn{l_stex_symdecl_ \l_stex_get_symbol_uri_str _prop}{defined}{true}
+        \exp_args:Nx \stex_add_to_current_module:n {
+          \prop_put:cnn{l_stex_symdecl_ \l_stex_get_symbol_uri_str _prop}{defined}{true}
+        }
+      }
+  }
   \stex_annotate:nnn{ definiens }{\l_stex_get_symbol_uri_str}{ #2 }
 }
 
@@ -223,10 +240,14 @@
         }
       }
     }
+    \clist_set_from_seq:NN \l_@@_sdefinition_for_clist \l_tmpa_seq
     \exp_args:Nnnx
     \begin{stex_annotate_env}{definition}{\seq_use:Nn \l_tmpa_seq {,}}
     \str_if_empty:NF \sdefinitiontype {
-      \stex_annotate_invisible:nnn{type}{\sdefinitiontype}{}
+      \stex_annotate_invisible:nnn{typestrings}{\sdefinitiontype}{}
+    }
+    \str_if_empty:NF \sdefinitionname {
+      \stex_annotate_invisible:nnn{statementname}{\sdefinitionname}{}
     }
     \clist_set:No \l_tmpa_clist \sdefinitiontype
     \tl_clear:N \l_tmpa_tl
@@ -244,7 +265,9 @@
   \stex_ref_new_doc_target:n \sdefinitionid
   \stex_smsmode_do:
 }{
-  \str_if_empty:NF \sdefinitionname { \stex_symdecl_do:nn{}{\sdefinitionname} }
+  \stex_suppress_html:n {
+    \str_if_empty:NF \sdefinitionname { \stex_symdecl_do:nn{}{\sdefinitionname} }
+  }
   \stex_if_smsmode:F {
     \clist_set:No \l_tmpa_clist \sdefinitiontype
     \tl_clear:N \l_tmpa_tl
@@ -311,9 +334,9 @@
   \stex_reactivate_macro:N \premise
   \stex_reactivate_macro:N \definiens
   \stex_ref_new_doc_target:n \sdefinitionid
-  \stex_if_smsmode:TF{
+  \stex_if_smsmode:TF{\stex_suppress_html:n {
     \str_if_empty:NF \sdefinitionname { \stex_symdecl_do:nn{}{\sdefinitionname} }
-  }{
+  }}{
     \seq_clear:N \l_tmpa_seq
     \clist_map_inline:Nn \l_@@_sdefinition_for_clist {
       \tl_if_empty:nF{ ##1 }{
@@ -323,13 +346,17 @@
         }
       }
     }
+    \clist_set_from_seq:NN \l_@@_sdefinition_for_clist \l_tmpa_seq
     \exp_args:Nnx
     \stex_annotate:nnn{definition}{\seq_use:Nn \l_tmpa_seq {,}}{
       \str_if_empty:NF \sdefinitiontype {
-        \stex_annotate_invisible:nnn{type}{\sdefinitiontype}{}
+        \stex_annotate_invisible:nnn{typestrings}{\sdefinitiontype}{}
       }
       #2
-      \str_if_empty:NF \sdefinitionname { \stex_symdecl_do:nn{}{\sdefinitionname} }
+      \str_if_empty:NF \sdefinitionname {
+        \stex_suppress_html:n{\stex_symdecl_do:nn{}{\sdefinitionname}}
+        \stex_annotate_invisible:nnn{statementname}{\sdefinitionname}{}
+      }
     }
   }
   \endgroup
@@ -380,6 +407,9 @@
     \str_if_empty:NF \sassertiontype {
       \stex_annotate_invisible:nnn{type}{\sassertiontype}{}
     }
+    \str_if_empty:NF \sassertionname {
+      \stex_annotate_invisible:nnn{statementname}{\sassertionname}{}
+    }
     \clist_set:No \l_tmpa_clist \sassertiontype
     \tl_clear:N \l_tmpa_tl
     \clist_map_inline:Nn \l_tmpa_clist {
@@ -403,7 +433,7 @@
   \stex_smsmode_do:
 }{
   \str_if_empty:NF \sassertionname { 
-    \stex_symdecl_do:nn{}{\sassertionname} 
+    \stex_suppress_html:n{\stex_symdecl_do:nn{}{\sassertionname}}
     \stex_ref_new_sym_target:n {\l_stex_current_module_str ? \sassertionname}
   }
   \stex_if_smsmode:F {  
@@ -479,7 +509,7 @@
 
   \stex_if_smsmode:TF{  
     \str_if_empty:NF \sassertionname { 
-      \stex_symdecl_do:nn{}{\sassertionname} 
+      \stex_suppress_html:n{\stex_symdecl_do:nn{}{\sassertionname}}
       \stex_ref_new_sym_target:n {\l_stex_current_module_str ? \sassertionname}
     }
   }{
@@ -495,12 +525,13 @@
     \exp_args:Nnx
     \stex_annotate:nnn{assertion}{\seq_use:Nn \l_tmpa_seq {,}}{
       \str_if_empty:NF \sassertiontype {
-        \stex_annotate_invisible:nnn{type}{\sassertiontype}{}
+        \stex_annotate_invisible:nnn{typestrings}{\sassertiontype}{}
       }
       #2  
       \str_if_empty:NF \sassertionname { 
-        \stex_symdecl_do:nn{}{\sassertionname} 
+        \stex_suppress_html:n{\stex_symdecl_do:nn{}{\sassertionname}}
         \stex_ref_new_sym_target:n {\l_stex_current_module_str ? \sassertionname}
+        \stex_annotate_invisible:nnn{statementname}{\sassertionname}{}
       }
     }
   }
@@ -548,7 +579,10 @@
     \exp_args:Nnnx
     \begin{stex_annotate_env}{example}{\seq_use:Nn \l_tmpa_seq {,}}
     \str_if_empty:NF \sexampletype {
-      \stex_annotate_invisible:nnn{type}{\sexampletype}{}
+      \stex_annotate_invisible:nnn{typestrings}{\sexampletype}{}
+    }
+    \str_if_empty:NF \sexamplename {
+      \stex_annotate_invisible:nnn{statementname}{\sexamplename}{}
     }
     \clist_set:No \l_tmpa_clist \sexampletype
     \tl_clear:N \l_tmpa_tl
@@ -568,7 +602,9 @@
   }
   \stex_smsmode_do:
 }{
-  \str_if_empty:NF \sexamplename { \stex_symdecl_do:nn{}{\sexamplename} }
+  \str_if_empty:NF \sexamplename { 
+    \stex_suppress_html:n{\stex_symdecl_do:nn{}{\sexamplename}}
+  }
   \stex_if_smsmode:F {
     \clist_set:No \l_tmpa_clist \sexampletype
     \tl_clear:N \l_tmpa_tl
@@ -636,7 +672,9 @@
     \stex_ref_new_doc_target:n \sexampleid
   }
   \stex_if_smsmode:TF{
-    \str_if_empty:NF \sexamplename { \stex_symdecl_do:nn{}{\examplename} }
+    \str_if_empty:NF \sexamplename { 
+      \stex_suppress_html:n{\stex_symdecl_do:nn{}{\examplename}}
+    }
   }{
     \seq_clear:N \l_tmpa_seq
     \clist_map_inline:Nn \l_@@_sexample_for_clist {
@@ -650,10 +688,13 @@
     \exp_args:Nnx
     \stex_annotate:nnn{example}{\seq_use:Nn \l_tmpa_seq {,}}{
       \str_if_empty:NF \sexampletype {
-        \stex_annotate_invisible:nnn{type}{\sexampletype}{}
+        \stex_annotate_invisible:nnn{typestrings}{\sexampletype}{}
       }
       #2
-      \str_if_empty:NF \sexamplename { \stex_symdecl_do:nn{}{\sexamplename} }
+      \str_if_empty:NF \sexamplename { 
+        \stex_suppress_html:n{\stex_symdecl_do:nn{}{\sexamplename}}
+        \stex_annotate_invisible:nnn{statementname}{\sexamplename}{}
+      }
     }
   }
   \endgroup
@@ -711,13 +752,16 @@
     \exp_args:Nnnx
     \begin{stex_annotate_env}{paragraph}{\seq_use:Nn \l_tmpa_seq {,}}
     \str_if_empty:NF \sparagraphtype {
-      \stex_annotate_invisible:nnn{type}{\sparagraphtype}{}
+      \stex_annotate_invisible:nnn{typestrings}{\sparagraphtype}{}
     }
     \str_if_empty:NF \sparagraphfrom {
       \stex_annotate_invisible:nnn{from}{\sparagraphfrom}{}
     }
     \str_if_empty:NF \sparagraphto {
       \stex_annotate_invisible:nnn{to}{\sparagraphto}{}
+    }
+    \str_if_empty:NF \sparagraphname {
+      \stex_annotate_invisible:nnn{statementname}{\sparagraphname}{}
     }
     \clist_set:No \l_tmpa_clist \sparagraphtype
     \tl_clear:N \l_tmpa_tl
@@ -765,7 +809,7 @@
   \ignorespacesandpars
 }{  
   \str_if_empty:NF \sparagraphname { 
-    \stex_symdecl_do:nn{}{\sparagraphname} 
+    \stex_suppress_html:n{\stex_symdecl_do:nn{}{\sparagraphname}}
     \stex_ref_new_sym_target:n {\l_stex_current_module_str ? \sparagraphname}
   }
   \stex_if_smsmode:F {
@@ -846,7 +890,7 @@
   }
   \stex_if_smsmode:TF{
     \str_if_empty:NF \sparagraphname {
-      \stex_symdecl_do:nn{}{\sparagraphname}
+      \stex_suppress_html:n{\stex_symdecl_do:nn{}{\sparagraphname}}
       \stex_ref_new_sym_target:n {\l_stex_current_module_str ? \sparagraphname}
     }
   }{
@@ -862,7 +906,7 @@
     \exp_args:Nnx
     \stex_annotate:nnn{paragraph}{\seq_use:Nn \l_tmpa_seq {,}}{
       \str_if_empty:NF \sparagraphtype {
-        \stex_annotate_invisible:nnn{type}{\sparagraphtype}{}
+        \stex_annotate_invisible:nnn{typestrings}{\sparagraphtype}{}
       }
       \str_if_empty:NF \sparagraphfrom {
         \stex_annotate_invisible:nnn{from}{\sparagraphfrom}{}
@@ -871,7 +915,8 @@
         \stex_annotate_invisible:nnn{to}{\sparagraphto}{}
       }
       \str_if_empty:NF \sparagraphname { 
-        \stex_symdecl_do:nn{}{\sparagraphname} 
+        \stex_suppress_html:n{\stex_symdecl_do:nn{}{\sparagraphname}}
+        \stex_annotate_invisible:nnn{statementname}{\sparagraphname}{}
         \stex_ref_new_sym_target:n {\l_stex_current_module_str ? \sparagraphname}
       }
       \exp_args:NNx \clist_if_in:NnT \l_tmpa_clist {\tl_to_str:n{symdoc}}{
