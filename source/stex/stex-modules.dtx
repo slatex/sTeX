@@ -342,28 +342,33 @@
 % \begin{macro}{\stex_do_up_to_module:n}
 %    \begin{macrocode}
 \int_new:N \l_@@_group_depth_int
-\tl_new:N \l_@@_aftergroup_tl
 \cs_new_protected:Nn \stex_do_up_to_module:n {
   \int_compare:nNnTF \l_@@_group_depth_int = \currentgrouplevel {
     #1
   }{
     #1
-    \expandafter \tl_gset:Nn \expandafter \l_@@_aftergroup_tl \expandafter { \l_@@_aftergroup_tl #1 }
+    \expandafter \tl_gset:Nn 
+    \csname l_@@_aftergroup_\l_stex_current_module_str _tl 
+    \expandafter\expandafter\expandafter\endcsname
+    \expandafter\expandafter\expandafter { \csname 
+      l_@@_aftergroup_\l_stex_current_module_str _tl\endcsname #1 }
     \aftergroup\_@@_aftergroup_do:
   }
 }
 \cs_new_protected:Nn \_@@_aftergroup_do: {
+  \stex_debug:nn{aftergroup}{\cs_meaning:c{
+    l_@@_aftergroup_\l_stex_current_module_str _tl
+  }}
   \int_compare:nNnTF \l_@@_group_depth_int = \currentgrouplevel {
-    \l_@@_aftergroup_tl
-    \tl_clear:N \l_@@_aftergroup_tl
+    \use:c{l_@@_aftergroup_\l_stex_current_module_str _tl}
+    \tl_gclear:c{l_@@_aftergroup_\l_stex_current_module_str _tl}
   }{
-    \l_@@_aftergroup_tl
+    \use:c{l_@@_aftergroup_\l_stex_current_module_str _tl}
     \aftergroup\_@@_aftergroup_do:
   }
 }
-\cs_new_protected:Nn \_stex_reset_up_to_module: {
-
-  \tl_gset_eq:NN \l_@@_aftergroup_tl \l_@@_aftergroup_outer_tl 
+\cs_new_protected:Nn \_stex_reset_up_to_module:n {
+  \expandafter\let\csname l_@@_aftergroup_#1_tl\endcsname\undefined
 }
 %    \end{macrocode}
 % \end{macro}
@@ -480,8 +485,6 @@
 % Sets up a new module property list:
 %    \begin{macrocode}
 \cs_new_protected:Nn \stex_module_setup:nn {
-  \tl_gset_eq:NN \l_@@_aftergroup_outer_tl \l_@@_aftergroup_tl
-  \tl_clear:N \l_@@_aftergroup_tl
   \int_set:Nn \l_@@_group_depth_int {\currentgrouplevel}
   \str_set:Nx \l_stex_module_name_str { #2 }
   \_@@_args:n { #1 }
@@ -627,6 +630,7 @@
   \seq_put_right:Nx \l_stex_all_modules_seq {
     \l_stex_module_ns_str ? \l_stex_module_name_str
   }
+  \tl_clear:c{l_@@_aftergroup_\l_stex_module_ns_str ? \l_stex_module_name_str _tl}
 }
 %    \end{macrocode}
 % \end{macro}
@@ -686,6 +690,7 @@
 %    \begin{macrocode}
 \cs_new_protected:Nn \_@@_end_module: {
   \stex_debug:nn{modules}{Closing~module~\prop_item:cn {c_stex_module_\l_stex_current_module_str _prop} { name }}
+  \_stex_reset_up_to_module:n \l_stex_current_module_str
 }
 %    \end{macrocode}
 % \end{macro}

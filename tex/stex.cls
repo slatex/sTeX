@@ -9,10 +9,14 @@
 
 %%%%%%%%%%%%%   basics.dtx   %%%%%%%%%%%%%
 
-\RequirePackage{expl3,l3keys2e}
+\RequirePackage{expl3,l3keys2e,rustex}
 \ProvidesExplClass{stex}{2022/03/03}{3.1.0}{sTeX document class}
-\LoadClass[border=1px,varwidth]{standalone}
-\setlength\textwidth{15cm}
+\rustex_if:TF {
+  \LoadClass{article}
+}{
+  \LoadClass[border=1px,varwidth]{standalone}
+  \setlength\textwidth{15cm}
+}
 
 \DeclareOption*{\PassOptionsToPackage{\CurrentOption}{stex}}
 \ProcessOptions

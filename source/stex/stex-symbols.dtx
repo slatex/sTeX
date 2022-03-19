@@ -163,6 +163,9 @@
 \msg_new:nnn{stex}{error/seqlength}{
   Expected~#1~arguments;~got~#2!
 }
+\msg_new:nnn{stex}{error/unknownnotation}{
+  Unknown~notation~#1~for~#2!
+}
 %    \end{macrocode}
 %
 % \subsection{Symbol Declarations}
@@ -859,13 +862,13 @@
     }
   }
   
-  \exp_args:Nx
+  \exp_args:Ne
   \stex_do_up_to_module:n {
-    \seq_put_right:cx {
-      l_stex_symdecl_ \l_stex_get_symbol_uri_str
-      _notations
-    } {
-      \l_@@_suffix_str
+    \exp_not:N \seq_if_exist:cT { l_stex_symdecl_\l_stex_get_symbol_uri_str _notations }{
+      \seq_put_right:cn {
+        l_stex_symdecl_ \l_stex_get_symbol_uri_str
+        _notations
+      } {\l_@@_suffix_str}
     }
   }
   \exp_args:Ne
@@ -944,18 +947,18 @@
 \cs_new_protected:Nn \stex_setnotation:n {
   \exp_args:Nnx \seq_if_in:cnTF { l_stex_symdecl_#1 _notations }
     { \l_@@_variant_str \c_hash_str \l_@@_lang_str }{
-      \exp_args:Nnx \seq_remove_all:cn { l_stex_symdecl_#1 _notations }
-        { \l_@@_variant_str \c_hash_str \l_@@_lang_str }
-      \exp_args:Nnx \seq_remove_all:cn { l_stex_symdecl_#1 _notations }
-        { \c_hash_str }
-      \exp_args:Nnx \seq_put_left:cn { l_stex_symdecl_#1 _notations }
-        { \l_@@_variant_str \c_hash_str \l_@@_lang_str }
+      \exp_args:Nx \stex_do_up_to_module:n {
+        \exp_not:N \seq_if_exist:cT{l_stex_symdecl_#1_notations}{ 
+          \seq_remove_all:cn { l_stex_symdecl_#1 _notations }
+            { \l_@@_variant_str \c_hash_str \l_@@_lang_str }
+          \seq_put_left:cn { l_stex_symdecl_#1 _notations }
+            { \l_@@_variant_str \c_hash_str \l_@@_lang_str }
+        }
+      }
       \exp_args:Nx \stex_add_to_current_module:n {
-        \exp_args:Nnx \seq_remove_all:cn { l_stex_symdecl_#1 _notations }
+        \seq_remove_all:cn { l_stex_symdecl_#1 _notations }
           { \l_@@_variant_str \c_hash_str \l_@@_lang_str }
-        \exp_args:Nnx \seq_remove_all:cn { l_stex_symdecl_#1 _notations }
-          { \c_hash_str }
-        \exp_args:Nnx \seq_put_left:cn { l_stex_symdecl_#1 _notations }
+        \seq_put_left:cn { l_stex_symdecl_#1 _notations }
           { \l_@@_variant_str \c_hash_str \l_@@_lang_str }
       }
       \stex_debug:nn {notations}{
@@ -966,7 +969,7 @@
         l_stex_symdecl_#1 _notations\endcsname
       }
     }{
-      % todo throw error
+      \msg_error:nnxx{stex}{unknownnotation}{\l_@@_variant_str \c_hash_str \l_@@_lang_str}{#1}
     }
 }
 
@@ -995,12 +998,33 @@
       }
     }
     \exp_args:Nx
+    \stex_add_to_current_module:n {
+      \exp_not:N \seq_if_exist:cT{l_stex_symdecl_#1_notations}{ 
+        \seq_put_right:cn{l_stex_symdecl_#1_notations}{##1}
+        \cs_generate_from_arg_count:cNnn {
+          stex_notation_ #1 \c_hash_str ##1 _cs
+        } \cs_set:Npn { \prop_item:cn {l_stex_symdecl_#2_prop}{ arity } }{
+          \exp_after:wN\exp_not:n\exp_after:wN{\l_tmpa_tl}
+        }
+        \cs_if_exist:cT{stex_op_notation_ #2\c_hash_str ##1 _cs}{
+          \tl_set:cn{stex_op_notation_ #1\c_hash_str ##1 _cs}
+            {\exp_args:NNo\exp_args:No\exp_not:n{\csname stex_op_notation_ #2\c_hash_str ##1 _cs\endcsname}}
+        }
+      }
+    }
+    \exp_args:Nx
     \stex_do_up_to_module:n {
-      \seq_put_right:cn{l_stex_symdecl_#1_notations}{##1}
-      \cs_generate_from_arg_count:cNnn {
-        stex_notation_ #1 \c_hash_str ##1 _cs
-      } \cs_set:Npn { \prop_item:cn {l_stex_symdecl_#2_prop}{ arity } }{
-        \exp_after:wN\exp_not:n\exp_after:wN{\l_tmpa_tl}
+      \exp_not:N \seq_if_exist:cT{l_stex_symdecl_#1_notations}{ 
+        \seq_put_right:cn{l_stex_symdecl_#1_notations}{##1}
+        \cs_generate_from_arg_count:cNnn {
+          stex_notation_ #1 \c_hash_str ##1 _cs
+        } \cs_set:Npn { \prop_item:cn {l_stex_symdecl_#2_prop}{ arity } }{
+          \exp_after:wN\exp_not:n\exp_after:wN{\l_tmpa_tl}
+        }
+        \cs_if_exist:cT{stex_op_notation_ #2\c_hash_str ##1 _cs}{
+          \tl_set:cn{stex_op_notation_ #1\c_hash_str ##1 _cs}
+            {\exp_args:NNo\exp_args:No\exp_not:n{\csname stex_op_notation_ #2\c_hash_str ##1 _cs\endcsname}}
+        }
       }
     }
   }
@@ -1012,7 +1036,7 @@
   \stex_get_symbol:n { #2 }
   \exp_args:Noo
   \stex_copy_notations:nn \l_tmpa_str \l_stex_get_symbol_uri_str
-  \exp_args:Nx \stex_add_import_to_current_module:n{
+  \exp_args:Nx \stex_add_to_current_module:n{
     \stex_copy_notations:nn {\l_tmpa_str} {\l_stex_get_symbol_uri_str}
   }
   \stex_smsmode_do:\ignorespacesandpars
