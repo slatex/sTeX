@@ -278,6 +278,28 @@
     \endgroup
   }
 }
+
+\cs_new:Nn \stex_copy_control_sequence:NNN {
+  \tl_set:Nx \_tmp_args_tl {\cs_argument_spec:N #2}
+  \tl_remove_all:Nn \_tmp_args_tl {\c_hash_str}
+  \int_set:Nn \l_tmpa_int {\tl_count:N \_tmp_args_tl}
+
+  \tl_clear:N \_tmp_args_tl
+  \int_step_inline:nn \l_tmpa_int {
+    \tl_put_right:Nx \_tmp_args_tl {{\exp_not:n{####}\exp_not:n{##1}}}
+  }
+
+  \tl_set:Nn #3 {\cs_generate_from_arg_count:NNnn #1 \cs_set:Npn}
+  \tl_put_right:Nx #3 { {\int_use:N \l_tmpa_int}{
+      \exp_after:wN\exp_after:wN\exp_after:wN \exp_not:n
+      \exp_after:wN\exp_after:wN\exp_after:wN {
+        \exp_after:wN #2 \_tmp_args_tl
+      }
+  }}
+} %% TODO check if this works!
+\cs_generate_variant:Nn \stex_copy_control_sequence:NNN {cNN}
+\cs_generate_variant:Nn \stex_copy_control_sequence:NNN {NcN}
+\cs_generate_variant:Nn \stex_copy_control_sequence:NNN {ccN}
 \NewDocumentCommand \MMTrule {m m}{
   \seq_set_split:Nnn \l_tmpa_seq , {#2}
   \int_zero:N \l_tmpa_int
@@ -1276,9 +1298,9 @@
     \seq_pop_right:NN \l_tmpa_seq \l_tmpa_str % .tex
     \seq_pop_left:NN \l_tmpa_seq \l_tmpa_str % <filename>
     \seq_if_empty:NF \l_tmpa_seq { %remaining element should be language
+      \seq_pop_left:NN \l_tmpa_seq \l_stex_module_lang_str
       \stex_debug:nn{modules} {Language~\l_stex_module_lang_str~
         inferred~from~file~name}
-      \seq_pop_left:NN \l_tmpa_seq \l_stex_module_lang_str
     }
   }
 
@@ -1330,24 +1352,29 @@
         \l_stex_module_ns_str?\l_stex_module_name_str
       }{\l_stex_module_sig_str}
     }
-
-    \seq_set_eq:NN \l_tmpa_seq \g_stex_currentfile_seq
-    \seq_pop_right:NN \l_tmpa_seq \l_tmpa_str
-    \seq_set_split:NnV \l_tmpb_seq . \l_tmpa_str
-    \seq_pop_right:NN \l_tmpb_seq \l_tmpa_str % .tex
-    \seq_pop_left:NN \l_tmpb_seq \l_tmpa_str % <filename>
-    \str_set:Nx \l_tmpa_str {
-      \stex_path_to_string:N \l_tmpa_seq /
-      \l_tmpa_str . \l_stex_module_sig_str .tex
-    }
-    \IfFileExists \l_tmpa_str {
-      \exp_args:No \stex_file_in_smsmode:nn { \l_tmpa_str } {
-        \str_clear:N \l_stex_current_module_str
-        \seq_clear:N \l_stex_all_modules_seq
-        \stex_debug:nn{modules}{Loading~signature~\l_tmpa_str}
-      }
+    \stex_debug:nn{modules}{Signature~\l_stex_module_sig_str~for~\l_stex_module_ns_str?\l_stex_module_name_str}
+    \stex_if_module_exists:nTF{\l_stex_module_ns_str?\l_stex_module_name_str}{
+      \stex_debug:nn{modules}{(already exists)}
     }{
-      \msg_error:nnx{stex}{error/unknownmodule}{for~signature~\l_tmpa_str}
+      \stex_debug:nn{modules}{(needs loading)}
+      \seq_set_eq:NN \l_tmpa_seq \g_stex_currentfile_seq
+      \seq_pop_right:NN \l_tmpa_seq \l_tmpa_str
+      \seq_set_split:NnV \l_tmpb_seq . \l_tmpa_str
+      \seq_pop_right:NN \l_tmpb_seq \l_tmpa_str % .tex
+      \seq_pop_left:NN \l_tmpb_seq \l_tmpa_str % <filename>
+      \str_set:Nx \l_tmpa_str {
+        \stex_path_to_string:N \l_tmpa_seq /
+        \l_tmpa_str . \l_stex_module_sig_str .tex
+      }
+      \IfFileExists \l_tmpa_str {
+        \exp_args:No \stex_file_in_smsmode:nn { \l_tmpa_str } {
+          \str_clear:N \l_stex_current_module_str
+          \seq_clear:N \l_stex_all_modules_seq
+          \stex_debug:nn{modules}{Loading~signature}
+        }
+      }{
+        \msg_error:nnx{stex}{error/unknownmodule}{for~signature~\l_tmpa_str}
+      }
     }
     \stex_if_smsmode:F {
       \stex_activate_module:n {
@@ -1583,13 +1610,40 @@
   \stex_smsmode_do:
 }
 
+\cs_new_protected:Nn \__stex_smsmode_module:nn {
+  \__stex_modules_args:n{#1}
+  \str_if_empty:NF \l_stex_module_sig_str {
+    \stex_if_module_exists:nF{\l_stex_module_ns_str?\l_stex_module_name_str}{
+      \seq_set_eq:NN \l_tmpa_seq \g_stex_currentfile_seq
+      \seq_pop_right:NN \l_tmpa_seq \l_tmpa_str
+      \seq_set_split:NnV \l_tmpb_seq . \l_tmpa_str
+      \seq_pop_right:NN \l_tmpb_seq \l_tmpa_str % .tex
+      \seq_pop_left:NN \l_tmpb_seq \l_tmpa_str % <filename>
+      \str_set:Nx \l_tmpa_str {
+        \stex_path_to_string:N \l_tmpa_seq /
+        \l_tmpa_str . \l_stex_module_sig_str .tex
+      }
+      \IfFileExists \l_tmpa_str {
+        \exp_args:NNx \seq_gput_right:Nn \l__stex_smsmode_sigmodules_seq \l_tmpa_str
+      }{
+        \msg_error:nnx{stex}{error/unknownmodule}{for~signature~\l_tmpa_str}
+      }
+    }
+  }
+}
+
 \cs_new_protected:Nn \stex_file_in_smsmode:nn {
   \stex_filestack_push:n{#1}
   \seq_gclear:N \l__stex_smsmode_importmodules_seq
+  \seq_gclear:N \l__stex_smsmode_sigmodules_seq
   % ----- new -----------------------------
   \__stex_smsmode_in_smsmode:nn{#1}{
     \let\importmodule\__stex_smsmode_importmodule:
+    \let\stex_module_setup:nn\__stex_smsmode_module:nn
+    \let\__stex_modules_begin_module:\relax
+    \let\__stex_modules_end_module:\relax
     \seq_clear:N \g_stex_smsmode_allowedenvs_seq
+    \exp_args:NNx \seq_put_right:Nn \g_stex_smsmode_allowedenvs_seq {\tl_to_str:n{smodule}}
     \tl_clear:N \g_stex_smsmode_allowedmacros_tl
     \tl_clear:N \g_stex_smsmode_allowedmacros_escape_tl
     \tl_put_right:Nn \g_stex_smsmode_allowedmacros_escape_tl {\importmodule}
@@ -1597,6 +1651,14 @@
     \expandafter\expandafter\expandafter
     \stex_smsmode_do:
     \csname @ @ input\endcsname "#1"\relax
+
+    \seq_map_inline:Nn \l__stex_smsmode_sigmodules_seq {
+      \stex_filestack_push:n{##1}
+      \expandafter\expandafter\expandafter
+      \stex_smsmode_do:
+      \csname @ @ input\endcsname "##1"\relax
+      \stex_filestack_pop:
+    }
   }
   % ----- new -----------------------------
   \__stex_smsmode_in_smsmode:nn{#1} {
@@ -3909,6 +3971,7 @@
       \tl_clear:N \l_tmpc_tl
       \l_tmpa_cs{##1}{####1}
       \str_if_exist:cTF {l__stex_copymodule_copymodule_##1?####1_name_str} {
+        \stex_add_constant_to_current_module:n {\use:c{l__stex_copymodule_copymodule_##1?####1_name_str}}
         \tl_put_right:Nx \l_tmpa_tl {
           \prop_set_from_keyval:cn {
             l_stex_symdecl_\l_stex_current_module_str ? \use:c{l__stex_copymodule_copymodule_##1?####1_name_str}_prop
@@ -3944,6 +4007,7 @@
         \tl_put_right:Nx \l_tmpc_tl {
           \stex_copy_notations:nn {\l_stex_current_module_str ? \l_stex_current_copymodule_name_str / ####1 }{##1?####1}
         }
+        \stex_add_constant_to_current_module:n { \l_stex_current_copymodule_name_str / ####1 }
         \prop_set_eq:Nc \l_tmpa_prop {l_stex_symdecl_ ##1?####1 _prop}
         \prop_put:Nnx \l_tmpa_prop { name }{ \l_stex_current_copymodule_name_str / ####1 }
         \prop_put:Nnx \l_tmpa_prop { module }{ \l_stex_current_module_str }
@@ -4377,6 +4441,7 @@
     \str_if_empty:NT \l__stex_structures_name_str {
       \str_set:Nn \l__stex_structures_name_str { #1 }
     }
+    \exp_args:No \stex_activate_module:n \l_stex_get_structure_module_str
     \seq_clear:N \l__stex_structures_fields_seq
     \exp_args:Nx \stex_collect_imports:n \l_stex_get_structure_module_str
     \seq_map_inline:Nn \l_stex_collect_imports_seq {
@@ -4384,32 +4449,90 @@
         \seq_put_right:Nx \l__stex_structures_fields_seq { ##1 ? ####1 }
       }
     }
-    \seq_set_split:Nnn \l_tmpa_seq , {#3}
-    \exp_args:No \stex_activate_module:n \l_stex_get_structure_module_str
-    \prop_clear:N \l_tmpa_prop
-    \seq_map_inline:Nn \l_tmpa_seq {
-      \seq_set_split:Nnn \l_tmpb_seq = { ##1 }
-      \int_compare:nNnF { \seq_count:N \l_tmpb_seq } = 2 {
-        \msg_error:nnn{stex}{error/keyval}{##1}
-      }
-      \exp_args:Nx \stex_get_symbol_in_seq:nn {\seq_item:Nn \l_tmpb_seq 1} \l__stex_structures_fields_seq
-      \str_set_eq:NN \l__stex_structures_dom_str \l_stex_get_symbol_uri_str
-      \exp_args:NNx \seq_remove_all:Nn \l__stex_structures_fields_seq \l_stex_get_symbol_uri_str
-      \exp_args:Nx \stex_get_symbol:n {\seq_item:Nn \l_tmpb_seq 2}
-      \exp_args:Nxx \str_if_eq:nnF
-        {\prop_item:cn{l_stex_symdecl_\l__stex_structures_dom_str _prop}{args}}
-        {\prop_item:cn{l_stex_symdecl_\l_stex_get_symbol_uri_str _prop}{args}}{
-        \msg_error:nnxxxx{stex}{error/incompatible}
-          {\l__stex_structures_dom_str}
+
+    \tl_if_empty:nF{#3}{
+      \seq_set_split:Nnn \l_tmpa_seq , {#3}
+      \prop_clear:N \l_tmpa_prop
+      \seq_map_inline:Nn \l_tmpa_seq {
+        \seq_set_split:Nnn \l_tmpb_seq = { ##1 }
+        \int_compare:nNnF { \seq_count:N \l_tmpb_seq } = 2 {
+          \msg_error:nnn{stex}{error/keyval}{##1}
+        }
+        \exp_args:Nx \stex_get_symbol_in_seq:nn {\seq_item:Nn \l_tmpb_seq 1} \l__stex_structures_fields_seq
+        \str_set_eq:NN \l__stex_structures_dom_str \l_stex_get_symbol_uri_str
+        \exp_args:NNx \seq_remove_all:Nn \l__stex_structures_fields_seq \l_stex_get_symbol_uri_str
+        \exp_args:Nx \stex_get_symbol:n {\seq_item:Nn \l_tmpb_seq 2}
+        \exp_args:Nxx \str_if_eq:nnF
           {\prop_item:cn{l_stex_symdecl_\l__stex_structures_dom_str _prop}{args}}
-          {\l_stex_get_symbol_uri_str}
-          {\prop_item:cn{l_stex_symdecl_\l_stex_get_symbol_uri_str _prop}{args}}
+          {\prop_item:cn{l_stex_symdecl_\l_stex_get_symbol_uri_str _prop}{args}}{
+          \msg_error:nnxxxx{stex}{error/incompatible}
+            {\l__stex_structures_dom_str}
+            {\prop_item:cn{l_stex_symdecl_\l__stex_structures_dom_str _prop}{args}}
+            {\l_stex_get_symbol_uri_str}
+            {\prop_item:cn{l_stex_symdecl_\l_stex_get_symbol_uri_str _prop}{args}}
+        }
+        \prop_put:Nxx \l_tmpa_prop {\seq_item:Nn \l_tmpb_seq 1} \l_stex_get_symbol_uri_str
       }
-      \prop_put:Nxx \l_tmpa_prop {\seq_item:Nn \l_tmpb_seq 1} \l_stex_get_symbol_uri_str
     }
-    \seq_if_empty:NF \l__stex_structures_fields_seq {
-      \msg_error:nnx{stex}{error/instantiate/missing}{\seq_use:Nn\l__stex_structures_fields_seq{,~}}
+
+    \seq_map_inline:Nn \l__stex_structures_fields_seq {
+      \str_set:Nx \l_tmpa_str {field:\l__stex_structures_name_str . \prop_item:cn {l_stex_symdecl_##1_prop}{name} }
+      \stex_debug:nn{instantiate}{Field~\l_tmpa_str :~##1}
+
+      \exp_args:Nx \stex_do_up_to_module:n {
+        \prop_set_from_keyval:cn { l_stex_symdecl_ \l_stex_current_module_str?\l_tmpa_str _prop}{
+          name   = \l_tmpa_str ,
+          args   = \prop_item:cn {l_stex_symdecl_##1_prop}{args} ,
+          arity  = \prop_item:cn {l_stex_symdecl_##1_prop}{arity} ,
+          assocs = \prop_item:cn {l_stex_symdecl_##1_prop}{assocs}
+        }
+        \seq_clear:c {l_stex_symdecl_\l_stex_current_module_str?\l_tmpa_str _notations}
+        \stex_add_constant_to_current_module:n {\l_tmpa_str}
+      }
+      \exp_args:Nx \stex_add_to_current_module:n {
+        \prop_set_from_keyval:cn { l_stex_symdecl_ \l_stex_current_module_str?\l_tmpa_str _prop}{
+          name   = \l_tmpa_str ,
+          args   = \prop_item:cn {l_stex_symdecl_##1_prop}{args} ,
+          arity  = \prop_item:cn {l_stex_symdecl_##1_prop}{arity} ,
+          assocs = \prop_item:cn {l_stex_symdecl_##1_prop}{assocs}
+        }
+        \seq_clear:c {l_stex_symdecl_ \l_stex_current_module_str?\l_tmpa_str _notations}
+        \stex_add_constant_to_current_module:n {\l_tmpa_str}
+      }
+
+      \seq_if_empty:cF{l_stex_symdecl_##1_notations}{
+        \stex_find_notation:nn{##1}{}
+        \exp_args:Nx\stex_do_up_to_module:n {
+          \seq_put_right:cn {l_stex_symdecl_\l_stex_current_module_str?\l_tmpa_str _notations}{##1}
+        }
+        \exp_args:Nx\stex_add_to_current_module:n {
+          \seq_put_right:cn {l_stex_symdecl_f\l_stex_current_module_str?\l_tmpa_str _notations}{##1}
+        }
+
+        \stex_copy_control_sequence:ccN
+          {stex_notation_\l_stex_current_module_str?\l_tmpa_str _cs}
+          {stex_notation_##1\c_hash_str \l_stex_notation_variant_str _cs}
+          \l_tmpa_tl
+        \exp_args:No \stex_do_up_to_module:n \l_tmpa_tl
+        \exp_args:No \stex_add_to_current_module:n \l_tmpa_tl
+
+        \cs_if_exist:cT{stex_op_notation_##1\c_hash_str \l_stex_notation_variant_str _cs}{
+          \tl_set_eq:Nc \l_tmpa_cs {stex_op_notation_##1\c_hash_str \l_stex_notation_variant_str _cs}
+          \tl_set:Nx \l_tmpa_tl {
+            \tl_set:cn
+              {stex_op_notation_\l_stex_current_module_str?\l_tmpa_str _cs}
+              { \exp_args:No \exp_not:n \l_tmpa_cs}
+          }
+        }
+
+      }
+
+      \prop_put:Nxx \l_tmpa_prop {\prop_item:cn {l_stex_symdecl_##1_prop}{name}}{\l_stex_current_module_str?\l_tmpa_str}
     }
+
+    %\seq_if_empty:NF \l__stex_structures_fields_seq {
+    %  \msg_error:nnx{stex}{error/instantiate/missing}{\seq_use:Nn\l__stex_structures_fields_seq{,~}}
+    %}
     \exp_args:Nx
     \stex_add_to_current_module:n {
       \prop_set_from_keyval:cn {l_stex_instance_\l_stex_current_module_str?\l__stex_structures_name_str _prop}{
@@ -4633,7 +4756,7 @@
     \exp_args:Nx \stex_invoke_symbol:n {\prop_item:cn{l_stex_instance_ #1 _prop}{#2}}
   }{
     \prop_set_eq:Nc \l_tmpa_prop{l_stex_instance_ #1 _prop}
-    \msg_error:nnnnn{stex}{error/unknownfield}{#2}{#1}{
+    \msg_error:nnxxx{stex}{error/unknownfield}{#2}{#1}{
       \prop_to_keyval:N \l_tmpa_prop
     }
   }

@@ -277,13 +277,40 @@
   \stex_smsmode_do:
 }
 
+\cs_new_protected:Nn \_@@_module:nn {
+  \__stex_modules_args:n{#1}
+  \str_if_empty:NF \l_stex_module_sig_str {
+    \stex_if_module_exists:nF{\l_stex_module_ns_str?\l_stex_module_name_str}{
+      \seq_set_eq:NN \l_tmpa_seq \g_stex_currentfile_seq
+      \seq_pop_right:NN \l_tmpa_seq \l_tmpa_str
+      \seq_set_split:NnV \l_tmpb_seq . \l_tmpa_str
+      \seq_pop_right:NN \l_tmpb_seq \l_tmpa_str % .tex
+      \seq_pop_left:NN \l_tmpb_seq \l_tmpa_str % <filename>
+      \str_set:Nx \l_tmpa_str {
+        \stex_path_to_string:N \l_tmpa_seq /
+        \l_tmpa_str . \l_stex_module_sig_str .tex
+      }
+      \IfFileExists \l_tmpa_str {
+        \exp_args:NNx \seq_gput_right:Nn \l_@@_sigmodules_seq \l_tmpa_str
+      }{
+        \msg_error:nnx{stex}{error/unknownmodule}{for~signature~\l_tmpa_str}
+      }
+    }
+  }
+}
+
 \cs_new_protected:Nn \stex_file_in_smsmode:nn {
   \stex_filestack_push:n{#1}
   \seq_gclear:N \l_@@_importmodules_seq
+  \seq_gclear:N \l_@@_sigmodules_seq
   % ----- new -----------------------------
   \_@@_in_smsmode:nn{#1}{
     \let\importmodule\_@@_importmodule:
+    \let\stex_module_setup:nn\_@@_module:nn
+    \let\__stex_modules_begin_module:\relax
+    \let\__stex_modules_end_module:\relax
     \seq_clear:N \g_stex_smsmode_allowedenvs_seq
+    \exp_args:NNx \seq_put_right:Nn \g_stex_smsmode_allowedenvs_seq {\tl_to_str:n{smodule}}
     \tl_clear:N \g_stex_smsmode_allowedmacros_tl
     \tl_clear:N \g_stex_smsmode_allowedmacros_escape_tl
     \tl_put_right:Nn \g_stex_smsmode_allowedmacros_escape_tl {\importmodule}
@@ -291,6 +318,14 @@
     \expandafter\expandafter\expandafter
     \stex_smsmode_do:
     \csname @ @ input\endcsname "#1"\relax
+
+    \seq_map_inline:Nn \l_@@_sigmodules_seq {
+      \stex_filestack_push:n{##1}
+      \expandafter\expandafter\expandafter
+      \stex_smsmode_do:
+      \csname @ @ input\endcsname "##1"\relax
+      \stex_filestack_pop:
+    }
   }
   % ----- new -----------------------------
   \_@@_in_smsmode:nn{#1} {
