@@ -9,19 +9,19 @@
 
 %%%%%%%%%%%%%   basics.dtx   %%%%%%%%%%%%%
 
-\RequirePackage{expl3,l3keys2e,rustex}
+\RequirePackage{expl3,l3keys2e}
 \ProvidesExplClass{stex}{2022/03/03}{3.1.0}{sTeX document class}
-\rustex_if:TF {
+
+\DeclareOption*{\PassOptionsToPackage{\CurrentOption}{stex}}
+\ProcessOptions
+\RequirePackage{stex}
+
+\stex_html_backend:TF {
   \LoadClass{article}
 }{
   \LoadClass[border=1px,varwidth]{standalone}
   \setlength\textwidth{15cm}
 }
-
-\DeclareOption*{\PassOptionsToPackage{\CurrentOption}{stex}}
-\ProcessOptions
-
-\RequirePackage{stex}
 \endinput
 %%
 %% End of file `stex.cls'.

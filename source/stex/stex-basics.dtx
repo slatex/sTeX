@@ -149,19 +149,19 @@
 
 %%%%%%%%%%%%%   basics.dtx   %%%%%%%%%%%%%
 
-\RequirePackage{expl3,l3keys2e,rustex}
+\RequirePackage{expl3,l3keys2e}
 \ProvidesExplClass{stex}{2022/03/03}{3.1.0}{sTeX document class}
-\rustex_if:TF {
+
+\DeclareOption*{\PassOptionsToPackage{\CurrentOption}{stex}}
+\ProcessOptions
+\RequirePackage{stex}
+
+\stex_html_backend:TF {
   \LoadClass{article}
 }{
   \LoadClass[border=1px,varwidth]{standalone}
   \setlength\textwidth{15cm}
 }
-
-\DeclareOption*{\PassOptionsToPackage{\CurrentOption}{stex}}
-\ProcessOptions
-
-\RequirePackage{stex}
 %</cls>
 %    \end{macrocode}
 %
@@ -172,8 +172,14 @@
 
 %%%%%%%%%%%%%   basics.dtx   %%%%%%%%%%%%%
 
-\RequirePackage{expl3,l3keys2e,ltxcmds}
+\RequirePackage{expl3,l3keys2e,ltxcmds,standalone}
 \ProvidesExplPackage{stex}{2022/03/03}{3.1.0}{sTeX package}
+
+\message{^^J
+  ******************************^^J
+  *~This~is~sTeX~version~3.1.0~*^^J
+  ******************************^^J
+^^J}
 
 %\RequirePackage{morewrites}
 %\RequirePackage{amsmath}
@@ -187,7 +193,8 @@
   debug     .clist_set:N  = \c_stex_debug_clist ,
   lang      .clist_set:N  = \c_stex_languages_clist ,
   mathhub   .tl_set_x:N   = \mathhub ,
-  sms       .bool_set:N   = \c_stex_persist_mode_bool ,
+  usesms    .bool_set:N   = \c_stex_persist_mode_bool ,
+  writesms  .bool_set:N   = \c_stex_persist_write_mode_bool ,
   image     .bool_set:N   = \c_tikzinput_image_bool,
   unknown   .code:n       = {}
 }
@@ -198,8 +205,10 @@
 %   The \sTeX logo:
 %
 %    \begin{macrocode}
+\RequirePackage{xspace}
 \protected\def\stex{
-  \texorpdfstring{\raisebox{-.5ex}S\kern-.5ex\TeX}{sTeX}\xspace%
+  \@ifundefined{texorpdfstring}{\let\texorpdfstring\@firstoftwo}{}
+  \texorpdfstring{\raisebox{-.5ex}S\kern-.5ex\TeX}{sTeX}\xspace
 }
 \let\sTeX\stex
 %    \end{macrocode}
@@ -268,59 +277,27 @@
 % \subsection{HTML Annotations}
 %    \begin{macrocode}
 %<@@=stex_annotate>
-\RequirePackage{rustex}
 %    \end{macrocode}
-%
-% We add the namespace abbreviation |ns:stex="http://kwarc.info/ns/sTeX"| to \rustex:
 %
 %    \begin{macrocode}
-\rustex_add_Namespace:nn{stex}{http://kwarc.info/ns/sTeX}
-\rustex_add_Namespace:nn{mmt}{http://uniformal.github.io/MMT}
 %    \end{macrocode}
 %
-% Conditionals for \latexml:
-%
-% \begin{macro}{\if@latexml}
-%    \begin{macrocode}
-\ifcsname if@latexml\endcsname\else
-    \expandafter\newif\csname if@latexml\endcsname\@latexmlfalse
-\fi
-%    \end{macrocode}
-% \end{macro}
-%
-% \begin{macro}[pTF]{\latexml_if:}
-%    \begin{macrocode}
-\prg_new_conditional:Nnn \latexml_if: {p, T, F, TF} {
-  \if@latexml
-    \expandafter\prg_return_true:
-  \else:
-    \expandafter\prg_return_false:
-  \fi:
-}
-%    \end{macrocode}
-% \end{macro}
-%
-% \begin{variable}{\l_@@_arg_tl, \c_@@_emptyarg_tl}
+% \begin{variable}{\l_stex_html_arg_tl, \c_stex_html_emptyarg_tl}
 %
 % Used by annotation macros to ensure that the HTML output to annotate
 % is not empty.
 %
 %    \begin{macrocode}
-\tl_new:N \l_@@_arg_tl
-\tl_const:Nx \c_@@_emptyarg_tl {
-  \rustex_if:TF {
-    \rustex_direct_HTML:n { \c_ampersand_str \c_hash_str 8205;  }
-  }{~}
-}
+\tl_new:N \l_stex_html_arg_tl
 %    \end{macrocode}
 % \end{variable}
 %
-% \begin{macro}{\_@@_checkempty:n}
+% \begin{macro}{\_stex_html_checkempty:n}
 %    \begin{macrocode}
-\cs_new_protected:Nn \_@@_checkempty:n {
-  \tl_set:Nn \l_@@_arg_tl { #1 }
-  \tl_if_empty:NT \l_@@_arg_tl {
-    \tl_set_eq:NN \l_@@_arg_tl \c_@@_emptyarg_tl
+\cs_new_protected:Nn \_stex_html_checkempty:n {
+  \tl_set:Nn \l_stex_html_arg_tl { #1 }
+  \tl_if_empty:NT \l_stex_html_arg_tl {
+    \tl_set_eq:NN \l_stex_html_arg_tl \c_stex_html_emptyarg_tl
   }
 }
 %    \end{macrocode}
@@ -369,101 +346,18 @@
 %  the \latexml-implementations resort to perl bindings.
 %
 %    \begin{macrocode}
-\rustex_if:TF{
-  \cs_new_protected:Nn \stex_annotate:nnn {
-    \_@@_checkempty:n { #3 }
-    \rustex_annotate_HTML:nn {
-      property="stex:#1" ~
-      resource="#2"
-    } {
-      \mode_if_vertical:TF{
-        \tl_use:N \l_@@_arg_tl\par
-      }{
-        \tl_use:N \l_@@_arg_tl
-      }
-    }
-  }
-  \cs_new_protected:Nn \stex_annotate_invisible:n {
-    \_@@_checkempty:n { #1 }
-    \rustex_annotate_HTML:nn {
-      stex:visible="false" ~
-      style:display="none"
-    } {
-      \mode_if_vertical:TF{
-        \tl_use:N \l_@@_arg_tl\par
-      }{
-        \tl_use:N \l_@@_arg_tl
-      }
-    }
-  }
-  \cs_new_protected:Nn \stex_annotate_invisible:nnn {
-    \_@@_checkempty:n { #3 }
-    \rustex_annotate_HTML:nn {
-      property="stex:#1" ~
-      resource="#2" ~
-      stex:visible="false" ~
-      style:display="none"
-    } {
-      \mode_if_vertical:TF{
-        \tl_use:N \l_@@_arg_tl\par
-      }{
-        \tl_use:N \l_@@_arg_tl
-      }
-    }
-  }
-  \NewDocumentEnvironment{stex_annotate_env} { m m } {
-    \par
-    \rustex_annotate_HTML_begin:n {
-      property="stex:#1" ~
-      resource="#2"
-    }
-  }{
-    \par\rustex_annotate_HTML_end:
-  }
-}{
-  \latexml_if:TF {
-    \cs_new_protected:Nn \stex_annotate:nnn {
-      \_@@_checkempty:n { #3 }
-      \mode_if_math:TF {
-        \cs:w latexml@annotate@math\cs_end:{#1}{#2}{
-          \tl_use:N \l_@@_arg_tl
-        }
-      }{
-        \cs:w latexml@annotate@text\cs_end:{#1}{#2}{
-          \tl_use:N \l_@@_arg_tl
-        }
-      }
-    }
-    \cs_new_protected:Nn \stex_annotate_invisible:n {
-      \_@@_checkempty:n { #1 }
-      \mode_if_math:TF {
-        \cs:w latexml@invisible@math\cs_end:{
-          \tl_use:N \l_@@_arg_tl
-        }
-      } {
-        \cs:w latexml@invisible@text\cs_end:{
-          \tl_use:N \l_@@_arg_tl
-        }
-      }
-    }
-    \cs_new_protected:Nn \stex_annotate_invisible:nnn {
-      \_@@_checkempty:n { #3 }
-      \cs:w latexml@annotate@invisible\cs_end:{#1}{#2}{
-        \tl_use:N \l_@@_arg_tl
-      }
-    }
-    \NewDocumentEnvironment{stex_annotate_env} { m m } {
-      \par\begin{latexml@annotateenv}{#1}{#2}
-    }{
-      \par\end{latexml@annotateenv}
-    }
-  }{
-    \cs_new_protected:Nn \stex_annotate:nnn {#3}
-    \cs_new_protected:Nn \stex_annotate_invisible:n {}
-    \cs_new_protected:Nn \stex_annotate_invisible:nnn {}
-    \NewDocumentEnvironment{stex_annotate_env} { m m } {}{}
-  }
+\tl_if_exist:NF\stex@backend{
+  \ifcsname if@rustex\endcsname
+    \def\stex@backend{rustex}
+  \else
+    \ifcsname if@latexml\endcsname
+      \def\stex@backend{latexml}
+    \else
+      \def\stex@backend{pdflatex}
+    \fi
+  \fi
 }
+\input{stex-backend-\stex@backend.cfg}
 %    \end{macrocode}
 % \end{macro}
 % \end{environment}
@@ -522,11 +416,9 @@
   \stex_debug:nn{lang} {Languages:~\clist_use:Nn \l_tmpa_clist {,~} }
   \RequirePackage[\clist_use:Nn \l_tmpa_clist,]{babel}
 }
+
 \AtBeginDocument{
-  \bool_lazy_any:nT {
-    {\rustex_if_p:} 
-    {\latexml_if_p:}
-  } {
+  \stex_html_backend:T {
     \seq_get_right:NN \g_stex_currentfile_seq \l_tmpa_str
     \seq_set_split:NnV \l_tmpa_seq . \l_tmpa_str
     \seq_pop_right:NN \l_tmpa_seq \l_tmpa_str % .tex
@@ -536,8 +428,34 @@
       \stex_debug:nn{basics} {Language~\l_tmpa_str~
         inferred~from~file~name}
       \stex_annotate_invisible:nnn{language}{ \l_tmpa_str }{}
-      
     }
+  }
+}
+%    \end{macrocode}
+%
+% \subsection{Persistence}
+%
+%    \begin{macrocode}
+%<@@=stex_persist>
+\bool_if:NTF \c_stex_persist_mode_bool {
+  \def \stex_persist:n #1 {}
+  \def \stex_persist:x #1 {}
+}{
+  \bool_if:NTF \c_stex_persist_write_mode_bool {
+  \iow_new:N \c_@@_iow
+  \iow_open:Nn \c_@@_iow{\jobname.sms}
+  \AtEndDocument{
+    \iow_close:N \c_@@_iow
+  }
+  \cs_new_protected:Nn \stex_persist:n {
+    \tl_set:Nn \l_tmpa_tl { #1 }
+    \regex_replace_all:nnN { \cP\# } { \cO\# } \l_tmpa_tl
+    \exp_args:NNo \iow_now:Nn \c_@@_iow \l_tmpa_tl
+  }
+  \cs_generate_variant:Nn \stex_persist:n {x}
+  }{
+    \def \stex_persist:n #1 {}
+    \def \stex_persist:x #1 {}
   }
 }
 %    \end{macrocode}
@@ -574,9 +492,9 @@
   }
 }
 
-\cs_new:Nn \stex_copy_control_sequence:NNN {
+\cs_new_protected:Nn \stex_copy_control_sequence:NNN {
   \tl_set:Nx \_tmp_args_tl {\cs_argument_spec:N #2}
-  \tl_remove_all:Nn \_tmp_args_tl {\c_hash_str}
+  \exp_args:NNo \tl_remove_all:Nn \_tmp_args_tl \c_hash_str
   \int_set:Nn \l_tmpa_int {\tl_count:N \_tmp_args_tl}
 
   \tl_clear:N \_tmp_args_tl
@@ -591,7 +509,7 @@
         \exp_after:wN #2 \_tmp_args_tl
       }
   }}
-} %% TODO check if this works!
+}
 \cs_generate_variant:Nn \stex_copy_control_sequence:NNN {cNN}
 \cs_generate_variant:Nn \stex_copy_control_sequence:NNN {NcN}
 \cs_generate_variant:Nn \stex_copy_control_sequence:NNN {ccN}

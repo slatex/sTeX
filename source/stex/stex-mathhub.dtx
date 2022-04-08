@@ -101,14 +101,15 @@
 %
 % \begin{variable}{\mathhub, \c_stex_mathhub_seq, \c_stex_mathhub_str}
 % We determine the path to the local MathHub folder via one of
-% three means, in order of precedence:
+% four means, in order of precedence:
 % \begin{enumerate}
 %   \item The |mathhub| package option, or
 %   \item the |\mathhub|-macro, if it has been defined before
 %     the |\usepackage{stex}|-statement, or
-%   \item the |MATHHUB| system variable.
+%   \item the |MATHHUB| system variable, or
+%   \item a path specified in |~/.stex/mathhub.path|.
 % \end{enumerate}
-% In all three cases, \cs{c_stex_mathhub_seq} and
+% In all four cases, \cs{c_stex_mathhub_seq} and
 % \cs{c_stex_mathhub_str} are set accordingly.
 % \end{variable}
 %
@@ -484,7 +485,27 @@
     \stex_kpsewhich:n{-var-value~MATHHUB}
   }
   \str_set_eq:NN\c_stex_mathhub_str\l_stex_kpsewhich_return_str
-  
+
+  \str_if_empty:NT \c_stex_mathhub_str {
+    \sys_if_platform_windows:TF{
+      \begingroup\escapechar=-1\catcode`\\=12
+      \exp_args:Nx\stex_kpsewhich:n{-var-value~HOME}
+      \exp_args:NNx\str_replace_all:Nnn\l_stex_kpsewhich_return_str{\c_backslash_str}/
+      \exp_args:Nnx\use:nn{\endgroup}{\str_set:Nn\exp_not:N\l_stex_kpsewhich_return_str{\l_stex_kpsewhich_return_str}}
+    }{
+      \stex_kpsewhich:n{-var-value~HOME}
+    }
+    \ior_open:NnT \l_tmpa_ior{\l_stex_kpsewhich_return_str / .stex / mathhub.path}{
+      \begingroup\escapechar=-1\catcode`\\=12
+      \ior_str_get:NN \l_tmpa_ior \l_tmpa_str
+      \sys_if_platform_windows:T{
+        \exp_args:NNx\str_replace_all:Nnn\l_tmpa_str{\c_backslash_str}/
+      }
+      \str_gset_eq:NN \c_stex_mathhub_str\l_tmpa_str
+      \endgroup
+      \ior_close:N \l_tmpa_ior
+    }
+  }
   \str_if_empty:NTF\c_stex_mathhub_str{
     \msg_warning:nn{stex}{warning/nomathhub}
   }{
@@ -632,6 +653,11 @@
     }{}
   }
   \ior_close:N \c_@@_manifest_ior
+  \stex_persist:x {
+    \prop_set_from_keyval:cn{ c_stex_mathhub_#1_manifest_prop }{
+      \exp_after:wN \prop_to_keyval:N \csname c_stex_mathhub_#1_manifest_prop\endcsname
+    }
+  }
 }
 %    \end{macrocode}
 % \end{macro}
@@ -665,19 +691,20 @@
 %
 %    \begin{macrocode}
 %\prop_new:N \l_stex_current_repository_prop
-
-\_@@_find_manifest:N \c_stex_pwd_seq
-\seq_if_empty:NTF \l_@@_manifest_file_seq {
-  \stex_debug:nn{mathhub}{Not~currently~in~a~MathHub~repository}
-} {
-  \_@@_parse_manifest:n { main }
-  \prop_get:NnN \c_stex_mathhub_main_manifest_prop {id} 
-    \l_tmpa_str
-  \prop_set_eq:cN { c_stex_mathhub_\l_tmpa_str _manifest_prop }
-    \c_stex_mathhub_main_manifest_prop
-  \exp_args:Nx \stex_set_current_repository:n { \l_tmpa_str }
-  \stex_debug:nn{mathhub}{Current~repository:~
-    \prop_item:Nn \l_stex_current_repository_prop {id}
+\bool_if:NF \c_stex_persist_mode_bool {
+  \_@@_find_manifest:N \c_stex_pwd_seq
+  \seq_if_empty:NTF \l_@@_manifest_file_seq {
+    \stex_debug:nn{mathhub}{Not~currently~in~a~MathHub~repository}
+  } {
+    \_@@_parse_manifest:n { main }
+    \prop_get:NnN \c_stex_mathhub_main_manifest_prop {id} 
+      \l_tmpa_str
+    \prop_set_eq:cN { c_stex_mathhub_\l_tmpa_str _manifest_prop }
+      \c_stex_mathhub_main_manifest_prop
+    \exp_args:Nx \stex_set_current_repository:n { \l_tmpa_str }
+    \stex_debug:nn{mathhub}{Current~repository:~
+      \prop_item:Nn \l_stex_current_repository_prop {id}
+    }
   }
 }
 %    \end{macrocode}
@@ -765,10 +792,7 @@
 
 \cs_new_protected:Nn \_@@_inputref:nn {
   \stex_in_repository:nn {#1} {
-    \bool_lazy_any:nTF {
-      {\rustex_if_p:} 
-      {\latexml_if_p:}
-    } {
+    \stex_html_backend:TF {
       \str_clear:N \l_tmpa_str
       \prop_get:NnNF \l_stex_current_repository_prop { narr } \l_tmpa_str {
         \prop_get:NnNF \l_stex_current_repository_prop { ns } \l_tmpa_str {}

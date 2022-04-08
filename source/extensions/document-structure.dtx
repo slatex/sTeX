@@ -284,99 +284,9 @@
 %
 % \begin{sfragment}{document-structure.sty Implementation}
 %
-% \begin{sfragment}[id=sec:impl:cls]{The document-structure Class}
-%
-%   The functionality is spread over the |document-structure| class and package. The class provides the
-%   |document| environment and the |document-structure| element corresponds to it, whereas the
-%   package provides the concrete functionality.
-%
-%    \begin{macrocode}
-%<*cls>
-%<@@=document_structure>
-\ProvidesExplClass{document-structure}{2022/02/26}{3.0.1}{Modular Document Structure Class}
-\RequirePackage{l3keys2e}
-%    \end{macrocode}
-%
-% \begin{sfragment}[id=sec:impl:cls:options]{Class Options}
-%   To initialize the |document-structure| class, we declare and process the necessary options using
-%   the |kvoptions| package for  key/value options handling. For
-%   |omdoc.cls| this is quite simple. We have options |report| and |book|, which set the
-%   \DescribeMacro{\omdoc@cls@class}|\omdoc@cls@class| macro and pass on the macro to |omdoc.sty|
-%   for further processing. 
-%
-%    \begin{macrocode}
-\keys_define:nn{ document-structure / pkg }{
-  class       .str_set_x:N  = \c_document_structure_class_str,
-  minimal     .bool_set:N   = \c_document_structure_minimal_bool,
-  report      .code:n       = {
-    \ClassWarning{document-structure}{the option 'report' is deprecated, use 'class=report', instead}
-    \str_set:Nn \c_document_structure_class_str {report}
-  },
-  book        .code:n       = {
-    \ClassWarning{document-structure}{the option 'book' is deprecated, use 'class=book', instead}
-    \str_set:Nn \c_document_structure_class_str {book}
-  },
-  bookpart    .code:n       = {
-    \ClassWarning{document-structure}{the option 'bookpart' is deprecated, use 'class=book,topsect=chapter', instead}
-    \str_set:Nn \c_document_structure_class_str {book}
-    \str_set:Nn \c_document_structure_topsect_str {chapter}
-  },
-  docopt      .str_set_x:N  = \c_document_structure_docopt_str,
-  unknown     .code:n       = {
-    \PassOptionsToPackage{ \CurrentOption }{ document-structure }
-  }
-}
-\ProcessKeysOptions{ document-structure / pkg }
-\str_if_empty:NT \c_document_structure_class_str {
-  \str_set:Nn \c_document_structure_class_str {article}
-}
-\exp_after:wN\LoadClass\exp_after:wN[\c_document_structure_docopt_str]
-  {\c_document_structure_class_str}
-
-%    \end{macrocode}
-% \end{sfragment}
-%
-% \begin{sfragment}[id=sec:impl:cls:document]{Beefing up the \texttt{document} environment}
-%
-%   Now, -- unless the option |minimal| is defined -- we include the |stex| package 
-%
-%    \begin{macrocode}
-\RequirePackage{document-structure}
-\bool_if:NF \c_document_structure_minimal_bool {
-%    \end{macrocode}
-%
-% And define the environments we need.  The top-level one is the |document| environment,
-% which we redefined so that we can provide keyval arguments.
-%
-% \begin{environment}{document}
-%   For the moment we do not use them on the {\LaTeX} level, but the document identifier
-%   is picked up by {\latexml}.\ednote{faking documentkeys for now. @HANG, please implement}
-%    \begin{macrocode}
-\keys_define:nn { document-structure / document }{
-  id .str_set_x:N = \c_document_structure_document_id_str
-}
-\let\_@@_orig_document=\document
-\renewcommand{\document}[1][]{
-  \keys_set:nn{ document-structure / document }{ #1 }
-  \stex_ref_new_doc_target:n { \c_document_structure_document_id_str }
-  \_@@_orig_document
-}
-%    \end{macrocode}
-% \end{environment}
-%
-% Finally, we end the test for the |minimal| option. 
-% 
-%    \begin{macrocode}
-}
-%</cls>
-%    \end{macrocode}
-% \end{sfragment}
-% \end{sfragment}
-% 
-% \begin{sfragment}[id=sec:impl:sty]{Implementation: document-structure Package}
-%
 %    \begin{macrocode}
 %<*package>
+%<@@=document_structure>
 \ProvidesExplPackage{document-structure}{2022/02/26}{3.0.1}{Modular Document Structure}
 \RequirePackage{l3keys2e}
 %    \end{macrocode}
@@ -390,12 +300,16 @@
 %
 %    \begin{macrocode}
 
-\keys_define:nn{ document-structure / pkg }{
+\keys_define:nn{ document-structure }{
   class       .str_set_x:N  = \c_document_structure_class_str,
-  topsect     .str_set_x:N  = \c_document_structure_topsect_str,
+  topsect     .str_set_x:N  = \c_document_structure_topsect_str,,
+  unknown     .code:n       = {
+    \PassOptionsToClass{\CurrentOption}{stex}
+    \PassOptionsToClass{\CurrentOption}{tikzinput}
+  }
 %  showignores .bool_set:N   = \c_document_structure_showignores_bool,
 }
-\ProcessKeysOptions{ document-structure / pkg }
+\ProcessKeysOptions{ document-structure }
 \str_if_empty:NT \c_document_structure_class_str {
   \str_set:Nn \c_document_structure_class_str {article}
 }
@@ -410,6 +324,7 @@
 %    \begin{macrocode}
 \RequirePackage{xspace}
 \RequirePackage{comment}
+\RequirePackage{stex}
 \AddToHook{begindocument}{
 	\ltx@ifpackageloaded{babel}{
     \clist_set:Nx \l_tmpa_clist {\bbl@loaded}
@@ -541,6 +456,7 @@
   short         .tl_set:N    = \l_@@_omgroup_short_tl,
   display       .tl_set:N    = \l_@@_omgroup_display_tl,
   intro         .tl_set:N    = \l_@@_omgroup_intro_tl,
+  imports       .tl_set:N    = \l_@@_omgroup_imports_tl,
   loadmodules   .bool_set:N  = \l_@@_omgroup_loadmodules_bool
 }
 \cs_new_protected:Nn \_@@_omgroup_args:n {
@@ -552,6 +468,7 @@
   \tl_clear:N \l_@@_omgroup_type_tl
   \tl_clear:N \l_@@_omgroup_short_tl
   \tl_clear:N \l_@@_omgroup_display_tl
+  \tl_clear:N \l_@@_omgroup_imports_tl
   \tl_clear:N \l_@@_omgroup_intro_tl
   \bool_set_false:N \l_@@_omgroup_loadmodules_bool
   \keys_set:nn { document-structure / omgroup } { #1 }
@@ -631,6 +548,8 @@
 %   macro that determines how the sectioning commands below construct the entries for the
 %   table of contents.
 %    \begin{macrocode}
+  \stex_csl_to_imports:No \usemodule \l_@@_omgroup_imports_tl
+
   \bool_if:NT \l_@@_omgroup_loadmodules_bool {
     \omgroup@redefine@addtocontents{
       %\@ifundefined{module@id}\used@modules%
@@ -858,7 +777,6 @@
 %    \end{macrocode}
 % \end{macro}
 %
-% \end{sfragment}
 % \end{sfragment}
 % \end{sfragment}
 %

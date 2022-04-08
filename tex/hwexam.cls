@@ -9,13 +9,14 @@
 \ProvidesExplClass{hwexam}{2022/02/26}{3.0.1}{homework assignments and exams}
 \RequirePackage{l3keys2e}
 \DeclareOption*{
-  \PassOptionsToClass{\CurrentOption}{document-structure}
+  \PassOptionsToPackage{\CurrentOption}{document-structure}
   \PassOptionsToPackage{\CurrentOption}{stex}
   \PassOptionsToPackage{\CurrentOption}{hwexam}
   \PassOptionsToPackage{\CurrentOption}{tikzinput}
 }
 \ProcessOptions
-\LoadClass{document-structure}
+\LoadClass{article}
+\RequirePackage{document-structure}
 \RequirePackage{stex}
 \RequirePackage{hwexam}
 \RequirePackage{tikzinput}
