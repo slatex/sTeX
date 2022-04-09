@@ -14,6 +14,9 @@
 
 \DeclareOption*{\PassOptionsToPackage{\CurrentOption}{stex}}
 \ProcessOptions
+
+\bool_set_true:N \c_stex_document_class_bool
+
 \RequirePackage{stex}
 
 \stex_html_backend:TF {
@@ -22,6 +25,7 @@
   \LoadClass[border=1px,varwidth]{standalone}
   \setlength\textwidth{15cm}
 }
+\RequirePackage{standalone}
 \endinput
 %%
 %% End of file `stex.cls'.
