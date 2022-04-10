@@ -18,6 +18,60 @@
 }
 \newcommand\cmhtikzinput[2][]{\begin{center}\mhtikzinput[#1]{#2}\end{center}}
 
+\cs_new_protected:Nn \__tikzinput_usetikzlibrary:n {
+  \pgfkeys@spdef\pgf@temp{#1}
+  \expandafter\ifx\csname tikz@library@\pgf@temp @loaded\endcsname\relax%
+  \expandafter\global\expandafter\let\csname tikz@library@\pgf@temp @loaded\endcsname=\pgfutil@empty%
+  \expandafter\edef\csname tikz@library@#1@atcode\endcsname{\the\catcode`\@}
+  \expandafter\edef\csname tikz@library@#1@barcode\endcsname{\the\catcode`\|}
+  \expandafter\edef\csname tikz@library@#1@dollarcode\endcsname{\the\catcode`\$}
+  \catcode`\@=11
+  \catcode`\|=12
+  \catcode`\$=3
+  \pgfutil@InputIfFileExists{#1}{}{}
+  \catcode`\@=\csname tikz@library@#1@atcode\endcsname
+  \catcode`\|=\csname tikz@library@#1@barcode\endcsname
+  \catcode`\$=\csname tikz@library@#1@dollarcode\endcsname
+}
+
+\newcommand\libusetikzlibrary[1]{
+  \prop_if_exist:NF \l_stex_current_repository_prop {
+    \msg_error:nnn{stex}{error/notinarchive}\libusetikzlibrary
+  }
+  \prop_get:NnNF \l_stex_current_repository_prop {id} \l_tmpa_str {
+    \msg_error:nnn{stex}{error/notinarchive}\libusetikzlibrary
+  }
+  \seq_clear:N \l__tikzinput_libinput_files_seq
+  \seq_set_eq:NN \l_tmpa_seq \c_stex_mathhub_seq
+  \seq_set_split:NnV \l_tmpb_seq / \l_tmpa_str
+
+  \bool_while_do:nn { ! \seq_if_empty_p:N \l_tmpb_seq }{
+    \str_set:Nx \l_tmpa_str {\stex_path_to_string:N \l_tmpa_seq / meta-inf / lib / tikzlibrary #1 .code.tex}
+    \IfFileExists{ \l_tmpa_str }{
+      \seq_put_right:No \l__tikzinput_libinput_files_seq \l_tmpa_str
+    }{}
+    \seq_pop_left:NN \l_tmpb_seq \l_tmpa_str
+    \seq_put_right:No \l_tmpa_seq \l_tmpa_str
+  }
+
+  \str_set:Nx \l_tmpa_str {\stex_path_to_string:N \l_tmpa_seq / lib / tikzlibrary #1 .code.tex}
+  \IfFileExists{ \l_tmpa_str }{
+    \seq_put_right:No \l__tikzinput_libinput_files_seq \l_tmpa_str
+  }{}
+
+  \seq_if_empty:NTF \l__tikzinput_libinput_files_seq {
+    \msg_error:nnxx{stex}{error/nofile}{\exp_not:N\libusetikzlibrary}{tikzlibrary #1 .code.tex}
+  }{
+    \int_compare:nNnTF {\seq_count:N \l__tikzinput_libinput_files_seq} = 1 {
+      \seq_map_inline:Nn \l__tikzinput_libinput_files_seq {
+        \__tikzinput_usetikzlibrary:nn{ ##1 }
+      }
+    }{
+      \msg_error:nnxx{stex}{error/twofiles}{\exp_not:N\libusetikzlibrary}{tikzlibrary #1 .code.tex}
+    }
+  }
+}
+
 \endinput
 %%
 %% End of file `stex-tikzinput.sty'.

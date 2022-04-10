@@ -22,7 +22,7 @@
 \stex_html_backend:TF {
   \LoadClass{article}
 }{
-  \LoadClass[border=1px,varwidth]{standalone}
+  \LoadClass[border=1px,varwidth,crop=false]{standalone}
   \setlength\textwidth{15cm}
 }
 \RequirePackage{standalone}
