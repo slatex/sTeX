@@ -631,23 +631,49 @@
 % package. Note that we use the |\@startsolution| macro in the start codes, that parses
 % the optional argument. 
 %    \begin{macrocode}
-\newcommand\startsolutions{
-  \specialcomment{solution}{\@startsolution}{
-    \bool_if:NF \c_@@_boxed_bool {
-      \hrule\medskip
+\box_new:N \l_@@_solution_box
+\newenvironment{solution}{
+  \stex_html_backend:TF{
+    \stex_if_do_html:T{
+      \begin{stex_annotate_env}{solution}{}
     }
-    \end{small}%
+  }{
+    \setbox\l_@@_solution_box\vbox\bgroup
+      \par\smallskip\hrule\smallskip
+      \noindent\textbf{Solution:}~
   }
-  \bool_if:NT \c_@@_boxed_bool {
-    \surroundwithmdframed{solution}
+}{
+  \stex_html_backend:TF{
+    \stex_if_do_html:T{
+      \end{stex_annotate_env}
+    }
+  }{
+    \smallskip\hrule
+    \egroup
+    \bool_if:NT \c_@@_solutions_bool {
+      \box\l_@@_solution_box
+    }
   }
+}
+
+\newcommand\startsolutions{
+  \bool_set_true:N \c_@@_solutions_bool
+%  \specialcomment{solution}{\@startsolution}{
+%    \bool_if:NF \c_@@_boxed_bool {
+%      \hrule\medskip
+%    }
+%    \end{small}%
+%  }
+%  \bool_if:NT \c_@@_boxed_bool {
+%    \surroundwithmdframed{solution}
+%  }
 }
 %    \end{macrocode}
 % \end{macro}
 % 
 % \begin{macro}{\stopsolutions}
 %    \begin{macrocode}
-\newcommand\stopsolutions{\excludecomment{solution}}
+\newcommand\stopsolutions{\bool_set_false:N \c_@@_solutions_bool}%\excludecomment{solution}}
 %    \end{macrocode}
 % \end{macro}
 % 
@@ -840,11 +866,24 @@
 
 \newcommand\includeproblem[2][]{
   \_@@_inclprob_args:n{ #1 }
-  \str_if_empty:NTF \l_@@_inclprob_mhrepos_str {
-    \input{#2}
-  }{
-    \stex_in_repository:nn{\l_@@_inclprob_mhrepos_str}{
-      \input{\mhpath{\l_@@_inclprob_mhrepos_str}{#2}}
+  \exp_args:No \stex_in_repository:nn\l_@@_inclprob_mhrepos_str{
+    \stex_html_backend:TF {
+      \str_clear:N \l_tmpa_str
+      \prop_get:NnNF \l_stex_current_repository_prop { narr } \l_tmpa_str {
+        \prop_get:NnNF \l_stex_current_repository_prop { ns } \l_tmpa_str {}
+      }
+      \stex_annotate_invisible:nnn{includeproblem}{
+        \l_tmpa_str / #2
+      }{}
+    }{
+      \begingroup
+        \inputreftrue
+        \tl_if_empty:nTF{ ##1 }{
+          \input{#2}
+        }{
+          \input{ \c_stex_mathhub_str / ##1 / source / #2 }
+        }
+      \endgroup
     }
   }
   \_@@_inclprob_clear:

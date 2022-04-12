@@ -18,6 +18,7 @@
     \PassOptionsToPackage{\CurrentOption}{document-structure}
     \PassOptionsToClass{\CurrentOption}{beamer}
     \PassOptionsToPackage{\CurrentOption}{notesslides}
+    \PassOptionsToPackage{\CurrentOption}{stex}
   }
 }
 \ProcessKeysOptions{ notesslides / cls }
@@ -27,6 +28,11 @@
 }
 \exp_args:No \str_if_eq:nnT\c__notesslides_class_str{report}{
   \PassOptionsToPackage{defaulttopsec=part}{notesslides}
+}
+
+\RequirePackage{stex}
+\stex_html_backend:T {
+  \bool_set_true:N\c__notesslides_notes_bool
 }
 
 \bool_if:NTF \c__notesslides_notes_bool {

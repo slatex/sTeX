@@ -269,18 +269,35 @@
   \def\current@section@level{\prob@solution@kw}
   \ignorespacesandpars
 }
-\newcommand\startsolutions{
-  \specialcomment{solution}{\@startsolution}{
-    \bool_if:NF \c__problems_boxed_bool {
-      \hrule\medskip
+\box_new:N \l__problems_solution_box
+\newenvironment{solution}{
+  \stex_html_backend:TF{
+    \stex_if_do_html:T{
+      \begin{stex_annotate_env}{solution}{}
     }
-    \end{small}%
+  }{
+    \setbox\l__problems_solution_box\vbox\bgroup
+      \par\smallskip\hrule\smallskip
+      \noindent\textbf{Solution:}~
   }
-  \bool_if:NT \c__problems_boxed_bool {
-    \surroundwithmdframed{solution}
+}{
+  \stex_html_backend:TF{
+    \stex_if_do_html:T{
+      \end{stex_annotate_env}
+    }
+  }{
+    \smallskip\hrule
+    \egroup
+    \bool_if:NT \c__problems_solutions_bool {
+      \box\l__problems_solution_box
+    }
   }
 }
-\newcommand\stopsolutions{\excludecomment{solution}}
+
+\newcommand\startsolutions{
+  \bool_set_true:N \c__problems_solutions_bool
+}
+\newcommand\stopsolutions{\bool_set_false:N \c__problems_solutions_bool}%\excludecomment{solution}}
 \ifsolutions
   \startsolutions
 \else
@@ -427,11 +444,24 @@
 
 \newcommand\includeproblem[2][]{
   \__problems_inclprob_args:n{ #1 }
-  \str_if_empty:NTF \l__problems_inclprob_mhrepos_str {
-    \input{#2}
-  }{
-    \stex_in_repository:nn{\l__problems_inclprob_mhrepos_str}{
-      \input{\mhpath{\l__problems_inclprob_mhrepos_str}{#2}}
+  \exp_args:No \stex_in_repository:nn\l__problems_inclprob_mhrepos_str{
+    \stex_html_backend:TF {
+      \str_clear:N \l_tmpa_str
+      \prop_get:NnNF \l_stex_current_repository_prop { narr } \l_tmpa_str {
+        \prop_get:NnNF \l_stex_current_repository_prop { ns } \l_tmpa_str {}
+      }
+      \stex_annotate_invisible:nnn{includeproblem}{
+        \l_tmpa_str / #2
+      }{}
+    }{
+      \begingroup
+        \inputreftrue
+        \tl_if_empty:nTF{ ##1 }{
+          \input{#2}
+        }{
+          \input{ \c_stex_mathhub_str / ##1 / source / #2 }
+        }
+      \endgroup
     }
   }
   \__problems_inclprob_clear:
