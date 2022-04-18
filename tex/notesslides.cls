@@ -23,6 +23,10 @@
 }
 \ProcessKeysOptions{ notesslides / cls }
 
+\str_if_empty:NF \c__notesslides_class_str {
+  \PassOptionsToPackage{class=\c__notesslides_class_str}{document-structure}
+}
+
 \exp_args:No \str_if_eq:nnT\c__notesslides_class_str{book}{
   \PassOptionsToPackage{defaulttopsec=part}{notesslides}
 }
