@@ -28,10 +28,10 @@
 }
 
 \exp_args:No \str_if_eq:nnT\c__notesslides_class_str{book}{
-  \PassOptionsToPackage{defaulttopsec=part}{notesslides}
+  \PassOptionsToPackage{defaulttopsect=part}{notesslides}
 }
 \exp_args:No \str_if_eq:nnT\c__notesslides_class_str{report}{
-  \PassOptionsToPackage{defaulttopsec=part}{notesslides}
+  \PassOptionsToPackage{defaulttopsect=part}{notesslides}
 }
 
 \RequirePackage{stex}
