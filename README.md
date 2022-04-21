@@ -6,10 +6,10 @@ This repository contains the sTeX package collection, a version of TeX/LaTeX tha
 to markup TeX/LaTeX documents semantically without leaving the document format. 
 
 Running `pdflatex` over sTeX-annotated documents formats them into normal-looking PDF. But
-sTeX also comes with a [conversion pipleline](https://github.com/slatex/RusTeX) to
+sTeX also comes with a [conversion pipeline](https://github.com/slatex/RusTeX) To
 semantically annotated HTML5, which can host semantic added-value services that make the
 documents active (i.e. interactive and user-adaptive) and essentially turning sTeX into a
-document format for mathematical knowledge management (MKM).
+document format for (mathematical) knowledge management (MKM).
 
 ## Copyright & License
 
@@ -23,9 +23,32 @@ The package is distributed under the terms of the LaTeX Project Public License (
 The [sTeX manual ](https://github.com/slatex/sTeX/blob/main/doc/stex-manual.pdf) gives a
 general introduction and motivation. The 
 [sTeX package documentation](https://github.com/slatex/sTeX/blob/main/doc/stex-doc.pdf)
-gives the details of the implementation. A complete list of sTeX-related pubications can
+gives the details of the implementation. A complete list of sTeX-related publications can
 be found [here](https://kwarc.github.io/bibs/sTeX/). 
 
+## sTeX Corpus & Best Practices
+
+sTeX comes with a large corpus of pre-annotated materials that act as evaluation grounds
+and regression tests for the sTeX functionality and best practices that are publicly
+available. 
+* [HelloWorld](https://gl.mathhub.info/HelloWorld) a collection of simple hello world
+  examples the show off the best practices of sTeX annotation. 
+* [SMGLoM](https://gl.mathhub.info/smglom), the Semantic, Multilingual Glossary of
+  Mathematics (and similar disciplines). SMGloM provides a large set of definitions and
+  well-designed semantic macros for core mathematical (and computation) concepts and
+  objects. This resource greatly facilitates "getting off the ground" in semantic
+  annotation.
+* [MiKoMH](https://gl.mathhub.info/MiKoMH) a set of semantically annotated courses in
+  computer science and (symbolic) AI (ca. 5000 pages of slides and notes). Ca. 3000
+  problem/solutions exist are only available upon request. 
+* [sTeX3 Labs](https://gl.mathhub.info/sTeX) a set of experimental re-formalizations of
+  (mostly) [SMGLoM](https://gl.mathhub.info/smglom) material to fully take advantage of
+  the sTeX3 functionality and the
+  [rusTeX](https://github.com/slatex/RusTeX)/[MMT](https://uniformal.github.io) pipeline
+  and knowledge managemen facilities. 
+
+All of these are hosted on [MathHub](https://mathhub.info), an experimental portal for the
+management of active mathematical documents and flexiformal mathematics. 
 
 ## Setup
 
