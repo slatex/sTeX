@@ -48,7 +48,10 @@ available.
   and knowledge managemen facilities. 
 
 All of these are hosted on [MathHub](https://mathhub.info), an experimental portal for the
-management of active mathematical documents and flexiformal mathematics. 
+management of active mathematical documents and flexiformal mathematics. The organization
+of the material into "mathematical archives" (GIT repositories with a particular
+standardized structure on [a GitLab repository management server](https://gl.mathhub.info)
+grealy enhances modularization and the provision of added value services.
 
 ## Setup
 
