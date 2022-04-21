@@ -20,9 +20,12 @@ The package is distributed under the terms of the LaTeX Project Public License (
 [Michael Kohlhase](https://kwarc.info/kohlhase), [Dennis Müller](https://kwarc.info/people/dmueller), FAU Erlangen-Nürnberg. 
 
 ## Documentation
-See the
-[documentation of the sTeX package](https://github.com/slatex/sTeX/blob/main/doc/stex-doc.pdf)
-for details.
+The [sTeX manual ](https://github.com/slatex/sTeX/blob/main/doc/stex-manual.pdf) gives a
+general introduction and motivation. The 
+[sTeX package documentation](https://github.com/slatex/sTeX/blob/main/doc/stex-doc.pdf)
+gives the details of the implementation. A complete list of sTeX-related pubications can
+be found [here](https://kwarc.github.io/bibs/sTeX/). 
+
 
 ## Setup
 
