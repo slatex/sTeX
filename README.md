@@ -3,8 +3,13 @@ sTeX: An Infrastructure for Semantic Preloading of LaTeX Documents
 ![CI Status](https://github.com/slatex/sTeX/workflows/CI/badge.svg)
 
 This repository contains the sTeX package collection, a version of TeX/LaTeX that allows
-to markup TeX/LaTeX documents semantically without leaving the document format,
-essentially turning it into a document format for mathematical knowledge management (MKM).
+to markup TeX/LaTeX documents semantically without leaving the document format. 
+
+Running `pdflatex` over sTeX-annotated documents formats them into normal-looking PDF. But
+sTeX also comes with a [conversion pipleline](https://github.com/slatex/RusTeX) to
+semantically annotated HTML5, which can host semantic added-value services that make the
+documents active (i.e. interactive and user-adaptive) and essentially turning sTeX into a
+document format for mathematical knowledge management (MKM).
 
 ## Copyright & License
 
@@ -12,7 +17,7 @@ Copyright (c) 2022 Michael Kohlhase
 The package is distributed under the terms of the LaTeX Project Public License (LPPL)
 
 ## Maintainers
-Michael Kohlhase, Dennis Müller, FAU Erlangen-Nürnberg. 
+[Michael Kohlhase](https://kwarc.info/kohlhase), [Dennis Müller](https://kwarc.info/people/dmueller), FAU Erlangen-Nürnberg. 
 
 ## Documentation
 See the
@@ -31,10 +36,10 @@ Then update your  `TEXINPUTS` environment variable, e.g. by placing the followin
 export TEXINPUTS="$(TEXINPUTS):<sTeXDIR>//:
 ```
 
-Similarly, set your `MATHHUB` environment variable to where you intend to keep your sTeX archives. For details, see the documentation linked above.
+Similarly, set your `MATHHUB` environment variable to where you intend to keep your sTeX
+archives. For details, see the documentation linked above. For a LaTeX IDE, update the directory path where `pdflatex` looks for paths. 
 
-For a LaTeX IDE, update the directory path where `pdflatex` looks for paths. 
-For larger documents it may be necessary to enlarge the internal memory allocation of the TEX/LATEX executables. This can be done by adding the following configurations in `texmf.cnf` (or changing them, if they already exist). 
+For larger documents it may (rarely) be necessary to enlarge the internal memory allocation of the TEX/LATEX executables. This can be done by adding the following configurations in `texmf.cnf` (or changing them, if they already exist). 
 ```
 param_size = 20000      % simultaneous macro parameters, also applies to MP
 nest_size = 1000        % simultaneous semantic levels (e.g., groups)
