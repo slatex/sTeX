@@ -6,9 +6,9 @@ This repository contains the sTeX package collection, a version of TeX/LaTeX tha
 to markup TeX/LaTeX documents semantically without leaving the document format. 
 
 Running `pdflatex` over sTeX-annotated documents formats them into normal-looking PDF. But
-sTeX also comes with a [conversion pipeline](https://github.com/slatex/RusTeX) To
+sTeX also comes with a [conversion pipeline](https://github.com/slatex/RusTeX) into 
 semantically annotated HTML5, which can host semantic added-value services that make the
-documents active (i.e. interactive and user-adaptive) and essentially turning sTeX into a
+documents active (i.e. interactive and user-adaptive) and essentially turning LaTeX into a
 document format for (mathematical) knowledge management (MKM).
 
 ## Copyright & License
