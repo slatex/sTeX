@@ -42,14 +42,15 @@ Given a \symname{foo}, we can...
 \symref{binarysymbol}{this} is a symbol taking two arguments.
     }
 
-    So far we have gained exactly nothing in adding the arity. We will now see what we can
-    gain with more machinery.
+    So far we have gained exactly \ldots nothing by adding the arity information: we
+    cannot do anything with the arguments in the text.
+
+    We will now see what we can gain with more machinery.
     
     \begin{function}{\notation}
-        In that case, we probably want to supply a notation as well,
-        in which case we can finally actually use 
-        the semantic macro in math mode.
-        We can do so using the \stexcode"\notation" command, like this:
+      We probably want to supply a notation as well, in which case we can finally actually
+      use the semantic macro in math mode.  We can do so using the \stexcode"\notation"
+      command, like this:
         \stexexample{
 \notation{binarysymbol}{\text{First: }#1\text{; Second: }#2}
 $\binarysymbol{a}{b}$
@@ -66,11 +67,12 @@ $\binarysymbol{a}{b}$
     \end{mmtbox}
 
     \begin{function}{\comp}
-        Unfortunately, we have no highlighting whatsoever now.
-        That is because we need to tell \sTeX explicitly which parts
-        of the notation are \emph{notation components} which \emph{should}
-        be highlighted.
-        We can do so with the \stexcode"\comp" command.
+      For many semantic services e.g. semantic highlighting or \defemph{wikification}
+      (linking user-visible notation components to the definition of the respective symbol
+      they come from), we need to specify the notation components. Unfortunately, there is
+      currently no way the \sTeX engine can infer this by itself, so we have to specify it
+      manually in the notation specification.  We can do so with the \stexcode"\comp"
+      command.
     \end{function}
 
     We can introduce a new notation |highlight| for 
@@ -148,12 +150,16 @@ $\binarysymbol[highlight]{a}{b}$
 $\newbinarysymbol{a}{b}$
     }
 
-    We just declared a new symbol |newbinarysymbol| with |args=2|
-    and immediately provided it with a notation with identifier
-    |hl|. Since |hl| is the \emph{first} (and so far, only)
-    notation supplied for |newbinarysymbol|, using
-    \stexcode"\newbinarysymbol" without optional
-    argument defaults to this notation.
+    We just declared a new symbol |newbinarysymbol| with |args=2| and immediately provided
+    it with a notation with identifier |hl|. Since |hl| is the \emph{first} (and so far,
+    only) notation supplied for |newbinarysymbol|, using \stexcode"\newbinarysymbol"
+    without optional argument defaults to this notation.\bigskip
+
+    But one man's meat is another man's poison: it is very subjective what the ``default
+    notation'' of an operator should be. Different communities have different
+    practices. For instance, the complex unit is written as $i$ in Mathematics and as $j$
+    in electrical engineering. So to allow modular specification and facilitate re-use of
+    document fragments \sTeX allows to re-set notation defaults.
 
     \begin{function}{\setnotation}
         The first notation provided will stay the default notation
@@ -205,18 +211,15 @@ $\newbinarysymbol![ab]$
     \end{sfragment}
 \end{sfragment}
 
-\begin{sfragment}{Argument Types}
-    The notations so far used \emph{simple} arguments
-    which we call |i|\emph{-type} arguments. Declaring a new
-    symbol with \stexcode"\symdecl{foo}[args=3]" is
-    equivalent to writing \stexcode"\symdecl{foo}[args=iii]",
-    indicating that the semantic macro takes three |i|-type
-    arguments. However, there are three more argument types
-    which we will investigate now, namely |b|-type, |a|-type
-    and |B|-type arguments.
+\begin{sfragment}{Argument Modes}
+  The notations so far used \emph{simple} arguments which we call \emph{mode}-|i|
+  arguments. Declaring a new symbol with \stexcode"\symdecl{foo}[args=3]" is equivalent to
+  writing \stexcode"\symdecl{foo}[args=iii]", indicating that the semantic macro takes
+  three mode-|i| arguments. However, there are three more argument modes which we will
+  investigate now, namely mode-|b|, mode-|a| and mode-|B| arguments.
 
-    \begin{sfragment}{\texttt b-Type Arguments}
-        A |b|-type argument represents a \emph{variable} that is
+    \begin{sfragment}{Mode-\texttt b Arguments}
+        A mode-|b| argument represents a \emph{variable} that is
         \emph{bound} by the symbol in its application, making the
         symbol a \emph{binding operator}. Typical
         examples of binding operators are e.g. sums $\sum$, products 
@@ -224,9 +227,9 @@ $\newbinarysymbol![ab]$
         $\exists$, that $\lambda$-operator, etc.
 
         \begin{mmtbox}
-            |b|-type arguments behave exactly like |i|-type arguments
+            mode-|b| arguments behave exactly like mode-|i| arguments
             within \TeX, but applications of binding operators, i.e. symbols
-            with |b|-type arguments, are translated to
+            with mode-|b| arguments, are translated to
             |OMBIND|-terms in \omdoc/\mmt, rather than |OMA|.
         \end{mmtbox}
 
@@ -243,17 +246,17 @@ $\summation{\svar{x}}{1}{\svar{n}}{\svar{x}}^2$
         \stexcode"\summation"-symbol in the expression.
     \end{sfragment}
     
-    \begin{sfragment}{\texttt a-Type Arguments}
-        |a|-type arguments represent a \emph{flexary argument sequence},
+    \begin{sfragment}{mode-\texttt a Arguments}
+        mode-|a| arguments represent a \emph{flexary argument sequence},
         i.e. a sequence of arguments of arbitrary length.
         Formally, operators that take arbitrarily many arguments
         don't ``exist'', but in informal mathematics, they are ubiquitous.
-        |a|-type arguments allow us to write e.g.
+        mode-|a| arguments allow us to write e.g.
         \stexcode"\addition{a,b,c,d,e}" rather than having to write
         something like \stexcode"\addition{a}{\addition{b}{\addition{c}{\addition{d}{e}}}}"!
 
         \stexcode"\notation" (and consequently \stexcode"\symdef", too)
-        take one additional argument for each |a|-type argument that
+        take one additional argument for each mode-|a| argument that
         indicates how to ``accumulate'' a comma-separated sequence
         of arguments. This is best demonstrated on an example.
 
@@ -269,7 +272,7 @@ $\summation{\svar{x}}{1}{\svar{n}}{\svar{x}}^2$
         to \stexcode"\notation" (or \stexcode"\symdef") takes
         the same arguments as the base notation and two \emph{additional}
         arguments |##1| and |##2| representing successive pairs
-        in the |a|-type argument, and accumulates them into |#2|,
+        in the mode-|a| argument, and accumulates them into |#2|,
         i.e. to produce $a<_Sb<_Sc<_Sd<_Se$, we do
         \stexcode"{##1 \comp{<}_{#1} ##2}":
 
@@ -326,8 +329,8 @@ Tadaa: $\addition{a,b,c,d,e}$
 
     \end{sfragment}
     
-    \begin{sfragment}{\texttt B-Type Arguments}
-        Finally, |B|-type arguments simply combine the functionality
+    \begin{sfragment}{Mode-\texttt B Arguments}
+        Finally, mode-|B| arguments simply combine the functionality
         of both |a| and |b| - i.e. they represent an arbitrarily
         long sequence of variables to be bound, e.g. for implementing
         quantifiers:
