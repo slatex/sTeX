@@ -231,6 +231,43 @@
 \cs_generate_variant:Nn \stex_copy_control_sequence:NNN {cNN}
 \cs_generate_variant:Nn \stex_copy_control_sequence:NNN {NcN}
 \cs_generate_variant:Nn \stex_copy_control_sequence:NNN {ccN}
+
+\cs_new_protected:Nn \stex_copy_control_sequence_ii:NNN {
+  \tl_set:Nx \_tmp_args_tl {\cs_argument_spec:N #2}
+  \exp_args:NNo \tl_remove_all:Nn \_tmp_args_tl \c_hash_str
+  \int_set:Nn \l_tmpa_int {\tl_count:N \_tmp_args_tl}
+
+  \tl_clear:N \_tmp_args_tl
+  \int_step_inline:nn \l_tmpa_int {
+    \tl_put_right:Nx \_tmp_args_tl {{\exp_not:n{########}\exp_not:n{##1}}}
+  }
+
+  \edef \_tmp_args_tl {
+    \exp_after:wN\exp_after:wN\exp_after:wN \exp_not:n
+    \exp_after:wN\exp_after:wN\exp_after:wN {
+      \exp_after:wN #2 \_tmp_args_tl
+    }
+  }
+
+  \exp_after:wN \def \exp_after:wN \_tmp_args_tl
+  \exp_after:wN ##\exp_after:wN 1 \exp_after:wN ##\exp_after:wN 2
+  \exp_after:wN  { \_tmp_args_tl }
+
+  \edef \_tmp_args_tl {
+    \exp_after:wN \exp_not:n \exp_after:wN {
+      \_tmp_args_tl {####1}{####2}
+    }
+  }
+
+  \tl_set:Nn #3 {\cs_generate_from_arg_count:NNnn #1 \cs_set:Npn}
+  \tl_put_right:Nx #3 { {\int_use:N \l_tmpa_int}{
+    \exp_after:wN\exp_not:n\exp_after:wN{\_tmp_args_tl}
+  }}
+}
+
+\cs_generate_variant:Nn \stex_copy_control_sequence_ii:NNN {cNN}
+\cs_generate_variant:Nn \stex_copy_control_sequence_ii:NNN {NcN}
+\cs_generate_variant:Nn \stex_copy_control_sequence_ii:NNN {ccN}
 \NewDocumentCommand \MMTrule {m m}{
   \seq_set_split:Nnn \l_tmpa_seq , {#2}
   \int_zero:N \l_tmpa_int
@@ -257,13 +294,17 @@
 \cs_new_protected:Nn \stex_document_title:n {
   \tl_if_empty:NT \g_stex_document_title {
     \tl_gset:Nn \g_stex_document_title { #1 }
-    \stex_annotate_invisible:nnn{doctitle}{}{ #1 }
+    \stex_annotate_invisible:n{\noindent
+      \stex_annotate:nnn{doctitle}{}{ #1 }
+    \par}
   }
 }
 \AtBeginDocument {
   \let \STEXtitle \stex_document_title:n
   \tl_if_empty:NF \g_stex_document_title {
-    \stex_annotate_invisible:nnn{doctitle}{}{ \g_stex_document_title }
+    \stex_annotate_invisible:n{\noindent
+      \stex_annotate:nnn{doctitle}{}{ \g_stex_document_title }
+    \par}
   }
 }
 
@@ -2650,7 +2691,7 @@
   }
   \tl_clear:N \l_tmpa_tl
   \int_step_inline:nn { \prop_item:cn {l_stex_symdecl_#2_prop}{ arity } } {
-    \tl_put_right:Nn \l_tmpa_tl { {## ##1} }
+    \tl_put_right:Nn \l_tmpa_tl { {######## ##1} }
   }
   \seq_map_inline:cn {l_stex_symdecl_#2_notations}{
     \cs_set_eq:Nc \l_tmpa_cs { stex_notation_ #2 \c_hash_str ##1 _cs }
@@ -2658,6 +2699,16 @@
       \exp_after:wN\exp_after:wN\exp_after:wN \exp_not:n
       \exp_after:wN\exp_after:wN\exp_after:wN {
         \exp_after:wN \l_tmpa_cs \l_tmpa_tl
+      }
+    }
+
+    \exp_after:wN \def \exp_after:wN \l_tmpa_tl
+    \exp_after:wN ####\exp_after:wN 1 \exp_after:wN ####\exp_after:wN 2
+    \exp_after:wN  { \l_tmpa_tl }
+
+    \edef \l_tmpa_tl {
+      \exp_after:wN \exp_not:n \exp_after:wN {
+        \l_tmpa_tl {######## 1}{######## 2}
       }
     }
 
@@ -4465,7 +4516,7 @@
           \seq_put_right:cn {l_stex_symdecl_\l_stex_current_module_str?\l_tmpa_str _notations}{\l_stex_notation_variant_str}
         }
 
-        \stex_copy_control_sequence:ccN
+        \stex_copy_control_sequence_ii:ccN
           {stex_notation_\l_stex_current_module_str?\l_tmpa_str\c_hash_str \l_stex_notation_variant_str _cs}
           {stex_notation_##1\c_hash_str \l_stex_notation_variant_str _cs}
           \l_tmpa_tl
