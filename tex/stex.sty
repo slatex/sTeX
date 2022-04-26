@@ -121,7 +121,7 @@
   \fi
 }
 \input{stex-backend-\stex@backend.cfg}
-\prop_const_from_keyval:Nn \c_stex_languages_prop {
+\exp_args:NNx \prop_const_from_keyval:Nn \c_stex_languages_prop { \tl_to_str:n {
   en = english ,
   de = ngerman ,
   ar = arabic ,
@@ -131,9 +131,9 @@
   ro = romanian ,
   tr = turkish ,
   fr = french
-}
+}}
 
-\prop_const_from_keyval:Nn \c_stex_language_abbrevs_prop {
+\exp_args:NNx \prop_const_from_keyval:Nn \c_stex_language_abbrevs_prop { \tl_to_str:n {
   english   = en ,
   ngerman   = de ,
   arabic    = ar ,
@@ -143,18 +143,44 @@
   romanian  = ro ,
   turkish   = tr ,
   french    = fr
+}}
+\cs_new_protected:Nn \stex_set_language:Nn {
+  \str_set:Nx \l_tmpa_str {#2}
+  \prop_get:NoNT \c_stex_languages_prop \l_tmpa_str #1 {
+    \ifx\@onlypreamble\@notprerr
+      \ltx@ifpackageloaded{babel}{
+        \exp_args:No \selectlanguage #1
+      }{}
+    \else
+      \exp_args:No \str_if_eq:nnTF #1 {turkish} {
+        \RequirePackage[#1,shorthands=:!]{babel}
+      }{
+        \RequirePackage[#1]{babel}
+      }
+    \fi
+  }
 }
+
 \clist_if_empty:NF \c_stex_languages_clist {
+  \bool_set_false:N \l_tmpa_bool
   \clist_clear:N \l_tmpa_clist
   \clist_map_inline:Nn \c_stex_languages_clist {
-    \prop_get:NnNTF \c_stex_languages_prop { #1 } \l_tmpa_str {
+    \str_set:Nx \l_tmpa_str {#1}
+    \str_if_eq:nnT {#1}{tr}{
+      \bool_set_true:N \l_tmpa_bool
+    }
+    \prop_get:NoNTF \c_stex_languages_prop \l_tmpa_str \l_tmpa_str {
       \clist_put_right:No \l_tmpa_clist \l_tmpa_str
     } {
       \msg_error:nnx{stex}{error/unknownlanguage}{\l_tmpa_str}
     }
   }
   \stex_debug:nn{lang} {Languages:~\clist_use:Nn \l_tmpa_clist {,~} }
-  \RequirePackage[\clist_use:Nn \l_tmpa_clist,]{babel}
+  \bool_if:NTF \l_tmpa_bool {
+    \RequirePackage[\clist_use:Nn \l_tmpa_clist,,shorthands=:!]{babel}
+  }{
+    \RequirePackage[\clist_use:Nn \l_tmpa_clist,]{babel}
+  }
 }
 
 \AtBeginDocument{
@@ -1340,14 +1366,7 @@
   }
 
   \stex_if_smsmode:F { \str_if_empty:NF \l_stex_module_lang_str {
-    \prop_get:NVNTF \c_stex_languages_prop \l_stex_module_lang_str
-      \l_tmpa_str {
-        \ltx@ifpackageloaded{babel}{
-          \exp_args:Nx \selectlanguage { \l_tmpa_str }
-        }{}
-      } {
-        \msg_error:nnx{stex}{error/unknownlanguage}{\l_tmpa_str}
-      }
+    \exp_args:NNo \stex_set_language:Nn \l_tmpa_str \l_stex_module_lang_str
   }}
   \str_if_empty:NTF \l_stex_module_sig_str {
     \exp_args:Nnx \prop_gset_from_keyval:cn {

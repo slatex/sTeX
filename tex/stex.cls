@@ -26,6 +26,27 @@
   \setlength\textwidth{15cm}
 }
 \RequirePackage{standalone}
+
+\clist_if_empty:NT \c_stex_languages_clist {
+  \seq_get_right:NN \g_stex_currentfile_seq \l_tmpa_str
+  \seq_set_split:NnV \l_tmpa_seq . \l_tmpa_str
+  \seq_pop_right:NN \l_tmpa_seq \l_tmpa_str % .tex
+  \exp_args:No \str_if_eq:nnF \l_tmpa_str {tex} {
+    \exp_args:No \str_if_eq:nnF \l_tmpa_str {dtx} {
+      \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq \l_tmpa_str
+    }
+  }
+  \seq_pop_left:NN \l_tmpa_seq \l_tmpa_str % <filename>
+  \seq_if_empty:NF \l_tmpa_seq { %remaining element should be [<something>.]language
+    \seq_pop_right:NN \l_tmpa_seq \l_tmpa_str
+    \prop_if_in:NoT \c_stex_languages_prop \l_tmpa_str {
+      \stex_debug:nn{language} {Language~\l_tmpa_str~
+        inferred~from~file~name}
+      \exp_args:NNo \stex_set_language:Nn \l_tmpa_str \l_tmpa_str
+    }
+  }
+
+}
 \endinput
 %%
 %% End of file `stex.cls'.
