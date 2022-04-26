@@ -45,7 +45,6 @@
       \exp_args:NNo \stex_set_language:Nn \l_tmpa_str \l_tmpa_str
     }
   }
-
 }
 \endinput
 %%
