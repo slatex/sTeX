@@ -2276,9 +2276,7 @@
       \tl_if_empty:NF \l_stex_symdecl_type_tl {
         \stex_annotate_invisible:nnn{type}{}{$\l_stex_symdecl_type_tl$}
       }
-      \stex_annotate_invisible:nnn{args}{}{
-        \prop_item:Nn \l_tmpa_prop { args }
-      }
+      \stex_annotate_invisible:nnn{args}{\prop_item:Nn \l_tmpa_prop { args }}{}
       \stex_annotate_invisible:nnn{macroname}{#1}{}
       \tl_if_empty:NF \l_stex_symdecl_definiens_tl {
         \stex_annotate_invisible:nnn{definiens}{}
@@ -2719,6 +2717,11 @@
           stex_notation_ \l_stex_current_symbol_str
           \c_hash_str \l__stex_notation_suffix_str _cs
         } } { \l_tmpa_tl } $
+      }
+      \tl_if_empty:NF \l__stex_notation_op_tl {
+        \stex_annotate_invisible:nnn { notationopcomp }{}{
+          $\l__stex_notation_op_tl$
+        }
       }
     }
   }
@@ -3211,6 +3214,7 @@
 \bool_set_true:N \l_stex_allow_semantic_bool
 
 \cs_new_protected:Nn \stex_invoke_symbol:n {
+  \ifvmode\indent\fi
   \bool_if:NTF \l_stex_allow_semantic_bool {
     \str_if_eq:eeF {
       \prop_item:cn {
@@ -3828,26 +3832,45 @@
 }
 
 \cs_new_protected:Nn \__stex_variables_invoke_text:n {
-  %TODO
+  \peek_charcode_remove:NTF ! {
+    \__stex_variables_invoke_op_custom:nn {#1}
+  }{
+    \__stex_variables_invoke_custom:nn {#1}
+  }
 }
 
 \cs_new_protected:Nn \__stex_variables_invoke_math:n {
   \peek_charcode_remove:NTF ! {
     \peek_charcode_remove:NTF ! {
       \peek_charcode:NTF [ {
-        \__stex_variables_invoke_op_custom:nw
-      }{
         % TODO throw error
+      }{
+        \__stex_variables_invoke_op_custom:nn
       }
     }{
       \__stex_variables_invoke_op:n { #1 }
     }
   }{
     \peek_charcode_remove:NTF * {
-      \__stex_variables_invoke_text:n { #1 }
+      \__stex_variables_invoke_custom:nn { #1 }
     }{
       \__stex_variables_invoke_math_ii:n { #1 }
     }
+  }
+}
+
+\cs_new_protected:Nn \__stex_variables_invoke_op_custom:nn {
+  \exp_args:Nnx \use:nn {
+    \def\comp{\_varcomp}
+    \str_set:Nn \l_stex_current_symbol_str { var://#1 }
+    \bool_set_false:N \l_stex_allow_semantic_bool
+    \_stex_term_omv:nn {var://#1}{
+      \comp{ #2 }
+    }
+  }{
+    \_stex_reset:N \comp
+    \_stex_reset:N \l_stex_current_symbol_str
+    \bool_set_true:N \l_stex_allow_semantic_bool
   }
 }
 
@@ -3890,6 +3913,40 @@
     \use:c{stex_var_notation_#1_cs}
   }{
     \msg_error:nnxx{stex}{error/nonotation}{variable~#1}{s}
+  }
+}
+
+\cs_new_protected:Nn \__stex_variables_invoke_custom:nn {
+  \exp_args:Nnx \use:nn {
+    \def\comp{\_varcomp}
+    \str_set:Nn \l_stex_current_symbol_str { var://#1 }
+    \prop_clear:N \l__stex_terms_custom_args_prop
+    \prop_put:Nnn \l__stex_terms_custom_args_prop {currnum} {1}
+    \prop_get:cnN {
+      l_stex_variable_#1 _prop
+    }{ args } \l_tmpa_str
+    \prop_put:Nno \l__stex_terms_custom_args_prop {args} \l_tmpa_str
+    \tl_set:Nn \arg { \__stex_terms_arg: }
+    \str_if_empty:NTF \l_tmpa_str {
+      \_stex_term_omv:nn {var://#1}{\ignorespaces#2}
+    }{
+      \str_if_in:NnTF \l_tmpa_str b {
+        \_stex_term_ombind:nnn {var://#1}{}{\ignorespaces#2}
+      }{
+        \str_if_in:NnTF \l_tmpa_str B {
+          \_stex_term_ombind:nnn {var://#1}{}{\ignorespaces#2}
+        }{
+          \_stex_term_oma:nnn {var://#1}{}{\ignorespaces#2}
+        }
+      }
+    }
+    % TODO check that all arguments exist
+  }{
+    \_stex_reset:N \l_stex_current_symbol_str
+    \_stex_reset:N \arg
+    \_stex_reset:N \comp
+    \_stex_reset:N \l__stex_terms_custom_args_prop
+    %\bool_set_true:N \l_stex_allow_semantic_bool
   }
 }
 
@@ -4667,6 +4724,7 @@
         \stex_invoke_variable:n {
           \bool_set_true:N \l_stex_symbol_or_var_bool
           \tl_set:Nx \l_tmpa_tl {\tl_tail:N \l_tmpa_tl}
+          \tl_set:Nx \l_tmpa_tl {\exp_after:wN \use:n \l_tmpa_tl}
           \str_set:Nx \l_stex_get_symbol_uri_str {
             \exp_after:wN \use:n \l_tmpa_tl
           }
@@ -4740,7 +4798,8 @@
           \exp_args:NNx \seq_remove_all:Nn \l__stex_structures_fields_seq \l_stex_get_symbol_uri_str
           \exp_args:Nx \stex_symbol_or_var:n {\seq_item:Nn \l_tmpb_seq 2}
           \stex_if_do_html:T{
-            \stex_annotate:nnn{assign}{\l__stex_structures_dom_str,\l_stex_get_symbol_uri_str}{}
+            \stex_annotate:nnn{assign}{\l__stex_structures_dom_str,
+            \bool_if:NTF\l_stex_symbol_or_var_bool{var://}{}\l_stex_get_symbol_uri_str}{}
           }
           \bool_if:NTF \l_stex_symbol_or_var_bool {
             \exp_args:Nxx \str_if_eq:nnF
@@ -6237,14 +6296,14 @@
   \notation{isa}[pred]{#2\comp(#1 \comp)}{##1 \comp, ##2}
 
   % bind (\forall, \Pi, \lambda etc.)
-  \symdecl{bind}[args=Bi]
-  \notation{bind}[depfun,prec=nobrackets]{\comp( #1 \comp{)\;\to\;} #2}{##1 \comp, ##2}
+  \symdecl{bind}[args=Bi,assoc=pre]
+  \notation{bind}[depfun,prec=nobrackets,op={(\cdot)\to\cdot}]{\comp( #1 \comp{)\;\to\;} #2}{##1 \comp, ##2}
   \notation{bind}[forall]{\comp\forall #1.\;#2}{##1 \comp, ##2}
   \notation{bind}[Pi]{\comp\prod_{#1}#2}{##1 \comp, ##2}
 
   % implicit bind
-  \symdecl{implicitbind}[args=Bi]
-  \notation{implicitbind}[braces,prec=nobrackets]{\comp\{ #1 \comp{\}_I\;} #2}{##1 \comp, ##2}
+  \symdecl{implicitbind}[args=Bi,assoc=pre]
+  \notation{implicitbind}[braces,prec=nobrackets,op={\{\cdot\}\to\cdot}]{\comp\{ #1 \comp{\}_I\;} #2}{##1 \comp, ##2}
   \notation{implicitbind}[depfun,prec=nobrackets]{\comp( #1 \comp{)\;\to_I\;} #2}{##1 \comp, ##2}
   \notation{implicitbind}[Pi]{\comp\prod^I_{#1}#2}{##1\comp,##2}
 

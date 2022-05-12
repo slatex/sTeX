@@ -201,6 +201,7 @@
 \bool_set_true:N \l_stex_allow_semantic_bool
 
 \cs_new_protected:Nn \stex_invoke_symbol:n {
+  \ifvmode\indent\fi
   \bool_if:NTF \l_stex_allow_semantic_bool {
     \str_if_eq:eeF {
       \prop_item:cn {
@@ -931,7 +932,11 @@
 }
 
 \cs_new_protected:Nn \_@@_invoke_text:n {
-  %TODO
+  \peek_charcode_remove:NTF ! {
+    \_@@_invoke_op_custom:nn {#1}
+  }{
+    \_@@_invoke_custom:nn {#1}
+  }
 }
 
 
@@ -939,19 +944,34 @@
   \peek_charcode_remove:NTF ! {
     \peek_charcode_remove:NTF ! {
       \peek_charcode:NTF [ {
-        \_@@_invoke_op_custom:nw
-      }{
         % TODO throw error
+      }{
+        \_@@_invoke_op_custom:nn
       }
     }{
       \_@@_invoke_op:n { #1 }
     }
   }{
     \peek_charcode_remove:NTF * {
-      \_@@_invoke_text:n { #1 }
+      \_@@_invoke_custom:nn { #1 }
     }{
       \_@@_invoke_math_ii:n { #1 }
     }
+  }
+}
+
+\cs_new_protected:Nn \_@@_invoke_op_custom:nn {
+  \exp_args:Nnx \use:nn {
+    \def\comp{\_varcomp}
+    \str_set:Nn \l_stex_current_symbol_str { var://#1 }
+    \bool_set_false:N \l_stex_allow_semantic_bool
+    \_stex_term_omv:nn {var://#1}{
+      \comp{ #2 }
+    }
+  }{
+    \_stex_reset:N \comp
+    \_stex_reset:N \l_stex_current_symbol_str
+    \bool_set_true:N \l_stex_allow_semantic_bool
   }
 }
 
@@ -994,6 +1014,40 @@
     \use:c{stex_var_notation_#1_cs}
   }{
     \msg_error:nnxx{stex}{error/nonotation}{variable~#1}{s}
+  }
+}
+
+\cs_new_protected:Nn \_@@_invoke_custom:nn {
+  \exp_args:Nnx \use:nn {
+    \def\comp{\_varcomp}
+    \str_set:Nn \l_stex_current_symbol_str { var://#1 }
+    \prop_clear:N \l__stex_terms_custom_args_prop
+    \prop_put:Nnn \l__stex_terms_custom_args_prop {currnum} {1}
+    \prop_get:cnN {
+      l_stex_variable_#1 _prop
+    }{ args } \l_tmpa_str
+    \prop_put:Nno \l__stex_terms_custom_args_prop {args} \l_tmpa_str
+    \tl_set:Nn \arg { \__stex_terms_arg: }
+    \str_if_empty:NTF \l_tmpa_str {
+      \_stex_term_omv:nn {var://#1}{\ignorespaces#2}
+    }{
+      \str_if_in:NnTF \l_tmpa_str b {
+        \_stex_term_ombind:nnn {var://#1}{}{\ignorespaces#2}
+      }{
+        \str_if_in:NnTF \l_tmpa_str B {
+          \_stex_term_ombind:nnn {var://#1}{}{\ignorespaces#2}
+        }{
+          \_stex_term_oma:nnn {var://#1}{}{\ignorespaces#2}
+        }
+      }
+    }
+    % TODO check that all arguments exist
+  }{
+    \_stex_reset:N \l_stex_current_symbol_str
+    \_stex_reset:N \arg
+    \_stex_reset:N \comp
+    \_stex_reset:N \l__stex_terms_custom_args_prop
+    %\bool_set_true:N \l_stex_allow_semantic_bool
   }
 }
 %    \end{macrocode}
