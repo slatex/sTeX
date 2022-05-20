@@ -41,8 +41,10 @@
 
 \bool_if:NTF \c__notesslides_notes_bool {
   \PassOptionsToPackage{notes=true}{notesslides}
+  \message{notesslides.cls:~Formatting~course~materials~in~notes~mode}
 }{
   \PassOptionsToPackage{notes=false}{notesslides}
+  \message{notesslides.cls:~Formatting~course~materials~in~slides~mode}
 }
 \bool_if:NTF \c__notesslides_notes_bool {
   \str_if_empty:NT \c__notesslides_class_str {
