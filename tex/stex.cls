@@ -10,7 +10,7 @@
 %%%%%%%%%%%%%   basics.dtx   %%%%%%%%%%%%%
 
 \RequirePackage{expl3,l3keys2e}
-\ProvidesExplClass{stex}{2022/03/03}{3.1.0}{sTeX document class}
+\ProvidesExplClass{stex}{2022/05/24}{3.1.0}{sTeX document class}
 
 \DeclareOption*{\PassOptionsToPackage{\CurrentOption}{stex}}
 \ProcessOptions
