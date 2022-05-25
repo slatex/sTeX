@@ -1,0 +1,172 @@
+\ProvidesExplPackage{stex-expl-compat}{2022/05/14}{1.0}{stex support for ancient tex systems}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% TeXLive 2018 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\cs_if_exist:cF{sys_get_shell:nnN}{
+  \cs_new_protected:Npn \sys_get_shell:nnN #1#2#3
+  {
+    \sys_get_shell:nnNF {#1} {#2} #3
+      { \tl_set:Nn #3 { \q_no_value } }
+  }
+  \prg_new_protected_conditional:Npnn \sys_get_shell:nnN #1#2#3 { T , F , TF }
+  {
+    \sys_if_shell:TF
+      { \exp_args:No \__sys_get:nnN { \tl_to_str:n {#1} } {#2} #3 }
+      { \prg_return_false: }
+  }
+}
+
+\cs_if_exist:cF{cs_argument_spec:N}{
+  \use:x
+  {
+    \exp_not:n { \cs_new:Npn \__kernel_prefix_arg_replacement:wN #1 }
+    \tl_to_str:n { macro : } \exp_not:n { #2 -> #3 \s__kernel_stop #4 }
+  }
+  { #4 {#1} {#2} {#3} }
+  \cs_new:Npn \cs_prefix_spec:N #1
+  {
+    \token_if_macro:NTF #1
+      {
+        \exp_after:wN \__kernel_prefix_arg_replacement:wN
+          \token_to_meaning:N #1 \s__kernel_stop \use_i:nnn
+      }
+      { \scan_stop: }
+  }
+  \cs_new:Npn \cs_argument_spec:N #1
+  {
+    \token_if_macro:NTF #1
+      {
+        \exp_after:wN \__kernel_prefix_arg_replacement:wN
+          \token_to_meaning:N #1 \s__kernel_stop \use_ii:nnn
+      }
+      { \scan_stop: }
+  }
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% TeXLive 2019 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\cs_if_exist:cF{c__keys_props_root_str}{
+    \str_const:Nn \c__keys_code_root_str     { key~code~>~ }
+    \str_const:Nn \c__keys_check_root_str    { key~check~>~ }
+    \str_const:Nn \c__keys_default_root_str  { key~default~>~ }
+    \str_const:Nn \c__keys_groups_root_str   { key~groups~>~ }
+    \str_const:Nn \c__keys_inherit_root_str  { key~inherit~>~ }
+    \str_const:Nn \c__keys_type_root_str     { key~type~>~ }
+    \str_const:Nn \c__keys_props_root_str { key~prop~>~ }
+    \str_new:N \l_keys_key_str
+    \str_new:N \l__keys_module_str
+    \str_new:N \l_keys_path_str
+    \str_new:N \l__keys_inherit_str
+    \tl_set:Nn \l__keys_relative_tl { \q__keys_no_value }
+    \str_new:N \l__keys_property_str
+    \prop_new:N \l_keys_usage_load_prop
+    \prop_new:N \l_keys_usage_preamble_prop
+    \scan_new:N \s__keys_nil
+    \scan_new:N \s__keys_mark
+    \scan_new:N \s__keys_stop
+    \quark_new:N \q__keys_no_value
+}
+
+\cs_if_exist:cF{exp_args:NNxx} {
+  \cs_generate_variant:Nn \__quark_new_conditional:Nnnn {Nxx}
+}
+
+\cs_if_exist:cF{prop_gput:cxx}{
+    \cs_generate_variant:Nn \prop_gput:Nnn {cxx}
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% TeXLive 2020 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\cs_if_exist:cF { NewDocumentEnvironment}{\RequirePackage{xparse}}
+\cs_if_exist:cF { AddToHook }{\RequirePackage{stex-ltcmdhooks}}
+
+\cs_if_exist:cF{ token_case_meaning:Nn}{
+  \scan_new:N \s__token_mark
+  \cs_new:Npn \token_case_meaning:Nn #1#2
+  { \exp:w \__token_case:NNnTF \token_if_eq_meaning:NNTF #1 {#2} { } { } }
+  \cs_new:Npn \token_case_meaning:NnT #1#2#3
+  { \exp:w \__token_case:NNnTF \token_if_eq_meaning:NNTF #1 {#2} {#3} { } }
+  \cs_new:Npn \token_case_meaning:NnF #1#2
+  { \exp:w \__token_case:NNnTF \token_if_eq_meaning:NNTF #1 {#2} { } }
+  \cs_new:Npn \token_case_meaning:NnTF
+  { \exp:w \__token_case:NNnTF \token_if_eq_meaning:NNTF }
+  \cs_new:Npn \__token_case:NNnTF #1#2#3#4#5
+  {
+    \__token_case:NNw #1 #2 #3 #2 { }
+    \s__token_mark {#4}
+    \s__token_mark {#5}
+    \s__token_stop
+  }
+  \cs_new:Npn \__token_case:NNw #1#2#3#4
+  {
+    #1 #2 #3
+      { \__token_case_end:nw {#4} }
+      { \__token_case:NNw #1 #2 }
+  }
+  \cs_new:Npn \__token_case_end:nw #1#2#3 \s__token_mark #4#5 \s__token_stop
+  { \exp_end: #1 #4 }
+}
+
+% Fix for weird biblatex errors if and only if texlive=2020, for some reason
+
+\AtBeginDocument{\@ifpackageloaded{biblatex}{\cs_if_exist:cF{blx@anchor}{
+  \def\blx@refcontext@context{anyt/global//global/global}
+  \let\@setquotesfcodes\relax
+  \def\blx@refcontext@sortingnamekeytemplatename{global}
+  \def\blx@refcontext@labelprefix@real{}
+  \def\blx@refcontext@uniquenametemplatename{global}
+  \def\blx@refcontext@labelalphanametemplatename{global}
+  \let\blx@anchor\relax
+  \let\blx@enquote\relax
+}}{}}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% TeXLive 2021 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\cs_if_exist:cF { \c__keys_props_root_str .str_set:N }{
+  \cs_new_protected:cpn { \c__keys_props_root_str .str_set:N } #1
+  { \__keys_variable_set:NnnN #1 { str } { } n }
+  \cs_new_protected:cpn { \c__keys_props_root_str .str_set:c } #1
+  { \__keys_variable_set:cnnN {#1} { str } { } n }
+  \cs_new_protected:cpn { \c__keys_props_root_str .str_set_x:N } #1
+  { \__keys_variable_set:NnnN #1 { str } { } x }
+  \cs_new_protected:cpn { \c__keys_props_root_str .str_set_x:c } #1
+  { \__keys_variable_set:cnnN {#1} { str } { } x }
+  \cs_new_protected:cpn { \c__keys_props_root_str .str_gset:N } #1
+  { \__keys_variable_set:NnnN #1 { str } { g } n }
+  \cs_new_protected:cpn { \c__keys_props_root_str .str_gset:c } #1
+  { \__keys_variable_set:cnnN {#1} { str } { g } n }
+  \cs_new_protected:cpn { \c__keys_props_root_str .str_gset_x:N } #1
+  { \__keys_variable_set:NnnN #1 { str } { g } x }
+  \cs_new_protected:cpn { \c__keys_props_root_str .str_gset_x:c } #1
+  { \__keys_variable_set:cnnN {#1} { str } { g } x }
+}
+
+\cs_if_exist:cF { prop_to_keyval:N }{
+  \cs_new:Npn \prop_to_keyval:N #1
+  {
+    \__kernel_exp_not:w
+      \prop_if_empty:NTF #1
+        { {} }
+        {
+          \exp_after:wN \exp_after:wN \exp_after:wN
+          {
+            \tex_expanded:D
+              {
+                \__kernel_exp_not:w { \use_none:n }
+                \prop_map_function:NN #1 \__prop_to_keyval:nn
+              }
+          }
+        }
+  }
+  \cs_new:Npn \__prop_to_keyval:nn #1#2
+    { , ~ #1 =~ { \__kernel_exp_not:w {#2} } }
+}
+
+\cs_if_exist:cF { bool_to_str:N }{
+  \cs_new:Nn \bool_to_str:N {
+    \bool_if:NTF #1 {true}{false}
+  }
+}
+
+\endinput
