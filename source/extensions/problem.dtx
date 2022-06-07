@@ -409,33 +409,16 @@
 %    \begin{macrocode}
 \keys_define:nn { problem / solution }{
   id            .str_set_x:N  = \l_@@_solution_id_str ,
-  for           .tl_set:N     = \l_@@_solution_for_tl ,
-  height        .dim_set:N    = \l_@@_solution_height_dim ,
-  creators      .clist_set:N  = \l_@@_solution_creators_clist ,
-  contributors  .clist_set:N  = \l_@@_solution_contributors_clist ,
-  srccite       .tl_set:N     = \l_@@_solution_srccite_tl
+  for           .str_set_x:N  = \l_@@_solution_for_str ,
+  type          .str_set_x:N  = \l_@@_solution_type_str ,
+  title         .tl_set:N     = \l_@@_solution_title_tl
 }
 \cs_new_protected:Nn \_@@_solution_args:n {
   \str_clear:N \l_@@_solution_id_str
-  \tl_clear:N \l_@@_solution_for_tl
-  \tl_clear:N \l_@@_solution_srccite_tl
-  \clist_clear:N \l_@@_solution_creators_clist
-  \clist_clear:N \l_@@_solution_contributors_clist
-  \dim_zero:N \l_@@_solution_height_dim
+  \str_clear:N \l_@@_solution_type_str
+  \str_clear:N \l_@@_solution_for_str
+  \tl_clear:N \l_@@_solution_title_tl
   \keys_set:nn { problem / solution }{ #1 }
-}
-%    \end{macrocode}
-% the next step is to define a helper macro that does what is needed to start a solution. 
-%    \begin{macrocode}
-\newcommand\@startsolution[1][]{
-  \_@@_solution_args:n { #1 }
-  \@in@omtexttrue% we are in a statement.
-  \bool_if:NF \c_@@_boxed_bool { \hrule }
-  \smallskip\noindent
-  {\textbf\prob@solution@kw :\enspace}
-  \begin{small}
-  \def\current@section@level{\prob@solution@kw}
-  \ignorespacesandpars
 }
 %    \end{macrocode}
 %
@@ -446,14 +429,19 @@
 %    \begin{macrocode}
 \box_new:N \l_@@_solution_box
 \newenvironment{solution}[1][]{
+  \_@@_solution_args:n{#1}
   \stex_html_backend:TF{
     \stex_if_do_html:T{
       \begin{stex_annotate_env}{solution}{}
+        \str_if_empty:NF \l_@@_solution_type_str {
+          \stex_annotate_invisible:nnn{typestrings}{\sexampletype}{}
+        }
+        \noindent\textbf{Solution\tl_if_empty:NF\l_@@_solution_title_tl{~(\l_@@_solution_title_tl)}: }~
     }
   }{
     \setbox\l_@@_solution_box\vbox\bgroup
       \par\smallskip\hrule\smallskip
-      \noindent\textbf{Solution:}~
+      \noindent\textbf{Solution\tl_if_empty:NF\l_@@_solution_title_tl{~(\l_@@_solution_title_tl)}: }~
   }
 }{
   \stex_html_backend:TF{
@@ -471,6 +459,7 @@
 
 \newcommand\startsolutions{
   \bool_set_true:N \c_@@_solutions_bool
+  \solutionstrue
 %  \specialcomment{solution}{\@startsolution}{
 %    \bool_if:NF \c_@@_boxed_bool {
 %      \hrule\medskip
@@ -486,19 +475,10 @@
 % 
 % \begin{macro}{\stopsolutions}
 %    \begin{macrocode}
-\newcommand\stopsolutions{\bool_set_false:N \c_@@_solutions_bool}%\excludecomment{solution}}
+\newcommand\stopsolutions{\bool_set_false:N \c_@@_solutions_bool \solutionsfalse}%\excludecomment{solution}}
 %    \end{macrocode}
 % \end{macro}
-% 
-% so it only remains to start/stop solutions depending on what option was specified.
 %
-%    \begin{macrocode}
-\ifsolutions
-  \startsolutions
-\else
-  \stopsolutions
-\fi
-%    \end{macrocode}
 %
 % \begin{environment}{exnote}
 %    \begin{macrocode}
@@ -602,7 +582,7 @@
 \newcommand\mcc[2][]{
   \l_@@_mcc_args:n{ #1 }
   \item[$\Box$] #2
-  \ifsolutions
+  \bool_if:NT \c_@@_solutions_bool{
     \\
     \bool_if:NT \l_@@_mcc_t_bool {
       \tl_if_empty:NTF\l_@@_mcc_Ttext_tl\mccTrueText\l_@@_mcc_Ttext_tl
@@ -613,7 +593,7 @@
     \tl_if_empty:NF \l_@@_mcc_feedback_tl {
       \emph{(\l_@@_mcc_feedback_tl)}
     }
-  \fi
+  }
 } %solutions
 %    \end{macrocode}
 % \end{macro}

@@ -251,41 +251,32 @@
 \def\@problem#1#2#3{}
 \keys_define:nn { problem / solution }{
   id            .str_set_x:N  = \l__problems_solution_id_str ,
-  for           .tl_set:N     = \l__problems_solution_for_tl ,
-  height        .dim_set:N    = \l__problems_solution_height_dim ,
-  creators      .clist_set:N  = \l__problems_solution_creators_clist ,
-  contributors  .clist_set:N  = \l__problems_solution_contributors_clist ,
-  srccite       .tl_set:N     = \l__problems_solution_srccite_tl
+  for           .str_set_x:N  = \l__problems_solution_for_str ,
+  type          .str_set_x:N  = \l__problems_solution_type_str ,
+  title         .tl_set:N     = \l__problems_solution_title_tl
 }
 \cs_new_protected:Nn \__problems_solution_args:n {
   \str_clear:N \l__problems_solution_id_str
-  \tl_clear:N \l__problems_solution_for_tl
-  \tl_clear:N \l__problems_solution_srccite_tl
-  \clist_clear:N \l__problems_solution_creators_clist
-  \clist_clear:N \l__problems_solution_contributors_clist
-  \dim_zero:N \l__problems_solution_height_dim
+  \str_clear:N \l__problems_solution_type_str
+  \str_clear:N \l__problems_solution_for_str
+  \tl_clear:N \l__problems_solution_title_tl
   \keys_set:nn { problem / solution }{ #1 }
-}
-\newcommand\@startsolution[1][]{
-  \__problems_solution_args:n { #1 }
-  \@in@omtexttrue% we are in a statement.
-  \bool_if:NF \c__problems_boxed_bool { \hrule }
-  \smallskip\noindent
-  {\textbf\prob@solution@kw :\enspace}
-  \begin{small}
-  \def\current@section@level{\prob@solution@kw}
-  \ignorespacesandpars
 }
 \box_new:N \l__problems_solution_box
 \newenvironment{solution}[1][]{
+  \__problems_solution_args:n{#1}
   \stex_html_backend:TF{
     \stex_if_do_html:T{
       \begin{stex_annotate_env}{solution}{}
+        \str_if_empty:NF \l__problems_solution_type_str {
+          \stex_annotate_invisible:nnn{typestrings}{\sexampletype}{}
+        }
+        \noindent\textbf{Solution\tl_if_empty:NF\l__problems_solution_title_tl{~(\l__problems_solution_title_tl)}: }~
     }
   }{
     \setbox\l__problems_solution_box\vbox\bgroup
       \par\smallskip\hrule\smallskip
-      \noindent\textbf{Solution:}~
+      \noindent\textbf{Solution\tl_if_empty:NF\l__problems_solution_title_tl{~(\l__problems_solution_title_tl)}: }~
   }
 }{
   \stex_html_backend:TF{
@@ -303,13 +294,9 @@
 
 \newcommand\startsolutions{
   \bool_set_true:N \c__problems_solutions_bool
+  \solutionstrue
 }
-\newcommand\stopsolutions{\bool_set_false:N \c__problems_solutions_bool}%\excludecomment{solution}}
-\ifsolutions
-  \startsolutions
-\else
-  \stopsolutions
-\fi
+\newcommand\stopsolutions{\bool_set_false:N \c__problems_solutions_bool \solutionsfalse}%\excludecomment{solution}}
 \bool_if:NTF \c__problems_notes_bool {
   \newenvironment{exnote}[1][]{
     \par\smallskip\hrule\smallskip
@@ -384,7 +371,7 @@
 \newcommand\mcc[2][]{
   \l__problems_mcc_args:n{ #1 }
   \item[$\Box$] #2
-  \ifsolutions
+  \bool_if:NT \c__problems_solutions_bool{
     \\
     \bool_if:NT \l__problems_mcc_t_bool {
       \tl_if_empty:NTF\l__problems_mcc_Ttext_tl\mccTrueText\l__problems_mcc_Ttext_tl
@@ -395,7 +382,7 @@
     \tl_if_empty:NF \l__problems_mcc_feedback_tl {
       \emph{(\l__problems_mcc_feedback_tl)}
     }
-  \fi
+  }
 } %solutions
 
 \keys_define:nn{ problem / inclproblem }{
