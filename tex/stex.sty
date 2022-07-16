@@ -5841,7 +5841,9 @@
   title       .tl_set:N     = \spftitle,
   continues   .tl_set:N     = \l__stex_sproof_spf_continues_tl,
   functions   .tl_set:N     = \l__stex_sproof_spf_functions_tl,
-  method      .tl_set:N     = \l__stex_sproof_spf_method_tl
+  term        .tl_set:N     = \l__stex_sproof_spf_term_tl,
+  method      .tl_set:N     = \l__stex_sproof_spf_method_tl,
+  hide        .bool_set:N   = \l__stex_sproof_spf_hide_bool
 }
 \cs_new_protected:Nn \__stex_sproof_spf_args:n {
 \str_clear:N \spfid
@@ -5851,11 +5853,13 @@
 \str_clear:N \spftype
 \tl_clear:N \spftitle
 \tl_clear:N \l__stex_sproof_spf_continues_tl
+\tl_clear:N \l__stex_sproof_spf_term_tl
 \tl_clear:N \l__stex_sproof_spf_functions_tl
 \tl_clear:N \l__stex_sproof_spf_method_tl
-  \bool_set_false:N \l__stex_sproof_inc_counter_bool
+  \bool_set_false:N \l__stex_sproof_spf_hide_bool
 \keys_set:nn { stex / spf }{ #1 }
 }
+\bool_set_true:N \l__stex_sproof_inc_counter_bool
 \str_set:Nn\c__stex_sproof_flow_str{inline}
 \intarray_new:Nn\l__stex_sproof_counter_intarray{50}
 \cs_new_protected:Npn \sproofnumber {
@@ -5988,155 +5992,130 @@
   \stex_smsmode_do:
 }
 
-\newenvironment{spfeq}[2][]{
-  \__stex_sproof_spf_args:n{#1}
-  \let \premise \stex_proof_premise:
-  \stex_if_smsmode:TF {
-    \str_if_empty:NF \spfid {
-      \stex_ref_new_doc_target:n \spfid
-    }
-  }{
-    \seq_clear:N \l_tmpa_seq
-    \clist_map_inline:Nn \l__stex_sproof_spf_for_clist {
-      \tl_if_empty:nF{ ##1 }{
-        \stex_get_symbol:n { ##1 }
-        \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
-          \l_stex_get_symbol_uri_str
-        }
-      }
-    }
-    \exp_args:Nnnx
-    \begin{stex_annotate_env}{spfeq}{\seq_use:Nn \l_tmpa_seq {,}}
-    \str_if_empty:NF \spftype {
-      \stex_annotate_invisible:nnn{type}{\spftype}{}
-    }
+\bool_set_false:N \l__stex_sproof_in_spfblock_bool
 
-    \clist_set:No \l_tmpa_clist \spftype
-    \tl_clear:N \l_tmpa_tl
-    \clist_map_inline:Nn \l_tmpa_clist {
-      \tl_if_exist:cT {__stex_sproof_spfeq_##1_start:}{
-        \tl_set:Nn \l_tmpa_tl {\use:c{__stex_sproof_spfeq_##1_start:}}
-      }
-      \exp_args:No \str_if_eq:nnT \c__stex_sproof_flow_str {##1} {
-        \tl_set:Nn \l_tmpa_tl {\use:n{}}
-      }
-    }
-    \tl_if_empty:NTF \l_tmpa_tl {
-      \__stex_sproof_spfeq_start:
-    }{
-      \l_tmpa_tl
-    }{~#2}
-    \str_if_empty:NF \spfid {
-      \stex_ref_new_doc_target:n \spfid
-    }
-    \begin{displaymath}\begin{array}{rcll}
+\cs_new_protected:Nn \__stex_sproof_maybe_comment: {
+  \bool_if:NF \l__stex_sproof_in_spfblock_bool {
+    \par \setbox \l_tmpa_box \vbox \bgroup \everypar{\__stex_sproof_start_comment:}
   }
-  \stex_smsmode_do:
-}{
-  \stex_if_smsmode:F {
-    \end{array}\end{displaymath}
-    \clist_set:No \l_tmpa_clist \spftype
-    \tl_clear:N \l_tmpa_tl
-    \clist_map_inline:Nn \l_tmpa_clist {
-      \tl_if_exist:cT {__stex_sproof_spfeq_##1_end:}{
-        \tl_set:Nn \l_tmpa_tl {\use:c{__stex_sproof_spfeq_##1_end:}}
+}
+\cs_new_protected:Nn \__stex_sproof_maybe_comment_end: {
+  \bool_if:NF \l__stex_sproof_in_spfblock_bool { \egroup }
+}
+\cs_new_protected:Nn \__stex_sproof_start_comment: {
+  \csname @ @ par\endcsname\egroup\item[]\bgroup\stexcommentfont
+}
+
+\cs_new_protected:Npn \stexcommentfont {
+  \small\itshape
+}
+\cs_new_protected:Nn \__stex_sproof_start_env:nnn {
+  \seq_clear:N \l_tmpa_seq
+  \clist_map_inline:Nn \l__stex_sproof_spf_for_clist {
+    \tl_if_empty:nF{ ##1 }{
+      \stex_get_symbol:n { ##1 }
+      \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
+        \l_stex_get_symbol_uri_str
       }
     }
-    \tl_if_empty:NTF \l_tmpa_tl {
-      \__stex_sproof_spfeq_end:
-    }{
-      \l_tmpa_tl
+  }
+  \exp_args:Nnnx
+  \begin{stex_annotate_env}{#1}{\seq_use:Nn \l_tmpa_seq {,}}
+  \str_if_empty:NF \spftype {
+    \stex_annotate_invisible:nnn{type}{\spftype}{}
+  }
+  #3 {~\stex_annotate:nnn{spftitle}{}{#2}}
+  \str_if_empty:NF \spfid {
+    \stex_ref_new_doc_target:n \spfid
+  }
+  \begin{stex_annotate_env}{spfbody}{\bool_if:NTF \l__stex_sproof_spf_hide_bool {false}{true}}
+  \bool_if:NT \l__stex_sproof_spf_hide_bool{
+    \stex_html_backend:F{\setbox\l_tmpa_box\vbox\bgroup}
+  }
+  \begin{list}{}{
+    \setlength\topsep{0pt}
+    \setlength\parsep{0pt}
+    \setlength\rightmargin{0pt}
+
+  }\__stex_sproof_maybe_comment:
+}
+\cs_new_protected:Nn \__stex_sproof_end_env:n {
+  \stex_if_smsmode:F{
+    \__stex_sproof_maybe_comment_end:
+    \end{list}
+    \bool_if:NT \l__stex_sproof_spf_hide_bool{
+      \stex_html_backend:F{\egroup}
     }
+    \clist_set:No \l_tmpa_clist \spftype
+    #1
+    \end{stex_annotate_env}
     \end{stex_annotate_env}
   }
 }
-
-\cs_new_protected:Nn \__stex_sproof_spfeq_start: {
-  \titleemph{
-    \tl_if_empty:NTF \spftitle {
-      \spf@proof@kw
-    }{
-      \spftitle
-    }
-  }:
-}
-\cs_new_protected:Nn \__stex_sproof_spfeq_end: {\sproofend}
-
-\newcommand\stexpatchspfeq[3][] {
-    \str_set:Nx \l_tmpa_str{ #1 }
-    \str_if_empty:NTF \l_tmpa_str {
-      \tl_set:Nn \__stex_sproof_spfeq_start: { #2 }
-      \tl_set:Nn \__stex_sproof_spfeq_end: { #3 }
-    }{
-      \exp_after:wN \tl_set:Nn \csname __stex_sproof_spfeq_#1_start:\endcsname{ #2 }
-      \exp_after:wN \tl_set:Nn \csname __stex_sproof_spfeq_#1_end:\endcsname{ #3 }
-    }
-}
-
-\newenvironment{sproof}[2][]{
-  \let \premise \stex_proof_premise:
+\NewDocumentEnvironment{sproof}{s O{} m}{
   \intarray_gzero:N \l__stex_sproof_counter_intarray
   \intarray_gset:Nnn \l__stex_sproof_counter_intarray 1 1
-  \__stex_sproof_spf_args:n{#1}
+  \stex_reactivate_macro:N \yield
+  \stex_reactivate_macro:N \eqstep
+  \stex_reactivate_macro:N \assumption
+  \stex_reactivate_macro:N \conclude
+  \stex_reactivate_macro:N \spfstep
+  \__stex_sproof_spf_args:n{#2}
   \stex_if_smsmode:TF {
     \str_if_empty:NF \spfid {
       \stex_ref_new_doc_target:n \spfid
     }
   }{
-    \seq_clear:N \l_tmpa_seq
-    \clist_map_inline:Nn \l__stex_sproof_spf_for_clist {
-      \tl_if_empty:nF{ ##1 }{
-        \stex_get_symbol:n { ##1 }
-        \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
-          \l_stex_get_symbol_uri_str
+    \__stex_sproof_start_env:nnn{sproof}{#3}{
+      \clist_set:No \l_tmpa_clist \spftype
+      \tl_clear:N \l_tmpa_tl
+      \clist_map_inline:Nn \l_tmpa_clist {
+        \tl_if_exist:cT {__stex_sproof_sproof_##1_start:}{
+          \tl_set:Nn \l_tmpa_tl {\use:c{__stex_sproof_sproof_##1_start:}}
+        }
+        \exp_args:No \str_if_eq:nnT \c__stex_sproof_flow_str {##1} {
+          \tl_set:Nn \l_tmpa_tl {\use:n{}}
         }
       }
-    }
-    \exp_args:Nnnx
-    \begin{stex_annotate_env}{sproof}{\seq_use:Nn \l_tmpa_seq {,}}
-    \str_if_empty:NF \spftype {
-      \stex_annotate_invisible:nnn{type}{\spftype}{}
-    }
-
-    \clist_set:No \l_tmpa_clist \spftype
-    \tl_clear:N \l_tmpa_tl
-    \clist_map_inline:Nn \l_tmpa_clist {
-      \tl_if_exist:cT {__stex_sproof_sproof_##1_start:}{
-        \tl_set:Nn \l_tmpa_tl {\use:c{__stex_sproof_sproof_##1_start:}}
-      }
-      \exp_args:No \str_if_eq:nnT \c__stex_sproof_flow_str {##1} {
-        \tl_set:Nn \l_tmpa_tl {\use:n{}}
+      \tl_if_empty:NTF \l_tmpa_tl {
+        \__stex_sproof_sproof_start:
+      }{
+        \l_tmpa_tl
       }
     }
-    \tl_if_empty:NTF \l_tmpa_tl {
-      \__stex_sproof_sproof_start:
-    }{
-      \l_tmpa_tl
-    }{~#2}
+  }
+  \stex_smsmode_do:
+}{\__stex_sproof_end_env:n{
+  \tl_clear:N \l_tmpa_tl
+  \clist_map_inline:Nn \l_tmpa_clist {
+    \tl_if_exist:cT {__stex_sproof_sproof_##1_end:}{
+      \tl_set:Nn \l_tmpa_tl {\use:c{__stex_sproof_sproof_##1_end:}}
+    }
+  }
+  \tl_if_empty:NTF \l_tmpa_tl {
+    \__stex_sproof_sproof_end:
+  }{
+    \l_tmpa_tl
+  }
+}}
+\NewDocumentEnvironment{subproof}{s O{} m}{
+  \__stex_sproof_spf_args:n{#2}
+  \stex_if_smsmode:TF {
     \str_if_empty:NF \spfid {
       \stex_ref_new_doc_target:n \spfid
     }
-    \begin{description}
+  }{
+    \__stex_sproof_start_env:nnn{subproof}{\item[\sproofnumber]\ignorespacesandpars #3}{}
   }
+  \__stex_sproof_add_counter:
   \stex_smsmode_do:
-}{
-  \stex_if_smsmode:F{
-    \end{description}
-    \clist_set:No \l_tmpa_clist \spftype
-    \tl_clear:N \l_tmpa_tl
-    \clist_map_inline:Nn \l_tmpa_clist {
-      \tl_if_exist:cT {__stex_sproof_sproof_##1_end:}{
-        \tl_set:Nn \l_tmpa_tl {\use:c{__stex_sproof_sproof_##1_end:}}
-      }
-    }
-    \tl_if_empty:NTF \l_tmpa_tl {
-      \__stex_sproof_sproof_end:
-    }{
-      \l_tmpa_tl
-    }
-    \end{stex_annotate_env}
+}{\__stex_sproof_remove_counter:\__stex_sproof_end_env:n{}
+  \bool_if:NT \l__stex_sproof_inc_counter_bool {
+    \__stex_sproof_inc_counter:
   }
+  \aftergroup\__stex_sproof_maybe_comment:
 }
+\AddToHook{env/subproof/before}{\__stex_sproof_maybe_comment_end:}
 
 \cs_new_protected:Nn \__stex_sproof_sproof_start: {
   \par\noindent\titleemph{
@@ -6159,6 +6138,76 @@
     \exp_after:wN \tl_set:Nn \csname __stex_sproof_sproof_#1_end:\endcsname{ #3 }
   }
 }
+
+\keys_define:nn { stex / spfsteps } {
+  id          .str_set_x:N  = \spfstepid,
+  for         .clist_set:N  = \l__stex_sproof_spf_for_clist ,
+  type        .str_set_x:N  = \spftype,
+  title       .tl_set:N     = \spftitle,
+  method      .tl_set:N     = \l__stex_sproof_spf_method_tl,
+  term        .tl_set:N     = \l__stex_sproof_spf_term_tl
+}
+\cs_new_protected:Nn \__stex_sproof_spfstep_args:n {
+\str_clear:N \spfstepid
+\clist_clear:N \l__stex_sproof_spf_for_clist
+\str_clear:N \spftype
+\tl_clear:N \l__stex_sproof_spf_method_tl
+\tl_clear:N \l__stex_sproof_spf_term_tl
+  %\bool_set_false:N \l__stex_sproof_inc_counter_bool
+\keys_set:nn { stex / spfsteps }{ #1 }
+}
+
+\cs_new_protected:Nn \__stex_sproof_make_step_macro:Nnnnn {
+  \NewDocumentCommand #1 {s O{} m} {
+    \__stex_sproof_maybe_comment_end:
+
+    \__stex_sproof_spfstep_args:n{##2}
+    \stex_annotate:nnn{spfstep}{#2}{
+      \tl_if_empty:NF \l__stex_sproof_spf_term_tl {
+        \stex_annotate_invisible:nnn{spfyield}{}{$\l__stex_sproof_spf_term_tl$}
+      }
+      \bool_if:NTF \l__stex_sproof_in_spfblock_bool {
+        #4
+      }{
+        \item[\IfBooleanTF ##1 {}{#3}]
+      }
+      \ignorespacesandpars ##3
+    }
+    \bool_if:NF \l__stex_sproof_in_spfblock_bool { \IfBooleanTF ##1 {}{ #5 } }
+    \__stex_sproof_maybe_comment:
+  }
+  \stex_deactivate_macro:Nn #1 {sproof~environments}
+}
+
+\__stex_sproof_make_step_macro:Nnnnn \assumption {assumption} \sproofnumber {} \__stex_sproof_inc_counter:
+\__stex_sproof_make_step_macro:Nnnnn \conclude {conclusion} {$\Rightarrow$} {} {}
+\__stex_sproof_make_step_macro:Nnnnn \spfstep {} \sproofnumber {} \__stex_sproof_inc_counter:
+
+\NewDocumentCommand \eqstep {s m}{
+  \__stex_sproof_maybe_comment_end:
+  \bool_if:NTF \l__stex_sproof_in_spfblock_bool {
+    $=$
+  }{
+    \item[$=$]
+  }
+  $\stex_annotate:nnn{spfstep}{eq}{ #2 }$
+  \__stex_sproof_maybe_comment:
+}
+\stex_deactivate_macro:Nn \eqstep {sproof~environments}
+
+\NewDocumentCommand \yield {m}{
+  \stex_annotate:nnn{spfyield}{}{ #1 }
+}
+\stex_deactivate_macro:Nn \yield {sproof~environments}
+
+\NewDocumentEnvironment{spfblock}{}{
+  \item[]
+  \bool_set_true:N \l__stex_sproof_in_spfblock_bool
+}{
+  \aftergroup\__stex_sproof_maybe_comment:
+}
+\AddToHook{env/spfblock/before}{\__stex_sproof_maybe_comment_end:}
+
 \newcommand\spfidea[2][]{
   \__stex_sproof_spf_args:n{#1}
   \titleemph{
@@ -6168,202 +6217,9 @@
   }~#2
   \sproofend
 }
-\newenvironment{spfstep}[1][]{
-  \__stex_sproof_spf_args:n{#1}
-  \stex_if_smsmode:TF {
-    \str_if_empty:NF \spfid {
-      \stex_ref_new_doc_target:n \spfid
-    }
-  }{
-    \@in@omtexttrue
-    \clist_set:No \l_tmpa_clist \spftype
-    \tl_set:Nn \l_tmpa_tl {
-      \item[\sproofnumber]
-      \bool_set_true:N \l__stex_sproof_inc_counter_bool
-    }
-    \clist_map_inline:Nn \l_tmpa_clist {
-      \exp_args:No \str_if_eq:nnT \c__stex_sproof_flow_str {##1} {
-        \tl_clear:N \l_tmpa_tl
-      }
-    }
-    \l_tmpa_tl
-    \seq_clear:N \l_tmpa_seq
-    \clist_map_inline:Nn \l__stex_sproof_spf_for_clist {
-      \tl_if_empty:nF{ ##1 }{
-        \stex_get_symbol:n { ##1 }
-        \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
-          \l_stex_get_symbol_uri_str
-        }
-      }
-    }
-    \exp_args:Nnnx
-    \begin{stex_annotate_env}{spfstep}{\seq_use:Nn \l_tmpa_seq {,}}
-    \str_if_empty:NF \spftype {
-      \stex_annotate_invisible:nnn{type}{\spftype}{}
-    }
-    \tl_if_empty:NF \spftitle {
-      {(\titleemph{\spftitle})\enspace}
-    }
-    \str_if_empty:NF \spfid {
-      \stex_ref_new_doc_target:n \spfid
-    }
-  }
-  \stex_smsmode_do:
-  \ignorespacesandpars
-}{
-  \bool_if:NT \l__stex_sproof_inc_counter_bool {
-    \__stex_sproof_inc_counter:
-  }
-  \stex_if_smsmode:F {
-    \end{stex_annotate_env}
-  }
+\newcommand\spfjust[2][]{
+  #2
 }
-\newenvironment{spfcomment}[1][]{
-  \__stex_sproof_spf_args:n{#1}
-  \clist_set:No \l_tmpa_clist \spftype
-  \tl_set:Nn \l_tmpa_tl {
-    \item[\sproofnumber]
-    \bool_set_true:N \l__stex_sproof_inc_counter_bool
-  }
-  \clist_map_inline:Nn \l_tmpa_clist {
-    \exp_args:No \str_if_eq:nnT \c__stex_sproof_flow_str {##1} {
-      \tl_clear:N \l_tmpa_tl
-    }
-  }
-  \l_tmpa_tl
-}{
-  \bool_if:NT \l__stex_sproof_inc_counter_bool {
-    \__stex_sproof_inc_counter:
-  }
-}
-\newenvironment{subproof}[2][]{
-  \__stex_sproof_spf_args:n{#1}
-  \stex_if_smsmode:TF{
-    \str_if_empty:NF \spfid {
-      \stex_ref_new_doc_target:n \spfid
-    }
-  }{
-    \seq_clear:N \l_tmpa_seq
-    \clist_map_inline:Nn \l__stex_sproof_spf_for_clist {
-      \tl_if_empty:nF{ ##1 }{
-        \stex_get_symbol:n { ##1 }
-        \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
-          \l_stex_get_symbol_uri_str
-        }
-      }
-    }
-    \exp_args:Nnnx
-    \begin{stex_annotate_env}{subproof}{\seq_use:Nn \l_tmpa_seq {,}}
-    \str_if_empty:NF \spftype {
-      \stex_annotate_invisible:nnn{type}{\spftype}{}
-    }
-
-    \clist_set:No \l_tmpa_clist \spftype
-    \tl_set:Nn \l_tmpa_tl {
-      \item[\sproofnumber]
-      \bool_set_true:N \l__stex_sproof_inc_counter_bool
-    }
-    \clist_map_inline:Nn \l_tmpa_clist {
-      \exp_args:No \str_if_eq:nnT \c__stex_sproof_flow_str {##1} {
-        \tl_clear:N \l_tmpa_tl
-      }
-    }
-    \l_tmpa_tl
-    \tl_if_empty:NF \spftitle {
-      {(\titleemph{\spftitle})\enspace}
-    }
-    {~#2}
-    \str_if_empty:NF \spfid {
-      \stex_ref_new_doc_target:n \spfid
-    }
-  }
-  \__stex_sproof_add_counter:
-  \stex_smsmode_do:
-}{
-  \__stex_sproof_remove_counter:
-  \bool_if:NT \l__stex_sproof_inc_counter_bool {
-    \__stex_sproof_inc_counter:
-  }
-  \stex_if_smsmode:F{
-    \end{stex_annotate_env}
-  }
-}
-\newenvironment{spfcases}[2][]{
-  \tl_if_empty:nTF{#1}{
-    \begin{subproof}[method=by-cases]{#2}
-  }{
-    \begin{subproof}[#1,method=by-cases]{#2}
-  }
-}{
-  \end{subproof}
-}
-\newenvironment{spfcase}[2][]{
-  \__stex_sproof_spf_args:n{#1}
-  \stex_if_smsmode:TF {
-    \str_if_empty:NF \spfid {
-      \stex_ref_new_doc_target:n \spfid
-    }
-  }{
-    \seq_clear:N \l_tmpa_seq
-    \clist_map_inline:Nn \l__stex_sproof_spf_for_clist {
-      \tl_if_empty:nF{ ##1 }{
-        \stex_get_symbol:n { ##1 }
-        \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
-          \l_stex_get_symbol_uri_str
-        }
-      }
-    }
-    \exp_args:Nnnx
-    \begin{stex_annotate_env}{spfcase}{\seq_use:Nn \l_tmpa_seq {,}}
-    \str_if_empty:NF \spftype {
-      \stex_annotate_invisible:nnn{type}{\spftype}{}
-    }
-    \clist_set:No \l_tmpa_clist \spftype
-    \tl_set:Nn \l_tmpa_tl {
-      \item[\sproofnumber]
-      \bool_set_true:N \l__stex_sproof_inc_counter_bool
-    }
-    \clist_map_inline:Nn \l_tmpa_clist {
-      \exp_args:No \str_if_eq:nnT \c__stex_sproof_flow_str {##1} {
-        \tl_clear:N \l_tmpa_tl
-      }
-    }
-    \l_tmpa_tl
-    \tl_if_empty:nF{#2}{
-      \titleemph{#2}:~
-    }
-  }
-  \__stex_sproof_add_counter:
-  \stex_smsmode_do:
-}{
-  \__stex_sproof_remove_counter:
-  \bool_if:NT \l__stex_sproof_inc_counter_bool {
-    \__stex_sproof_inc_counter:
-  }
-  \stex_if_smsmode:F{
-    \clist_set:No \l_tmpa_clist \spftype
-    \tl_set:Nn \l_tmpa_tl{\sproofend}
-    \clist_map_inline:Nn \l_tmpa_clist {
-      \exp_args:No \str_if_eq:nnT \c__stex_sproof_flow_str {##1} {
-        \tl_clear:N \l_tmpa_tl
-      }
-    }
-    \l_tmpa_tl
-    \end{stex_annotate_env}
-  }
-}
-\newcommand\spfcasesketch[3][]{
-  \begin{spfcase}[#1]{#2}#3\end{spfcase}
-}
-\keys_define:nn { stex / just }{
-  id        .str_set_x:N  = \l__stex_sproof_just_id_str,
-  method    .tl_set:N     = \l__stex_sproof_just_method_tl,
-  premises  .tl_set:N     = \l__stex_sproof_just_premises_tl,
-  args      .tl_set:N     = \l__stex_sproof_just_args_tl
-}
-\newcommand\spfjust[1][]{}
-\newcommand\stex_proof_premise:[2][]{#2}
-\newcommand\justarg[2][]{#2}
 
 %%%%%%%%%%%%%   metatheory.dtx   %%%%%%%%%%%%%
 
