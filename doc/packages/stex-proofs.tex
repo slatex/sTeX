@@ -5,97 +5,303 @@ structure of mathematical proofs in \sTeX document. This structure can be used b
 systems for added-value services, either directly from the \sTeX sources, or after
 translation.
 
-We will go over the general intuition by way of a running example: 
+Its central component is the |sproof|-environment, whose body consists
+of:
+\begin{itemize}
+  \item \emph{subproofs} via the |subproof|-environment,
+  \item \emph{proof steps} via the |\spfstep|, |\eqstep|
+    |\assumption|, and |\conclude| macros, and
+  \item \emph{comments}, via normal text without special markup.
+\end{itemize}
+
+|sproof|, |subproof| and the various proof step macros take the following
+optional arguments:
+\begin{itemize}
+  \item[|id|] (\meta{string}) for referencing,
+  \item[|method|] (\meta{string}) the proof method (e.g. contradiction, induction,...)
+  \item[|term|] (\meta{token list}) the (ideally semantically-marked up)
+    proposition that is derived/proven by this proof/subproof/proof step.
+\end{itemize}
+Additionally, they take one mandatory argument for the document text
+to be annotated, or (in the case of the environments)
+as an introductory description of the proof itself. Since
+the latter often contains the |term| to be derived
+as text, alternatively to providing it as 
+an optional argument, the mandatory argument can use the
+|\yield|-macro to mark it up in the text.
+
+The |sproof| and |subproof| environments additionally take
+two optional arguments:
+\begin{itemize}
+  \item[|for|] the symbol identifier/name corresponding to the |sassertion|
+    to be proven. This too subsumes |\yield| and the |term|-argument.
+  \item[|hide|] In the pdf, this only shows the mandatory argument text
+    and hides the body of the environment. In the HTML (as served by \mmt),
+    the bodies of all |proof| and |subproof| environments are \emph{collapsible},
+    and |hide| collapses the body by default.
+\end{itemize}
+
+\begin{smodule}{sproofs}
+  \symdef{coprime}[args=2]{#1 \comp\bot #2}
+  \symdef{realroot}[args=1]{\sqrt{#1}}
+  \symdecl{irrational}[args=1]
+  \symdecl{rational}[args=1]
+  \symdef{eq}[args=2]{#1 \comp= #2}
+  \symdef{ratfrac}[args=2,prec=1]{\frac{#1}{#2}}
+  \symdef{intpow}[args=2,prec=-1]{{#1}^{#2}}
+  \symdef{ratpow}[args=2]{{#1}^{#2}}
+  \symdef{inset}[args=ai]{#1\comp\in#2}{##1\comp,##2}
+  \symdef{Int}{\comp{\mathbb Z}}
+  \symdef{PosInt}{\comp{{\mathbb Z}^+}}
+  \symdef{inttimes}[args=2]{#1 #2}
+  \symdef{divides}[args=2]{#1\comp\|#2}
+
+  \vardef{vara}{\comp a}
+  \vardef{varb}{\comp b}
+  \vardef{varc}{\comp c}
+
+  \def\contradiction{}
 
 \begin{latexcode}
-\begin{sproof}[id=simple-proof]
-   {We prove that $\sum_{i=1}^n{2i-1}=n^{2}$ by induction over $n$}
-  \begin{spfcases}{For the induction we have to consider three cases:}
-   \begin{spfcase}{$n=1$}
-    \begin{spfstep}[type=inline] then we compute $1=1^2$\end{spfstep}
-   \end{spfcase}
-   \begin{spfcase}{$n=2$}
-      \begin{spfcomment}[type=inline]
-        This case is not really necessary, but we do it for the
-        fun of it (and to get more intuition).
-      \end{spfcomment}
-      \begin{spfstep}[type=inline] We compute $1+3=2^{2}=4$.\end{spfstep}
-   \end{spfcase}
-   \begin{spfcase}{$n>1$}
-      \begin{spfstep}[type=assumption,id=ind-hyp]
-        Now, we assume that the assertion is true for a certain $k\geq 1$,
-        i.e. $\sum_{i=1}^k{(2i-1)}=k^{2}$.
-      \end{spfstep}
-      \begin{spfcomment}
-        We have to show that we can derive the assertion for $n=k+1$ from
-        this assumption, i.e. $\sum_{i=1}^{k+1}{(2i-1)}=(k+1)^{2}$.
-      \end{spfcomment}
-      \begin{spfstep}
-        We obtain $\sum_{i=1}^{k+1}{2i-1}=\sum_{i=1}^k{2i-1}+2(k+1)-1$
-        \spfjust[method=arith:split-sum]{by splitting the sum}.
-      \end{spfstep}
-      \begin{spfstep}
-        Thus we have $\sum_{i=1}^{k+1}{(2i-1)}=k^2+2k+1$
-        \spfjust[method=fertilize]{by inductive hypothesis}.
-      \end{spfstep}
-      \begin{spfstep}[type=conclusion]
-        We can \spfjust[method=simplify]{simplify} the right-hand side to
-        ${k+1}^2$, which proves the assertion.
-      \end{spfstep}
-   \end{spfcase}
-    \begin{spfstep}[type=conclusion]
-      We have considered all the cases, so we have proven the assertion.
-    \end{spfstep}
-  \end{spfcases}
+  \begin{sassertion}[type=theorem,name=sqrt2irr]
+    \conclusion{\irrational{$\arg{\realroot{2}}$ is \comp{irrational}}}.
+\end{sassertion}
+
+\begin{sproof}[for=sqrt2irr,method=contradiction]{By contradiction}
+    \assumption{Assume \yield{\rational{$\arg{\realroot{2}}$ is 
+      \comp{rational}}}}
+    \begin{subproof}[method=straightforward]{Then 
+        \yield{$\eq{\ratfrac{\intpow{\vara}{2}}{\intpow{\varb}2}}{2}$ 
+        for some $\inset{\vara,\varb}\PosInt$ with 
+        \coprime{$\arg{\vara},\arg{\varb}$ \comp{coprime}}}}
+        \assumption{By assumption, \yield{there are 
+        $\inset{\vara,\varb}\PosInt $ with 
+        $\realroot{2}=\ratfrac{\vara}{\varb}$}}
+        \spfstep{wlog, we can assume \coprime{$\arg{\vara},\arg{\varb}$ 
+        to be \comp{coprime}}}
+            % a comment:
+            If not, reduce the fraction until numerator and denominator 
+            are coprime, and let the resulting components be 
+            $\vara $ and $\varb $
+        \spfstep{Then \yield{$\eq{\intpow{\ratfrac{\vara}{\varb}}2}2$}}
+        \eqstep{\ratfrac{\intpow{\vara}2}{\intpow{\varb}2}}
+    \end{subproof}
+    \begin{subproof}[term=\divides{2}{\vara},method=straightforward]{
+        Then $\vara $ is even}
+        \spfstep{Multiplying the equation by $\intpow{\varb}2$ yields 
+        $\yield{\eq{\intpow{\vara}2}{\inttimes{2}{\intpow{\varb}2}}}$}
+        \spfstep[term=\divides{2}{\intpow{\vara}2}]{Hence 
+        $\intpow{\vara}2$ is even}
+        \conclude[term=\divides{2}{\vara}]{Hence $\vara $ is even as well}
+        % another comment:
+        Hint: Think about the prime factorizations of $\vara $ and 
+        $\intpow{\vara}2$
+    \end{subproof}
+    \begin{subproof}[term=\divides{2}{\varb},method=straightforward,]{
+        Then $\varb $ is also even}
+        \spfstep{Since $\vara $ is even, we have \yield{some $\varc $ 
+          such that $\eq{\inttimes{2}{\varc}}{\vara}$}}
+        \spfstep{Plugging into the above, we get 
+          \yield{$\eq{\intpow{\inttimes{2}{\vara}}2}
+            {\inttimes{2}{\intpow{\varb}2}}$}}
+        \eqstep{\inttimes{4}{\intpow{\vara}2}}
+        \spfstep{Dividing both sides by $2$ yields 
+          \yield{$\eq{\intpow{\varb}2}{\inttimes{2}{\intpow{\vara}2}}$}}
+        \spfstep[term=\divides{2}{\intpow{\varb}2}]{Hence 
+          $\intpow{\varb}2$ is even}
+        \conclude[term=\divides{2}{\varb}]{Hence $\varb $ is even}
+        % one more comment:
+        By the same argument as above
+    \end{subproof}
+    \conclude[term=\contradiction]{Contradiction to $\vara,\varb $ being 
+    \symname{coprime}.}
 \end{sproof}
 \end{latexcode}
+
+which will produce:
+
+\begin{mdframed}
+\begin{sassertion}[type=theorem,name=sqrt2irr]
+  \conclusion{\irrational{$\arg{\realroot2}$ is \comp{irrational}}}.
+\end{sassertion}
+
+\begin{sproof}[for=sqrt2irr,method=contradiction]{By contradiction}
+  \assumption{Assume \yield{\rational{$\arg{\realroot2}$ is \comp{rational}}}}
+  \begin{subproof}[method=straightforward]%
+      {Then \yield{$\eq{\ratfrac{\intpow \vara2}{\intpow \varb2}}{2}$ for some $\inset{\vara,\varb}\PosInt$ with \coprime{$\arg \vara,\arg \varb$ \comp{coprime}}}}
+      \assumption{By assumption, \yield{there are $\inset{\vara,\varb}\PosInt$ with $\realroot2=\ratfrac\vara\varb$}}
+      \spfstep{wlog, we can assume \coprime{$\arg{\vara},\arg{\varb}$ to be \comp{coprime}}}
+          If not, reduce the fraction until numerator and denominator are 
+          coprime, and let the resulting components be $\vara$ and $\varb$
+      \spfstep{Then \yield{$\eq{\intpow{\ratfrac\vara\varb}2}2$}}
+      \eqstep{\ratfrac{\intpow\vara2}{\intpow\varb2}}
+  \end{subproof}
+  \begin{subproof}[term=\divides{2}{\vara},method=straightforward]{Then $\vara$ is even}
+      \spfstep{Multiplying the equation by $\intpow\varb2$ yields $\yield{\eq{\intpow\vara2}{\inttimes2{\intpow\varb2}}}$}
+      \spfstep[term=\divides{2}{\intpow\vara2}]{Hence $\intpow\vara2$ is even}
+      \conclude[term=\divides{2}{\vara}]{Hence $\vara$ is even as well}
+      Hint: Think about the prime factorizations of $\vara$ and $\intpow\vara2$
+  \end{subproof}
+  \begin{subproof}[term=\divides{2}{\varb},method=straightforward]{Then $\varb$ is also even}
+      \spfstep{Since $\vara$ is even, we have \yield{some $\varc$ such that $\eq{\inttimes2\varc}{\vara}$}}
+      \spfstep{Plugging into the above, we get \yield{$\eq{\intpow{\inttimes2\vara}2}{\inttimes2{\intpow\varb2}}$}}
+      \eqstep{\inttimes4{\intpow\vara2}}
+      \spfstep{Dividing both sides by $2$ yields \yield{$\eq{\intpow\varb2}{\inttimes2{\intpow\vara2}}$}}
+      \spfstep[term=\divides{2}{\intpow\varb2}]{Hence $\intpow\varb2$ is even}
+      \conclude[term=\divides{2}{\varb}]{Hence $\varb$ is even}
+      By the same argument as above
+  \end{subproof}
+  \conclude[term=\contradiction]{Contradiction to $\vara,\varb$ being \symname{coprime}.}
+\end{sproof}
+\end{mdframed}
+
+If we mark all subproofs with |hide|, we will obtain the following
+instead:
+
+\begin{mdframed}
+  \begin{sassertion}[type=theorem,name=sqrt2irr]
+    \conclusion{\irrational{$\arg{\realroot2}$ is \comp{irrational}}}.
+  \end{sassertion}
+  
+  \begin{sproof}[for=sqrt2irr,method=contradiction]{By contradiction}
+    \assumption{Assume \yield{\rational{$\arg{\realroot2}$ is \comp{rational}}}}
+    \begin{subproof}[hide,method=straightforward]%
+        {Then \yield{$\eq{\ratfrac{\intpow \vara2}{\intpow \varb2}}{2}$ for some $\inset{\vara,\varb}\PosInt$ with \coprime{$\arg \vara,\arg \varb$ \comp{coprime}}}}
+        \assumption{By assumption, \yield{there are $\inset{\vara,\varb}\PosInt$ with $\realroot2=\ratfrac\vara\varb$}}
+        \spfstep{wlog, we can assume \coprime{$\arg{\vara},\arg{\varb}$ to be \comp{coprime}}}
+            If not, reduce the fraction until numerator and denominator are 
+            coprime, and let the resulting components be $\vara$ and $\varb$
+        \spfstep{Then \yield{$\eq{\intpow{\ratfrac\vara\varb}2}2$}}
+        \eqstep{\ratfrac{\intpow\vara2}{\intpow\varb2}}
+    \end{subproof}
+    \begin{subproof}[hide,term=\divides{2}{\vara},method=straightforward]{Then $\vara$ is even}
+        \spfstep{Multiplying the equation by $\intpow\varb2$ yields $\yield{\eq{\intpow\vara2}{\inttimes2{\intpow\varb2}}}$}
+        \spfstep[term=\divides{2}{\intpow\vara2}]{Hence $\intpow\vara2$ is even}
+        \conclude[term=\divides{2}{\vara}]{Hence $\vara$ is even as well}
+        Hint: Think about the prime factorizations of $\vara$ and $\intpow\vara2$
+    \end{subproof}
+    \begin{subproof}[hide,term=\divides{2}{\varb},method=straightforward,]{Then $\varb$ is also even}
+        \spfstep{Since $\vara$ is even, we have \yield{some $\varc$ such that $\eq{\inttimes2\varc}{\vara}$}}
+        \spfstep{Plugging into the above, we get \yield{$\eq{\intpow{\inttimes2\vara}2}{\inttimes2{\intpow\varb2}}$}}
+        \eqstep{\inttimes4{\intpow\vara2}}
+        \spfstep{Dividing both sides by $2$ yields \yield{$\eq{\intpow\varb2}{\inttimes2{\intpow\vara2}}$}}
+        \spfstep[term=\divides{2}{\intpow\varb2}]{Hence $\intpow\varb2$ is even}
+        \conclude[term=\divides{2}{\varb}]{Hence $\varb$ is even}
+        By the same argument as above
+    \end{subproof}
+    \conclude[term=\contradiction]{Contradiction to $\vara,\varb$ being \symname{coprime}.}
+  \end{sproof}
+  \end{mdframed}
+
+  However, the hidden subproofs will still be shown in the HTML,
+  only in an expandable section which is collapsed by default.
+
+
+The above style of writing proofs is usually called \emph{structured proofs}.
+They have a huge advantage over the traditional purely prosaic style,
+in that (as the name suggests) the actual \emph{structure} of the proof
+is made explicit, which almost always makes it considerably more 
+comprehensible. We, among many others, encourage the general use of 
+structured proofs.
+
+Alas, most proofs are not written in this style, and we would
+do users a disservice by insisting on this style. For that reason,
+the |spfblock| environment turns all subproofs and proof step
+macros into presentationally neutral \emph{inline} annotations,
+as in the induction step of the following example:
+
+\begin{latexcode}
+\begin{sproof}[id=simple-proof,method=induction]
+   {We prove that $\sum_{i=1}^n{2i-1}=n^{2}$ by induction over $n$}
+  For the induction we have to consider three cases: % <- a comment
+   \begin{subproof}{$n=1$}
+    \spfstep*{then we compute $1=1^2$}
+   \end{subproof}
+   \begin{subproof}{$n=2$}
+        This case is not really necessary, but we do it for the
+        fun of it (and to get more intuition).
+      \spfstep*{We compute $1+3=2^{2}=4$.}
+   \end{subproof}
+   \begin{subproof}{$n>1$}\begin{spfblock}
+      \assumption[id=ind-hyp]{
+        Now, we assume that the assertion is true for a certain $k\geq 1$,
+        i.e. \yield{$\sum_{i=1}^k{(2i-1)}=k^{2}$}.
+      }
+      
+        We have to show that we can derive the assertion for $n=k+1$ from
+        this assumption, i.e. $\sum_{i=1}^{k+1}{(2i-1)}=(k+1)^{2}$.
+
+      \spfstep{
+        We obtain $\yield{\sum_{i=1}^{k+1}{2i-1}=
+          \sum_{i=1}^k{2i-1}+2(k+1)-1}$
+        \spfjust{by \splitsum{\comp{splitting the sum}
+        \arg*{$\sum_{i=1}^{k+1}{(2i-1)}=(k+1)^{2}$}}}.
+      }
+      \spfstep{
+        Thus we have $\yield{\sum_{i=1}^{k+1}{(2i-1)}=k^2+2k+1}$
+        \spfjust{by \symname{induction-hypothesis}}.
+      }
+      \conclude{
+        We can \spfjust{\simplification{\comp{simplify} the right-hand side
+        \arg*{k^2+2k+1}}} to
+        ${k+1}^2$, which proves the assertion.
+      }
+   \end{spfblock}\end{subproof}
+    \conclude{
+      We have considered all the cases, so we have proven the assertion.
+    }
+\end{sproof}
+\end{latexcode}
+
+
+\symdecl{splitsum}[args=1]
+\symdecl{inducthypothesis}[name=induction-hypothesis]
+\symdecl{simplification}[args=1]
 
 This yields the following result: 
 
 \begin{mdframed}
-  \begin{sproof}[id=simple-proof]
-  {We prove that $\sum_{i=1}^n{2i-1}=n^{2}$ by induction over $n$}
-  \begin{spfcases}{For the induction we have to consider the following cases:}
-    \begin{spfcase}{$n=1$}
-      \begin{spfstep}[type=inline] then we compute $1=1^2$\end{spfstep}
-    \end{spfcase}
-    \begin{spfcase}{$n=2$}
-      \begin{spfcomment}[type=inline]
-         This case is not really necessary, but we do it for the fun
-         of it (and to get more intuition).
-      \end{spfcomment}
-      \begin{spfstep}[type=inline]
-         We compute $1+3=2^{2}=4$
-      \end{spfstep}
-    \end{spfcase}
-    \begin{spfcase}{$n>1$}
-      \begin{spfstep}[type=hypothesis,id=ind-hyp]
-        Now, we assume that the assertion is true for a certain $k\geq 1$, i.e.
-        $\sum_{i=1}^k{(2i-1)}=k^{2}$.
-      \end{spfstep}
-      \begin{spfcomment}
-        We have to show that we can derive the assertion for $n=k+1$ from this
-        assumption, i.e.  $\sum_{i=1}^{k+1}{(2i-1)}=(k+1)^{2}$.
-      \end{spfcomment}
-      \begin{spfstep}[id=splitit]
-        We obtain $\sum_{i=1}^{k+1}{(2i-1)}=\sum_{i=1}^k{(2i-1)}+2(k+1)-1$
-       \spfjust[method=arith:split-sum]{by splitting the sum}.
-     \end{spfstep}
-     \begin{spfstep}[id=byindhyp]
-       Thus we have $\sum_{i=1}^{k+1}{(2i-1)}=k^2+2k+1$
-       \spfjust[method=fertilize]{by \premise[ind-hyp]{inductive hypothesis}}.
-     \end{spfstep}
-     \begin{spfstep}[type=conclusion]
-       We can \spfjust[method=simplify-eq]{simplify the \justarg[rhs]{right-hand side}} to
-       $(k+1)^2$, which proves the assertion.
-     \end{spfstep}
-   \end{spfcase}
-   \begin{spfstep}[type=conclusion]
-     We have considered all the cases, so we have proven the assertion.
-   \end{spfstep}
-  \end{spfcases}
-\end{sproof}
+  \begin{sproof}[id=simple-proof,method=induction]
+    {We prove that $\sum_{i=1}^n{2i-1}=n^{2}$ by induction over $n$}
+   For the induction we have to consider three cases: % <- a comment
+    \begin{subproof}{$n=1$}
+     \spfstep*{then we compute $1=1^2$}
+    \end{subproof}
+    \begin{subproof}{$n=2$}
+         This case is not really necessary, but we do it for the
+         fun of it (and to get more intuition).
+       \spfstep*{We compute $1+3=2^{2}=4$.}
+    \end{subproof}
+    \begin{subproof}{$n>1$}\begin{spfblock}
+       \assumption[id=ind-hyp]{
+         Now, we assume that the assertion is true for a certain $k\geq 1$,
+         i.e. \yield{$\sum_{i=1}^k{(2i-1)}=k^{2}$}.
+       }
+       
+         We have to show that we can derive the assertion for $n=k+1$ from
+         this assumption, i.e. $\sum_{i=1}^{k+1}{(2i-1)}=(k+1)^{2}$.
+ 
+       \spfstep{
+         We obtain $\yield{\sum_{i=1}^{k+1}{2i-1}=\sum_{i=1}^k{2i-1}+2(k+1)-1}$
+         \spfjust{by \splitsum{\comp{splitting the sum}\arg*{$\sum_{i=1}^{k+1}{(2i-1)}=(k+1)^{2}$}}}.
+       }
+       \spfstep{
+         Thus we have $\yield{\sum_{i=1}^{k+1}{(2i-1)}=k^2+2k+1}$
+         \spfjust{by \symname{induction-hypothesis}}.
+       }
+       \conclude{
+         We can \spfjust{\simplification{\comp{simplify} the right-hand side
+         \arg*{k^2+2k+1}}} to
+         ${k+1}^2$, which proves the assertion.
+       }
+    \end{spfblock}\end{subproof}
+     \conclude{
+       We have considered all the cases, so we have proven the assertion.
+     }
+ \end{sproof}
 \end{mdframed}
+
+\end{smodule}
 
 \begin{environment}{sproof}
   The |sproof| environment is the main container for proofs. It takes an optional |KeyVal|
@@ -116,76 +322,37 @@ This yields the following result:
   the proof.
 \end{function}
 
-\begin{environment}{spfstep}
-  Regular proof steps are marked up with the |step| environment, which takes an optional
+\begin{function}{\spfstep}
+  Regular proof steps are marked up with the |\spfstep| macro, which takes an optional
   |KeyVal| argument for annotations. A proof step usually contains a local assertion
   (the text of the step) together with some kind of evidence that this can be derived
   from already established assertions.
-\end{environment}
+\end{function}
+
+\begin{function}{\yield}
+  See above
+\end{function}
 
 \begin{function}{\spfjust}
   This evidence is marked up with the |\spfjust| macro in the \pkg{stex-proofs}
   package. This environment totally invisible to the formatted result; it wraps the text
-  in the proof step that corresponds to the evidence. The environment takes an optional
-  |KeyVal| argument, which can have the |method| key, whose value is the name of a proof
-  method (this will only need to mean something to the application that consumes the
-  semantic annotations). Furthermore, the justification can contain ``premises''
-  (specifications to assertions that were used justify the step) and ``arguments''
-  (other information taken into account by the proof method).
+  in the proof step that corresponds to the evidence (ideally, a
+  semantically marked-up term).
 \end{function}
 
-\begin{function}{\premise}
-  The |\premise| macro allows to mark up part of the text as reference to an assertion
-  that is used in the argumentation. In the running example we have used the |\premise|
-  macro to identify the inductive hypothesis.
+\begin{function}{\assumption}
+  The |\assumption| macro allows to mark up a (justified) assumption.
 \end{function}
 
 \begin{function}{\justarg}
-  The |\justarg| macro is very similar to |\premise| with the difference that it is used
-  to mark up arguments to the proof method. Therefore the content of the first argument
-  is interpreted as a mathematical object rather than as an identifier as in the case of
-  |\premise|. In our example, we specified that the simplification should take place on
-  the right hand side of the equation. Other examples include proof methods that
-  instantiate. Here we would indicate the substituted object in a |\justarg| macro.
 \end{function}
 
-Note that both |\premise| and |\justarg| can be used with an empty second argument to
-mark up premises and arguments that are not explicitly mentioned in the text.
-
 \begin{environment}{subproof}
-  The |spfcases| environment is used to mark up a subproof. This environment takes an
+  The |subproof| environment is used to mark up a subproof. This environment takes an
   optional |KeyVal| argument for semantic annotations and a second argument that allows
   to specify an introductory comment (just like in the |proof| environment). The
   |method| key can be used to give the name of the proof method
   executed to make this subproof.
-\end{environment}
-
-\begin{environment}{spfcases}
-  The |spfcases| environment is used to mark up a proof by cases. Technically it is a
-  variant of the |subproof| where the |method| is |by-cases|. Its contents are |spfcase|
-  environments that mark up the cases one by one.
-\end{environment}
-
-\begin{environment}{spfcase}
-  The content of a |spfcases| environment are a sequence of case proofs marked up in the
-  |spfcase| environment, which takes an optional |KeyVal| argument for semantic
-  annotations. The second argument is used to specify the the description of the case
-  under consideration. The content of a |spfcase| environment is the same as that of a
-  |sproof|, i.e. |spfstep|s, |spfcomment|s, and |spfcases| environments.
-\end{environment}
-
-\begin{function}{\spfcasesketch}
-  |\spfcasesketch| is a variant of the |spfcase| environment that takes the same
-  arguments, but instead of the |spfstep|s in the body uses a third argument for a proof
-  sketch.
-\end{function}
-
-\begin{environment}{spfcomment}
-  The |spfcomment| environment is much like a |step|, only that it does not have an
-  object-level assertion of its own. Rather than asserting some fact that is relevant
-  for the proof, it is used to explain where the proof is going, what we are attempting
-  to to, or what we have achieved so far. As such, it cannot be the target of a
-  |\premise|.
 \end{environment}
 
 \begin{function}{\sproofend}

@@ -87,7 +87,9 @@
   title       .tl_set:N     = \spftitle,
   continues   .tl_set:N     = \l_@@_spf_continues_tl,
   functions   .tl_set:N     = \l_@@_spf_functions_tl,
-  method      .tl_set:N     = \l_@@_spf_method_tl
+  term        .tl_set:N     = \l_@@_spf_term_tl,
+  method      .tl_set:N     = \l_@@_spf_method_tl,
+  hide        .bool_set:N   = \l_@@_spf_hide_bool  
 }
 \cs_new_protected:Nn \_@@_spf_args:n {
 	\str_clear:N \spfid
@@ -97,11 +99,13 @@
 	\str_clear:N \spftype
 	\tl_clear:N \spftitle
 	\tl_clear:N \l_@@_spf_continues_tl
+	\tl_clear:N \l_@@_spf_term_tl
 	\tl_clear:N \l_@@_spf_functions_tl
 	\tl_clear:N \l_@@_spf_method_tl
-  \bool_set_false:N \l_@@_inc_counter_bool
+  \bool_set_false:N \l_@@_spf_hide_bool
 	\keys_set:nn { stex / spf }{ #1 }
 }
+\bool_set_true:N \l_@@_inc_counter_bool
 %    \end{macrocode}
 %
 % \begin{macro}{\c_@@_flow_str}
@@ -275,96 +279,30 @@
 %    \end{macrocode}
 % \end{macro}
 %
-% \begin{macro}{spfeq}
-%   This is very similar to |\spfsketch|, but uses a computation array\ednote{This should
-%   really be more like a tabular with an ensuremath in it. or invoke text on the last
-%   column}\ednote{document above}
+% \begin{macro}{\_@@_maybe_comment:,\_@@_maybe_comment_end:,\_@@_start_comment:}
 %    \begin{macrocode}
-\newenvironment{spfeq}[2][]{
-  \_@@_spf_args:n{#1}
-  \let \premise \stex_proof_premise:
-  \stex_if_smsmode:TF {
-    \str_if_empty:NF \spfid {
-      \stex_ref_new_doc_target:n \spfid
-    }
-  }{
-    \seq_clear:N \l_tmpa_seq
-    \clist_map_inline:Nn \l_@@_spf_for_clist {
-      \tl_if_empty:nF{ ##1 }{
-        \stex_get_symbol:n { ##1 }
-        \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
-          \l_stex_get_symbol_uri_str
-        }
-      }
-    }
-    \exp_args:Nnnx
-    \begin{stex_annotate_env}{spfeq}{\seq_use:Nn \l_tmpa_seq {,}}
-    \str_if_empty:NF \spftype {
-      \stex_annotate_invisible:nnn{type}{\spftype}{}
-    }
+\bool_set_false:N \l_@@_in_spfblock_bool
 
-    \clist_set:No \l_tmpa_clist \spftype
-    \tl_clear:N \l_tmpa_tl
-    \clist_map_inline:Nn \l_tmpa_clist {
-      \tl_if_exist:cT {_@@_spfeq_##1_start:}{
-        \tl_set:Nn \l_tmpa_tl {\use:c{_@@_spfeq_##1_start:}}
-      }
-      \exp_args:No \str_if_eq:nnT \c_@@_flow_str {##1} {
-        \tl_set:Nn \l_tmpa_tl {\use:n{}}
-      }
-    }
-    \tl_if_empty:NTF \l_tmpa_tl {
-      \_@@_spfeq_start:
-    }{
-      \l_tmpa_tl
-    }{~#2}
-    \str_if_empty:NF \spfid {
-      \stex_ref_new_doc_target:n \spfid
-    }
-    \begin{displaymath}\begin{array}{rcll}
-  }
-  \stex_smsmode_do:
-}{
-  \stex_if_smsmode:F {
-    \end{array}\end{displaymath}
-    \clist_set:No \l_tmpa_clist \spftype
-    \tl_clear:N \l_tmpa_tl
-    \clist_map_inline:Nn \l_tmpa_clist {
-      \tl_if_exist:cT {_@@_spfeq_##1_end:}{
-        \tl_set:Nn \l_tmpa_tl {\use:c{_@@_spfeq_##1_end:}}
-      }
-    }
-    \tl_if_empty:NTF \l_tmpa_tl {
-      \_@@_spfeq_end:
-    }{
-      \l_tmpa_tl
-    }
-    \end{stex_annotate_env}
+\cs_new_protected:Nn \_@@_maybe_comment: {
+  \bool_if:NF \l_@@_in_spfblock_bool {
+    \par \setbox \l_tmpa_box \vbox \bgroup \everypar{\_@@_start_comment:}
   }
 }
-
-\cs_new_protected:Nn \_@@_spfeq_start: {
-  \titleemph{
-    \tl_if_empty:NTF \spftitle {
-      \spf@proof@kw
-    }{
-      \spftitle
-    }
-  }:
+\cs_new_protected:Nn \_@@_maybe_comment_end: {
+  \bool_if:NF \l_@@_in_spfblock_bool { \egroup }
 }
-\cs_new_protected:Nn \_@@_spfeq_end: {\sproofend}
-
-\newcommand\stexpatchspfeq[3][] {
-    \str_set:Nx \l_tmpa_str{ #1 }
-    \str_if_empty:NTF \l_tmpa_str {
-      \tl_set:Nn \_@@_spfeq_start: { #2 }
-      \tl_set:Nn \_@@_spfeq_end: { #3 }
-    }{
-      \exp_after:wN \tl_set:Nn \csname _@@_spfeq_#1_start:\endcsname{ #2 }
-      \exp_after:wN \tl_set:Nn \csname _@@_spfeq_#1_end:\endcsname{ #3 }
-    }
+\cs_new_protected:Nn \_@@_start_comment: {
+  \csname @ @ par\endcsname\egroup\item[]\bgroup\stexcommentfont
 }
 
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\stexcommentfont}
+%    \begin{macrocode}
+\cs_new_protected:Npn \stexcommentfont {
+  \small\itshape
+}
 %    \end{macrocode}
 % \end{macro}
 %
@@ -373,70 +311,113 @@
 %    up the description environment that will take the proof steps. At the end of the
 %    proof, we position the proof end into the last line.
 %    \begin{macrocode}
-\newenvironment{sproof}[2][]{
-  \let \premise \stex_proof_premise:
+\cs_new_protected:Nn \_@@_start_env:nnn {
+  \seq_clear:N \l_tmpa_seq
+  \clist_map_inline:Nn \l_@@_spf_for_clist {
+    \tl_if_empty:nF{ ##1 }{
+      \stex_get_symbol:n { ##1 }
+      \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
+        \l_stex_get_symbol_uri_str
+      }
+    }
+  }
+  \exp_args:Nnnx
+  \begin{stex_annotate_env}{#1}{\seq_use:Nn \l_tmpa_seq {,}}
+  \str_if_empty:NF \spftype {
+    \stex_annotate_invisible:nnn{type}{\spftype}{}
+  }
+  #3 {~\stex_annotate:nnn{spftitle}{}{#2}}
+  \str_if_empty:NF \spfid {
+    \stex_ref_new_doc_target:n \spfid
+  }
+  \begin{stex_annotate_env}{spfbody}{\bool_if:NTF \l_@@_spf_hide_bool {false}{true}}
+  \bool_if:NT \l_@@_spf_hide_bool{
+    \stex_html_backend:F{\setbox\l_tmpa_box\vbox\bgroup}
+  }
+  \begin{list}{}{
+    \setlength\topsep{0pt}
+    \setlength\parsep{0pt}
+    \setlength\rightmargin{0pt}
+    
+  }\_@@_maybe_comment:
+}
+\cs_new_protected:Nn \_@@_end_env:n {
+  \stex_if_smsmode:F{
+    \_@@_maybe_comment_end:
+    \end{list}  
+    \bool_if:NT \l_@@_spf_hide_bool{
+      \stex_html_backend:F{\egroup}
+    }
+    \clist_set:No \l_tmpa_clist \spftype
+    #1
+    \end{stex_annotate_env}
+    \end{stex_annotate_env}
+  }
+}
+\NewDocumentEnvironment{sproof}{s O{} m}{
   \intarray_gzero:N \l_@@_counter_intarray
   \intarray_gset:Nnn \l_@@_counter_intarray 1 1
-  \_@@_spf_args:n{#1}
+  \stex_reactivate_macro:N \yield
+  \stex_reactivate_macro:N \eqstep
+  \stex_reactivate_macro:N \assumption
+  \stex_reactivate_macro:N \conclude
+  \stex_reactivate_macro:N \spfstep
+  \_@@_spf_args:n{#2}
   \stex_if_smsmode:TF {
     \str_if_empty:NF \spfid {
       \stex_ref_new_doc_target:n \spfid
     }
   }{
-    \seq_clear:N \l_tmpa_seq
-    \clist_map_inline:Nn \l_@@_spf_for_clist {
-      \tl_if_empty:nF{ ##1 }{
-        \stex_get_symbol:n { ##1 }
-        \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
-          \l_stex_get_symbol_uri_str
+    \_@@_start_env:nnn{sproof}{#3}{
+      \clist_set:No \l_tmpa_clist \spftype
+      \tl_clear:N \l_tmpa_tl
+      \clist_map_inline:Nn \l_tmpa_clist {
+        \tl_if_exist:cT {_@@_sproof_##1_start:}{
+          \tl_set:Nn \l_tmpa_tl {\use:c{_@@_sproof_##1_start:}}
+        }
+        \exp_args:No \str_if_eq:nnT \c_@@_flow_str {##1} {
+          \tl_set:Nn \l_tmpa_tl {\use:n{}}
         }
       }
-    }
-    \exp_args:Nnnx
-    \begin{stex_annotate_env}{sproof}{\seq_use:Nn \l_tmpa_seq {,}}
-    \str_if_empty:NF \spftype {
-      \stex_annotate_invisible:nnn{type}{\spftype}{}
-    }
-
-    \clist_set:No \l_tmpa_clist \spftype
-    \tl_clear:N \l_tmpa_tl
-    \clist_map_inline:Nn \l_tmpa_clist {
-      \tl_if_exist:cT {_@@_sproof_##1_start:}{
-        \tl_set:Nn \l_tmpa_tl {\use:c{_@@_sproof_##1_start:}}
-      }
-      \exp_args:No \str_if_eq:nnT \c_@@_flow_str {##1} {
-        \tl_set:Nn \l_tmpa_tl {\use:n{}}
+      \tl_if_empty:NTF \l_tmpa_tl {
+        \_@@_sproof_start:
+      }{
+        \l_tmpa_tl
       }
     }
-    \tl_if_empty:NTF \l_tmpa_tl {
-      \_@@_sproof_start:
-    }{
-      \l_tmpa_tl
-    }{~#2}
+  }
+  \stex_smsmode_do:
+}{\_@@_end_env:n{
+  \tl_clear:N \l_tmpa_tl
+  \clist_map_inline:Nn \l_tmpa_clist {
+    \tl_if_exist:cT {_@@_sproof_##1_end:}{
+      \tl_set:Nn \l_tmpa_tl {\use:c{_@@_sproof_##1_end:}}
+    }
+  }
+  \tl_if_empty:NTF \l_tmpa_tl {
+    \_@@_sproof_end:
+  }{
+    \l_tmpa_tl
+  }
+}}
+\NewDocumentEnvironment{subproof}{s O{} m}{
+  \_@@_spf_args:n{#2}
+  \stex_if_smsmode:TF {
     \str_if_empty:NF \spfid {
       \stex_ref_new_doc_target:n \spfid
     }
-    \begin{description}
+  }{
+    \_@@_start_env:nnn{subproof}{\item[\sproofnumber]\ignorespacesandpars #3}{}
   }
+  \_@@_add_counter:
   \stex_smsmode_do:
-}{
-  \stex_if_smsmode:F{
-    \end{description}
-    \clist_set:No \l_tmpa_clist \spftype
-    \tl_clear:N \l_tmpa_tl
-    \clist_map_inline:Nn \l_tmpa_clist {
-      \tl_if_exist:cT {_@@_sproof_##1_end:}{
-        \tl_set:Nn \l_tmpa_tl {\use:c{_@@_sproof_##1_end:}}
-      }
-    }
-    \tl_if_empty:NTF \l_tmpa_tl {
-      \_@@_sproof_end:
-    }{
-      \l_tmpa_tl
-    }
-    \end{stex_annotate_env}
+}{\_@@_remove_counter:\_@@_end_env:n{}  
+  \bool_if:NT \l_@@_inc_counter_bool {
+    \_@@_inc_counter:
   }
+  \aftergroup\_@@_maybe_comment:
 }
+\AddToHook{env/subproof/before}{\_@@_maybe_comment_end:}
 
 \cs_new_protected:Nn \_@@_sproof_start: {
   \par\noindent\titleemph{
@@ -461,6 +442,82 @@
 }
 %    \end{macrocode}
 % \end{environment}
+%
+% \begin{macro}{\pstep,\conclude,\assumption,\have,\eqstep}
+%    \begin{macrocode}
+
+\keys_define:nn { stex / spfsteps } {
+  id          .str_set_x:N  = \spfstepid,
+  for         .clist_set:N  = \l_@@_spf_for_clist ,
+  type        .str_set_x:N  = \spftype,
+  title       .tl_set:N     = \spftitle,
+  method      .tl_set:N     = \l_@@_spf_method_tl,
+  term        .tl_set:N     = \l_@@_spf_term_tl
+}
+\cs_new_protected:Nn \_@@_spfstep_args:n {
+	\str_clear:N \spfstepid
+	\clist_clear:N \l_@@_spf_for_clist
+	\str_clear:N \spftype
+	\tl_clear:N \l_@@_spf_method_tl
+	\tl_clear:N \l_@@_spf_term_tl
+  %\bool_set_false:N \l_@@_inc_counter_bool
+	\keys_set:nn { stex / spfsteps }{ #1 }
+}
+
+\cs_new_protected:Nn \_@@_make_step_macro:Nnnnn {
+  \NewDocumentCommand #1 {s O{} m} {
+    \_@@_maybe_comment_end:
+
+    \_@@_spfstep_args:n{##2}
+    \stex_annotate:nnn{spfstep}{#2}{ 
+      \tl_if_empty:NF \l_@@_spf_term_tl {
+        \stex_annotate_invisible:nnn{spfyield}{}{$\l_@@_spf_term_tl$}
+      }
+      \bool_if:NTF \l_@@_in_spfblock_bool {
+        #4
+      }{
+        \item[\IfBooleanTF ##1 {}{#3}]
+      }
+      \ignorespacesandpars ##3
+    }
+    \bool_if:NF \l_@@_in_spfblock_bool { \IfBooleanTF ##1 {}{ #5 } }
+    \_@@_maybe_comment:
+  }
+  \stex_deactivate_macro:Nn #1 {sproof~environments}
+}
+
+\_@@_make_step_macro:Nnnnn \assumption {assumption} \sproofnumber {} \_@@_inc_counter:
+\_@@_make_step_macro:Nnnnn \conclude {conclusion} {$\Rightarrow$} {} {}
+\_@@_make_step_macro:Nnnnn \spfstep {} \sproofnumber {} \_@@_inc_counter:
+
+\NewDocumentCommand \eqstep {s m}{
+  \_@@_maybe_comment_end:
+  \bool_if:NTF \l_@@_in_spfblock_bool {
+    $=$
+  }{
+    \item[$=$]
+  }
+  $\stex_annotate:nnn{spfstep}{eq}{ #2 }$
+  \_@@_maybe_comment:
+}
+\stex_deactivate_macro:Nn \eqstep {sproof~environments}
+
+\NewDocumentCommand \yield {m}{
+  \stex_annotate:nnn{spfyield}{}{ #1 }
+}
+\stex_deactivate_macro:Nn \yield {sproof~environments}
+
+\NewDocumentEnvironment{spfblock}{}{
+  \item[]
+  \bool_set_true:N \l_@@_in_spfblock_bool
+}{
+  \aftergroup\_@@_maybe_comment:
+}
+\AddToHook{env/spfblock/before}{\_@@_maybe_comment_end:}
+
+%    \end{macrocode}
+% \end{macro}
+%
 % 
 % \begin{macro}{\spfidea}
 %    \begin{macrocode}
@@ -476,275 +533,12 @@
 %    \end{macrocode}
 % \end{macro}
 %
-% The next two environments (proof steps) and comments, are mostly semantical, they take
-% |KeyVal| arguments that specify their semantic role. In draft mode, they read these
-% values and show them. If the surrounding proof had |display=flow|, then no new |\item| is
-% generated, otherwise it is. In any case, the proof step number (at the current level) is
-% incremented.
-% \begin{environment}{spfstep}
 %    \begin{macrocode}
-\newenvironment{spfstep}[1][]{
-  \_@@_spf_args:n{#1}
-  \stex_if_smsmode:TF {
-    \str_if_empty:NF \spfid {
-      \stex_ref_new_doc_target:n \spfid
-    }
-  }{
-    \@in@omtexttrue
-    \clist_set:No \l_tmpa_clist \spftype
-    \tl_set:Nn \l_tmpa_tl {
-      \item[\sproofnumber]
-      \bool_set_true:N \l_@@_inc_counter_bool
-    }
-    \clist_map_inline:Nn \l_tmpa_clist {
-      \exp_args:No \str_if_eq:nnT \c_@@_flow_str {##1} {
-        \tl_clear:N \l_tmpa_tl
-      }
-    }
-    \l_tmpa_tl
-    \seq_clear:N \l_tmpa_seq
-    \clist_map_inline:Nn \l_@@_spf_for_clist {
-      \tl_if_empty:nF{ ##1 }{
-        \stex_get_symbol:n { ##1 }
-        \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
-          \l_stex_get_symbol_uri_str
-        }
-      }
-    }
-    \exp_args:Nnnx
-    \begin{stex_annotate_env}{spfstep}{\seq_use:Nn \l_tmpa_seq {,}}
-    \str_if_empty:NF \spftype {
-      \stex_annotate_invisible:nnn{type}{\spftype}{}
-    }
-    \tl_if_empty:NF \spftitle {
-      {(\titleemph{\spftitle})\enspace}
-    }
-    \str_if_empty:NF \spfid {
-      \stex_ref_new_doc_target:n \spfid
-    }
-  }
-  \stex_smsmode_do:
-  \ignorespacesandpars
-}{
-  \bool_if:NT \l_@@_inc_counter_bool {
-    \_@@_inc_counter:
-  }
-  \stex_if_smsmode:F {
-    \end{stex_annotate_env}
-  }
+\newcommand\spfjust[1]{
+  #1
 }
-%    \end{macrocode}
-% \end{environment}
-%
-% \begin{environment}{spfcomment}
-%    \begin{macrocode}
-\newenvironment{spfcomment}[1][]{
-  \_@@_spf_args:n{#1}
-  \clist_set:No \l_tmpa_clist \spftype
-  \tl_set:Nn \l_tmpa_tl {
-    \item[\sproofnumber]
-    \bool_set_true:N \l_@@_inc_counter_bool
-  }
-  \clist_map_inline:Nn \l_tmpa_clist {
-    \exp_args:No \str_if_eq:nnT \c_@@_flow_str {##1} {
-      \tl_clear:N \l_tmpa_tl
-    }
-  }
-  \l_tmpa_tl
-}{
-  \bool_if:NT \l_@@_inc_counter_bool {
-    \_@@_inc_counter:
-  }
-}
-%    \end{macrocode}
-% \end{environment}
-%
-% The next two environments also take a |KeyVal| argument, but also a regular one, which
-% contains a start text. Both environments start a new numbered proof level.
-%
-% \begin{environment}{subproof}
-%   In the |subproof| environment, a new (lower-level) proproofof environment is started.
-%    \begin{macrocode}
-\newenvironment{subproof}[2][]{
-  \_@@_spf_args:n{#1}
-  \stex_if_smsmode:TF{
-    \str_if_empty:NF \spfid {
-      \stex_ref_new_doc_target:n \spfid
-    }
-  }{
-    \seq_clear:N \l_tmpa_seq
-    \clist_map_inline:Nn \l_@@_spf_for_clist {
-      \tl_if_empty:nF{ ##1 }{
-        \stex_get_symbol:n { ##1 }
-        \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
-          \l_stex_get_symbol_uri_str
-        }
-      }
-    }
-    \exp_args:Nnnx
-    \begin{stex_annotate_env}{subproof}{\seq_use:Nn \l_tmpa_seq {,}}
-    \str_if_empty:NF \spftype {
-      \stex_annotate_invisible:nnn{type}{\spftype}{}
-    }
-
-    \clist_set:No \l_tmpa_clist \spftype
-    \tl_set:Nn \l_tmpa_tl {
-      \item[\sproofnumber]
-      \bool_set_true:N \l_@@_inc_counter_bool
-    }
-    \clist_map_inline:Nn \l_tmpa_clist {
-      \exp_args:No \str_if_eq:nnT \c_@@_flow_str {##1} {
-        \tl_clear:N \l_tmpa_tl
-      }
-    }
-    \l_tmpa_tl
-    \tl_if_empty:NF \spftitle {
-      {(\titleemph{\spftitle})\enspace}
-    }
-    {~#2}
-    \str_if_empty:NF \spfid {
-      \stex_ref_new_doc_target:n \spfid
-    }
-  }
-  \_@@_add_counter:
-  \stex_smsmode_do:
-}{
-  \_@@_remove_counter:
-  \bool_if:NT \l_@@_inc_counter_bool {
-    \_@@_inc_counter:
-  }
-  \stex_if_smsmode:F{
-    \end{stex_annotate_env}
-  }
-}
-%    \end{macrocode}
-% \end{environment}
-%
-% \begin{environment}{spfcases}
-%   In the |pfcases| environment, the start text is displayed as the first comment of the
-%   proof.
-%    \begin{macrocode}
-\newenvironment{spfcases}[2][]{
-  \tl_if_empty:nTF{#1}{
-    \begin{subproof}[method=by-cases]{#2}
-  }{
-    \begin{subproof}[#1,method=by-cases]{#2}
-  }
-}{
-  \end{subproof}
-}
-%    \end{macrocode}
-% \end{environment}
-%
-% \begin{environment}{spfcase}
-%    In the |pfcase| environment, the start text is displayed specification of the case
-%    after the |\item|
-%    \begin{macrocode}
-\newenvironment{spfcase}[2][]{
-  \_@@_spf_args:n{#1}
-  \stex_if_smsmode:TF {
-    \str_if_empty:NF \spfid {
-      \stex_ref_new_doc_target:n \spfid
-    }
-  }{
-    \seq_clear:N \l_tmpa_seq
-    \clist_map_inline:Nn \l_@@_spf_for_clist {
-      \tl_if_empty:nF{ ##1 }{
-        \stex_get_symbol:n { ##1 }
-        \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
-          \l_stex_get_symbol_uri_str
-        }
-      }
-    }
-    \exp_args:Nnnx
-    \begin{stex_annotate_env}{spfcase}{\seq_use:Nn \l_tmpa_seq {,}}
-    \str_if_empty:NF \spftype {
-      \stex_annotate_invisible:nnn{type}{\spftype}{}
-    }
-    \clist_set:No \l_tmpa_clist \spftype
-    \tl_set:Nn \l_tmpa_tl {
-      \item[\sproofnumber]
-      \bool_set_true:N \l_@@_inc_counter_bool
-    }
-    \clist_map_inline:Nn \l_tmpa_clist {
-      \exp_args:No \str_if_eq:nnT \c_@@_flow_str {##1} {
-        \tl_clear:N \l_tmpa_tl
-      }
-    }
-    \l_tmpa_tl
-    \tl_if_empty:nF{#2}{
-      \titleemph{#2}:~
-    }
-  }
-  \_@@_add_counter:
-  \stex_smsmode_do:
-}{
-  \_@@_remove_counter:
-  \bool_if:NT \l_@@_inc_counter_bool {
-    \_@@_inc_counter:
-  }
-  \stex_if_smsmode:F{
-    \clist_set:No \l_tmpa_clist \spftype
-    \tl_set:Nn \l_tmpa_tl{\sproofend}
-    \clist_map_inline:Nn \l_tmpa_clist {
-      \exp_args:No \str_if_eq:nnT \c_@@_flow_str {##1} {
-        \tl_clear:N \l_tmpa_tl
-      }
-    }
-    \l_tmpa_tl
-    \end{stex_annotate_env}
-  }
-}
-%    \end{macrocode}
-% \end{environment}
-%
-% \begin{environment}{spfcase}
-%    similar to |spfcase|, takes a third argument. 
-%    \begin{macrocode}
-\newcommand\spfcasesketch[3][]{
-  \begin{spfcase}[#1]{#2}#3\end{spfcase}
-}
-%    \end{macrocode}
-% \end{environment}
-%
-% \subsection{Justifications}
-%
-% We define the actions that are undertaken, when the keys for justifications are
-% encountered. Here this is very simple, we just define an internal macro with the value,
-% so that we can use it later.
-%    \begin{macrocode}
-\keys_define:nn { stex / just }{
-  id        .str_set_x:N  = \l_@@_just_id_str,
-  method    .tl_set:N     = \l_@@_just_method_tl,
-  premises  .tl_set:N     = \l_@@_just_premises_tl,
-  args      .tl_set:N     = \l_@@_just_args_tl
-}
-%    \end{macrocode}
-%
-% The next three environments and macros are purely semantic, so we ignore the keyval
-% arguments for now and only display the content.\ednote{need to do something about the
-% premise in draft mode.}
-%
-% \begin{macro}{\spfjust}
-%    \begin{macrocode}
-\newcommand\spfjust[1][]{}
-%    \end{macrocode}
-% \end{macro}
-%
-% \begin{macro}{\premise}
-%    \begin{macrocode}
-\newcommand\stex_proof_premise:[2][]{#2}
-%    \end{macrocode}
-% \end{macro}
-%
-% \begin{macro}{\justarg}
-% the |\justarg| macro is purely semantic, so we ignore the keyval arguments for now and
-% only display the content.
-%    \begin{macrocode}
-\newcommand\justarg[2][]{#2}
 %</package>
 %    \end{macrocode}
-% \end{macro}
 % \end{implementation}
 % \Finale
 % \ifinfulldoc\else\printbibliography\fi
