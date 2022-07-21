@@ -25,7 +25,6 @@
   \LoadClass[border=1px,varwidth,crop=false]{standalone}
   \setlength\textwidth{15cm}
 }
-\RequirePackage{standalone}
 
 \clist_if_empty:NT \c_stex_languages_clist {
   \seq_get_right:NN \g_stex_currentfile_seq \l_tmpa_str
