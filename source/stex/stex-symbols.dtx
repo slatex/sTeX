@@ -213,6 +213,7 @@
   specializes .str_set:N    = \l_stex_symdecl_specializes_str , % TODO(?)
   def         .tl_set:N     = \l_stex_symdecl_definiens_tl ,
   reorder     .str_set_x:N  = \l_stex_symdecl_reorder_str ,
+  argnames    .clist_set:N  = \l_stex_symdecl_argnames_clist ,
   assoc       .choices:nn   = 
       {bin,binl,binr,pre,conj,pwconj}
       {\str_set:Nx \l_stex_symdecl_assoctype_str {\l_keys_choice_tl}}
@@ -229,6 +230,7 @@
   \bool_set_false:N \l_stex_symdecl_local_bool
   \tl_clear:N \l_stex_symdecl_type_tl
   \tl_clear:N \l_stex_symdecl_definiens_tl
+  \clist_clear:N \l_stex_symdecl_argnames_clist
   
   \keys_set:nn { stex / symdecl } { #1 }
 }
@@ -324,6 +326,7 @@
       }{##1}
     }
   }
+
   \bool_if:NTF \l_tmpa_bool {
     % possibly numeric
     \str_if_empty:NTF \l_stex_symdecl_args_str {
@@ -350,6 +353,19 @@
   }{
     \prop_put:Nnx \l_tmpa_prop { defined }{ true }
   }
+
+  % argnames
+
+  \clist_clear:N \l_tmpa_clist
+  \int_step_inline:nn {\prop_item:Nn \l_tmpa_prop {arity}} {
+    \clist_if_empty:NTF \l_stex_symdecl_argnames_clist {
+      \clist_put_right:Nn \l_tmpa_clist {##1}
+    }{
+      \clist_pop:NN \l_stex_symdecl_argnames_clist \l_tmpa_tl
+      \exp_args:NNx \clist_put_right:Nn \l_tmpa_clist {\c_dollar_str\l_tmpa_tl}
+    }
+  }
+  \prop_put:Nnx \l_tmpa_prop {argnames} {\clist_use:Nn \l_tmpa_clist ,}
 
   % semantic macro
 
@@ -396,7 +412,7 @@
     _prop 
   } {
     \bool_if:NTF \l_stex_symdecl_local_bool \stex_do_up_to_module:x \stex_execute_in_module:x {
-      \_@@_restore_symbol:nnnnnnn
+      \_@@_restore_symbol:nnnnnnnn
         {\l_stex_symdecl_name_str}
         { \prop_item:Nn \l_tmpa_prop {args} }
         { \prop_item:Nn \l_tmpa_prop {arity} }
@@ -404,10 +420,11 @@
         { \prop_item:Nn \l_tmpa_prop {defined} }
         {\bool_if:NT \l_stex_symdecl_make_macro_bool {#1} }
         {\l_stex_current_module_str}
+        { \prop_item:Nn \l_tmpa_prop {argnames} }
     }
   }
 }
-\cs_new_protected:Nn \_@@_restore_symbol:nnnnnnn {
+\cs_new_protected:Nn \_@@_restore_symbol:nnnnnnnn {
   \prop_clear:N \l_tmpa_prop
   \prop_put:Nnn \l_tmpa_prop { module } { #7 }
   \prop_put:Nnn \l_tmpa_prop { name } { #1}
@@ -415,6 +432,7 @@
   \prop_put:Nnn \l_tmpa_prop { arity } { #3 }
   \prop_put:Nnn \l_tmpa_prop { assocs } { #4 }
   \prop_put:Nnn \l_tmpa_prop { defined } { #5 }
+  \prop_put:Nnn \l_tmpa_prop { argnames } { #8 }
   \tl_if_empty:nF{#6}{
     \tl_set:cx{#6}{\stex_invoke_symbol:n{\detokenize{#7 ? #1}}}
   }
@@ -435,6 +453,7 @@
 \cs_new_protected:Nn \_stex_textsymdecl_args:n {
   \str_clear:N \l_@@_name_str
   \tl_clear:N \l_@@_type_tl
+  \clist_clear:N \l_stex_symdecl_argnames_clist
   \keys_set:nn { stex / textsymdecl } { #1 }
 }
 
@@ -594,12 +613,13 @@
 %    \begin{macrocode}
 \keys_define:nn { stex / notation } {
 %  lang    .tl_set_x:N  = \l_@@_lang_str ,
-  variant .tl_set_x:N  = \l_@@_variant_str ,
-  prec    .str_set_x:N = \l_@@_prec_str ,
-  op      .tl_set:N    = \l_@@_op_tl ,
-  primary .bool_set:N  = \l_@@_primary_bool ,
-  primary .default:n   = {true} ,
-  unknown .code:n      = \str_set:Nx 
+  variant .tl_set_x:N   = \l_@@_variant_str ,
+  prec    .str_set_x:N  = \l_@@_prec_str ,
+  op      .tl_set:N     = \l_@@_op_tl ,
+  primary .bool_set:N   = \l_@@_primary_bool ,
+  primary .default:n    = {true} ,
+  hints    .str_set_x:N = \l_@@_hints_str,
+  unknown .code:n       = \str_set:Nx 
       \l_@@_variant_str \l_keys_key_str
 }
 
@@ -607,6 +627,7 @@
 %  \str_clear:N \l_@@_lang_str
   \str_clear:N \l_@@_variant_str
   \str_clear:N \l_@@_prec_str
+  \str_clear:N \l_@@_hints_str
   \tl_clear:N \l_@@_op_tl
   \bool_set_false:N \l_@@_primary_bool
   
@@ -824,11 +845,12 @@
 
   \seq_pop_left:NN \l_@@_remaining_precs_seq \l_tmpa_str
   \tl_put_right:Nx \l_stex_notation_dummyargs_tl { {
-    \STEXInternalTermMathAssocArgiiii
-      { #1\int_use:N \l_@@_currarg_int }
+    \STEXInternalTermMathAssocArgiiiii
+      { \int_use:N \l_@@_currarg_int }
       { \l_tmpa_str }
       { ####\int_use:N \l_@@_currarg_int }
       { \l_tmpa_cs {####1} {####2} }
+      {#1}
   } }
   \_@@_arguments:
 }
@@ -1045,6 +1067,7 @@
  % lang    .str_set_x:N = \l_@@_lang_str ,
   variant .str_set_x:N = \l_@@_variant_str ,
   prec    .str_set_x:N = \l_@@_prec_str ,
+  argnames    .clist_set:N  = \l_stex_symdecl_argnames_clist ,
   assoc   .choices:nn  = 
       {bin,binl,binr,pre,conj,pwconj}
       {\str_set:Nx \l_stex_symdecl_assoctype_str {\l_keys_choice_tl}},
@@ -1060,6 +1083,7 @@
   \bool_set_false:N \l_stex_symdecl_local_bool
   \tl_clear:N \l_stex_symdecl_type_tl
   \tl_clear:N \l_stex_symdecl_definiens_tl
+  \clist_clear:N \l_stex_symdecl_argnames_clist
  % \str_clear:N \l_@@_lang_str
   \str_clear:N \l_@@_variant_str
   \str_clear:N \l_@@_prec_str
@@ -1102,6 +1126,7 @@
   op      .tl_set:N     = \l_@@_op_tl ,
   prec    .str_set_x:N  = \l_@@_prec_str ,
   reorder .str_set_x:N  = \l_@@_reorder_str ,
+  argnames    .clist_set:N  = \l_@@_argnames_clist ,
   assoc   .choices:nn   = 
       {bin,binl,binr,pre,conj,pwconj}
       {\str_set:Nx \l_@@_assoctype_str {\l_keys_choice_tl}},
@@ -1120,6 +1145,7 @@
   \tl_clear:N \l_@@_type_tl
   \tl_clear:N \l_@@_def_tl
   \tl_clear:N \l_@@_op_tl
+  \clist_clear:N \l_@@_argnames_clist
 
   \keys_set:nn { stex / vardef } { #1 }
 }
@@ -1176,7 +1202,21 @@
   \prop_put:Nnx \l_tmpa_prop { assocs } { \int_use:N \l_tmpb_int }
   \tl_set:cx { #1 }{ \stex_invoke_variable:n { \l_@@_name_str } }
 
-  \prop_set_eq:cN { l_stex_variable_\l_@@_name_str _prop} \l_tmpa_prop
+  % argnames
+
+  \clist_clear:N \l_tmpa_clist
+  \int_step_inline:nn {\prop_item:Nn \l_tmpa_prop {arity}} {
+    \clist_if_empty:NTF \l_@@_argnames_clist {
+      \clist_put_right:Nn \l_tmpa_clist {##1}
+    }{
+      \clist_pop:NN \l_@@_argnames_clist \l_tmpa_tl
+      \exp_args:NNx \clist_put_right:Nn \l_tmpa_clist {\c_dollar_str\l_tmpa_tl}
+    }
+  }
+  \prop_put:Nnx \l_tmpa_prop {argnames} {\clist_use:Nn \l_tmpa_clist ,}
+
+
+  \prop_set_eq:cN { l_stex_symdecl_var://\l_@@_name_str _prop} \l_tmpa_prop
 
   \tl_if_empty:NF \l_@@_op_tl {
     \cs_set:cpx {
@@ -1349,6 +1389,7 @@
   }
   \prop_put:Nnn \l_tmpa_prop {starts} {#3}
   \prop_put:Nnn \l_tmpa_prop {ends} {#4}
+  \prop_put:Nnn \l_tmpa_prop {argnames} {}
 
   \cs_generate_from_arg_count:cNnn {stex_varseq_\l_@@_name_str _cs}
     \cs_set:Npn  {\int_use:N \l_@@_args_int} { #5 }
@@ -1428,7 +1469,7 @@
 
   }}
 
-  \prop_set_eq:cN {stex_varseq_\l_@@_name_str _prop}\l_tmpa_prop
+  \prop_set_eq:cN {l_stex_symdecl_varseq://\l_@@_name_str _prop}\l_tmpa_prop
   \ignorespacesandpars
 }
 

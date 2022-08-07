@@ -71,7 +71,7 @@
     \msg_redirect_module:nnn{ stex }{ none }{ term }
 }{
   \clist_map_inline:Nn \c_stex_debug_clist {
-    \msg_redirect_name:nnn{ stex }{ debug / ##1 }{ term }
+    \msg_redirect_name:nnn{ stex }{ debug / #1 }{ term }
   }
 }
 
@@ -373,6 +373,7 @@
   \detokenize{#1}~found~two~candidates~for~#2
 }
 \cs_new_protected:Nn \stex_path_from_string:Nn {
+  \stex_debug:nn{files}{#2}
   \str_set:Nx \l_tmpa_str { #2 }
   \str_if_empty:NTF \l_tmpa_str {
     \seq_clear:N #1
@@ -388,6 +389,7 @@
     }
     \stex_path_canonicalize:N #1
   }
+  \stex_debug:nn{files}{Yields: \stex_path_to_string:N#1}
 }
 
 \cs_new_protected:Nn \stex_path_to_string:NN {
@@ -489,6 +491,7 @@
   }
   \seq_gset_eq:NN\g_stex_currentfile_seq\g_stex_currentfile_seq
   \exp_args:NNo\seq_gpush:Nn\g__stex_files_stack\g_stex_currentfile_seq
+  \stex_get_document_uri:
 }
 \cs_new_protected:Nn \stex_filestack_pop: {
   \seq_if_empty:NF\g__stex_files_stack{
@@ -500,9 +503,14 @@
     \seq_get:NN\g__stex_files_stack\l_tmpa_seq
     \seq_gset_eq:NN\g_stex_currentfile_seq\l_tmpa_seq
   }
+  \stex_get_document_uri:
 }
 \AddToHook{file/before}{
-  \stex_filestack_push:n{\CurrentFilePath/\CurrentFile}
+  \tl_if_empty:NTF\CurrentFilePath{
+    \stex_filestack_push:n{\CurrentFile}
+  }{
+    \stex_filestack_push:n{\CurrentFilePath/\CurrentFile}
+  }
 }
 \AddToHook{file/after}{
   \stex_filestack_pop:
@@ -887,15 +895,29 @@
 
 %%%%%%%%%%%%%   stex-references.dtx   %%%%%%%%%%%%%
 
-
+\msg_new:nnn{stex}{error/extrefmissing}{
+  Missing~in~or~cite~value~for~\detokenize{\extref}!
+}
+\msg_new:nnn{stex}{warning/smsmissing}{
+  .sref~file~#1~doesn't~exist!
+}
+\msg_new:nnn{stex}{warning/smslabelmissing}{
+  No~label~#2~in~.sref~file~#1!
+}
+\iow_new:N \c__stex_refs_refs_iow
 \AtBeginDocument{
+  \iow_open:Nn \c__stex_refs_refs_iow {\jobname.sref}
 }
 \AtEndDocument{
+  \iow_close:N \c__stex_refs_refs_iow
 }
 \str_set:Nn \g__stex_refs_title_tl {Unnamed~Document}
 
 \NewDocumentCommand \STEXreftitle { m } {
   \tl_gset:Nx \g__stex_refs_title_tl { #1 }
+  \iow_now:Nx \c__stex_refs_refs_iow {
+    \STEXInternalSrefDocumentName { #1 }
+  }
 }
 \str_new:N \l_stex_current_docns_str
 \cs_new_protected:Nn \stex_get_document_uri: {
@@ -930,13 +952,14 @@
     }
 
     \seq_if_empty:NTF \l_tmpa_seq {
-      \str_set_eq:NN \l_stex_current_docns_str \l_tmpa_str
+      \str_gset_eq:NN \l_stex_current_docns_str \l_tmpa_str
     }{
-      \str_set:Nx \l_stex_current_docns_str {
+      \str_gset:Nx \l_stex_current_docns_str {
         \l_tmpa_str/\stex_path_to_string:N \l_tmpa_seq
       }
     }
   }
+  %\stex_get_document_url:
 }
 \str_new:N \l_stex_current_docurl_str
 \cs_new_protected:Nn \stex_get_document_url: {
@@ -985,187 +1008,346 @@
 \str_const:Nn \c__stex_refs_ref_str{REF}
 \str_new:N \l__stex_refs_curr_label_str
 \int_new:N \l__stex_refs_unnamed_counter_int
+\cs_new_protected:Npn \STEXInternalSrefDocumentName #1 {}
+\cs_new_protected:Npn \STEXInternalSrefRestoreTarget #1#2#3#4#5 {}
+\seq_new:N \g_stex_ref_files_seq
+
 \cs_new_protected:Nn \stex_ref_new_doc_target:n {
-  \stex_get_document_uri:
+  %\stex_get_document_uri:
   \str_clear:N \l__stex_refs_curr_label_str
   \str_set:Nx \l_tmpa_str { #1 }
   \str_if_empty:NT \l_tmpa_str {
-    \int_incr:N \l__stex_refs_unnamed_counter_int
+    \int_gincr:N \l__stex_refs_unnamed_counter_int
     \str_set:Nx \l_tmpa_str {REF\int_use:N \l__stex_refs_unnamed_counter_int}
   }
   \str_set:Nx \l__stex_refs_curr_label_str {
     \l_stex_current_docns_str?\l_tmpa_str
   }
-  \seq_if_exist:cF{g__stex_refs_labels_\l_tmpa_str _seq}{
-    \seq_new:c {g__stex_refs_labels_\l_tmpa_str _seq}
-  }
-  \seq_if_in:coF{g__stex_refs_labels_\l_tmpa_str _seq}\l__stex_refs_curr_label_str {
-    \seq_gput_right:co{g__stex_refs_labels_\l_tmpa_str _seq}\l__stex_refs_curr_label_str
-  }
+
+  \exp_args:Noo \STEXInternalAuxAddDocRef\l_stex_current_docns_str\l_tmpa_str
+
+  %\seq_if_exist:cF{g__stex_refs_labels_\l_tmpa_str _seq}{
+  %  \seq_new:c {g__stex_refs_labels_\l_tmpa_str _seq}
+  %}
+  %\seq_if_in:coF{g__stex_refs_labels_\l_tmpa_str _seq}\l__stex_refs_curr_label_str {
+  %  \seq_gput_right:co{g__stex_refs_labels_\l_tmpa_str _seq}\l__stex_refs_curr_label_str
+  %}
+
   \stex_if_smsmode:TF {
-    \stex_get_document_url:
-    \str_gset_eq:cN {sref_url_\l__stex_refs_curr_label_str _str}\l_stex_current_docurl_str
-    \str_gset_eq:cN {sref_\l__stex_refs_curr_label_str _type}\c__stex_refs_url_str
+    %\stex_get_document_url:
+    %\str_gset_eq:cN {sref_url_\l__stex_refs_curr_label_str _str}\l_stex_current_docurl_str
+    %\str_gset_eq:cN {sref_\l__stex_refs_curr_label_str _type}\c__stex_refs_url_str
   }{
-    %\iow_now:Nx \c__stex_refs_refs_iow { \l_tmpa_str~=~\expandafter\unexpanded\expandafter{\@currentlabel}~in~\exp_args:No\unexpanded\g__stex_refs_title_tl,}
+    \iow_now:Nx \c__stex_refs_refs_iow {
+      \STEXInternalSrefRestoreTarget
+        {\l_stex_current_docns_str}
+        {\l_tmpa_str}
+        {\@currentcounter}
+        {\@currentlabel}
+        {\exp_args:No\unexpanded\@currentlabelname}
+    }
+    %\iow_now:Nx \c__stex_refs_refs_iow {
+    %  {\l_stex_current_docns_str?\l_tmpa_str}~=~{{\use:c{\@currentcounter autorefname}~\@currentlabel}~(\@currentlabelname)~in~\exp_args:No\unexpanded\g__stex_refs_title_tl},}
     \exp_args:Nx\label{sref_\l__stex_refs_curr_label_str}
-    \immediate\write\@auxout{\stexauxadddocref{\l_stex_current_docns_str}{\l_tmpa_str}}
-    \str_gset:cx {sref_\l__stex_refs_curr_label_str _type}\c__stex_refs_ref_str
+    \immediate\write\@auxout{\STEXInternalAuxAddDocRef{\l_stex_current_docns_str}{\l_tmpa_str}}
+    %\str_gset:cx {sref_\l__stex_refs_curr_label_str _type}\c__stex_refs_ref_str
   }
 }
-\cs_new_protected:Npn \stexauxadddocref #1 #2 {
-  \str_set:Nn \l_tmpa_str {#1?#2}
-  \str_gset_eq:cN{sref_#1?#2_type}\c__stex_refs_ref_str
-  \seq_if_exist:cF{g__stex_refs_labels_#2_seq}{
-    \seq_new:c {g__stex_refs_labels_#2_seq}
+\NewDocumentCommand \slabel {m} {\stex_ref_new_doc_target:n {#1}}
+\cs_new_protected:Npn \STEXInternalAuxAddDocRef #1 #2 {
+  \exp_args:NNx \seq_if_in:NnTF \g_stex_ref_files_seq {\detokenize{#1}} {
+    \exp_args:Nnx \seq_if_in:cnF{g_stex_ref_ #1 _seq}{\detokenize{#2}}{
+      \exp_args:Nnx \seq_gput_left:cn{g_stex_ref_ #1 _seq}{\detokenize{#2}}
+    }
+  }{
+      \exp_args:NNx \seq_gput_right:Nn \g_stex_ref_files_seq {\detokenize{#1}}
+      %\seq_if_exist:cF{g_stex_ref_ #1 _seq}{
+        \seq_new:c{g_stex_ref_ #1 _seq} % <- seq_new throws errors??
+      %}
+      \exp_args:Nnx \seq_gput_left:cn{g_stex_ref_ #1 _seq}{\detokenize{#2}}
   }
-  \seq_if_in:coF{g__stex_refs_labels_#2_seq}\l_tmpa_str {
-    \seq_gput_right:co{g__stex_refs_labels_#2_seq}\l_tmpa_str
-  }
+
+  %\str_set:Nn \l_tmpa_str {#1?#2}
+  %\str_gset_eq:cN{sref_#1?#2_type}\c__stex_refs_ref_str
+  %\seq_if_exist:cF{g__stex_refs_labels_#2_seq}{
+  %  \seq_new:c {g__stex_refs_labels_#2_seq}
+  %}
+  %\seq_if_in:coF{g__stex_refs_labels_#2_seq}\l_tmpa_str {
+  %  \seq_gput_right:co{g__stex_refs_labels_#2_seq}\l_tmpa_str
+  %}
 }
 \AtEndDocument{
-  \def\stexauxadddocref#1 #2 {}{}
+  \def\STEXInternalAuxAddDocRef#1 #2 {}{}
 }
 \cs_new_protected:Nn \stex_ref_new_sym_target:n {
-  \stex_if_smsmode:TF {
-    \str_if_exist:cF{sref_sym_#1_type}{
-      \stex_get_document_url:
-      \str_gset_eq:cN {sref_sym_url_#1_str}\l_stex_current_docurl_str
-      \str_gset_eq:cN {sref_sym_#1_type}\c__stex_refs_url_str
-    }
-  }{
-    \str_if_empty:NF \l__stex_refs_curr_label_str {
-      \str_gset_eq:cN {sref_sym_#1_label_str}\l__stex_refs_curr_label_str
-      \immediate\write\@auxout{
-        \exp_not:N\expandafter\def\exp_not:N\csname \exp_not:N\detokenize{sref_sym_#1_label_str}\exp_not:N\endcsname{
-            \l__stex_refs_curr_label_str
-          }
-      }
-    }
-  }
-}
-\str_new:N \l__stex_refs_indocument_str
 
-\keys_define:nn { stex / sref } {
-  linktext      .tl_set:N  = \l__stex_refs_linktext_tl ,
-  fallback      .tl_set:N  = \l__stex_refs_fallback_tl ,
-  pre           .tl_set:N  = \l__stex_refs_pre_tl ,
-  post          .tl_set:N  = \l__stex_refs_post_tl ,
 }
-\cs_new_protected:Nn \__stex_refs_args:n {
-  \tl_clear:N \l__stex_refs_linktext_tl
-  \tl_clear:N \l__stex_refs_fallback_tl
-  \tl_clear:N \l__stex_refs_pre_tl
-  \tl_clear:N \l__stex_refs_post_tl
+
+\keys_define:nn { stex / sref / 1 } {
+  archive    .str_set_x:N  = \l__stex_refs_repo_str,
+  file    .str_set_x:N  = \l__stex_refs_file_str
+}
+\cs_new_protected:Nn \__stex_refs_args_i:n {
   \str_clear:N \l__stex_refs_repo_str
-  \keys_set:nn { stex / sref } { #1 }
+  \str_clear:N \l__stex_refs_file_str
+  \keys_set:nn { stex / sref / 1 } { #1 }
 }
-\NewDocumentCommand \sref { O{} m}{
-  \__stex_refs_args:n { #1 }
-  \str_if_empty:NTF \l__stex_refs_indocument_str {
-    \str_set:Nx \l_tmpa_str { #2 }
-    \exp_args:NNno \seq_set_split:Nnn \l_tmpa_seq ? \l_tmpa_str
-    \int_compare:nNnTF {\seq_count:N \l_tmpa_seq} = 1 {
-      \seq_if_exist:cTF{g__stex_refs_labels_\l_tmpa_str _seq}{
-        \seq_get_left:cNF {g__stex_refs_labels_\l_tmpa_str _seq} \l_tmpa_str {
-          \str_clear:N \l_tmpa_str
+\keys_define:nn { stex / sref / 2 } {
+  in      .str_set_x:N  = \l__stex_refs_in_str,
+  archive    .str_set_x:N  = \l__stex_refs_repob_str,
+  cite    .str_set_x:N  = \l__stex_refs_cite_str
+}
+\cs_new_protected:Nn \__stex_refs_args_ii:n {
+  \str_clear:N \l__stex_refs_in_str
+  \str_clear:N \l__stex_refs_cite_str
+  \str_clear:N \l__stex_refs_repob_str
+  \keys_set:nn { stex / sref / 2 } { #1 }
+}
+\NewDocumentCommand \sref { O{} m O{}}{
+  \__stex_refs_args_i:n{#1}
+  \__stex_refs_args_ii:n{#3}
+  \str_clear:N \l__stex_refs_uri_str
+  \__stex_refs_find_uri:n{#2}
+  \__stex_refs_do_sref:n{#2}
+}
+\NewDocumentCommand \extref { O{} m m}{
+  \__stex_refs_args_i:n{#1}
+  \__stex_refs_args_ii:n{#3}
+  \str_if_empty:NT \l__stex_refs_in_str {
+    \msg_error:nn{stex}{error/extrefmissing}
+  }
+  \str_clear:N \l__stex_refs_uri_str
+  \__stex_refs_find_uri:n{#2}
+  \__stex_refs_do_sref_in:n{#2}
+}
+
+\cs_new_protected:Nn \__stex_refs_find_uri:n {
+  \stex_debug:nn{sref}{File: \l__stex_refs_file_str^^JRepo:\l__stex_refs_repo_str}
+  \str_if_empty:NTF \l__stex_refs_file_str {
+    \seq_if_exist:cT{g_stex_ref_\l_stex_current_docns_str _seq}{
+      \seq_map_inline:cn{g_stex_ref_\l_stex_current_docns_str _seq}{
+        \str_if_eq:nnT{#1}{##1}{
+          \str_set_eq:NN \l__stex_refs_uri_str \l_stex_current_docns_str
+          \seq_map_break:
         }
-      }{
-        \str_clear:N \l_tmpa_str
-      }
-    }{
-      \seq_pop_left:NN \l_tmpa_seq \l_tmpb_str
-      \seq_pop_right:NN \l_tmpa_seq \l_tmpa_str
-      \int_set:Nn \l_tmpa_int { \exp_args:Ne \str_count:n {\l_tmpb_str?\l_tmpa_str} }
-      \seq_if_exist:cTF{g__stex_refs_labels_\l_tmpa_str _seq}{
-        \str_set_eq:NN \l_tmpc_str \l_tmpa_str
-        \str_clear:N \l_tmpa_str
-        \seq_map_inline:cn {g__stex_refs_labels_\l_tmpc_str _seq} {
-          \str_if_eq:eeT { \l_tmpb_str?\l_tmpc_str }{
-            \str_range:nnn { ##1 }{ -\l_tmpa_int}{ -1 }
-          }{
-            \seq_map_break:n {
-              \str_set:Nn \l_tmpa_str { ##1 }
-            }
-          }
-        }
-      }{
-        \str_clear:N \l_tmpa_str
       }
     }
-    \str_if_empty:NTF \l_tmpa_str {
-      \tl_if_empty:NTF \l__stex_refs_linktext_tl \l__stex_refs_fallback_tl \l__stex_refs_linktext_tl
-    }{
-      \str_if_eq:cNTF {sref_\l_tmpa_str _type} \c__stex_refs_ref_str {
-        \tl_if_empty:NTF \l__stex_refs_linktext_tl {
-          \cs_if_exist:cTF{autoref}{
-            \l__stex_refs_pre_tl\exp_args:Nx\autoref{sref_\l_tmpa_str}\l__stex_refs_post_tl
-          }{
-            \l__stex_refs_pre_tl\exp_args:Nx\ref{sref_\l_tmpa_str}\l__stex_refs_post_tl
+    \str_if_empty:NF \l__stex_refs_uri_str {
+      \seq_map_inline:Nn \g_stex_ref_files_seq {
+        \seq_map_inline:cn{g_stex_ref_##1_seq}{
+          \str_if_eq:nnT{#1}{####1}{
+            \str_set:Nn \l__stex_refs_uri_str {##1}
+            \seq_map_break:n{\seq_map_break:}
           }
-        }{
-          \ltx@ifpackageloaded{hyperref}{
-            \hyperref[sref_\l_tmpa_str]\l__stex_refs_linktext_tl
-          }{
-            \l__stex_refs_linktext_tl
-          }
-        }
-      }{
-        \ltx@ifpackageloaded{hyperref}{
-          \href{\use:c{sref_url_\l_tmpa_str _str}}{\tl_if_empty:NTF \l__stex_refs_linktext_tl \l__stex_refs_fallback_tl \l__stex_refs_linktext_tl}
-        }{
-          \tl_if_empty:NTF \l__stex_refs_linktext_tl \l__stex_refs_fallback_tl \l__stex_refs_linktext_tl
         }
       }
     }
   }{
-    % TODO
+    \str_if_empty:NTF \l__stex_refs_repo_str {
+      \prop_if_exist:NTF \l_stex_current_repository_prop {
+        \prop_get:NnN \l_stex_current_repository_prop { ns } \l__stex_refs_uri_str
+        \str_set:Nx \l__stex_refs_uri_str {\l__stex_refs_uri_str / \l__stex_refs_file_str}
+        \stex_path_from_string:Nn \l_tmpb_seq \l__stex_refs_uri_str
+        \str_set:Nx \l__stex_refs_uri_str {\stex_path_to_string:N \l_tmpb_seq}
+      }{
+        \stex_path_from_string:Nn \l_tmpb_seq {
+          \stex_path_to_string:N \g_stex_currentfile_seq/ .. / \l__stex_refs_file_str
+        }
+        \str_set:Nx \l__stex_refs_uri_str {file:/\stex_path_to_string:N \l_tmpb_seq}
+      }
+    }{
+      \stex_require_repository:n \l__stex_refs_repo_str
+      \prop_get:cnN { c_stex_mathhub_\l__stex_refs_repo_str _manifest_prop } { ns } \l__stex_refs_uri_str
+      \str_set:Nx \l__stex_refs_uri_str {\l__stex_refs_uri_str / \l__stex_refs_file_str}
+      \stex_path_from_string:Nn \l_tmpb_seq \l__stex_refs_uri_str
+      \str_set:Nx \l__stex_refs_uri_str {\stex_path_to_string:N \l_tmpb_seq}
+    }
   }
 }
+
+\cs_new_protected:Nn \__stex_refs_do_autoref:n{
+  \cs_if_exist:cTF{autoref}{
+     \exp_args:Nx\autoref{sref_#1}
+   }{
+     \exp_args:Nx\ref{sref_#1}
+   }
+}
+
+\cs_new_protected:Nn \__stex_refs_do_sref:n {
+  \str_if_empty:NTF \l__stex_refs_uri_str {
+    \str_if_empty:NTF \l__stex_refs_in_str {
+      \__stex_refs_do_autoref:n{#1}
+    }{
+      \__stex_refs_do_sref_in:n{#1}
+    }
+  }{
+    \exp_args:NNo \seq_if_in:NnTF \g_stex_ref_files_seq \l__stex_refs_uri_str {
+      \exp_args:Nnx \seq_if_in:cnTF{g_stex_ref_\l__stex_refs_uri_str _seq}{\detokenize{#1}}{
+        \__stex_refs_do_autoref:n{\l__stex_refs_uri_str?#1}
+      }{
+        \str_if_empty:NTF \l__stex_refs_in_str {
+          \__stex_refs_do_autoref:n{#1}
+        }{
+          \__stex_refs_do_sref_in:n{#1}
+        }
+      }
+    }{
+      \str_if_empty:NTF \l__stex_refs_in_str {
+        \__stex_refs_do_autoref:n{#1}
+      }{
+        \__stex_refs_do_sref_in:n{#1}
+      }
+    }
+  }
+}
+
+\cs_new_protected:Nn \__stex_refs_restore_target:nnnnn {
+  \str_if_empty:NTF \l__stex_refs_uri_str {
+    \exp_args:No \str_if_eq:nnT \l__stex_refs_id_str {#2}{
+      \tl_set:Nn \l__stex_refs_return_tl {
+        \use:c{#3autorefname}~#4\tl_if_empty:nF{#5}{~(#5)}~in~
+        \str_if_empty:NTF \l__stex_refs_cite_str{\tl_if_empty:nTF\l__stex_refs_docname_tl{
+          ???
+        }\l__stex_refs_docname_tl}{\cite{\l__stex_refs_cite_str}}
+      }
+    }
+  }{
+    \stex_debug:nn{sref}{\l__stex_refs_uri_str{}~ == ~ #1 ~ ?}
+    \exp_args:No \str_if_eq:nnT \l__stex_refs_uri_str {#1}{
+      \stex_debug:nn{sref}{\l__stex_refs_id_str~ == ~ #2 ~ ?}
+      \exp_args:No \str_if_eq:nnT \l__stex_refs_id_str {#2}{
+        \stex_debug:nn{sref}{success!}
+        \tl_set:Nn \l__stex_refs_return_tl {
+          \use:c{#3autorefname}~#4\tl_if_empty:nF{#5}{~(#5)}~in~
+          \str_if_empty:NTF \l__stex_refs_cite_str{\tl_if_empty:nTF\l__stex_refs_docname_tl{
+            ???
+          }\l__stex_refs_docname_tl}{\cite{\l__stex_refs_cite_str}}
+        }
+        \endinput
+      }
+    }
+  }
+}
+\cs_new_protected:Nn \__stex_refs_document_name:n {
+  \tl_set:Nn \l__stex_refs_docname_tl {#1}
+}
+\cs_new_protected:Nn \__stex_refs_do_sref_in:n {
+  \stex_debug:nn{sref}{In: \l__stex_refs_in_str^^JRepo:\l__stex_refs_repo_str}
+  \stex_debug:nn{sref}{URI: \l__stex_refs_uri_str?#1}
+  %\msg_warning:nnn{stex}{warning/smsmissing}{<filename>}
+  \begingroup\catcode13=9\relax\catcode10=9\relax
+    \str_if_empty:NTF \l__stex_refs_repob_str {
+      \prop_if_exist:NTF \l_stex_current_repository_prop {
+        \str_set:Nx \l_tmpa_str {
+          \c_stex_mathhub_str /
+          \prop_item:Nn \l_stex_current_repository_prop { id }
+          / source / \l__stex_refs_in_str .sref
+        }
+      }{
+        \str_set:Nx \l_tmpa_str {
+          \stex_path_to_string:N \g_stex_currentfile_seq/ .. / \l__stex_refs_in_str . sref
+        }
+      }
+    }{
+      \str_set:Nx \l_tmpa_str {
+        \c_stex_mathhub_str / \l__stex_refs_repob_str
+        / source / \l__stex_refs_in_str . sref
+      }
+    }
+    \stex_path_from_string:Nn \l_tmpb_seq \l_tmpa_str
+    \stex_path_to_string:NN \l_tmpb_seq \l_tmpa_str
+    \stex_debug:nn{sref}{File: \l_tmpa_str}
+    \exp_args:No \IfFileExists \l_tmpa_str {
+      \tl_clear:N \l__stex_refs_docname_tl
+      \tl_clear:N \l__stex_refs_return_tl
+      \str_set:Nn \l__stex_refs_id_str {#1}
+      \let\STEXInternalSrefDocumentName\__stex_refs_document_name:n
+      \let\STEXInternalSrefRestoreTarget\__stex_refs_restore_target:nnnnn
+      \use:c{@ @ input}{\l_tmpa_str}
+      \exp_args:No \tl_if_empty:nTF \l__stex_refs_return_tl {
+        \exp_args:Nnno \msg_warning:nnnn{stex}{warning/smslabelmissing}\l_tmpa_str{#1}
+        \__stex_refs_do_autoref:n{
+          \str_if_empty:NF\l__stex_refs_uri_str{\l__stex_refs_uri_str?}#1
+        }
+      }{
+        \l__stex_refs_return_tl
+      }
+    }{
+      \exp_args:Nnno \msg_warning:nnn{stex}{warning/smsmissing}\l_tmpa_str
+      \__stex_refs_do_autoref:n{
+        \str_if_empty:NF\l__stex_refs_uri_str{\l__stex_refs_uri_str?}#1
+      }
+    }
+  \endgroup
+}
+
+ % \__stex_refs_args:n { #1 }
+ % \str_if_empty:NTF \l__stex_refs_indocument_str {
+ %   \str_set:Nx \l_tmpa_str { #2 }
+ %   \exp_args:NNno \seq_set_split:Nnn \l_tmpa_seq ? \l_tmpa_str
+ %   \int_compare:nNnTF {\seq_count:N \l_tmpa_seq} = 1 {
+ %     \seq_if_exist:cTF{g__stex_refs_labels_\l_tmpa_str _seq}{
+ %       \seq_get_left:cNF {g__stex_refs_labels_\l_tmpa_str _seq} \l_tmpa_str {
+ %         \str_clear:N \l_tmpa_str
+ %       }
+ %     }{
+ %       \str_clear:N \l_tmpa_str
+ %     }
+ %   }{
+ %     \seq_pop_left:NN \l_tmpa_seq \l_tmpb_str
+ %     \seq_pop_right:NN \l_tmpa_seq \l_tmpa_str
+ %    \int_set:Nn \l_tmpa_int { \exp_args:Ne \str_count:n {\l_tmpb_str?\l_tmpa_str} }
+ %     \seq_if_exist:cTF{g__stex_refs_labels_\l_tmpa_str _seq}{
+ %       \str_set_eq:NN \l_tmpc_str \l_tmpa_str
+ %       \str_clear:N \l_tmpa_str
+ %       \seq_map_inline:cn {g__stex_refs_labels_\l_tmpc_str _seq} {
+ %         \str_if_eq:eeT { \l_tmpb_str?\l_tmpc_str }{
+ %           \str_range:nnn { ##1 }{ -\l_tmpa_int}{ -1 }
+ %         }{
+ %           \seq_map_break:n {
+ %             \str_set:Nn \l_tmpa_str { ##1 }
+ %           }
+ %         }
+ %       }
+ %     }{
+ %       \str_clear:N \l_tmpa_str
+ %     }
+ %   }
+ %   \str_if_empty:NTF \l_tmpa_str {
+ %     \tl_if_empty:NTF \l__stex_refs_linktext_tl \l__stex_refs_fallback_tl \l__stex_refs_linktext_tl
+ %   }{
+ %     \str_if_eq:cNTF {sref_\l_tmpa_str _type} \c__stex_refs_ref_str {
+ %       \tl_if_empty:NTF \l__stex_refs_linktext_tl {
+ %         \cs_if_exist:cTF{autoref}{
+ %           \l__stex_refs_pre_tl\exp_args:Nx\autoref{sref_\l_tmpa_str}\l__stex_refs_post_tl
+ %         }{
+ %           \l__stex_refs_pre_tl\exp_args:Nx\ref{sref_\l_tmpa_str}\l__stex_refs_post_tl
+ %         }
+ %       }{
+ %         \ltx@ifpackageloaded{hyperref}{
+ %           \hyperref[sref_\l_tmpa_str]\l__stex_refs_linktext_tl
+ %         }{
+ %           \l__stex_refs_linktext_tl
+ %         }
+ %       }
+ %     }{
+ %       \ltx@ifpackageloaded{hyperref}{
+ %         \href{\use:c{sref_url_\l_tmpa_str _str}}{\tl_if_empty:NTF \l__stex_refs_linktext_tl \l__stex_refs_fallback_tl \l__stex_refs_linktext_tl}
+ %       }{
+ %         \tl_if_empty:NTF \l__stex_refs_linktext_tl \l__stex_refs_fallback_tl \l__stex_refs_linktext_tl
+ %       }
+ %     }
+ %   }
+ % }{
+    % TODO
+ % }
 \NewDocumentCommand \srefsym { O{} m}{
   \stex_get_symbol:n { #2 }
   \__stex_refs_sym_aux:nn{#1}{\l_stex_get_symbol_uri_str}
 }
 
 \cs_new_protected:Nn \__stex_refs_sym_aux:nn {
-  \str_if_exist:cTF {sref_sym_#2 _label_str }{
-    \sref[#1]{\use:c{sref_sym_#2 _label_str}}
-  }{
-    \__stex_refs_args:n { #1 }
-    \str_if_empty:NTF \l__stex_refs_indocument_str {
-      \tl_if_exist:cTF{sref_sym_#2 _type}{
-        % doc uri in \l_tmpb_str
-        \str_set:Nx \l_tmpa_str {\use:c{sref_sym_#2 _type}}
-        \str_if_eq:NNTF \l_tmpa_str \c__stex_refs_ref_str {
-          % reference
-          \tl_if_empty:NTF \l__stex_refs_linktext_tl {
-            \cs_if_exist:cTF{autoref}{
-              \l__stex_refs_pre_tl\autoref{sref_sym_#2}\l__stex_refs_post_tl
-            }{
-              \l__stex_refs_pre_tl\ref{sref_sym_#2}\l__stex_refs_post_tl
-            }
-          }{
-            \ltx@ifpackageloaded{hyperref}{
-              \hyperref[sref_sym_#2]\l__stex_refs_linktext_tl
-            }{
-              \l__stex_refs_linktext_tl
-            }
-          }
-        }{
-          % URL
-          \ltx@ifpackageloaded{hyperref}{
-            \href{\use:c{sref_sym_url_#2 _str}}{\tl_if_empty:NTF \l__stex_refs_linktext_tl \l__stex_refs_fallback_tl \l__stex_refs_linktext_tl}
-          }{
-            \tl_if_empty:NTF \l__stex_refs_linktext_tl \l__stex_refs_fallback_tl \l__stex_refs_linktext_tl
-          }
-        }
-      }{
-        \tl_if_empty:NTF \l__stex_refs_linktext_tl \l__stex_refs_fallback_tl \l__stex_refs_linktext_tl
-      }
-    }{
-      % TODO
-    }
-  }
+
 }
 \cs_new_protected:Npn \srefsymuri #1 #2 {
   \__stex_refs_sym_aux:nn{linktext={#2}}{#1}
@@ -2135,6 +2317,7 @@
   specializes .str_set:N    = \l_stex_symdecl_specializes_str , % TODO(?)
   def         .tl_set:N     = \l_stex_symdecl_definiens_tl ,
   reorder     .str_set_x:N  = \l_stex_symdecl_reorder_str ,
+  argnames    .clist_set:N  = \l_stex_symdecl_argnames_clist ,
   assoc       .choices:nn   =
       {bin,binl,binr,pre,conj,pwconj}
       {\str_set:Nx \l_stex_symdecl_assoctype_str {\l_keys_choice_tl}}
@@ -2151,6 +2334,7 @@
   \bool_set_false:N \l_stex_symdecl_local_bool
   \tl_clear:N \l_stex_symdecl_type_tl
   \tl_clear:N \l_stex_symdecl_definiens_tl
+  \clist_clear:N \l_stex_symdecl_argnames_clist
 
   \keys_set:nn { stex / symdecl } { #1 }
 }
@@ -2231,6 +2415,7 @@
       }{##1}
     }
   }
+
   \bool_if:NTF \l_tmpa_bool {
     % possibly numeric
     \str_if_empty:NTF \l_stex_symdecl_args_str {
@@ -2257,6 +2442,19 @@
   }{
     \prop_put:Nnx \l_tmpa_prop { defined }{ true }
   }
+
+  % argnames
+
+  \clist_clear:N \l_tmpa_clist
+  \int_step_inline:nn {\prop_item:Nn \l_tmpa_prop {arity}} {
+    \clist_if_empty:NTF \l_stex_symdecl_argnames_clist {
+      \clist_put_right:Nn \l_tmpa_clist {##1}
+    }{
+      \clist_pop:NN \l_stex_symdecl_argnames_clist \l_tmpa_tl
+      \exp_args:NNx \clist_put_right:Nn \l_tmpa_clist {\c_dollar_str\l_tmpa_tl}
+    }
+  }
+  \prop_put:Nnx \l_tmpa_prop {argnames} {\clist_use:Nn \l_tmpa_clist ,}
 
   % semantic macro
 
@@ -2303,7 +2501,7 @@
     _prop
   } {
     \bool_if:NTF \l_stex_symdecl_local_bool \stex_do_up_to_module:x \stex_execute_in_module:x {
-      \__stex_symdecl_restore_symbol:nnnnnnn
+      \__stex_symdecl_restore_symbol:nnnnnnnn
         {\l_stex_symdecl_name_str}
         { \prop_item:Nn \l_tmpa_prop {args} }
         { \prop_item:Nn \l_tmpa_prop {arity} }
@@ -2311,10 +2509,11 @@
         { \prop_item:Nn \l_tmpa_prop {defined} }
         {\bool_if:NT \l_stex_symdecl_make_macro_bool {#1} }
         {\l_stex_current_module_str}
+        { \prop_item:Nn \l_tmpa_prop {argnames} }
     }
   }
 }
-\cs_new_protected:Nn \__stex_symdecl_restore_symbol:nnnnnnn {
+\cs_new_protected:Nn \__stex_symdecl_restore_symbol:nnnnnnnn {
   \prop_clear:N \l_tmpa_prop
   \prop_put:Nnn \l_tmpa_prop { module } { #7 }
   \prop_put:Nnn \l_tmpa_prop { name } { #1}
@@ -2322,6 +2521,7 @@
   \prop_put:Nnn \l_tmpa_prop { arity } { #3 }
   \prop_put:Nnn \l_tmpa_prop { assocs } { #4 }
   \prop_put:Nnn \l_tmpa_prop { defined } { #5 }
+  \prop_put:Nnn \l_tmpa_prop { argnames } { #8 }
   \tl_if_empty:nF{#6}{
     \tl_set:cx{#6}{\stex_invoke_symbol:n{\detokenize{#7 ? #1}}}
   }
@@ -2337,6 +2537,7 @@
 \cs_new_protected:Nn \_stex_textsymdecl_args:n {
   \str_clear:N \l__stex_symdecl_name_str
   \tl_clear:N \l__stex_symdecl_type_tl
+  \clist_clear:N \l_stex_symdecl_argnames_clist
   \keys_set:nn { stex / textsymdecl } { #1 }
 }
 
@@ -2478,18 +2679,20 @@
   }
 }
 \keys_define:nn { stex / notation } {
-  variant .tl_set_x:N  = \l__stex_notation_variant_str ,
-  prec    .str_set_x:N = \l__stex_notation_prec_str ,
-  op      .tl_set:N    = \l__stex_notation_op_tl ,
-  primary .bool_set:N  = \l__stex_notation_primary_bool ,
-  primary .default:n   = {true} ,
-  unknown .code:n      = \str_set:Nx
+  variant .tl_set_x:N   = \l__stex_notation_variant_str ,
+  prec    .str_set_x:N  = \l__stex_notation_prec_str ,
+  op      .tl_set:N     = \l__stex_notation_op_tl ,
+  primary .bool_set:N   = \l__stex_notation_primary_bool ,
+  primary .default:n    = {true} ,
+  hints    .str_set_x:N = \l__stex_notation_hints_str,
+  unknown .code:n       = \str_set:Nx
       \l__stex_notation_variant_str \l_keys_key_str
 }
 
 \cs_new_protected:Nn \_stex_notation_args:n {
   \str_clear:N \l__stex_notation_variant_str
   \str_clear:N \l__stex_notation_prec_str
+  \str_clear:N \l__stex_notation_hints_str
   \tl_clear:N \l__stex_notation_op_tl
   \bool_set_false:N \l__stex_notation_primary_bool
 
@@ -2682,11 +2885,12 @@
 
   \seq_pop_left:NN \l__stex_notation_remaining_precs_seq \l_tmpa_str
   \tl_put_right:Nx \l_stex_notation_dummyargs_tl { {
-    \STEXInternalTermMathAssocArgiiii
-      { #1\int_use:N \l__stex_notation_currarg_int }
+    \STEXInternalTermMathAssocArgiiiii
+      { \int_use:N \l__stex_notation_currarg_int }
       { \l_tmpa_str }
       { ####\int_use:N \l__stex_notation_currarg_int }
       { \l_tmpa_cs {####1} {####2} }
+      {#1}
   } }
   \__stex_notation_arguments:
 }
@@ -2884,6 +3088,7 @@
  % lang    .str_set_x:N = \l__stex_notation_lang_str ,
   variant .str_set_x:N = \l__stex_notation_variant_str ,
   prec    .str_set_x:N = \l__stex_notation_prec_str ,
+  argnames    .clist_set:N  = \l_stex_symdecl_argnames_clist ,
   assoc   .choices:nn  =
       {bin,binl,binr,pre,conj,pwconj}
       {\str_set:Nx \l_stex_symdecl_assoctype_str {\l_keys_choice_tl}},
@@ -2899,6 +3104,7 @@
   \bool_set_false:N \l_stex_symdecl_local_bool
   \tl_clear:N \l_stex_symdecl_type_tl
   \tl_clear:N \l_stex_symdecl_definiens_tl
+  \clist_clear:N \l_stex_symdecl_argnames_clist
  % \str_clear:N \l__stex_notation_lang_str
   \str_clear:N \l__stex_notation_variant_str
   \str_clear:N \l__stex_notation_prec_str
@@ -2934,6 +3140,7 @@
   op      .tl_set:N     = \l__stex_variables_op_tl ,
   prec    .str_set_x:N  = \l__stex_variables_prec_str ,
   reorder .str_set_x:N  = \l__stex_variables_reorder_str ,
+  argnames    .clist_set:N  = \l__stex_variables_argnames_clist ,
   assoc   .choices:nn   =
       {bin,binl,binr,pre,conj,pwconj}
       {\str_set:Nx \l__stex_variables_assoctype_str {\l_keys_choice_tl}},
@@ -2952,6 +3159,7 @@
   \tl_clear:N \l__stex_variables_type_tl
   \tl_clear:N \l__stex_variables_def_tl
   \tl_clear:N \l__stex_variables_op_tl
+  \clist_clear:N \l__stex_variables_argnames_clist
 
   \keys_set:nn { stex / vardef } { #1 }
 }
@@ -3008,7 +3216,20 @@
   \prop_put:Nnx \l_tmpa_prop { assocs } { \int_use:N \l_tmpb_int }
   \tl_set:cx { #1 }{ \stex_invoke_variable:n { \l__stex_variables_name_str } }
 
-  \prop_set_eq:cN { l_stex_variable_\l__stex_variables_name_str _prop} \l_tmpa_prop
+  % argnames
+
+  \clist_clear:N \l_tmpa_clist
+  \int_step_inline:nn {\prop_item:Nn \l_tmpa_prop {arity}} {
+    \clist_if_empty:NTF \l__stex_variables_argnames_clist {
+      \clist_put_right:Nn \l_tmpa_clist {##1}
+    }{
+      \clist_pop:NN \l__stex_variables_argnames_clist \l_tmpa_tl
+      \exp_args:NNx \clist_put_right:Nn \l_tmpa_clist {\c_dollar_str\l_tmpa_tl}
+    }
+  }
+  \prop_put:Nnx \l_tmpa_prop {argnames} {\clist_use:Nn \l_tmpa_clist ,}
+
+  \prop_set_eq:cN { l_stex_symdecl_var://\l__stex_variables_name_str _prop} \l_tmpa_prop
 
   \tl_if_empty:NF \l__stex_variables_op_tl {
     \cs_set:cpx {
@@ -3179,6 +3400,7 @@
   }
   \prop_put:Nnn \l_tmpa_prop {starts} {#3}
   \prop_put:Nnn \l_tmpa_prop {ends} {#4}
+  \prop_put:Nnn \l_tmpa_prop {argnames} {}
 
   \cs_generate_from_arg_count:cNnn {stex_varseq_\l__stex_variables_name_str _cs}
     \cs_set:Npn  {\int_use:N \l__stex_variables_args_int} { #5 }
@@ -3257,7 +3479,7 @@
 
   }}
 
-  \prop_set_eq:cN {stex_varseq_\l__stex_variables_name_str _prop}\l_tmpa_prop
+  \prop_set_eq:cN {l_stex_symdecl_varseq://\l__stex_variables_name_str _prop}\l_tmpa_prop
   \ignorespacesandpars
 }
 
@@ -3354,8 +3576,10 @@
     \def\comp{\_comp}
     \str_set:Nn \STEXInternalCurrentSymbolStr { #1 }
     \bool_set_false:N \l_stex_allow_semantic_bool
-    \_stex_term_oms:nnn {#1}{#1 \c_hash_str CUSTOM-}{
-      \comp{ #2 }
+    \stex_mathml_intent:nn{#1}{
+      \_stex_term_oms:nnn {#1}{#1 \c_hash_str CUSTOM-}{
+        \comp{ #2 }
+      }
     }
   }{
     \_stex_reset:N \comp
@@ -3468,6 +3692,8 @@
 }
 
 \prop_new:N \l__stex_terms_custom_args_prop
+\clist_new:N \l_stex_argnames_seq
+\seq_new:N \l__stex_terms_tmp_seq
 
 \cs_new_protected:Nn\__stex_terms_custom_comp:n{\bool_set_false:N \l_stex_allow_semantic_bool\_comp{#1}\bool_set_true:N \l_stex_allow_semantic_bool}
 
@@ -3480,23 +3706,47 @@
     \prop_get:cnN {
       l_stex_symdecl_#1 _prop
     }{ args } \l_tmpa_str
+    \exp_args:NNx \seq_set_from_clist:Nn \l_stex_argnames_seq {
+      \prop_item:cn {l_stex_symdecl_#1 _prop}{argnames}
+    }
     \prop_put:Nno \l__stex_terms_custom_args_prop {args} \l_tmpa_str
     \tl_set:Nn \arg { \__stex_terms_arg: }
     \str_if_empty:NTF \l_tmpa_str {
-      \_stex_term_oms:nnn {#1}{#1\c_hash_str CUSTOM-}{\ignorespaces#2}
+      \stex_mathml_intent:nn{#1}{
+        \_stex_term_oms:nnn {#1}{#1\c_hash_str CUSTOM-}{\ignorespaces#2}
+      }
     }{
-      \str_if_in:NnTF \l_tmpa_str b {
-        \_stex_term_ombind:nnn {#1}{#1\c_hash_str CUSTOM-\l_tmpa_str}{\ignorespaces#2}
+      \seq_clear:N \l__stex_terms_tmp_seq
+      \exp_args:Nx\int_step_inline:nn{\prop_item:cn{l_stex_symdecl_#1 _prop}{arity}}{
+        \tl_set:Nx \l__stex_terms_tmp_tl {\seq_item:Nn \l_stex_argnames_seq {##1}}
+        \bool_lazy_or:nnT{
+          \str_if_eq_p:nn{a}{\str_item:Nn\l_tmpa_str{##1}}
+        }{
+          \str_if_eq_p:nn{B}{\str_item:Nn\l_tmpa_str{##1}}
+        }{
+          \tl_put_right:Nn \l__stex_terms_tmp_tl +
+        }
+        \seq_put_right:No \l__stex_terms_tmp_seq \l__stex_terms_tmp_tl
+      }
+      \stex_mathml_intent:nn{
+        #1[\prop_item:cn {l_stex_symdecl_#1 _prop}{ args }](
+          \seq_use:Nn \l__stex_terms_tmp_seq ,
+        )
       }{
-        \str_if_in:NnTF \l_tmpa_str B {
+        \str_if_in:NnTF \l_tmpa_str b {
           \_stex_term_ombind:nnn {#1}{#1\c_hash_str CUSTOM-\l_tmpa_str}{\ignorespaces#2}
         }{
-          \_stex_term_oma:nnn {#1}{#1\c_hash_str CUSTOM-\l_tmpa_str}{\ignorespaces#2}
+          \str_if_in:NnTF \l_tmpa_str B {
+            \_stex_term_ombind:nnn {#1}{#1\c_hash_str CUSTOM-\l_tmpa_str}{\ignorespaces#2}
+          }{
+            \_stex_term_oma:nnn {#1}{#1\c_hash_str CUSTOM-\l_tmpa_str}{\ignorespaces#2}
+          }
         }
       }
     }
     % TODO check that all arguments exist
   }{
+    \_stex_reset:N \l_stex_argnames_seq
     \_stex_reset:N \STEXInternalCurrentSymbolStr
     \_stex_reset:N \arg
     \_stex_reset:N \comp
@@ -3543,12 +3793,14 @@
     \use:nn
   }
   {
-  \IfBooleanTF#1{
-    \stex_annotate_invisible:n { %TODO
+  \stex_mathml_arg:nn{\seq_item:Nn \l_stex_argnames_seq \l_tmpa_int}{
+    \IfBooleanTF#1{
+      \stex_annotate_invisible:n { %TODO
+        \exp_args:No \_stex_term_arg:nn {\l_tmpa_str\int_use:N \l_tmpa_int}{\ignorespaces#3}
+      }
+    }{ %TODO
       \exp_args:No \_stex_term_arg:nn {\l_tmpa_str\int_use:N \l_tmpa_int}{\ignorespaces#3}
     }
-  }{ %TODO
-    \exp_args:No \_stex_term_arg:nn {\l_tmpa_str\int_use:N \l_tmpa_int}{\ignorespaces#3}
   }}
   {\bool_set_false:N \l_stex_allow_semantic_bool}
 }
@@ -3562,30 +3814,32 @@
 \cs_new_protected:Npn \STEXInternalTermMathArgiii #1#2#3 {
   \exp_args:Nnx \use:nn
     { \int_set:Nn \l__stex_terms_downprec { #2 }
+      \stex_mathml_arg:nn{\seq_item:Nn \l_stex_argnames_seq \l_tmpa_int}{
         \_stex_term_arg:nn { #1 }{ #3 }
+      }
     }
     { \int_set:Nn \exp_not:N \l__stex_terms_downprec { \int_use:N \l__stex_terms_downprec } }
 }
-\cs_new_protected:Npn \STEXInternalTermMathAssocArgiiii #1#2#3#4 {
+\cs_new_protected:Npn \STEXInternalTermMathAssocArgiiiii #1#2#3#4#5 {
   \cs_set:Npn \l_tmpa_cs ##1 ##2 { #4 }
-  \tl_set:Nn \l_tmpb_tl {\STEXInternalTermMathArgiii{#1}{#2}}
+  \tl_set:Nn \l_tmpb_tl {\STEXInternalTermMathArgiii{#5#1}{#2}}
   \tl_if_empty:nTF { #3 }{
-    \STEXInternalTermMathArgiii{#1}{#2}{}
+    \STEXInternalTermMathArgiii{#5#1}{#2}{}
   }{
     \exp_args:Nx \tl_if_empty:nTF { \tl_tail:n{ #3 }}{
       \expandafter\if\expandafter\relax\noexpand#3
-        \tl_set:Nn \l_tmpa_tl {\__stex_terms_math_assoc_arg_maybe_sequence:Nn#3{#1}}
+        \tl_set:Nn \l_tmpa_tl {\__stex_terms_math_assoc_arg_maybe_sequence:Nnn#3{#1}{#5}}
       \else
-        \tl_set:Nn \l_tmpa_tl {\__stex_terms_math_assoc_arg_simple:nn{#1}{#3}}
+        \tl_set:Nn \l_tmpa_tl {\__stex_terms_math_assoc_arg_simple:nnn{#1}{#3}{#5}}
       \fi
       \l_tmpa_tl
     }{
-      \__stex_terms_math_assoc_arg_simple:nn{#1}{#3}
+      \__stex_terms_math_assoc_arg_simple:nnn{#1}{#3}{#5}
     }
   }
 }
 
-\cs_new_protected:Nn \__stex_terms_math_assoc_arg_maybe_sequence:Nn {
+\cs_new_protected:Nn \__stex_terms_math_assoc_arg_maybe_sequence:Nnn {
   \str_set:Nx \l_tmpa_str { \cs_argument_spec:N #1 }
   \str_if_empty:NTF \l_tmpa_str {
     \exp_args:Nx \cs_if_eq:NNTF {
@@ -3593,7 +3847,7 @@
     } \stex_invoke_sequence:n {
       \tl_set:Nx \l_tmpa_tl {\tl_tail:N #1}
       \str_set:Nx \l_tmpa_str {\exp_after:wN \use:n \l_tmpa_tl}
-      \tl_set:Nx \l_tmpa_tl {\prop_item:cn {stex_varseq_\l_tmpa_str _prop}{notation}}
+      \tl_set:Nx \l_tmpa_tl {\prop_item:cn {l_stex_symdecl_varseq://\l_tmpa_str _prop}{notation}}
       \exp_args:NNo \seq_set_from_clist:Nn \l_tmpa_seq \l_tmpa_tl
       \tl_set:Nx \l_tmpa_tl {{\exp_not:N \exp_not:n{
         \exp_not:n{\exp_args:Nnx \use:nn} {
@@ -3609,7 +3863,7 @@
           }
         }
       }}}
-      \exp_args:Nno \use:nn {\seq_set_map:NNn \l_tmpa_seq \l_tmpa_seq} \l_tmpa_tl
+      \exp_args:Nno \use:n {\seq_set_map:NNn \l_tmpa_seq \l_tmpa_seq} \l_tmpa_tl
       \seq_reverse:N \l_tmpa_seq
       \seq_pop:NN \l_tmpa_seq \l_tmpa_tl
       \seq_map_inline:Nn \l_tmpa_seq {
@@ -3625,28 +3879,38 @@
       }
       \exp_args:No\l_tmpb_tl\l_tmpa_tl
     }{
-      \__stex_terms_math_assoc_arg_simple:nn{#2} { #1 }
+      \__stex_terms_math_assoc_arg_simple:nnn{#2} { #1 }{#3}
     }
   } {
-    \__stex_terms_math_assoc_arg_simple:nn{#2} { #1 }
+    \__stex_terms_math_assoc_arg_simple:nnn{#2} { #1 }{#3}
   }
 
 }
 
-\cs_new_protected:Nn \__stex_terms_math_assoc_arg_simple:nn {
+\cs_new_protected:Nn \__stex_terms_math_assoc_arg_simple:nnn {
   \clist_set:Nn \l_tmpa_clist{ #2 }
   \int_compare:nNnTF { \clist_count:N \l_tmpa_clist } < 2 {
-    \tl_set:Nn \l_tmpa_tl { \_stex_term_arg:nn{A#1}{ #2 } }
+    \tl_set:Nn \l_tmpa_tl {
+      \stex_mathml_arg:nn{\seq_item:Nn \l_stex_argnames_seq #1}{
+        \_stex_term_arg:nn{A#3#1}{ #2 } }
+    }
   }{
     \clist_reverse:N \l_tmpa_clist
     \clist_pop:NN \l_tmpa_clist \l_tmpa_tl
-    \tl_set:Nx \l_tmpa_tl { \_stex_term_arg:nn{A#1}{
-      \exp_args:No \exp_not:n \l_tmpa_tl
+    \tl_set:Nx \l_tmpa_tl {
+      \stex_mathml_arg:nn{\seq_item:Nn \l_stex_argnames_seq #1}{
+        \_stex_term_arg:nn{A#3#1}{
+        \exp_args:No \exp_not:n \l_tmpa_tl
+      }
     }}
     \clist_map_inline:Nn \l_tmpa_clist {
       \exp_args:NNNo \exp_args:NNo \tl_set:No \l_tmpa_tl {
         \exp_args:Nno
-        \l_tmpa_cs { \_stex_term_arg:nn{A#1}{##1} } \l_tmpa_tl
+        \l_tmpa_cs {
+          \stex_mathml_arg:nn{\seq_item:Nn \l_stex_argnames_seq #1}{
+            \_stex_term_arg:nn{A#3#1}{##1}
+          }
+        } \l_tmpa_tl
       }
     }
   }
@@ -3717,7 +3981,9 @@
 
 \cs_new_protected:Npn \STEXInternalTermMathOMSiiii #1#2#3#4 {
   \__stex_terms_maybe_brackets:nn { #3 }{
-    \_stex_term_oms:nnn { #1 } { #1\c_hash_str#2 } { #4 }
+    \stex_mathml_intent:nn{#1} {
+      \_stex_term_oms:nnn { #1 } { #1\c_hash_str#2 } { #4 }
+    }
   }
 }
 \cs_new_protected:Nn \_stex_term_omv:nn {
@@ -3732,8 +3998,35 @@
 }
 
 \cs_new_protected:Npn \STEXInternalTermMathOMAiiii #1#2#3#4 {
+  \exp_args:Nnx \use:nn {
+    \seq_clear:N \l__stex_terms_tmp_seq
+    \prop_if_exist:cT{l_stex_symdecl_#1 _prop}{
+    \exp_args:NNx \seq_set_from_clist:Nn \l_stex_argnames_seq {
+      \prop_item:cn {l_stex_symdecl_#1 _prop}{argnames}
+    }
+    \exp_args:Nx\int_step_inline:nn{\prop_item:cn{l_stex_symdecl_#1 _prop}{arity}}{
+      \tl_set:Nx \l__stex_terms_tmp_tl {\seq_item:Nn \l_stex_argnames_seq {##1}}
+      \bool_lazy_or:nnT{
+        \str_if_eq_p:nn{a}{\str_item:Nn\l_tmpa_str{##1}}
+      }{
+        \str_if_eq_p:nn{B}{\str_item:Nn\l_tmpa_str{##1}}
+      }{
+        \tl_put_right:Nn \l__stex_terms_tmp_tl +
+      }
+      \seq_put_right:No \l__stex_terms_tmp_seq \l__stex_terms_tmp_tl
+    }
+  }
   \__stex_terms_maybe_brackets:nn { #3 }{
-    \_stex_term_oma:nnn { #1 } { #1\c_hash_str#2 } { #4 }
+    \stex_mathml_intent:nn{
+      #1[\prop_item:cn {l_stex_symdecl_#1 _prop}{ args }](
+        \seq_use:Nn \l__stex_terms_tmp_seq ,
+      )
+    }{
+      \_stex_term_oma:nnn { #1 } { #1\c_hash_str#2 } { #4 }
+    }
+  }
+  }{
+    \_stex_reset:N \l_stex_argnames_seq
   }
 }
 \cs_new_protected:Nn \_stex_term_ombind:nnn {
@@ -3743,8 +4036,35 @@
 }
 
 \cs_new_protected:Npn \STEXInternalTermMathOMBiiii #1#2#3#4 {
+  \exp_args:Nnx \use:nn {
+    \seq_clear:N \l__stex_terms_tmp_seq
+    \prop_if_exist:cT{l_stex_symdecl_#1 _prop}{
+    \exp_args:NNx \seq_set_from_clist:Nn \l_stex_argnames_seq {
+      \prop_item:cn {l_stex_symdecl_#1 _prop}{argnames}
+    }
+    \exp_args:Nx\int_step_inline:nn{\prop_item:cn{l_stex_symdecl_#1 _prop}{arity}}{
+      \tl_set:Nx \l__stex_terms_tmp_tl {\seq_item:Nn \l_stex_argnames_seq {##1}}
+      \bool_lazy_or:nnT{
+        \str_if_eq_p:nn{a}{\str_item:Nn\l_tmpa_str{##1}}
+      }{
+        \str_if_eq_p:nn{B}{\str_item:Nn\l_tmpa_str{##1}}
+      }{
+        \tl_put_right:Nn \l__stex_terms_tmp_tl +
+      }
+      \seq_put_right:No \l__stex_terms_tmp_seq \l__stex_terms_tmp_tl
+    }
+  }
   \__stex_terms_maybe_brackets:nn { #3 }{
-    \_stex_term_ombind:nnn { #1 } { #1\c_hash_str#2 } { #4 }
+    \stex_mathml_intent:nn{
+      #1[\prop_item:cn {l_stex_symdecl_#1 _prop}{ args }](
+        \seq_use:Nn \l__stex_terms_tmp_seq ,
+      )
+    }{
+      \_stex_term_ombind:nnn { #1 } { #1\c_hash_str#2 } { #4 }
+    }
+  }
+  }{
+    \_stex_reset:N \l_stex_argnames_seq
   }
 }
 \cs_new:Nn \stex_capitalize:n { \uppercase{#1} }
@@ -3968,7 +4288,7 @@
       \_stex_reset:N \STEXInternalCurrentSymbolStr
     }
   }{
-    \int_compare:nNnTF {\prop_item:cn {l_stex_variable_#1_prop}{arity}} = 0{
+    \int_compare:nNnTF {\prop_item:cn {l_stex_symdecl_var://#1_prop}{arity}} = 0{
       \__stex_variables_invoke_math_ii:n {#1}
     }{
       \msg_error:nnxx{stex}{error/noop}{variable~#1}{}
@@ -4002,7 +4322,7 @@
     \prop_clear:N \l__stex_terms_custom_args_prop
     \prop_put:Nnn \l__stex_terms_custom_args_prop {currnum} {1}
     \prop_get:cnN {
-      l_stex_variable_#1 _prop
+      l_stex_symdecl_var://#1 _prop
     }{ args } \l_tmpa_str
     \prop_put:Nno \l__stex_terms_custom_args_prop {args} \l_tmpa_str
     \tl_set:Nn \arg { \__stex_terms_arg: }
@@ -4035,7 +4355,7 @@
       \exp_args:Nnx \use:nn {
         \def\comp{\_varcomp}
         \str_set:Nn \STEXInternalCurrentSymbolStr {varseq://#1}
-        \prop_item:cn{stex_varseq_#1_prop}{notation}
+        \prop_item:cn{l_stex_symdecl_varseq://#1_prop}{notation}
       }{
         \_stex_reset:N \comp
         \_stex_reset:N \STEXInternalCurrentSymbolStr
@@ -4736,7 +5056,8 @@
           name   = \l_tmpa_str ,
           args   = \prop_item:cn {l_stex_symdecl_##1_prop}{args} ,
           arity  = \prop_item:cn {l_stex_symdecl_##1_prop}{arity} ,
-          assocs = \prop_item:cn {l_stex_symdecl_##1_prop}{assocs}
+          assocs = \prop_item:cn {l_stex_symdecl_##1_prop}{assocs} ,
+          argnames = {\prop_item:cn {l_stex_symdecl_##1_prop}{argnames}}
         }
         \seq_clear:c {l_stex_symdecl_\l_stex_current_module_str?\l_tmpa_str _notations}
       }
@@ -4831,7 +5152,7 @@
 }
 
 \cs_new_protected:Nn \__stex_structures_symbolorvar_from_string:n {
-  \prop_if_exist:cTF {l_stex_variable_#1 _prop}{
+  \prop_if_exist:cTF {l_stex_symdecl_var://#1 _prop}{
     \bool_set_true:N \l_stex_symbol_or_var_bool
     \str_set:Nn \l_stex_get_symbol_uri_str { #1 }
   }{
@@ -4894,12 +5215,12 @@
           \bool_if:NTF \l_stex_symbol_or_var_bool {
             \exp_args:Nxx \str_if_eq:nnF
               {\prop_item:cn{l_stex_symdecl_\l__stex_structures_dom_str _prop}{args}}
-              {\prop_item:cn{l_stex_variable_\l_stex_get_symbol_uri_str _prop}{args}}{
+              {\prop_item:cn{l_stex_symdecl_var://\l_stex_get_symbol_uri_str _prop}{args}}{
               \msg_error:nnxxxx{stex}{error/incompatible}
                 {\l__stex_structures_dom_str}
                 {\prop_item:cn{l_stex_symdecl_\l__stex_structures_dom_str _prop}{args}}
                 {\l_stex_get_symbol_uri_str}
-                {\prop_item:cn{l_stex_variable_\l_stex_get_symbol_uri_str _prop}{args}}
+                {\prop_item:cn{l_stex_symdecl_var://\l_stex_get_symbol_uri_str _prop}{args}}
             }
             \prop_put:Nxx \l_tmpa_prop {\seq_item:Nn \l_tmpb_seq 1} {\stex_invoke_variable:n {\l_stex_get_symbol_uri_str}}
           }{
@@ -4933,11 +5254,12 @@
         }
 
         \exp_args:NNx \tl_gput_right:Nn \g__stex_structures_aftergroup_tl {
-          \prop_set_from_keyval:cn { l_stex_variable_ \l_tmpa_str _prop}{
+          \prop_set_from_keyval:cn { l_stex_symdecl_ var://\l_tmpa_str _prop}{
             name   = \l_tmpa_str ,
             args   = \prop_item:cn {l_stex_symdecl_##1_prop}{args} ,
             arity  = \prop_item:cn {l_stex_symdecl_##1_prop}{arity} ,
-            assocs = \prop_item:cn {l_stex_symdecl_##1_prop}{assocs}
+            assocs = \prop_item:cn {l_stex_symdecl_##1_prop}{assocs} ,
+            argnames = {\prop_item:cn {l_stex_symdecl_##1_prop}{argnames}} ,
           }
           \cs_set_eq:cc {stex_var_notation_\l_tmpa_str _cs}
             {g__stex_structures_tmpa_\l_tmpa_str _cs}
@@ -6390,6 +6712,8 @@
     \exp_args:Nx \stex_set_current_repository:n { \l_tmpa_str }
   }
 }
+
+\stex_get_document_uri:
 \endinput
 %%
 %% End of file `stex.sty'.

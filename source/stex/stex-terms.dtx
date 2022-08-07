@@ -89,8 +89,8 @@
 % with (downwards) argument precedence \meta{prec}.
 % \end{function}
 %
-% \begin{function}{\STEXInternalTermMathAssocArgiiii}
-%   \begin{syntax} \cs{stex_term_arg:nnn}\meta{int}\meta{prec}\meta{notation}\meta{body} \end{syntax}
+% \begin{function}{\STEXInternalTermMathAssocArgiiiii}
+%   \begin{syntax} \cs{stex_term_arg:nnn}\meta{int}\meta{prec}\meta{notation}\meta{type}\meta{body} \end{syntax}
 % Annotates \meta{body} as the \meta{int}th (associative) \emph{sequence} argument
 % (as comma-separated list of terms) of the current |OMA| or |OMBIND|,
 % with (downwards) argument precedence \meta{prec} and associative
@@ -267,8 +267,10 @@
     \def\comp{\_comp}
     \str_set:Nn \STEXInternalCurrentSymbolStr { #1 }
     \bool_set_false:N \l_stex_allow_semantic_bool
-    \_stex_term_oms:nnn {#1}{#1 \c_hash_str CUSTOM-}{
-      \comp{ #2 }
+    \stex_mathml_intent:nn{#1}{
+      \_stex_term_oms:nnn {#1}{#1 \c_hash_str CUSTOM-}{
+        \comp{ #2 }
+      }
     }
   }{
     \_stex_reset:N \comp
@@ -382,6 +384,8 @@
 }
 
 \prop_new:N \l_@@_custom_args_prop
+\clist_new:N \l_stex_argnames_seq
+\seq_new:N \l_@@_tmp_seq
 
 \cs_new_protected:Nn\_@@_custom_comp:n{\bool_set_false:N \l_stex_allow_semantic_bool\_comp{#1}\bool_set_true:N \l_stex_allow_semantic_bool}
 
@@ -394,23 +398,47 @@
     \prop_get:cnN {
       l_stex_symdecl_#1 _prop
     }{ args } \l_tmpa_str
+    \exp_args:NNx \seq_set_from_clist:Nn \l_stex_argnames_seq {
+      \prop_item:cn {l_stex_symdecl_#1 _prop}{argnames}
+    }
     \prop_put:Nno \l_@@_custom_args_prop {args} \l_tmpa_str
     \tl_set:Nn \arg { \_@@_arg: }
     \str_if_empty:NTF \l_tmpa_str {
-      \_stex_term_oms:nnn {#1}{#1\c_hash_str CUSTOM-}{\ignorespaces#2}
+      \stex_mathml_intent:nn{#1}{
+        \_stex_term_oms:nnn {#1}{#1\c_hash_str CUSTOM-}{\ignorespaces#2}
+      }
     }{
-      \str_if_in:NnTF \l_tmpa_str b {
-        \_stex_term_ombind:nnn {#1}{#1\c_hash_str CUSTOM-\l_tmpa_str}{\ignorespaces#2}
+      \seq_clear:N \l_@@_tmp_seq
+      \exp_args:Nx\int_step_inline:nn{\prop_item:cn{l_stex_symdecl_#1 _prop}{arity}}{
+        \tl_set:Nx \l_@@_tmp_tl {\seq_item:Nn \l_stex_argnames_seq {##1}}
+        \bool_lazy_or:nnT{
+          \str_if_eq_p:nn{a}{\str_item:Nn\l_tmpa_str{##1}}
+        }{
+          \str_if_eq_p:nn{B}{\str_item:Nn\l_tmpa_str{##1}}
+        }{
+          \tl_put_right:Nn \l_@@_tmp_tl +
+        }
+        \seq_put_right:No \l_@@_tmp_seq \l_@@_tmp_tl
+      }
+      \stex_mathml_intent:nn{
+        #1[\prop_item:cn {l_stex_symdecl_#1 _prop}{ args }](
+          \seq_use:Nn \l_@@_tmp_seq ,
+        )
       }{
-        \str_if_in:NnTF \l_tmpa_str B {
+        \str_if_in:NnTF \l_tmpa_str b {
           \_stex_term_ombind:nnn {#1}{#1\c_hash_str CUSTOM-\l_tmpa_str}{\ignorespaces#2}
         }{
-          \_stex_term_oma:nnn {#1}{#1\c_hash_str CUSTOM-\l_tmpa_str}{\ignorespaces#2}
+          \str_if_in:NnTF \l_tmpa_str B {
+            \_stex_term_ombind:nnn {#1}{#1\c_hash_str CUSTOM-\l_tmpa_str}{\ignorespaces#2}
+          }{
+            \_stex_term_oma:nnn {#1}{#1\c_hash_str CUSTOM-\l_tmpa_str}{\ignorespaces#2}
+          }
         }
       }
     }
     % TODO check that all arguments exist
   }{
+    \_stex_reset:N \l_stex_argnames_seq
     \_stex_reset:N \STEXInternalCurrentSymbolStr
     \_stex_reset:N \arg
     \_stex_reset:N \comp
@@ -457,12 +485,14 @@
     \use:nn
   }
   {
-  \IfBooleanTF#1{
-    \stex_annotate_invisible:n { %TODO
+  \stex_mathml_arg:nn{\seq_item:Nn \l_stex_argnames_seq \l_tmpa_int}{
+    \IfBooleanTF#1{
+      \stex_annotate_invisible:n { %TODO
+        \exp_args:No \_stex_term_arg:nn {\l_tmpa_str\int_use:N \l_tmpa_int}{\ignorespaces#3}
+      }
+    }{ %TODO
       \exp_args:No \_stex_term_arg:nn {\l_tmpa_str\int_use:N \l_tmpa_int}{\ignorespaces#3}
     }
-  }{ %TODO
-    \exp_args:No \_stex_term_arg:nn {\l_tmpa_str\int_use:N \l_tmpa_int}{\ignorespaces#3}
   }}
   {\bool_set_false:N \l_stex_allow_semantic_bool}
 }
@@ -477,35 +507,37 @@
 \cs_new_protected:Npn \STEXInternalTermMathArgiii #1#2#3 {
   \exp_args:Nnx \use:nn
     { \int_set:Nn \l_@@_downprec { #2 } 
+      \stex_mathml_arg:nn{\seq_item:Nn \l_stex_argnames_seq \l_tmpa_int}{
         \_stex_term_arg:nn { #1 }{ #3 }
+      }
     }
     { \int_set:Nn \exp_not:N \l_@@_downprec { \int_use:N \l_@@_downprec } }
 }
 %    \end{macrocode}
 % \end{macro}
 %
-% \begin{macro}{\STEXInternalTermMathAssocArgiiii}
+% \begin{macro}{\STEXInternalTermMathAssocArgiiiii}
 %    \begin{macrocode}
-\cs_new_protected:Npn \STEXInternalTermMathAssocArgiiii #1#2#3#4 {
+\cs_new_protected:Npn \STEXInternalTermMathAssocArgiiiii #1#2#3#4#5 {
   \cs_set:Npn \l_tmpa_cs ##1 ##2 { #4 }
-  \tl_set:Nn \l_tmpb_tl {\STEXInternalTermMathArgiii{#1}{#2}}
+  \tl_set:Nn \l_tmpb_tl {\STEXInternalTermMathArgiii{#5#1}{#2}}
   \tl_if_empty:nTF { #3 }{
-    \STEXInternalTermMathArgiii{#1}{#2}{}
+    \STEXInternalTermMathArgiii{#5#1}{#2}{}
   }{
     \exp_args:Nx \tl_if_empty:nTF { \tl_tail:n{ #3 }}{
       \expandafter\if\expandafter\relax\noexpand#3
-        \tl_set:Nn \l_tmpa_tl {\_@@_math_assoc_arg_maybe_sequence:Nn#3{#1}}
+        \tl_set:Nn \l_tmpa_tl {\_@@_math_assoc_arg_maybe_sequence:Nnn#3{#1}{#5}}
       \else
-        \tl_set:Nn \l_tmpa_tl {\_@@_math_assoc_arg_simple:nn{#1}{#3}}
+        \tl_set:Nn \l_tmpa_tl {\_@@_math_assoc_arg_simple:nnn{#1}{#3}{#5}}
       \fi
       \l_tmpa_tl
     }{
-      \_@@_math_assoc_arg_simple:nn{#1}{#3}
+      \_@@_math_assoc_arg_simple:nnn{#1}{#3}{#5}
     }
   }
 }
 
-\cs_new_protected:Nn \_@@_math_assoc_arg_maybe_sequence:Nn {
+\cs_new_protected:Nn \_@@_math_assoc_arg_maybe_sequence:Nnn {
   \str_set:Nx \l_tmpa_str { \cs_argument_spec:N #1 }
   \str_if_empty:NTF \l_tmpa_str {
     \exp_args:Nx \cs_if_eq:NNTF {
@@ -513,7 +545,7 @@
     } \stex_invoke_sequence:n {
       \tl_set:Nx \l_tmpa_tl {\tl_tail:N #1}
       \str_set:Nx \l_tmpa_str {\exp_after:wN \use:n \l_tmpa_tl}
-      \tl_set:Nx \l_tmpa_tl {\prop_item:cn {stex_varseq_\l_tmpa_str _prop}{notation}}
+      \tl_set:Nx \l_tmpa_tl {\prop_item:cn {l_stex_symdecl_varseq://\l_tmpa_str _prop}{notation}}
       \exp_args:NNo \seq_set_from_clist:Nn \l_tmpa_seq \l_tmpa_tl
       \tl_set:Nx \l_tmpa_tl {{\exp_not:N \exp_not:n{
         \exp_not:n{\exp_args:Nnx \use:nn} {
@@ -529,7 +561,7 @@
           }
         }
       }}}
-      \exp_args:Nno \use:nn {\seq_set_map:NNn \l_tmpa_seq \l_tmpa_seq} \l_tmpa_tl
+      \exp_args:Nno \use:n {\seq_set_map:NNn \l_tmpa_seq \l_tmpa_seq} \l_tmpa_tl
       \seq_reverse:N \l_tmpa_seq
       \seq_pop:NN \l_tmpa_seq \l_tmpa_tl
       \seq_map_inline:Nn \l_tmpa_seq {
@@ -545,28 +577,38 @@
       }
       \exp_args:No\l_tmpb_tl\l_tmpa_tl
     }{
-      \_@@_math_assoc_arg_simple:nn{#2} { #1 }
+      \_@@_math_assoc_arg_simple:nnn{#2} { #1 }{#3}
     }
   } {
-    \_@@_math_assoc_arg_simple:nn{#2} { #1 }
+    \_@@_math_assoc_arg_simple:nnn{#2} { #1 }{#3}
   }
 
 }
 
-\cs_new_protected:Nn \_@@_math_assoc_arg_simple:nn {
+\cs_new_protected:Nn \_@@_math_assoc_arg_simple:nnn {
   \clist_set:Nn \l_tmpa_clist{ #2 }
   \int_compare:nNnTF { \clist_count:N \l_tmpa_clist } < 2 {
-    \tl_set:Nn \l_tmpa_tl { \_stex_term_arg:nn{A#1}{ #2 } }
+    \tl_set:Nn \l_tmpa_tl { 
+      \stex_mathml_arg:nn{\seq_item:Nn \l_stex_argnames_seq #1}{
+        \_stex_term_arg:nn{A#3#1}{ #2 } }
+    }
   }{
     \clist_reverse:N \l_tmpa_clist
     \clist_pop:NN \l_tmpa_clist \l_tmpa_tl
-    \tl_set:Nx \l_tmpa_tl { \_stex_term_arg:nn{A#1}{
-      \exp_args:No \exp_not:n \l_tmpa_tl
+    \tl_set:Nx \l_tmpa_tl { 
+      \stex_mathml_arg:nn{\seq_item:Nn \l_stex_argnames_seq #1}{
+        \_stex_term_arg:nn{A#3#1}{
+        \exp_args:No \exp_not:n \l_tmpa_tl
+      }
     }}
     \clist_map_inline:Nn \l_tmpa_clist {
       \exp_args:NNNo \exp_args:NNo \tl_set:No \l_tmpa_tl {
         \exp_args:Nno 
-        \l_tmpa_cs { \_stex_term_arg:nn{A#1}{##1} } \l_tmpa_tl 
+        \l_tmpa_cs { 
+          \stex_mathml_arg:nn{\seq_item:Nn \l_stex_argnames_seq #1}{
+            \_stex_term_arg:nn{A#3#1}{##1} 
+          }
+        } \l_tmpa_tl 
       }
     }
   }
@@ -683,7 +725,9 @@
 
 \cs_new_protected:Npn \STEXInternalTermMathOMSiiii #1#2#3#4 {
   \_@@_maybe_brackets:nn { #3 }{ 
-    \_stex_term_oms:nnn { #1 } { #1\c_hash_str#2 } { #4 }
+    \stex_mathml_intent:nn{#1} {
+      \_stex_term_oms:nnn { #1 } { #1\c_hash_str#2 } { #4 }
+    }
   }
 }
 %    \end{macrocode}
@@ -708,8 +752,35 @@
 }
 
 \cs_new_protected:Npn \STEXInternalTermMathOMAiiii #1#2#3#4 {
+  \exp_args:Nnx \use:nn {
+    \seq_clear:N \l_@@_tmp_seq
+    \prop_if_exist:cT{l_stex_symdecl_#1 _prop}{
+    \exp_args:NNx \seq_set_from_clist:Nn \l_stex_argnames_seq {
+      \prop_item:cn {l_stex_symdecl_#1 _prop}{argnames}
+    }
+    \exp_args:Nx\int_step_inline:nn{\prop_item:cn{l_stex_symdecl_#1 _prop}{arity}}{
+      \tl_set:Nx \l_@@_tmp_tl {\seq_item:Nn \l_stex_argnames_seq {##1}}
+      \bool_lazy_or:nnT{
+        \str_if_eq_p:nn{a}{\str_item:Nn\l_tmpa_str{##1}}
+      }{
+        \str_if_eq_p:nn{B}{\str_item:Nn\l_tmpa_str{##1}}
+      }{
+        \tl_put_right:Nn \l_@@_tmp_tl +
+      }
+      \seq_put_right:No \l_@@_tmp_seq \l_@@_tmp_tl
+    }
+  }
   \_@@_maybe_brackets:nn { #3 }{ 
-    \_stex_term_oma:nnn { #1 } { #1\c_hash_str#2 } { #4 }
+    \stex_mathml_intent:nn{
+      #1[\prop_item:cn {l_stex_symdecl_#1 _prop}{ args }](
+        \seq_use:Nn \l_@@_tmp_seq ,
+      )
+    }{
+      \_stex_term_oma:nnn { #1 } { #1\c_hash_str#2 } { #4 }
+    }
+  }
+  }{
+    \_stex_reset:N \l_stex_argnames_seq
   }
 }
 %    \end{macrocode}
@@ -724,8 +795,35 @@
 }
 
 \cs_new_protected:Npn \STEXInternalTermMathOMBiiii #1#2#3#4 {
+  \exp_args:Nnx \use:nn {
+    \seq_clear:N \l_@@_tmp_seq
+    \prop_if_exist:cT{l_stex_symdecl_#1 _prop}{
+    \exp_args:NNx \seq_set_from_clist:Nn \l_stex_argnames_seq {
+      \prop_item:cn {l_stex_symdecl_#1 _prop}{argnames}
+    }
+    \exp_args:Nx\int_step_inline:nn{\prop_item:cn{l_stex_symdecl_#1 _prop}{arity}}{
+      \tl_set:Nx \l_@@_tmp_tl {\seq_item:Nn \l_stex_argnames_seq {##1}}
+      \bool_lazy_or:nnT{
+        \str_if_eq_p:nn{a}{\str_item:Nn\l_tmpa_str{##1}}
+      }{
+        \str_if_eq_p:nn{B}{\str_item:Nn\l_tmpa_str{##1}}
+      }{
+        \tl_put_right:Nn \l_@@_tmp_tl +
+      }
+      \seq_put_right:No \l_@@_tmp_seq \l_@@_tmp_tl
+    }
+  }
   \_@@_maybe_brackets:nn { #3 }{ 
-    \_stex_term_ombind:nnn { #1 } { #1\c_hash_str#2 } { #4 }
+    \stex_mathml_intent:nn{
+      #1[\prop_item:cn {l_stex_symdecl_#1 _prop}{ args }](
+        \seq_use:Nn \l_@@_tmp_seq ,
+      )
+    }{
+      \_stex_term_ombind:nnn { #1 } { #1\c_hash_str#2 } { #4 }
+    }
+  }
+  }{
+    \_stex_reset:N \l_stex_argnames_seq
   }
 }
 %    \end{macrocode}
@@ -994,7 +1092,7 @@
       \_stex_reset:N \STEXInternalCurrentSymbolStr
     }
   }{
-    \int_compare:nNnTF {\prop_item:cn {l_stex_variable_#1_prop}{arity}} = 0{
+    \int_compare:nNnTF {\prop_item:cn {l_stex_symdecl_var://#1_prop}{arity}} = 0{
       \_@@_invoke_math_ii:n {#1}
     }{
       \msg_error:nnxx{stex}{error/noop}{variable~#1}{}
@@ -1028,7 +1126,7 @@
     \prop_clear:N \l__stex_terms_custom_args_prop
     \prop_put:Nnn \l__stex_terms_custom_args_prop {currnum} {1}
     \prop_get:cnN {
-      l_stex_variable_#1 _prop
+      l_stex_symdecl_var://#1 _prop
     }{ args } \l_tmpa_str
     \prop_put:Nno \l__stex_terms_custom_args_prop {args} \l_tmpa_str
     \tl_set:Nn \arg { \__stex_terms_arg: }
@@ -1067,7 +1165,7 @@
       \exp_args:Nnx \use:nn {
         \def\comp{\_varcomp}
         \str_set:Nn \STEXInternalCurrentSymbolStr {varseq://#1}
-        \prop_item:cn{stex_varseq_#1_prop}{notation}
+        \prop_item:cn{l_stex_symdecl_varseq://#1_prop}{notation}
       }{
         \_stex_reset:N \comp
         \_stex_reset:N \STEXInternalCurrentSymbolStr
