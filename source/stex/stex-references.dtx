@@ -47,15 +47,6 @@
 %
 % \section{Macros and Environments}\label{pkg:sref:doc:macros}
 %
-% \begin{function}{\STEXreftitle}
-%    \begin{syntax} \cs{STEXreftitle}\Arg{some title} \end{syntax}
-%
-%    Sets the title of the current document to \meta{some title}.  A reference to the
-%    current document from \emph{some other} document will then be displayed
-%    accordingly. e.g.  if |\STEXreftitle{foo book}| is called, then referencing
-%    Definition 3.5 in this document in another document will display 
-%   |Definition 3.5 in foo book|.
-% \end{function}
 %
 % \begin{function}{\stex_get_document_uri:}
 %   Computes the current document uri from the current archive's |narr|-field and its
@@ -160,18 +151,6 @@
 }
 %    \end{macrocode}
 %
-% \begin{macro}{\STEXreftitle}
-%    \begin{macrocode}
-\str_set:Nn \g_@@_title_tl {Unnamed~Document}
-
-\NewDocumentCommand \STEXreftitle { m } {
-  \tl_gset:Nx \g_@@_title_tl { #1 }
-  \iow_now:Nx \c_@@_refs_iow {
-    \STEXInternalSrefDocumentName { #1 }
-  }
-}
-%    \end{macrocode}
-% \end{macro}
 %
 % \subsection{Document URIs and URLs}
 %
@@ -301,7 +280,6 @@
 %
 % \begin{macro}{\STEXInternalSrefRestoreTarget}
 %    \begin{macrocode}
-\cs_new_protected:Npn \STEXInternalSrefDocumentName #1 {}
 \cs_new_protected:Npn \STEXInternalSrefRestoreTarget #1#2#3#4#5 {}
 %    \end{macrocode}
 % \end{macro}
@@ -423,8 +401,12 @@
 %    \begin{macrocode}
 
 \keys_define:nn { stex / sref / 1 } {
-  archive    .str_set_x:N  = \l_@@_repo_str,
-  file    .str_set_x:N  = \l_@@_file_str
+  archive   .str_set_x:N  = \l_@@_repo_str,
+  file      .str_set_x:N  = \l_@@_file_str,
+  % TODO get rid of this
+  fallback  .code:n = {},
+  pre       .code:n = {},
+  post      .code:n = {}
 }
 \cs_new_protected:Nn \_@@_args_i:n {
   \str_clear:N \l_@@_repo_str
@@ -434,11 +416,11 @@
 \keys_define:nn { stex / sref / 2 } {
   in      .str_set_x:N  = \l_@@_in_str,
   archive    .str_set_x:N  = \l_@@_repob_str,
-  cite    .str_set_x:N  = \l_@@_cite_str
+  title    .tl_set:N  = \l_@@_title_tl
 }
 \cs_new_protected:Nn \_@@_args_ii:n {
   \str_clear:N \l_@@_in_str
-  \str_clear:N \l_@@_cite_str
+  \tl_clear:N \l_@@_title_tl
   \str_clear:N \l_@@_repob_str
   \keys_set:nn { stex / sref / 2 } { #1 }
 }
@@ -548,9 +530,9 @@
     \exp_args:No \str_if_eq:nnT \l_@@_id_str {#2}{
       \tl_set:Nn \l_@@_return_tl {
         \use:c{#3autorefname}~#4\tl_if_empty:nF{#5}{~(#5)}~in~
-        \str_if_empty:NTF \l_@@_cite_str{\tl_if_empty:nTF\l_@@_docname_tl{
+        \tl_if_empty:nTF\l_@@_title_tl{
           ???
-        }\l_@@_docname_tl}{\cite{\l_@@_cite_str}}
+        }\l_@@_title_tl
       }
     }
   }{
@@ -561,19 +543,16 @@
         \stex_debug:nn{sref}{success!}
         \tl_set:Nn \l_@@_return_tl {
           \use:c{#3autorefname}~#4\tl_if_empty:nF{#5}{~(#5)}~in~
-          \str_if_empty:NTF \l_@@_cite_str{\tl_if_empty:nTF\l_@@_docname_tl{
+          \tl_if_empty:nTF\l_@@_title_tl{
             ???
-          }\l_@@_docname_tl}{\cite{\l_@@_cite_str}}
+          }\l_@@_title_tl
         }
         \endinput
       }
     }
   }
 }
-\cs_new_protected:Nn \_@@_document_name:n {
-  \tl_set:Nn \l_@@_docname_tl {#1}
-}
-% TODO cite
+
 \cs_new_protected:Nn \_@@_do_sref_in:n {
   \stex_debug:nn{sref}{In: \l_@@_in_str^^JRepo:\l_@@_repo_str}
   \stex_debug:nn{sref}{URI: \l_@@_uri_str?#1}
@@ -601,10 +580,8 @@
     \stex_path_to_string:NN \l_tmpb_seq \l_tmpa_str
     \stex_debug:nn{sref}{File: \l_tmpa_str}
     \exp_args:No \IfFileExists \l_tmpa_str {
-      \tl_clear:N \l_@@_docname_tl
       \tl_clear:N \l_@@_return_tl
       \str_set:Nn \l_@@_id_str {#1}
-      \let\STEXInternalSrefDocumentName\_@@_document_name:n
       \let\STEXInternalSrefRestoreTarget\_@@_restore_target:nnnnn
       \use:c{@ @ input}{\l_tmpa_str}
       \exp_args:No \tl_if_empty:nTF \l_@@_return_tl {

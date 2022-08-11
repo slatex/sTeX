@@ -911,14 +911,6 @@
 \AtEndDocument{
   \iow_close:N \c__stex_refs_refs_iow
 }
-\str_set:Nn \g__stex_refs_title_tl {Unnamed~Document}
-
-\NewDocumentCommand \STEXreftitle { m } {
-  \tl_gset:Nx \g__stex_refs_title_tl { #1 }
-  \iow_now:Nx \c__stex_refs_refs_iow {
-    \STEXInternalSrefDocumentName { #1 }
-  }
-}
 \str_new:N \l_stex_current_docns_str
 \cs_new_protected:Nn \stex_get_document_uri: {
   \seq_set_eq:NN \l_tmpa_seq \g_stex_currentfile_seq
@@ -1008,7 +1000,6 @@
 \str_const:Nn \c__stex_refs_ref_str{REF}
 \str_new:N \l__stex_refs_curr_label_str
 \int_new:N \l__stex_refs_unnamed_counter_int
-\cs_new_protected:Npn \STEXInternalSrefDocumentName #1 {}
 \cs_new_protected:Npn \STEXInternalSrefRestoreTarget #1#2#3#4#5 {}
 \seq_new:N \g_stex_ref_files_seq
 
@@ -1084,8 +1075,12 @@
 }
 
 \keys_define:nn { stex / sref / 1 } {
-  archive    .str_set_x:N  = \l__stex_refs_repo_str,
-  file    .str_set_x:N  = \l__stex_refs_file_str
+  archive   .str_set_x:N  = \l__stex_refs_repo_str,
+  file      .str_set_x:N  = \l__stex_refs_file_str,
+  % TODO get rid of this
+  fallback  .code:n = {},
+  pre       .code:n = {},
+  post      .code:n = {}
 }
 \cs_new_protected:Nn \__stex_refs_args_i:n {
   \str_clear:N \l__stex_refs_repo_str
@@ -1095,11 +1090,11 @@
 \keys_define:nn { stex / sref / 2 } {
   in      .str_set_x:N  = \l__stex_refs_in_str,
   archive    .str_set_x:N  = \l__stex_refs_repob_str,
-  cite    .str_set_x:N  = \l__stex_refs_cite_str
+  title    .tl_set:N  = \l__stex_refs_title_tl
 }
 \cs_new_protected:Nn \__stex_refs_args_ii:n {
   \str_clear:N \l__stex_refs_in_str
-  \str_clear:N \l__stex_refs_cite_str
+  \tl_clear:N \l__stex_refs_title_tl
   \str_clear:N \l__stex_refs_repob_str
   \keys_set:nn { stex / sref / 2 } { #1 }
 }
@@ -1206,9 +1201,9 @@
     \exp_args:No \str_if_eq:nnT \l__stex_refs_id_str {#2}{
       \tl_set:Nn \l__stex_refs_return_tl {
         \use:c{#3autorefname}~#4\tl_if_empty:nF{#5}{~(#5)}~in~
-        \str_if_empty:NTF \l__stex_refs_cite_str{\tl_if_empty:nTF\l__stex_refs_docname_tl{
+        \tl_if_empty:nTF\l__stex_refs_title_tl{
           ???
-        }\l__stex_refs_docname_tl}{\cite{\l__stex_refs_cite_str}}
+        }\l__stex_refs_title_tl
       }
     }
   }{
@@ -1219,18 +1214,16 @@
         \stex_debug:nn{sref}{success!}
         \tl_set:Nn \l__stex_refs_return_tl {
           \use:c{#3autorefname}~#4\tl_if_empty:nF{#5}{~(#5)}~in~
-          \str_if_empty:NTF \l__stex_refs_cite_str{\tl_if_empty:nTF\l__stex_refs_docname_tl{
+          \tl_if_empty:nTF\l__stex_refs_title_tl{
             ???
-          }\l__stex_refs_docname_tl}{\cite{\l__stex_refs_cite_str}}
+          }\l__stex_refs_title_tl
         }
         \endinput
       }
     }
   }
 }
-\cs_new_protected:Nn \__stex_refs_document_name:n {
-  \tl_set:Nn \l__stex_refs_docname_tl {#1}
-}
+
 \cs_new_protected:Nn \__stex_refs_do_sref_in:n {
   \stex_debug:nn{sref}{In: \l__stex_refs_in_str^^JRepo:\l__stex_refs_repo_str}
   \stex_debug:nn{sref}{URI: \l__stex_refs_uri_str?#1}
@@ -1258,10 +1251,8 @@
     \stex_path_to_string:NN \l_tmpb_seq \l_tmpa_str
     \stex_debug:nn{sref}{File: \l_tmpa_str}
     \exp_args:No \IfFileExists \l_tmpa_str {
-      \tl_clear:N \l__stex_refs_docname_tl
       \tl_clear:N \l__stex_refs_return_tl
       \str_set:Nn \l__stex_refs_id_str {#1}
-      \let\STEXInternalSrefDocumentName\__stex_refs_document_name:n
       \let\STEXInternalSrefRestoreTarget\__stex_refs_restore_target:nnnnn
       \use:c{@ @ input}{\l_tmpa_str}
       \exp_args:No \tl_if_empty:nTF \l__stex_refs_return_tl {
