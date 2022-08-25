@@ -1828,6 +1828,15 @@
     \use:c{ c_stex_module_#1_code }
   }
 }
+\NewDocumentEnvironment { mmtinterface } { O{} m m } {
+  \begin{smodule}[#1]{#3}
+    \str_set:Nx \l_stex_module_mmtfor_str {#2}
+    \MMTinclude{#2}
+    \stex_reactivate_macro:N \mmtdecl
+    \stex_reactivate_macro:N \mmtdef
+}{
+  \end{smodule}
+}
 
 %%%%%%%%%%%%%   inheritance.dtx   %%%%%%%%%%%%%
 
@@ -3123,6 +3132,69 @@
 }
 \stex_deactivate_macro:Nn \symdef {module~environments}
 
+\keys_define:nn { stex / mmtdef } {
+  name    .str_set_x:N = \l_stex_symdecl_name_str ,
+  args    .str_set_x:N = \l_stex_symdecl_args_str ,
+  reorder .str_set_x:N = \l_stex_symdecl_reorder_str ,
+  op      .tl_set:N    = \l__stex_notation_op_tl ,
+ % lang    .str_set_x:N = \l__stex_notation_lang_str ,
+  variant .str_set_x:N = \l__stex_notation_variant_str ,
+  prec    .str_set_x:N = \l__stex_notation_prec_str ,
+  argnames    .clist_set:N  = \l_stex_symdecl_argnames_clist ,
+  assoc   .choices:nn  =
+      {bin,binl,binr,pre,conj,pwconj}
+      {\str_set:Nx \l_stex_symdecl_assoctype_str {\l_keys_choice_tl}},
+  unknown .code:n      = \str_set:Nx
+      \l__stex_notation_variant_str \l_keys_key_str
+}
+\cs_new_protected:Nn \_stex_mmtdef_args:n {
+  \str_clear:N \l_stex_symdecl_name_str
+  \str_clear:N \l_stex_symdecl_args_str
+  \str_clear:N \l_stex_symdecl_assoctype_str
+  \str_clear:N \l_stex_symdecl_reorder_str
+  \clist_clear:N \l_stex_symdecl_argnames_clist
+ % \str_clear:N \l__stex_notation_lang_str
+  \str_clear:N \l__stex_notation_variant_str
+  \str_clear:N \l__stex_notation_prec_str
+  \tl_clear:N \l__stex_notation_op_tl
+
+  \keys_set:nn { stex / mmtdef } { #1 }
+}
+
+\NewDocumentCommand \mmtdef {m O{} }{
+  \_stex_mmtdef_args:n{ #2 }
+  \bool_set_true:N \l_stex_symdecl_make_macro_bool
+  \str_if_empty:NT \l_stex_symdecl_name_str {
+    \str_set:Nx \l_stex_symdecl_name_str { #1 }
+  }
+  %\tl_set:Nx \l_stex_symdecl_definiens_tl {
+  %  \stex_annotate:nnn{ OMID }{
+  %    \l_stex_module_mmtfor_str?\l_stex_symdecl_name_str
+  %  }{}
+  %}
+  \stex_symdecl_do:n { #1 }
+  \MMTrule{rules.stex.mmt.kwarc.info?SubstitutionRule}{
+    \stex_annotate:nnn{ OMID }{
+      \l_stex_current_module_str ? \l_stex_symdecl_name_str
+    }{},
+    \stex_annotate:nnn{ OMID }{
+      \l_stex_module_mmtfor_str?\l_stex_symdecl_name_str
+    }{}
+  }
+  \tl_set:Nn \l_stex_notation_after_do_tl {
+    \__stex_notation_final:
+    \stex_smsmode_do:\ignorespacesandpars
+  }
+  \str_set:Nx \l_stex_get_symbol_uri_str {
+    \l_stex_current_module_str ? \l_stex_symdecl_name_str
+  }
+  \exp_args:Nx \stex_notation_do:nnnnn
+    { \prop_item:cn {l_stex_symdecl_\l_stex_get_symbol_uri_str _prop } { args } }
+    { \prop_item:cn { l_stex_symdecl_\l_stex_get_symbol_uri_str _prop } { arity } }
+    { \l__stex_notation_variant_str }
+    { \l__stex_notation_prec_str}
+}
+
 \keys_define:nn { stex / vardef } {
   name    .str_set_x:N  = \l__stex_variables_name_str ,
   args    .str_set_x:N  = \l__stex_variables_args_str ,
@@ -3481,6 +3553,59 @@
 
   \ignorespacesandpars
 }
+
+\keys_define:nn { stex / mmtdecl } {
+  name        .str_set_x:N  = \l_stex_symdecl_name_str ,
+  args        .str_set_x:N  = \l_stex_symdecl_args_str ,
+  deprecate   .str_set_x:N  = \l_stex_symdecl_deprecate_str ,
+  reorder     .str_set_x:N  = \l_stex_symdecl_reorder_str ,
+  argnames    .clist_set:N  = \l_stex_symdecl_argnames_clist ,
+  assoc       .choices:nn   =
+      {bin,binl,binr,pre,conj,pwconj}
+      {\str_set:Nx \l_stex_symdecl_assoctype_str {\l_keys_choice_tl}}
+}
+
+\cs_new_protected:Nn \_stex_mmtdecl_args:n {
+  \str_clear:N \l_stex_symdecl_name_str
+  \str_clear:N \l_stex_symdecl_args_str
+  \str_clear:N \l_stex_symdecl_deprecate_str
+  \str_clear:N \l_stex_symdecl_reorder_str
+  \str_clear:N \l_stex_symdecl_assoctype_str
+  \bool_set_false:N \l_stex_symdecl_local_bool
+  \clist_clear:N \l_stex_symdecl_argnames_clist
+
+  \keys_set:nn { stex / symdecl } { #1 }
+}
+
+\NewDocumentCommand \mmtdecl { s m O{}} {
+  \_stex_mmtdecl_args:n{#3}
+  \IfBooleanTF #1 {
+    \bool_set_false:N \l_stex_symdecl_make_macro_bool
+  } {
+    \bool_set_true:N \l_stex_symdecl_make_macro_bool
+  }
+  \str_if_empty:NT \l_stex_symdecl_name_str {
+    \str_set:Nx \l_stex_symdecl_name_str { #1 }
+  }
+  %\tl_set:Nx \l_stex_symdecl_definiens_tl {
+  %  \stex_annotate:nnn{ OMID }{
+  %    \l_stex_module_mmtfor_str?\l_stex_symdecl_name_str
+  %  }{}
+  %}
+  \stex_symdecl_do:n{#2}
+  \MMTrule{rules.stex.mmt.kwarc.info?SubstitutionRule}{
+    \stex_annotate:nnn{ OMID }{
+      \l_stex_current_module_str ? \l_stex_symdecl_name_str
+    }{},
+    \stex_annotate:nnn{ OMID }{
+      \l_stex_module_mmtfor_str?\l_stex_symdecl_name_str
+    }{}
+  }
+  \stex_smsmode_do:
+}
+
+\stex_deactivate_macro:Nn \mmtdecl {mmtinterface~environments}
+\stex_deactivate_macro:Nn \mmtdef {mmtinterface~environments}
 
 
 
