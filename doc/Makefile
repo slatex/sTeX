@@ -2,7 +2,7 @@ STY = stex extensions
 SPATH = $(STY:%=../source/%)
 DTX =  $(shell ls $(SPATH:%=%/*.dtx))
 INS =  $(shell ls $(SPATH:%=%/*.ins))
-DOC = stex-doc.pdf stex-manual.pdf
+DOC = stex-doc.pdf stex-manual.pdf stex-ide.pdf
 TEXDIR = ../tex
 TEXINPUTS = $(TEXDIR)//:
 
