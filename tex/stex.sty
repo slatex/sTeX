@@ -402,6 +402,8 @@
 \str_const:Nn \c__stex_path_dot_str {.}
 \str_const:Nn \c__stex_path_up_str {..}
 \cs_new_protected:Nn \stex_path_canonicalize:N {
+  \stex_debug:nn{paths}{canonicalizing~\seq_use:Nn #1 /}
+  \bool_set_false:N \l__stex_path_in_path_bool
   \seq_if_empty:NF #1 {
     \seq_clear:N \l_tmpa_seq
     \seq_get_left:NN #1 \l_tmpa_tl
@@ -412,6 +414,7 @@
       \str_set:Nn \l_tmpa_tl { ##1 }
       \str_if_eq:NNF \l_tmpa_tl \c__stex_path_dot_str {
         \str_if_eq:NNTF \l_tmpa_tl \c__stex_path_up_str {
+          \bool_set_true:N \l__stex_path_in_path_bool
           \seq_if_empty:NTF \l_tmpa_seq {
             \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
               \c__stex_path_up_str
@@ -427,13 +430,19 @@
             }
           }
         }{
-          %\str_if_empty:NF \l_tmpa_tl {
+          \str_if_empty:NTF \l_tmpa_tl {
+            \bool_if:NT \l__stex_path_in_path_bool {
+              \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq { \l_tmpa_tl }
+            }
+          } {
+            \bool_set_true:N \l__stex_path_in_path_bool
             \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq { \l_tmpa_tl }
-          %}
+          }
         }
       }
     }
     \seq_gset_eq:NN #1 \l_tmpa_seq
+    \stex_debug:nn{paths}{...returns~\seq_use:Nn #1 /}
   }
 }
 \prg_new_conditional:Nnn \stex_path_if_absolute:N {p, T, F, TF} {
@@ -1839,8 +1848,8 @@
 \bool_new:N \l_stex_in_meta_bool
 \bool_set_false:N \l_stex_in_meta_bool
 \cs_new_protected:Nn \stex_activate_module:n {
-  \stex_debug:nn{modules}{Activating~module~#1}
   \exp_args:NNx \seq_if_in:NnF \l_stex_all_modules_seq { #1 } {
+    \stex_debug:nn{modules}{Activating~module~#1}
     \seq_put_right:Nx \l_stex_all_modules_seq { #1 }
     \use:c{ c_stex_module_#1_code }
   }
