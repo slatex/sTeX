@@ -3947,6 +3947,7 @@
         \_stex_term_oms:nnn {#1}{#1\c_hash_str CUSTOM-}{\ignorespaces#2}
       }
     }{
+      \bool_set_false:N \l_stex_allow_semantic_bool
       \seq_clear:N \l__stex_terms_tmp_seq
       \exp_args:Nx\int_step_inline:nn{\prop_item:cn{l_stex_symdecl_#1 _prop}{arity}}{
         \tl_set:Nx \l__stex_terms_tmp_tl {\seq_item:Nn \l_stex_argnames_seq {##1}}
@@ -3982,7 +3983,7 @@
     \_stex_reset:N \arg
     \_stex_reset:N \comp
     \_stex_reset:N \l__stex_terms_custom_args_prop
-    %\bool_set_true:N \l_stex_allow_semantic_bool
+    \bool_set_true:N \l_stex_allow_semantic_bool
   }
 }
 
@@ -5235,11 +5236,11 @@
   \l_tmpa_tl
 }
 
-\NewDocumentEnvironment{usestructure}{m}{
+\NewDocumentCommand{\usestructure}{m}{
   \stex_get_structure:n {#1}
   \exp_args:Nnx \stex_debug:nn{features}{using~structure:~\l_stex_get_structure_module_str}
   \exp_args:No \stex_activate_module:n \l_stex_get_structure_module_str
-}{}
+}
 
 \keys_define:nn { stex / instantiate } {
   name        .str_set_x:N  = \l__stex_structures_name_str
@@ -5723,8 +5724,11 @@
 }
 \stex_deactivate_macro:Nn \Definame {definition~environments}
 
-\NewDocumentCommand \premise { m }{
-  \noindent\stex_annotate:nnn{ premise }{}{\ignorespaces #1 }
+\NewDocumentCommand \premise { O{} m }{
+  \tl_if_empty:nF{#1}{
+    % TODO
+  }
+  \noindent\stex_annotate:nnn{ premise }{#1}{\ignorespaces #2 }
 }
 \NewDocumentCommand \conclusion { m }{
   \noindent\stex_annotate:nnn{ conclusion }{}{\ignorespaces #1 }
@@ -5755,13 +5759,16 @@
 }
 
 \NewDocumentCommand \varbindforall {m}{
-  \stex_symbol_or_var:n {#1}
-  \bool_if:NTF\l_stex_symbol_or_var_bool{
-    \stex_if_do_html:T {
-      \stex_annotate_invisible:nnn {bindtype}{forall,\l_stex_get_symbol_uri_str}{}
+  \seq_set_split:Nnn \l_tmpa_seq,{#1}
+  \seq_map_inline:Nn \l_tmpa_seq {
+    \stex_symbol_or_var:n {##1}
+    \bool_if:NTF\l_stex_symbol_or_var_bool{
+      \stex_if_do_html:T {
+        \stex_annotate_invisible:nnn {bindtype}{forall,\l_stex_get_symbol_uri_str}{}
+      }
+    }{
+      % todo throw error
     }
-  }{
-    % todo throw error
   }
 }
 
@@ -5928,6 +5935,7 @@
   id      .str_set_x:N  = \sassertionid,
   title   .tl_set:N     = \sassertiontitle ,
   for     .clist_set:N  = \l__stex_statements_sassertion_for_clist ,
+  judgment .str_set_x:N = \l__stex_statements_judgment_str ,
   name    .str_set_x:N  = \sassertionname
 }
 \cs_new_protected:Nn \__stex_statements_sassertion_args:n {
@@ -5935,6 +5943,7 @@
   \str_clear:N \sassertionid
   \str_clear:N \sassertionname
   \clist_clear:N \l__stex_statements_sassertion_for_clist
+  \str_clear:N \l__stex_statements_judgment_str
   \tl_clear:N \sassertiontitle
   \keys_set:nn { stex / sassertion }{ #1 }
 }
@@ -5945,6 +5954,12 @@
   \stex_reactivate_macro:N \premise
   \stex_reactivate_macro:N \conclusion
   \stex_reactivate_macro:N \varbindforall
+  \stex_reactivate_macro:N \definiendum
+  \stex_reactivate_macro:N \definame
+  \str_if_empty:NF \sassertionname {
+    \stex_suppress_html:n{\stex_symdecl_do:nn{}{\sassertionname}}
+    \stex_ref_new_sym_target:n {\l_stex_current_module_str ? \sassertionname}
+  }
   \stex_if_smsmode:F {
     \seq_clear:N \l_tmpb_seq
     \clist_map_inline:Nn \l__stex_statements_sassertion_for_clist {
@@ -5962,6 +5977,10 @@
     }
     \str_if_empty:NF \sassertionname {
       \stex_annotate_invisible:nnn{statementname}{\sassertionname}{}
+    }
+    \str_if_empty:NF \l__stex_statements_judgment_str {
+      \exp_args:No \stex_get_symbol:n \l__stex_statements_judgment_str
+      \stex_annotate_invisible:nnn{judgment} \l_stex_get_symbol_uri_str {}
     }
     \clist_set:No \l_tmpa_clist \sassertiontype
     \tl_clear:N \l_tmpa_tl
@@ -5989,10 +6008,6 @@
   }
   \stex_smsmode_do:
 }{
-  \str_if_empty:NF \sassertionname {
-    \stex_suppress_html:n{\stex_symdecl_do:nn{}{\sassertionname}}
-    \stex_ref_new_sym_target:n {\l_stex_current_module_str ? \sassertionname}
-  }
   \stex_if_smsmode:F {
     \clist_set:No \l_tmpa_clist \sassertiontype
     \tl_clear:N \l_tmpa_tl
@@ -6031,12 +6046,14 @@
   type    .str_set_x:N  = \sassertiontype,
   id      .str_set_x:N  = \sassertionid,
   for     .clist_set:N  = \l__stex_statements_sassertion_for_clist ,
+  judgment .str_set_x:N = \l__stex_statements_judgment_str ,
   name    .str_set_x:N  = \sassertionname
 }
 \cs_new_protected:Nn \__stex_statements_inlineass_args:n {
   \str_clear:N \sassertiontype
   \str_clear:N \sassertionid
   \str_clear:N \sassertionname
+  \str_clear:N \l__stex_statements_judgment_str
   \clist_clear:N \l__stex_statements_sassertion_for_clist
   \keys_set:nn { stex / inlineass }{ #1 }
 }
@@ -6045,6 +6062,8 @@
   \stex_reactivate_macro:N \premise
   \stex_reactivate_macro:N \conclusion
   \stex_reactivate_macro:N \varbindforall
+  \stex_reactivate_macro:N \definiendum
+  \stex_reactivate_macro:N \definame
   \__stex_statements_inlineass_args:n{ #1 }
   \str_if_empty:NTF \sassertionid {
     \str_if_empty:NF \sassertionname {
@@ -6080,6 +6099,10 @@
         \stex_suppress_html:n{\stex_symdecl_do:nn{}{\sassertionname}}
         \stex_ref_new_sym_target:n {\l_stex_current_module_str ? \sassertionname}
         \stex_annotate_invisible:nnn{statementname}{\sassertionname}{}
+      }
+      \str_if_empty:NF \l__stex_statements_judgment_str {
+        \exp_args:No \stex_get_symbol:n \l__stex_statements_judgment_str
+        \stex_annotate_invisible:nnn{judgment} \l_stex_get_symbol_uri_str {}
       }
     }
   }
@@ -6645,7 +6668,7 @@
 \cs_new_protected:Npn \stexcommentfont {
   \small\itshape
 }
-\cs_new_protected:Nn \__stex_sproof_start_env:nnn {
+\cs_new_protected:Nn \__stex_sproof_start_env_nolist:nnn {
   \seq_clear:N \l_tmpa_seq
   \clist_map_inline:Nn \l__stex_sproof_spf_for_clist {
     \tl_if_empty:nF{ ##1 }{
@@ -6668,6 +6691,9 @@
   \bool_if:NT \l__stex_sproof_spf_hide_bool{
     \stex_html_backend:F{\setbox\l_tmpa_box\vbox\bgroup}
   }
+}
+\cs_new_protected:Nn \__stex_sproof_start_env:nnn {
+  \__stex_sproof_start_env_nolist:nnn{#1}{#2}{#3}
   \begin{list}{}{
     \setlength\topsep{0pt}
     \setlength\parsep{0pt}
@@ -6688,7 +6714,7 @@
     \end{stex_annotate_env}
   }
 }
-\NewDocumentEnvironment{sproof}{s O{} m}{
+\NewDocumentEnvironment{sproof}{O{} m}{
   \intarray_gzero:N \l__stex_sproof_counter_intarray
   \intarray_gset:Nnn \l__stex_sproof_counter_intarray 1 1
   \stex_reactivate_macro:N \yield
@@ -6696,13 +6722,13 @@
   \stex_reactivate_macro:N \assumption
   \stex_reactivate_macro:N \conclude
   \stex_reactivate_macro:N \spfstep
-  \__stex_sproof_spf_args:n{#2}
+  \__stex_sproof_spf_args:n{#1}
   \stex_if_smsmode:TF {
     \str_if_empty:NF \spfid {
       \stex_ref_new_doc_target:n \spfid
     }
   }{
-    \__stex_sproof_start_env:nnn{sproof}{#3}{
+    \__stex_sproof_start_env:nnn{sproof}{#2}{
       \clist_set:No \l_tmpa_clist \spftype
       \tl_clear:N \l_tmpa_tl
       \clist_map_inline:Nn \l_tmpa_clist {
@@ -6734,6 +6760,62 @@
     \l_tmpa_tl
   }
 }}
+
+\NewDocumentEnvironment{sproof*}{O{}}{
+  \stex_reactivate_macro:N \yield
+  \stex_reactivate_macro:N \eqstep
+  \stex_reactivate_macro:N \assumption
+  \stex_reactivate_macro:N \conclude
+  \stex_reactivate_macro:N \spfstep
+  \__stex_sproof_spf_args:n{#1}
+  \stex_if_smsmode:TF {
+    \str_if_empty:NF \spfid {
+      \stex_ref_new_doc_target:n \spfid
+    }
+  }{
+    \__stex_sproof_start_env_nolist:nnn{sproof}{}{
+      \clist_set:No \l_tmpa_clist \spftype
+      \tl_clear:N \l_tmpa_tl
+      \clist_map_inline:Nn \l_tmpa_clist {
+        \tl_if_exist:cT {__stex_sproof_sproof_##1_start:}{
+          \tl_set:Nn \l_tmpa_tl {\use:c{__stex_sproof_sproof_##1_start:}}
+        }
+        \exp_args:No \str_if_eq:nnT \c__stex_sproof_flow_str {##1} {
+          \tl_set:Nn \l_tmpa_tl {\use:n{}}
+        }
+      }
+      \tl_if_empty:NTF \l_tmpa_tl {
+        \__stex_sproof_sproof_start:
+      }{
+        \l_tmpa_tl
+      }
+    }
+  }
+  \bool_set_true:N \l__stex_sproof_in_spfblock_bool
+  \stex_smsmode_do:
+}{
+  \stex_if_smsmode:F{
+    \bool_if:NT \l__stex_sproof_spf_hide_bool{
+      \stex_html_backend:F{\egroup}
+    }
+    \clist_set:No \l_tmpa_clist \spftype
+
+  \tl_clear:N \l_tmpa_tl
+  \clist_map_inline:Nn \l_tmpa_clist {
+    \tl_if_exist:cT {__stex_sproof_sproof_##1_end:}{
+      \tl_set:Nn \l_tmpa_tl {\use:c{__stex_sproof_sproof_##1_end:}}
+    }
+  }
+  \tl_if_empty:NTF \l_tmpa_tl {
+    \__stex_sproof_sproof_end:
+  }{
+    \l_tmpa_tl
+  }
+    \end{stex_annotate_env}
+    \end{stex_annotate_env}
+  }
+}
+
 \NewDocumentEnvironment{subproof}{s O{} m}{
   \__stex_sproof_spf_args:n{#2}
   \stex_if_smsmode:TF {
@@ -6781,12 +6863,14 @@
   type        .str_set_x:N  = \spftype,
   title       .tl_set:N     = \spftitle,
   method      .tl_set:N     = \l__stex_sproof_spf_method_tl,
-  term        .tl_set:N     = \l__stex_sproof_spf_term_tl
+  term        .tl_set:N     = \l__stex_sproof_spf_term_tl,
+  name        .str_set_x:N  = \l__stex_sproof_spf_name_str
 }
 \cs_new_protected:Nn \__stex_sproof_spfstep_args:n {
 \str_clear:N \spfstepid
 \clist_clear:N \l__stex_sproof_spf_for_clist
 \str_clear:N \spftype
+  \str_clear:N \l__stex_sproof_spf_name_str
 \tl_clear:N \l__stex_sproof_spf_method_tl
 \tl_clear:N \l__stex_sproof_spf_term_tl
   %\bool_set_false:N \l__stex_sproof_inc_counter_bool
@@ -6799,6 +6883,13 @@
 
     \__stex_sproof_spfstep_args:n{##2}
     \stex_annotate:nnn{spfstep}{#2}{
+      \str_if_empty:NF \l__stex_sproof_spf_name_str {
+        \stex_debug:nn{spfstep}{Name:\l__stex_sproof_spf_name_str}
+        \stex_annotate_invisible:nnn{spfname}{}{\l__stex_sproof_spf_name_str}
+        \stex_suppress_html:n{
+          \exp_args:NNx\exp_args:Nnx\vardef{v\l__stex_sproof_spf_name_str}{\exp_not:N\comp{\l__stex_sproof_spf_name_str}}
+        }
+      }
       \tl_if_empty:NF \l__stex_sproof_spf_term_tl {
         \stex_annotate_invisible:nnn{spfyield}{}{$\l__stex_sproof_spf_term_tl$}
       }
@@ -6854,7 +6945,7 @@
   \sproofend
 }
 \newcommand\spfjust[1]{
-  #1
+  \stex_annotate:nnn{justification}{}{#1}
 }
 
 %%%%%%%%%%%%%   metatheory.dtx   %%%%%%%%%%%%%

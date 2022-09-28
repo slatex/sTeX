@@ -313,7 +313,7 @@
 %    up the description environment that will take the proof steps. At the end of the
 %    proof, we position the proof end into the last line.
 %    \begin{macrocode}
-\cs_new_protected:Nn \_@@_start_env:nnn {
+\cs_new_protected:Nn \_@@_start_env_nolist:nnn {
   \seq_clear:N \l_tmpa_seq
   \clist_map_inline:Nn \l_@@_spf_for_clist {
     \tl_if_empty:nF{ ##1 }{
@@ -336,6 +336,9 @@
   \bool_if:NT \l_@@_spf_hide_bool{
     \stex_html_backend:F{\setbox\l_tmpa_box\vbox\bgroup}
   }
+}
+\cs_new_protected:Nn \_@@_start_env:nnn {
+  \_@@_start_env_nolist:nnn{#1}{#2}{#3}
   \begin{list}{}{
     \setlength\topsep{0pt}
     \setlength\parsep{0pt}
@@ -356,7 +359,7 @@
     \end{stex_annotate_env}
   }
 }
-\NewDocumentEnvironment{sproof}{s O{} m}{
+\NewDocumentEnvironment{sproof}{O{} m}{
   \intarray_gzero:N \l_@@_counter_intarray
   \intarray_gset:Nnn \l_@@_counter_intarray 1 1
   \stex_reactivate_macro:N \yield
@@ -364,13 +367,13 @@
   \stex_reactivate_macro:N \assumption
   \stex_reactivate_macro:N \conclude
   \stex_reactivate_macro:N \spfstep
-  \_@@_spf_args:n{#2}
+  \_@@_spf_args:n{#1}
   \stex_if_smsmode:TF {
     \str_if_empty:NF \spfid {
       \stex_ref_new_doc_target:n \spfid
     }
   }{
-    \_@@_start_env:nnn{sproof}{#3}{
+    \_@@_start_env:nnn{sproof}{#2}{
       \clist_set:No \l_tmpa_clist \spftype
       \tl_clear:N \l_tmpa_tl
       \clist_map_inline:Nn \l_tmpa_clist {
@@ -402,6 +405,62 @@
     \l_tmpa_tl
   }
 }}
+
+\NewDocumentEnvironment{sproof*}{O{}}{
+  \stex_reactivate_macro:N \yield
+  \stex_reactivate_macro:N \eqstep
+  \stex_reactivate_macro:N \assumption
+  \stex_reactivate_macro:N \conclude
+  \stex_reactivate_macro:N \spfstep
+  \_@@_spf_args:n{#1}
+  \stex_if_smsmode:TF {
+    \str_if_empty:NF \spfid {
+      \stex_ref_new_doc_target:n \spfid
+    }
+  }{
+    \_@@_start_env_nolist:nnn{sproof}{}{
+      \clist_set:No \l_tmpa_clist \spftype
+      \tl_clear:N \l_tmpa_tl
+      \clist_map_inline:Nn \l_tmpa_clist {
+        \tl_if_exist:cT {_@@_sproof_##1_start:}{
+          \tl_set:Nn \l_tmpa_tl {\use:c{_@@_sproof_##1_start:}}
+        }
+        \exp_args:No \str_if_eq:nnT \c_@@_flow_str {##1} {
+          \tl_set:Nn \l_tmpa_tl {\use:n{}}
+        }
+      }
+      \tl_if_empty:NTF \l_tmpa_tl {
+        \_@@_sproof_start:
+      }{
+        \l_tmpa_tl
+      }
+    }
+  }
+  \bool_set_true:N \l_@@_in_spfblock_bool
+  \stex_smsmode_do:
+}{
+  \stex_if_smsmode:F{
+    \bool_if:NT \l_@@_spf_hide_bool{
+      \stex_html_backend:F{\egroup}
+    }
+    \clist_set:No \l_tmpa_clist \spftype
+    
+  \tl_clear:N \l_tmpa_tl
+  \clist_map_inline:Nn \l_tmpa_clist {
+    \tl_if_exist:cT {_@@_sproof_##1_end:}{
+      \tl_set:Nn \l_tmpa_tl {\use:c{_@@_sproof_##1_end:}}
+    }
+  }
+  \tl_if_empty:NTF \l_tmpa_tl {
+    \_@@_sproof_end:
+  }{
+    \l_tmpa_tl
+  }
+    \end{stex_annotate_env}
+    \end{stex_annotate_env}
+  }
+}
+
 \NewDocumentEnvironment{subproof}{s O{} m}{
   \_@@_spf_args:n{#2}
   \stex_if_smsmode:TF {
@@ -454,12 +513,14 @@
   type        .str_set_x:N  = \spftype,
   title       .tl_set:N     = \spftitle,
   method      .tl_set:N     = \l_@@_spf_method_tl,
-  term        .tl_set:N     = \l_@@_spf_term_tl
+  term        .tl_set:N     = \l_@@_spf_term_tl,
+  name        .str_set_x:N  = \l_@@_spf_name_str
 }
 \cs_new_protected:Nn \_@@_spfstep_args:n {
 	\str_clear:N \spfstepid
 	\clist_clear:N \l_@@_spf_for_clist
 	\str_clear:N \spftype
+  \str_clear:N \l_@@_spf_name_str
 	\tl_clear:N \l_@@_spf_method_tl
 	\tl_clear:N \l_@@_spf_term_tl
   %\bool_set_false:N \l_@@_inc_counter_bool
@@ -471,7 +532,14 @@
     \_@@_maybe_comment_end:
 
     \_@@_spfstep_args:n{##2}
-    \stex_annotate:nnn{spfstep}{#2}{ 
+    \stex_annotate:nnn{spfstep}{#2}{
+      \str_if_empty:NF \l_@@_spf_name_str {
+        \stex_debug:nn{spfstep}{Name:\l_@@_spf_name_str}
+        \stex_annotate_invisible:nnn{spfname}{}{\l_@@_spf_name_str}
+        \stex_suppress_html:n{
+          \exp_args:NNx\exp_args:Nnx\vardef{v\l_@@_spf_name_str}{\exp_not:N\comp{\l_@@_spf_name_str}}
+        }
+      }
       \tl_if_empty:NF \l_@@_spf_term_tl {
         \stex_annotate_invisible:nnn{spfyield}{}{$\l_@@_spf_term_tl$}
       }
@@ -537,7 +605,7 @@
 %
 %    \begin{macrocode}
 \newcommand\spfjust[1]{
-  #1
+  \stex_annotate:nnn{justification}{}{#1}
 }
 %</package>
 %    \end{macrocode}

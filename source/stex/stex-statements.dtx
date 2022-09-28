@@ -170,8 +170,11 @@
 }
 \stex_deactivate_macro:Nn \Definame {definition~environments}
 
-\NewDocumentCommand \premise { m }{
-  \noindent\stex_annotate:nnn{ premise }{}{\ignorespaces #1 }
+\NewDocumentCommand \premise { O{} m }{
+  \tl_if_empty:nF{#1}{
+    % TODO
+  }
+  \noindent\stex_annotate:nnn{ premise }{#1}{\ignorespaces #2 }
 }
 \NewDocumentCommand \conclusion { m }{
   \noindent\stex_annotate:nnn{ conclusion }{}{\ignorespaces #1 }
@@ -202,13 +205,16 @@
 }
 
 \NewDocumentCommand \varbindforall {m}{
-  \stex_symbol_or_var:n {#1}
-  \bool_if:NTF\l_stex_symbol_or_var_bool{
-    \stex_if_do_html:T {
-      \stex_annotate_invisible:nnn {bindtype}{forall,\l_stex_get_symbol_uri_str}{}
+  \seq_set_split:Nnn \l_tmpa_seq,{#1}
+  \seq_map_inline:Nn \l_tmpa_seq {
+    \stex_symbol_or_var:n {##1}
+    \bool_if:NTF\l_stex_symbol_or_var_bool{
+      \stex_if_do_html:T {
+        \stex_annotate_invisible:nnn {bindtype}{forall,\l_stex_get_symbol_uri_str}{}
+      }
+    }{
+      % todo throw error
     }
-  }{
-    % todo throw error
   }
 }
 
@@ -398,6 +404,7 @@
   id      .str_set_x:N  = \sassertionid,
   title   .tl_set:N     = \sassertiontitle ,
   for     .clist_set:N  = \l_@@_sassertion_for_clist ,
+  judgment .str_set_x:N = \l_@@_judgment_str ,
   name    .str_set_x:N  = \sassertionname
 }
 \cs_new_protected:Nn \_@@_sassertion_args:n {
@@ -405,6 +412,7 @@
   \str_clear:N \sassertionid
   \str_clear:N \sassertionname
   \clist_clear:N \l_@@_sassertion_for_clist
+  \str_clear:N \l_@@_judgment_str
   \tl_clear:N \sassertiontitle
   \keys_set:nn { stex / sassertion }{ #1 }
 }
@@ -416,6 +424,12 @@
   \stex_reactivate_macro:N \premise
   \stex_reactivate_macro:N \conclusion
   \stex_reactivate_macro:N \varbindforall
+  \stex_reactivate_macro:N \definiendum
+  \stex_reactivate_macro:N \definame
+  \str_if_empty:NF \sassertionname { 
+    \stex_suppress_html:n{\stex_symdecl_do:nn{}{\sassertionname}}
+    \stex_ref_new_sym_target:n {\l_stex_current_module_str ? \sassertionname}
+  }
   \stex_if_smsmode:F {
     \seq_clear:N \l_tmpb_seq
     \clist_map_inline:Nn \l_@@_sassertion_for_clist {
@@ -433,6 +447,10 @@
     }
     \str_if_empty:NF \sassertionname {
       \stex_annotate_invisible:nnn{statementname}{\sassertionname}{}
+    }
+    \str_if_empty:NF \l_@@_judgment_str {
+      \exp_args:No \stex_get_symbol:n \l_@@_judgment_str
+      \stex_annotate_invisible:nnn{judgment} \l_stex_get_symbol_uri_str {}
     }
     \clist_set:No \l_tmpa_clist \sassertiontype
     \tl_clear:N \l_tmpa_tl
@@ -460,10 +478,6 @@
   }
   \stex_smsmode_do:
 }{
-  \str_if_empty:NF \sassertionname { 
-    \stex_suppress_html:n{\stex_symdecl_do:nn{}{\sassertionname}}
-    \stex_ref_new_sym_target:n {\l_stex_current_module_str ? \sassertionname}
-  }
   \stex_if_smsmode:F {  
     \clist_set:No \l_tmpa_clist \sassertiontype
     \tl_clear:N \l_tmpa_tl
@@ -513,12 +527,14 @@
   type    .str_set_x:N  = \sassertiontype,
   id      .str_set_x:N  = \sassertionid,
   for     .clist_set:N  = \l_@@_sassertion_for_clist ,
+  judgment .str_set_x:N = \l_@@_judgment_str ,
   name    .str_set_x:N  = \sassertionname
 }
 \cs_new_protected:Nn \_@@_inlineass_args:n {
   \str_clear:N \sassertiontype
   \str_clear:N \sassertionid
   \str_clear:N \sassertionname
+  \str_clear:N \l_@@_judgment_str
   \clist_clear:N \l_@@_sassertion_for_clist
   \keys_set:nn { stex / inlineass }{ #1 }
 }
@@ -527,6 +543,8 @@
   \stex_reactivate_macro:N \premise
   \stex_reactivate_macro:N \conclusion
   \stex_reactivate_macro:N \varbindforall
+  \stex_reactivate_macro:N \definiendum
+  \stex_reactivate_macro:N \definame
   \_@@_inlineass_args:n{ #1 }
   \str_if_empty:NTF \sassertionid {
     \str_if_empty:NF \sassertionname {
@@ -562,6 +580,10 @@
         \stex_suppress_html:n{\stex_symdecl_do:nn{}{\sassertionname}}
         \stex_ref_new_sym_target:n {\l_stex_current_module_str ? \sassertionname}
         \stex_annotate_invisible:nnn{statementname}{\sassertionname}{}
+      }
+      \str_if_empty:NF \l_@@_judgment_str {
+        \exp_args:No \stex_get_symbol:n \l_@@_judgment_str
+        \stex_annotate_invisible:nnn{judgment} \l_stex_get_symbol_uri_str {}
       }
     }
   }
