@@ -206,8 +206,8 @@
 }
 
 \bool_if:NTF \c_stex_persist_mode_bool {
-  \def \stex_persist:n #1 {}
-  \def \stex_persist:x #1 {}
+  \long\def \stex_persist:n #1 {}
+  \long\def \stex_persist:x #1 {}
 }{
   \bool_if:NTF \c_stex_persist_write_mode_bool {
   \iow_new:N \c__stex_persist_iow
@@ -223,8 +223,8 @@
   }
   \cs_generate_variant:Nn \stex_persist:n {x}
   }{
-    \def \stex_persist:n #1 {}
-    \def \stex_persist:x #1 {}
+    \long\def \stex_persist:n #1 {}
+    \long\def \stex_persist:x #1 {}
   }
 }
 \cs_new_protected:Nn \stex_deactivate_macro:Nn {
@@ -1238,6 +1238,7 @@
     }
   }{
     \exp_args:NNo \seq_if_in:NnTF \g_stex_ref_files_seq \l__stex_refs_uri_str {
+      \stex_debug:nn{sref}{Using~ref~file~\l__stex_refs_uri_str}
       \exp_args:Nnx \seq_if_in:cnTF{g_stex_ref_\l__stex_refs_uri_str _seq}{\detokenize{#1}}{
         \stex_debug:nn{sref}{Reference~found~in~ref~files;~autoref~on~\l__stex_refs_uri_str?#1}
         \__stex_refs_do_autoref:n{\l__stex_refs_uri_str?#1}
@@ -1251,6 +1252,7 @@
         }
       }
     }{
+      \stex_debug:nn{sref}{No~ref~file~found~for~\l__stex_refs_uri_str}
       \str_if_empty:NTF \l__stex_refs_in_str {
         \stex_debug:nn{sref}{in~empty;~autoref~on~\l__stex_refs_uri_str?#1}
         \__stex_refs_do_autoref:n{\l__stex_refs_uri_str?#1}
@@ -1669,14 +1671,16 @@
       \str_set_eq:NN \l_stex_module_meta_str \l_stex_metatheory_str
     }
     \str_if_eq:VnF \l_stex_module_meta_str {NONE} {
-      \bool_set_true:N \l_stex_in_meta_bool
-      \exp_args:Nx \stex_add_to_current_module:n {
-        \bool_set_true:N \l_stex_in_meta_bool
-        \stex_activate_module:n {\l_stex_module_meta_str}
-        \bool_set_false:N \l_stex_in_meta_bool
+      \stex_execute_in_module:n{
+        \exp_args:Nnx \use:nn {
+          \bool_set_true:N \l_stex_in_meta_bool
+          \stex_activate_module:n {\l_stex_module_meta_str}
+        }{
+          \bool_if:NF \l_stex_in_meta_bool {
+            \exp_not:n{ \bool_set_false:N \l_stex_in_meta_bool }
+          }
+        }
       }
-      \stex_activate_module:n {\l_stex_module_meta_str}
-      \bool_set_false:N \l_stex_in_meta_bool
     }
   }{
     \str_if_empty:NT \l_stex_module_lang_str {
