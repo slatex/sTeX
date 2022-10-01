@@ -227,6 +227,73 @@
     \long\def \stex_persist:x #1 {}
   }
 }
+\seq_new:N \l__stex_metagroup_ids_seq
+
+\bool_set_false:N \l__stex_metagroup_aftergroup_bool
+
+\cs_new_protected:Nn \stex_metagroup_new:n {
+    \str_set:cx{l__stex_metagroup_#1_int} {\int_use:N\currentgrouplevel}
+    \seq_put_right:Nn \l__stex_metagroup_ids_seq {#1}
+}
+
+\prg_new_conditional:Nnn \stex_metagroup_exists:n {p, T, F, TF} {
+    \str_if_exist:cTF{l__stex_metagroup_#1_int}
+        \prg_return_true: \prg_return_false:
+}
+
+\cs_new:Nn \__stex_metagroup_macroname:n {
+    \__stex_metagroup_macroname:nn{#1}\currentgrouplevel
+}
+\cs_new:Nn \__stex_metagroup_macroname:nn {
+    g__stex_metagroup_#1_\int_eval:n{#2}_content
+}
+
+\msg_new:nnn{stex}{error/metagroup/missing}{
+  No~metagroup~by~ID~#1
+}
+
+\cs_new_protected:Nn \stex_metagroup_do_in:nn {
+    \stex_metagroup_exists:nTF{#1}{
+        \__stex_metagroup_do_in:nn{#1}{#2}
+    }{
+      \msg_error:nnn{stex}{error/metagroup/missing}{#1}
+    }
+}
+\cs_generate_variant:Nn \stex_metagroup_do_in:nn {nx}
+
+\cs_new_protected:Nn \__stex_metagroup_do_in:nn {
+  \tl_set:Nn\__stex_metagroup_tmp{#2}
+  \exp_args:Nx \int_compare:nNnF {\use:c{l__stex_metagroup_#1_int}}
+      = \currentgrouplevel {
+      \tl_if_exist:cTF{\__stex_metagroup_macroname:n{#1}}{
+        \exp_args:Nno \tl_gput_right:cn{\__stex_metagroup_macroname:n{#1}}
+      }{
+        \exp_args:Nno \tl_gset:cn{\__stex_metagroup_macroname:n{#1}}
+      }\__stex_metagroup_tmp
+      \bool_if_exist:cF {l__stex_metagroup_\int_eval:n\currentgrouplevel _bool} {
+          \group_insert_after:N \__stex_metagroup_do:
+          \bool_set_true:c {l__stex_metagroup_\int_eval:n\currentgrouplevel _bool}
+      }
+  }
+  \__stex_metagroup_tmp
+}
+\cs_generate_variant:Nn \__stex_metagroup_do_in:nn {nx}
+
+\cs_new_protected:Nn \__stex_metagroup_do: {
+    \seq_map_inline:Nn \l__stex_metagroup_ids_seq {
+        \tl_if_exist:cT{\__stex_metagroup_macroname:nn{##1}{\currentgrouplevel+1}}{
+            \exp_args:NNno \exp_args:Nno \__stex_metagroup_do_in:nn{##1}{
+                \csname\__stex_metagroup_macroname:nn{##1}{\currentgrouplevel+1}\endcsname
+            }
+            \cs_undefine:c{\__stex_metagroup_macroname:nn{##1}{\currentgrouplevel+1}}
+        }
+        \bool_if_exist:cF {l__stex_metagroup_\int_eval:n\currentgrouplevel _bool} {
+            \group_insert_after:N \__stex_metagroup_do:
+            \bool_set_true:c {l__stex_metagroup_\int_eval:n\currentgrouplevel _bool}
+        }
+    }
+}
+
 \cs_new_protected:Nn \stex_deactivate_macro:Nn {
   \exp_after:wN\let\csname \detokenize{#1} - orig\endcsname#1
   \def#1{
@@ -358,8 +425,8 @@
   }
 }
 
-\cs_new_protected:Nn \__stex_persist_patchcounter:n{
-  \cs_set_eq:cc{__stex_persist_tmp_#1}{@#1}
+\cs_new_protected:Nn \__stex_aux_patchcounter:n{
+  \cs_set_eq:cc{__stex_aux_tmp_#1}{@#1}
   \cs_set:cpn {@#1} ##1 {
     \STEXInternalAnnotate{counter}{
       \expandafter\expandafter\expandafter
@@ -367,32 +434,32 @@
       \expandafter\@gobble
       \expandafter\expandafter\expandafter\@gobble
       \expandafter\@gobble\detokenize{##1},
-      #1,\number##1}{\use:c{__stex_persist_tmp_#1}{##1}}
+      #1,\number##1}{\use:c{__stex_aux_tmp_#1}{##1}}
   }
 }
 
 \cs_new_protected:Nn \stex_patch_counters: {
-  \__stex_persist_patchcounter:n{arabic}
-  \__stex_persist_patchcounter:n{roman}
-  \__stex_persist_patchcounter:n{Roman}
-  \__stex_persist_patchcounter:n{alph}
-  \__stex_persist_patchcounter:n{Alph}
-  \__stex_persist_patchcounter:n{fnsymbol}
-  \let\__stex_persist_tmp_refstepcounter\refstepcounter
+  \__stex_aux_patchcounter:n{arabic}
+  \__stex_aux_patchcounter:n{roman}
+  \__stex_aux_patchcounter:n{Roman}
+  \__stex_aux_patchcounter:n{alph}
+  \__stex_aux_patchcounter:n{Alph}
+  \__stex_aux_patchcounter:n{fnsymbol}
+  \let\__stex_aux_tmp_refstepcounter\refstepcounter
   \cs_set:Npn\refstepcounter##1{
-    \__stex_persist_tmp_refstepcounter{##1}
+    \__stex_aux_tmp_refstepcounter{##1}
     \STEXInternalAnnotate{stepcounter}{##1}{}
   }
 }
 
 \cs_new_protected:Nn \stex_unpatch_counters: {
-  \let\@arabic\__stex_persist_tmp_arabic
-  \let\@roman\__stex_persist_tmp_roman
-  \let\@Roman\__stex_persist_tmp_Roman
-  \let\@alph\__stex_persist_tmp_alph
-  \let\@Alph\__stex_persist_tmp_Alph
-  \let\@fnsymbol\__stex_persist_tmp_fnsymbol
-  \let\refstepcounter\__stex_persist_tmp_refstepcounter
+  \let\@arabic\__stex_aux_tmp_arabic
+  \let\@roman\__stex_aux_tmp_roman
+  \let\@Roman\__stex_aux_tmp_Roman
+  \let\@alph\__stex_aux_tmp_alph
+  \let\@Alph\__stex_aux_tmp_Alph
+  \let\@fnsymbol\__stex_aux_tmp_fnsymbol
+  \let\refstepcounter\__stex_aux_tmp_refstepcounter
 }
 
 
@@ -1441,6 +1508,17 @@
   \prop_if_exist:cTF { c_stex_module_#1_prop }
     \prg_return_true: \prg_return_false:
 }
+\cs_generate_variant:Nn \stex_if_module_exists:n {x}
+
+\cs_new_protected:Nn \stex_do_up_to_module:n {
+  \exp_args:No \stex_metagroup_do_in:nn \l_stex_current_module_str {#1}
+}
+
+\cs_generate_variant:Nn \stex_do_up_to_module:n {x}
+
+\cs_new_protected:Nn \_stex_reset_up_to_module:n {
+  \expandafter\let\csname l__stex_modules_aftergroup_#1_tl\endcsname\undefined
+}
 \cs_new_protected:Nn \stex_execute_in_module:n { \stex_if_in_module:T {
   \stex_add_to_current_module:n { #1 }
   \stex_do_up_to_module:n { #1 }
@@ -1460,7 +1538,7 @@
   \stex_add_to_current_module:n { \ignorespacesandpars#1}
   \stex_smsmode_do:
 }
-\let \stex_module_export_helper:n \use:n
+
 \stex_deactivate_macro:Nn \STEXexport {module~environments}
 \cs_new_protected:Nn \stex_add_constant_to_current_module:n {
   \str_set:Nx \l_tmpa_str { #1 }
@@ -1486,36 +1564,6 @@
   \seq_if_in:NnF \l_stex_collect_imports_seq { #1 } {
     \seq_put_right:Nx \l_stex_collect_imports_seq { #1 }
   }
-}
-\int_new:N \l__stex_modules_group_depth_int
-\cs_new_protected:Nn \stex_do_up_to_module:n {
-  \int_compare:nNnTF \l__stex_modules_group_depth_int = \currentgrouplevel {
-    #1
-  }{
-    #1
-    \expandafter \tl_gset:Nn
-    \csname l__stex_modules_aftergroup_\l_stex_current_module_str _tl
-    \expandafter\expandafter\expandafter\endcsname
-    \expandafter\expandafter\expandafter { \csname
-      l__stex_modules_aftergroup_\l_stex_current_module_str _tl\endcsname #1 }
-    \aftergroup\__stex_modules_aftergroup_do:
-  }
-}
-\cs_generate_variant:Nn \stex_do_up_to_module:n {x}
-\cs_new_protected:Nn \__stex_modules_aftergroup_do: {
-  \stex_debug:nn{aftergroup}{\cs_meaning:c{
-    l__stex_modules_aftergroup_\l_stex_current_module_str _tl
-  }}
-  \int_compare:nNnTF \l__stex_modules_group_depth_int = \currentgrouplevel {
-    \use:c{l__stex_modules_aftergroup_\l_stex_current_module_str _tl}
-    \tl_gclear:c{l__stex_modules_aftergroup_\l_stex_current_module_str _tl}
-  }{
-    \use:c{l__stex_modules_aftergroup_\l_stex_current_module_str _tl}
-    \aftergroup\__stex_modules_aftergroup_do:
-  }
-}
-\cs_new_protected:Nn \_stex_reset_up_to_module:n {
-  \expandafter\let\csname l__stex_modules_aftergroup_#1_tl\endcsname\undefined
 }
 
 \str_new:N \l_stex_module_ns_str
@@ -1599,7 +1647,6 @@
 
 
 \cs_new_protected:Nn \stex_module_setup:nn {
-  \int_set:Nn \l__stex_modules_group_depth_int {\currentgrouplevel}
   \str_set:Nx \l_stex_module_name_str { #2 }
   \__stex_modules_args:n { #1 }
   \stex_if_in_module:TF {
@@ -1630,6 +1677,7 @@
       }
     }
   }
+  \exp_args:Nx \stex_metagroup_new:n{\l_stex_module_ns_str?\l_stex_module_name_str}
   \str_if_empty:NT \l_stex_module_lang_str {
     \seq_get_right:NN \g_stex_currentfile_seq \l_tmpa_str
     \seq_set_split:NnV \l_tmpa_seq . \l_tmpa_str

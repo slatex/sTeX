@@ -272,10 +272,26 @@
   \prop_if_exist:cTF { c_stex_module_#1_prop }
     \prg_return_true: \prg_return_false:
 }
+\cs_generate_variant:Nn \stex_if_module_exists:n {x}
 %    \end{macrocode}
 % \end{macro}
 %
-% \begin{macro}{\stex_add_to_current_module:n,\STEXexport}
+% \begin{macro}{\stex_do_up_to_module:n}
+%    \begin{macrocode}
+
+\cs_new_protected:Nn \stex_do_up_to_module:n {
+  \exp_args:No \stex_metagroup_do_in:nn \l_stex_current_module_str {#1}
+}
+
+\cs_generate_variant:Nn \stex_do_up_to_module:n {x}
+
+\cs_new_protected:Nn \_stex_reset_up_to_module:n {
+  \expandafter\let\csname l_@@_aftergroup_#1_tl\endcsname\undefined
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\stex_execute_in_module:n,\stex_add_to_current_module:n,\STEXexport}
 %
 % Only allowed within modules:
 %
@@ -299,7 +315,7 @@
   \stex_add_to_current_module:n { \ignorespacesandpars#1}
   \stex_smsmode_do:
 }
-\let \stex_module_export_helper:n \use:n
+
 \stex_deactivate_macro:Nn \STEXexport {module~environments}
 %    \end{macrocode}
 % \end{macro}
@@ -344,40 +360,6 @@
 %    \end{macrocode}
 % \end{macro}
 %
-% \begin{macro}{\stex_do_up_to_module:n}
-%    \begin{macrocode}
-\int_new:N \l_@@_group_depth_int
-\cs_new_protected:Nn \stex_do_up_to_module:n {
-  \int_compare:nNnTF \l_@@_group_depth_int = \currentgrouplevel {
-    #1
-  }{
-    #1
-    \expandafter \tl_gset:Nn 
-    \csname l_@@_aftergroup_\l_stex_current_module_str _tl 
-    \expandafter\expandafter\expandafter\endcsname
-    \expandafter\expandafter\expandafter { \csname 
-      l_@@_aftergroup_\l_stex_current_module_str _tl\endcsname #1 }
-    \aftergroup\_@@_aftergroup_do:
-  }
-}
-\cs_generate_variant:Nn \stex_do_up_to_module:n {x}
-\cs_new_protected:Nn \_@@_aftergroup_do: {
-  \stex_debug:nn{aftergroup}{\cs_meaning:c{
-    l_@@_aftergroup_\l_stex_current_module_str _tl
-  }}
-  \int_compare:nNnTF \l_@@_group_depth_int = \currentgrouplevel {
-    \use:c{l_@@_aftergroup_\l_stex_current_module_str _tl}
-    \tl_gclear:c{l_@@_aftergroup_\l_stex_current_module_str _tl}
-  }{
-    \use:c{l_@@_aftergroup_\l_stex_current_module_str _tl}
-    \aftergroup\_@@_aftergroup_do:
-  }
-}
-\cs_new_protected:Nn \_stex_reset_up_to_module:n {
-  \expandafter\let\csname l_@@_aftergroup_#1_tl\endcsname\undefined
-}
-%    \end{macrocode}
-% \end{macro}
 %
 % \begin{macro}{\stex_modules_compute_namespace:nN}
 % Computes the appropriate namespace from the top-level namespace
@@ -491,7 +473,6 @@
 % Sets up a new module property list:
 %    \begin{macrocode}
 \cs_new_protected:Nn \stex_module_setup:nn {
-  \int_set:Nn \l_@@_group_depth_int {\currentgrouplevel}
   \str_set:Nx \l_stex_module_name_str { #2 }
   \_@@_args:n { #1 }
 %    \end{macrocode}
@@ -529,6 +510,7 @@
       }
     }
   }
+  \exp_args:Nx \stex_metagroup_new:n{\l_stex_module_ns_str?\l_stex_module_name_str}
 %    \end{macrocode}
 %
 % Next, we determine the language of the module:

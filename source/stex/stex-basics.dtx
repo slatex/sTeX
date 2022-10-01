@@ -526,9 +526,86 @@
 %    \end{macrocode}
 %
 % \subsection{Auxiliary Methods}
+% \begin{macro}{\stex_metagroup_do:nn}
+%    \begin{macrocode}
+%<@@=stex_metagroup>
+% List of all currently existing metagroup identifiers
+\seq_new:N \l_@@_ids_seq
+
+% 
+\bool_set_false:N \l_@@_aftergroup_bool
+
+% start a new metagroup at the current group level with id #1
+\cs_new_protected:Nn \stex_metagroup_new:n {
+    \str_set:cx{l_@@_#1_int} {\int_use:N\currentgrouplevel}
+    \seq_put_right:Nn \l_@@_ids_seq {#1}
+}
+
+\prg_new_conditional:Nnn \stex_metagroup_exists:n {p, T, F, TF} {
+    \str_if_exist:cTF{l_@@_#1_int}
+        \prg_return_true: \prg_return_false:
+}
+
+\cs_new:Nn \_@@_macroname:n {
+    \_@@_macroname:nn{#1}\currentgrouplevel
+}
+\cs_new:Nn \_@@_macroname:nn {
+    g_@@_#1_\int_eval:n{#2}_content
+}
+
+\msg_new:nnn{stex}{error/metagroup/missing}{
+  No~metagroup~by~ID~#1
+}
+
+% Execute #2 in metagroup with id #1:
+\cs_new_protected:Nn \stex_metagroup_do_in:nn {
+    \stex_metagroup_exists:nTF{#1}{
+        \_@@_do_in:nn{#1}{#2}
+    }{
+      \msg_error:nnn{stex}{error/metagroup/missing}{#1}
+    }
+}
+\cs_generate_variant:Nn \stex_metagroup_do_in:nn {nx}
+
+\cs_new_protected:Nn \_@@_do_in:nn {
+  \tl_set:Nn\_@@_tmp{#2}
+  \exp_args:Nx \int_compare:nNnF {\use:c{l_@@_#1_int}}
+      = \currentgrouplevel {
+      \tl_if_exist:cTF{\_@@_macroname:n{#1}}{
+        \exp_args:Nno \tl_gput_right:cn{\_@@_macroname:n{#1}}
+      }{
+        \exp_args:Nno \tl_gset:cn{\_@@_macroname:n{#1}}
+      }\_@@_tmp
+      \bool_if_exist:cF {l_@@_\int_eval:n\currentgrouplevel _bool} {
+          \group_insert_after:N \_@@_do:
+          \bool_set_true:c {l_@@_\int_eval:n\currentgrouplevel _bool}
+      }
+  }
+  \_@@_tmp
+}
+\cs_generate_variant:Nn \_@@_do_in:nn {nx}
+
+\cs_new_protected:Nn \_@@_do: {
+    \seq_map_inline:Nn \l_@@_ids_seq {
+        \tl_if_exist:cT{\_@@_macroname:nn{##1}{\currentgrouplevel+1}}{
+            \exp_args:NNno \exp_args:Nno \_@@_do_in:nn{##1}{
+                \csname\_@@_macroname:nn{##1}{\currentgrouplevel+1}\endcsname
+            }
+            \cs_undefine:c{\_@@_macroname:nn{##1}{\currentgrouplevel+1}}
+        }
+        \bool_if_exist:cF {l_@@_\int_eval:n\currentgrouplevel _bool} {
+            \group_insert_after:N \_@@_do:
+            \bool_set_true:c {l_@@_\int_eval:n\currentgrouplevel _bool}
+        }
+    }
+}
+
+%    \end{macrocode}
+% \end{macro}
 %
 % \begin{macro}{\stex_deactivate_macro:Nn}
 %    \begin{macrocode}
+%<@@=stex_aux>
 \cs_new_protected:Nn \stex_deactivate_macro:Nn {
   \exp_after:wN\let\csname \detokenize{#1} - orig\endcsname#1
   \def#1{
