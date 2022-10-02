@@ -247,11 +247,14 @@
 %  The current module:
 %    \begin{macrocode}
 \str_new:N \l_stex_current_module_str
+\cs_new:Nn \stex_current_module_prop: {
+  \use:c{c_stex_module_\l_stex_current_module_str _prop}
+}
 %    \end{macrocode}
 % \end{variable}
 %
 % \begin{variable}{\l_stex_all_modules_seq}
-%   Stores all available modules
+%   Stores all modules currently in scope
 %    \begin{macrocode}
 \seq_new:N \l_stex_all_modules_seq
 %    \end{macrocode}
@@ -282,12 +285,8 @@
 \cs_new_protected:Nn \stex_do_up_to_module:n {
   \exp_args:No \stex_metagroup_do_in:nn \l_stex_current_module_str {#1}
 }
-
 \cs_generate_variant:Nn \stex_do_up_to_module:n {x}
 
-\cs_new_protected:Nn \_stex_reset_up_to_module:n {
-  \expandafter\let\csname l_@@_aftergroup_#1_tl\endcsname\undefined
-}
 %    \end{macrocode}
 % \end{macro}
 %
@@ -306,6 +305,7 @@
   \tl_gput_right:cn {c_stex_module_\l_stex_current_module_str _code} { #1 }
 }
 \cs_generate_variant:Nn \stex_add_to_current_module:n {x}
+
 \cs_new_protected:Npn \STEXexport {
   \ExplSyntaxOn
   \_@@_export:n
@@ -315,7 +315,6 @@
   \stex_add_to_current_module:n { \ignorespacesandpars#1}
   \stex_smsmode_do:
 }
-
 \stex_deactivate_macro:Nn \STEXexport {module~environments}
 %    \end{macrocode}
 % \end{macro}
@@ -326,6 +325,37 @@
   \str_set:Nx \l_tmpa_str { #1 }
   \seq_gput_right:co {c_stex_module_\l_stex_current_module_str _constants} { \l_tmpa_str }
 }
+%<@@=stex_modaux>
+\cs_new_protected:Nn \stex_add_constant_to_current_module:nnn {
+  \seq_gput_right:co {c_stex_module_\l_stex_current_module_str _constants}{
+    \_@@_sym:{#1}{#2}{#3}
+  }
+}
+\cs_new_protected:Nn \stex_add_notation_to_current_module:nnnn {
+  \seq_gput_right:co {c_stex_module_\l_stex_current_module_str _notations}{
+    \_@@_not:{#1}{#2}{#3}{#4}
+  }
+}
+\cs_new_protected:Nn \stex_add_morphism_to_current_module:nnnn {
+  \seq_gput_right:co {c_stex_module_\l_stex_current_module_str _morphisms}{
+    \_@@_morph:{#1}{#2}{#3}{#4}
+  }
+}
+\cs_new_protected:Nn \stex_iterate_over_morphisms:nn {
+  \str_set:Nn \_@@_iterate_top_str{#1}
+  \seq_clear:c {l_@@_iterate_ #1 _seq}
+  \cs_set:Npn \_@@_morph: ##1##2##3##4 {#2}
+  \_@@_iterate_over_morphisms:n{#1}
+  \cs_undefine:N \_@@_morph:
+}
+\cs_new:Nn \_@@_iterate_over_morphisms:n {
+  \seq_if_in:cnF {l_@@_iterate_\_@@_iterate_top_str _seq}{#1}{
+    TODOOOOO
+  }
+}
+
+
+%<@@=stex_modules>
 %    \end{macrocode}
 % \end{macro}
 %
@@ -686,7 +716,7 @@
 %    \begin{macrocode}
 \cs_new_protected:Nn \_@@_end_module: {
   \stex_debug:nn{modules}{Closing~module~\prop_item:cn {c_stex_module_\l_stex_current_module_str _prop} { name }}
-  \_stex_reset_up_to_module:n \l_stex_current_module_str
+  %\_stex_reset_up_to_module:n \l_stex_current_module_str
   \stex_if_smsmode:T {
     \stex_persist:x {
       \prop_set_from_keyval:cn{c_stex_module_\l_stex_current_module_str _prop}{
