@@ -1,14 +1,13 @@
-% \iffalse meta-comment
-% An Infrastructure for Semantic Macros and Module Scoping
-% Copyright (c) 2019 Michael Kohlhase, all rights reserved
-%                this file is released under the
-%                LaTeX Project Public License (LPPL)
-% 
-% The original of this file is in the public repository at 
-% http://github.com/sLaTeX/sTeX/
-%
-% TODO update copyright  
-%
+%^^A meta-comment
+%^^A  An Infrastructure for Semantic Macros and Module Scoping
+%^^A  Copyright (c) 2019 Michael Kohlhase, all rights reserved
+%^^A                 this file is released under the
+%^^A                 LaTeX Project Public License (LPPL)
+%^^A  
+%^^A  The original of this file is in the public repository at 
+%^^A  http://github.com/sLaTeX/sTeX/
+%^^A 
+%^^A 
 %<*driver>
 \def\libfolder#1{../../lib/#1}
 \input{../../doc/stex-docheader}
@@ -441,22 +440,27 @@
 % babel languages:
 %
 %    \begin{macrocode}
-\cs_new_protected:Nn \stex_set_language:Nn {
-  \str_set:Nx \l_tmpa_str {#2}
-  \prop_get:NoNT \c_stex_languages_prop \l_tmpa_str #1 {
+\tl_new:N \l_stex_current_language
+\cs_new_protected:Nn \stex_set_language:n {
+  \prop_if_in:NnTF \c_stex_languages_prop {#1} {
     \ifx\@onlypreamble\@notprerr 
       \ltx@ifpackageloaded{babel}{
-        \exp_args:No \selectlanguage #1
+        \exp_args:Nx\selectlanguage{
+          \prop_item:Nn \c_stex_languages_prop {#1}
+        }
       }{}
     \else
-      \exp_args:No \str_if_eq:nnTF #1 {turkish} {
-        \RequirePackage[#1,shorthands=:!]{babel}
+      \exp_args:No \str_if_eq:nnTF {#1} {tr} {
+        \RequirePackage[turkish,shorthands=:!]{babel}
       }{
-        \RequirePackage[#1]{babel}
+        \RequirePackage[\prop_item:Nn \c_stex_languages_prop {#1}]{babel}
       }
     \fi
+  }{
+    \msg_error:nnx{stex}{error/unknownlanguage}{#1}
   }
 }
+\cs_generate_variant:Nn \stex_set_language:n {x,o}
 
 \clist_if_empty:NF \c_stex_languages_clist {
   \bool_set_false:N \l_tmpa_bool
@@ -601,6 +605,22 @@
     }
 }
 
+\cs_new_protected:Nn \stex_get_current_language:N {
+  \seq_get_right:NN \g_stex_currentfile_seq \l_tmpa_str
+  \seq_set_split:NnV \l_tmpa_seq . \l_tmpa_str
+  \seq_pop_right:NN \l_tmpa_seq \l_tmpa_str % .tex
+  \exp_args:No \str_if_eq:nnF \l_tmpa_str {tex} {
+    \exp_args:No \str_if_eq:nnF \l_tmpa_str {dtx} {
+      \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq \l_tmpa_str
+    }
+  }
+  \seq_pop_left:NN \l_tmpa_seq \l_tmpa_str % <filename>
+  \seq_if_empty:NF \l_tmpa_seq { %remaining element should be [<something>.]language
+    \seq_pop_right:NN \l_tmpa_seq \l_stex_module_lang_str
+    \stex_debug:nn{modules} {Language~\l_stex_module_lang_str~
+      inferred~from~file~name}
+  }
+}
 %    \end{macrocode}
 % \end{macro}
 %

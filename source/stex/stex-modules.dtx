@@ -261,6 +261,7 @@
 % \end{variable}
 %
 % \begin{macro}[pTF]{\stex_if_in_module:}
+% Are we currently in a module?
 %    \begin{macrocode}
 \prg_new_conditional:Nnn \stex_if_in_module: {p, T, F, TF} {
   \str_if_empty:NTF \l_stex_current_module_str
@@ -270,6 +271,7 @@
 % \end{macro}
 %
 % \begin{macro}[pTF]{\stex_if_module_exists:n}
+% Does a module with this URI exist?
 %    \begin{macrocode}
 \prg_new_conditional:Nnn \stex_if_module_exists:n {p, T, F, TF} {
   \prop_if_exist:cTF { c_stex_module_#1_prop }
@@ -280,8 +282,9 @@
 % \end{macro}
 %
 % \begin{macro}{\stex_do_up_to_module:n}
+% Execute code in the current module (i.e. as if the \cs{begin}\Arg{smodule}
+% was the current tex group)
 %    \begin{macrocode}
-
 \cs_new_protected:Nn \stex_do_up_to_module:n {
   \exp_args:No \stex_metagroup_do_in:nn \l_stex_current_module_str {#1}
 }
@@ -321,10 +324,6 @@
 %
 % \begin{macro}{\stex_add_constant_to_current_module:n}
 %    \begin{macrocode}
-\cs_new_protected:Nn \stex_add_constant_to_current_module:n {
-  \str_set:Nx \l_tmpa_str { #1 }
-  \seq_gput_right:co {c_stex_module_\l_stex_current_module_str _constants} { \l_tmpa_str }
-}
 %<@@=stex_modaux>
 \cs_new_protected:Nn \stex_add_constant_to_current_module:nnn {
   \seq_gput_right:co {c_stex_module_\l_stex_current_module_str _constants}{
@@ -341,71 +340,39 @@
     \_@@_morph:{#1}{#2}{#3}{#4}
   }
 }
-\cs_new_protected:Nn \stex_iterate_over_morphisms:nn {
-  \str_set:Nn \_@@_iterate_top_str{#1}
-  \seq_clear:c {l_@@_iterate_ #1 _seq}
-  \cs_set:Npn \_@@_morph: ##1##2##3##4 {#2}
-  \_@@_iterate_over_morphisms:n{#1}
-  \cs_undefine:N \_@@_morph:
-}
-\cs_new:Nn \_@@_iterate_over_morphisms:n {
-  \seq_if_in:cnF {l_@@_iterate_\_@@_iterate_top_str _seq}{#1}{
-    TODOOOOO
-  }
-}
 
-
+%\cs_new_protected:Nn \stex_iterate_over_morphisms:nn {
+%  \str_set:Nn \_@@_iterate_top_str{#1}
+%  \bool_set_true:N \l_@@_bool
+%  \tl_clear:N \l_@@_tl
+%  \seq_clear:c {l_@@_iterate_ #1 _seq}
+%  \cs_set:Npn \_@@_morph: ##1##2##3##4 {#2}
+%  \_@@_iterate_over_morphisms:n{#1}
+%  \cs_undefine:N \_@@_morph:
+%  \l_@@_tl
+%}
+%\cs_new_protected: \stex_break: {
+%  \bool_set_false:N \l_@@_bool
+%}
+%\cs_new_protected: \stex_break:n {
+%  \stex_break:
+%  \tl_set:Nn \l_@@_tl { #1 }
+%}
+%\cs_new:Nn \_@@_iterate_over_morphisms:n {
+%  \bool_lazy_and:nnF \l_@@_bool {\bool_not_p:n{
+%    \seq_if_in_p:cn{l_@@_iterate_\_@@_iterate_top_str _seq}{#1}
+%  }}{
+%    \seq_put_right:cn{l_@@_iterate_\_@@_iterate_top_str _seq}{#1}
+%
+%  }
+%}
 %<@@=stex_modules>
 %    \end{macrocode}
-% \end{macro}
 %
-% \begin{macro}{\stex_add_import_to_current_module:n}
-%    \begin{macrocode}
-\cs_new_protected:Nn \stex_add_import_to_current_module:n {
-  \str_set:Nx \l_tmpa_str { #1 }
-  \exp_args:Nno
-  \seq_if_in:cnF{c_stex_module_\l_stex_current_module_str _imports}\l_tmpa_str{
-    \seq_gput_right:co{c_stex_module_\l_stex_current_module_str _imports}\l_tmpa_str
-  }
-}
-%    \end{macrocode}
-% \end{macro}
-%
-% \begin{macro}{\stex_collect_imports:n}
-%    \begin{macrocode}
-\cs_new_protected:Nn \stex_collect_imports:n {
-  \seq_clear:N \l_stex_collect_imports_seq
-  \_@@_collect_imports:n {#1}
-}
-\cs_new_protected:Nn \_@@_collect_imports:n {
-  \seq_map_inline:cn {c_stex_module_#1_imports} {
-    \seq_if_in:NnF \l_stex_collect_imports_seq { ##1 } {
-      \_@@_collect_imports:n { ##1 }
-    }
-  }
-  \seq_if_in:NnF \l_stex_collect_imports_seq { #1 } {
-    \seq_put_right:Nx \l_stex_collect_imports_seq { #1 }
-  }
-}
-%    \end{macrocode}
-% \end{macro}
-%
-%
-% \begin{macro}{\stex_modules_compute_namespace:nN}
+% \begin{macro}{\_@@_compute_namespace:nN}
 % Computes the appropriate namespace from the top-level namespace
 % of a repository (|#1|) and a file path
 % (|#2|).
-%
-%
-%    \begin{macrocode}
-
-%    \end{macrocode}
-% \end{macro}
-%
-% \begin{macro}{\stex_modules_current_namespace:}
-%
-% Computes the current namespace based on the current
-% MathHub repository (if existent) and the current file.
 %
 %    \begin{macrocode}
 \str_new:N \l_stex_module_ns_str
@@ -440,7 +407,15 @@
     }
   }
 }
-
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\stex_modules_current_namespace:}
+%
+% Computes the current namespace based on the current
+% MathHub repository (if existent) and the current file.
+%
+%    \begin{macrocode}
 \cs_new_protected:Nn \stex_modules_current_namespace: {
   \str_clear:N \l_stex_module_subpath_str
   \prop_if_exist:NTF \l_stex_current_repository_prop {
@@ -503,7 +478,7 @@
 % Sets up a new module property list:
 %    \begin{macrocode}
 \cs_new_protected:Nn \stex_module_setup:nn {
-  \str_set:Nx \l_stex_module_name_str { #2 }
+  \str_set:Nn \l_stex_module_name_str { #2 }
   \_@@_args:n { #1 }
 %    \end{macrocode}
 %
@@ -564,7 +539,7 @@
   } 
 
   \stex_if_smsmode:F { \str_if_empty:NF \l_stex_module_lang_str {
-    \exp_args:NNo \stex_set_language:Nn \l_tmpa_str \l_stex_module_lang_str
+    \stex_set_language:o \l_stex_module_lang_str
   }}
 %    \end{macrocode}
 %
@@ -658,6 +633,7 @@
   }
   \tl_clear:c{l_@@_aftergroup_\l_stex_module_ns_str ? \l_stex_module_name_str _tl}
 }
+\cs_generate_variant:Nn \stex_module_setup:nn {nx}
 %    \end{macrocode}
 % \end{macro}
 %
