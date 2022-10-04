@@ -1,4 +1,4 @@
-DTX =  $(shell ls *.dtx)
+DTX =  stex.dtx
 DOC =  $(DTX:%.dtx=%.pdf)
 INS =  stex.ins
 
