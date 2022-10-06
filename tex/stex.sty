@@ -1235,6 +1235,7 @@
 \cs_new_protected:Nn \__stex_smsmode_in_smsmode:nn { \stex_suppress_html:n {
   \vbox_set:Nn \l_tmpa_box {
     \bool_set_true:N \g__stex_smsmode_bool
+    \bool_set_false:N \_stex_html_do_output_bool
     #2
   }
   \box_clear:N \l_tmpa_box
@@ -1420,6 +1421,8 @@
     \prop_clear:N \l__stex_module_setup_prop
     \prop_put:Nnn \l__stex_module_setup_prop {name} { #1 }
     \prop_put:Nno \l__stex_module_setup_prop {ns} \l__stex_module_setup_ns_str
+
+    \prop_set_eq:cN {c_stex_module_ \l__stex_module_setup_ns_str ? #1 _prop}
   }
   \str_set:Nx \l_stex_current_module_str {\l__stex_module_setup_ns_str?#1}
 }
@@ -1448,8 +1451,6 @@
   \g__stex_module_setup_every_module_tl
   \__stex_module_setup_load_meta:
   \cs_set_eq:NN \stex_module_setup:n \__stex_module_setup_setup_nested:n
-
-  \stex_reactivate_macro:N \STEXexport
 }
 
 \cs_new_protected:Nn \__stex_module_setup_setup_nested:n {
@@ -1461,6 +1462,21 @@
 }
 
 \cs_set_eq:NN \stex_module_setup:n \__stex_module_setup_setup_top:n
+\cs_new:Nn \stex_close_module: {
+  \stex_if_smsmode:T {
+    \stex_persist:x{
+      \prop_set_from_keyval:Nn \stex_current_module_prop: {
+        \exp_after:wN \prop_to_keyval:N \cs:w c_stex_module_\l_stex_current_module_str _prop\cs_end:
+      }
+      % TODO more
+      \tl_set:cn{c_stex_module_\l_stex_current_module_str _code}{
+        \exp_after:wN \exp_after:wN \exp_after:wN \exp_not:n
+        \exp_after:wN \exp_after:wN \exp_after:wN \exp_not:n
+        { \cs:w c_stex_module_\l_stex_current_module_str _code \cs_end: }
+      }
+    }
+  }
+}
 \tl_new:N \l_stex_metatheory_uri
 \cs_new_protected:Nn \__stex_modules_set_metatheory:nn {
   %\stex_import_module_uri:nn { #1 } { #2 }
@@ -1499,13 +1515,37 @@
   contributors  .code:n       = {} , % todo ?
   srccite       .code:n       = {}   % todo ?
 }{id, title, style}
-\NewDocumentEnvironment {smodule} {O{} m}{
+\stex_new_stylable_env:nnnnnn {module} {O{} m}{
   \stex_keys_set:nn { smodule }{ #1 }
   \exp_args:Nx \stex_module_setup:n { \tl_to_str:n{ #2 } }
+
+  \stex_reactivate_macro:N \STEXexport
+
+  \stex_if_do_html:T {
+    \begin{stex_annotate_env} {stex:theory} {
+      \l_stex_current_module_str
+    }
+    \stex_annotate_invisible:nnn{stex:header}{}{
+      \stex_annotate:nnn{stex:language}{ \l_stex_current_language_str}{}
+      \stex_annotate:nnn{stex:signature}{ \l_stex_key_sig_str }{}
+      \tl_if_empty:NF \l_stex_metatheory_uri {
+        \stex_annotate:nnn{stex:metatheory}{ \stex_uri_use:N \l_stex_metatheory_uri }
+      }
+      %\str_if_empty:NF \thisstyle {
+      %  \stex_annotate:nnn{stex:type}{\smoduletype}{}
+      %}
+    }
+  }
+  \stex_if_smsmode:F \stex_style_apply:
+
   \stex_smsmode_do:
 }{
+  \stex_close_module:
+  \stex_if_smsmode:F \stex_style_apply:
+  \stex_if_do_html:T{ \end{stex_annotate_env} }
+}{}{}
 
-}
+\stex_sms_allow_env:n{smodule}
 
 
 \stex_read_persist:
