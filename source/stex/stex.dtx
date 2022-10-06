@@ -196,6 +196,9 @@
 %   \begin{function}{\stex_module_setup:n}
 %     Foo
 %   \end{function}
+%   \begin{variable}{\l_stex_metatheory_uri}
+%     Foo
+%   \end{variable}
 % \end{documentation}
 %
 % \begin{implementation}
@@ -332,7 +335,7 @@
   \msg_error:nn{stex}{#1}\input{Fatal~Error!!}
 }
 \cs_new_protected:Nn \_stex_fatal_error:nnn {
-  \msg_error:nn{stex}{#1}{#2}{#3}\input{Fatal~Error!!}
+  \msg_error:nnn{stex}{#1}{#2}{#3}\input{Fatal~Error!!}
 }
 \cs_generate_variant:Nn \_stex_fatal_error:nnn {nxx}
 %    \end{macrocode}
@@ -408,6 +411,7 @@
 % \begin{macro}{\stex_set_language:n, \stex_set_language:x, \stex_set_language:o}
 %    \begin{macrocode}
 \cs_new_protected:Nn \stex_set_language:n {
+  \str_set:Nn \l_stex_current_language_str { #1 }
   \prop_if_in:NnTF \c_stex_languages_prop {#1} {
     \cs_if_eq:NNTF\@onlypreamble\@notprerr{ 
       \ltx@ifpackageloaded{babel}{
@@ -445,7 +449,10 @@
   }
   \seq_pop_left:NN \l_tmpa_seq \l_tmpa_str % <filename>
   \seq_if_empty:NF \l_tmpa_seq { %remaining element should be [<something>.]language
-    \seq_pop_right:NN \l_tmpa_seq \l_stex_current_language_str
+    \seq_pop_right:NN \l_tmpa_seq \l_@@_str
+    \str_if_eq:NNF \l_@@_str \l_stex_current_language_str {
+      \stex_set_language:o \l_@@_str
+    }
     \stex_debug:nn{lang} {Language~\l_stex_current_language_str~
       inferred~from~file~name}
   }
@@ -1379,7 +1386,7 @@
       \bool_set_false:N \l_@@_bool
     }{
       \_@@_check_manifest:
-      \bool_if:NF \l_@@_bool {
+      \bool_if:NT \l_@@_bool {
         \seq_pop_right:NN \l_@@_seq \l_@@_tl
       }
     }
@@ -2166,8 +2173,40 @@
 %    \end{macrocode}
 % \end{macro}
 %
+% \begin{variable}{\l_stex_metatheory_uri}
+%    \begin{macrocode}
+\tl_new:N \l_stex_metatheory_uri
+%    \end{macrocode}
+% \end{variable}
 %
+% Keys and key handling:
 %
+%    \begin{macrocode}
+\stex_keys_define:nnnn{smodule}{
+  \str_clear:N \l_stex_key_deprecate_str
+  \str_clear:N \l_stex_key_sig_str
+}{
+  %meta          .str_set_x:N  = \l_stex_key_metatheory_str ,
+  meta          .code:n       = {
+    \str_if_empty:nTF {#1}{
+      \tl_clear:N \l_stex_metatheory_uri
+    }{
+      \stex_uri_resolve:Nx \l_stex_metatheory_uri { #1 }
+    }
+  },
+  ns            .code:n       = {
+    \stex_uri_resolve:Nx \l_stex_current_ns_uri { #1 }
+  } ,
+  lang          .code:n       = {
+    \stex_set_language:n { #1 }
+  } ,
+  deprecate     .str_set_x:N  = \l_stex_key_deprecate_str ,
+  sig           .str_set_x:N  = \l_stex_key_sig_str ,
+  creators      .code:n       = {} , % todo ?
+  contributors  .code:n       = {} , % todo ?
+  srccite       .code:n       = {}   % todo ?
+}{id, title, style}
+%    \end{macrocode}
 %
 %
 %

@@ -69,7 +69,7 @@
   \msg_error:nn{stex}{#1}\input{Fatal~Error!!}
 }
 \cs_new_protected:Nn \_stex_fatal_error:nnn {
-  \msg_error:nn{stex}{#1}{#2}{#3}\input{Fatal~Error!!}
+  \msg_error:nnn{stex}{#1}{#2}{#3}\input{Fatal~Error!!}
 }
 \cs_generate_variant:Nn \_stex_fatal_error:nnn {nxx}
 \stex_get_env:Nn\__stex_debug_env_str{STEX_DEBUG}
@@ -112,6 +112,7 @@
 }}
 \str_new:N \l_stex_current_language_str
 \cs_new_protected:Nn \stex_set_language:n {
+  \str_set:Nn \l_stex_current_language_str { #1 }
   \prop_if_in:NnTF \c_stex_languages_prop {#1} {
     \cs_if_eq:NNTF\@onlypreamble\@notprerr{
       \ltx@ifpackageloaded{babel}{
@@ -144,7 +145,10 @@
   }
   \seq_pop_left:NN \l_tmpa_seq \l_tmpa_str % <filename>
   \seq_if_empty:NF \l_tmpa_seq { %remaining element should be [<something>.]language
-    \seq_pop_right:NN \l_tmpa_seq \l_stex_current_language_str
+    \seq_pop_right:NN \l_tmpa_seq \l__stex_lang_str
+    \str_if_eq:NNF \l__stex_lang_str \l_stex_current_language_str {
+      \stex_set_language:o \l__stex_lang_str
+    }
     \stex_debug:nn{lang} {Language~\l_stex_current_language_str~
       inferred~from~file~name}
   }
@@ -843,7 +847,7 @@
       \bool_set_false:N \l__stex_mathhub_bool
     }{
       \__stex_mathhub_check_manifest:
-      \bool_if:NF \l__stex_mathhub_bool {
+      \bool_if:NT \l__stex_mathhub_bool {
         \seq_pop_right:NN \l__stex_mathhub_seq \l__stex_mathhub_tl
       }
     }
@@ -1444,6 +1448,31 @@
 }
 
 \cs_set_eq:NN \stex_module_setup:n \__stex_module_setup_setup_top:n
+\tl_new:N \l_stex_metatheory_uri
+\stex_keys_define:nnnn{smodule}{
+  \str_clear:N \l_stex_key_deprecate_str
+  \str_clear:N \l_stex_key_sig_str
+}{
+  %meta          .str_set_x:N  = \l_stex_key_metatheory_str ,
+  meta          .code:n       = {
+    \str_if_empty:nTF {#1}{
+      \tl_clear:N \l_stex_metatheory_uri
+    }{
+      \stex_uri_resolve:Nx \l_stex_metatheory_uri { #1 }
+    }
+  },
+  ns            .code:n       = {
+    \stex_uri_resolve:Nx \l_stex_current_ns_uri { #1 }
+  } ,
+  lang          .code:n       = {
+    \stex_set_language:n { #1 }
+  } ,
+  deprecate     .str_set_x:N  = \l_stex_key_deprecate_str ,
+  sig           .str_set_x:N  = \l_stex_key_sig_str ,
+  creators      .code:n       = {} , % todo ?
+  contributors  .code:n       = {} , % todo ?
+  srccite       .code:n       = {}   % todo ?
+}{id, title, style}
 
 
 \stex_read_persist:
