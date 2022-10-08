@@ -196,13 +196,19 @@
 %   \begin{variable}{\l_stex_metatheory_uri}
 %     Foo
 %   \end{variable}
+%   \begin{environment}{smodule}
+%     Foo
+%   \end{environment}
 %   \begin{function}{\setmetatheory}
 %     Foo
 %   \end{function}
 %   \begin{function}{\stex_module_setup:n}
 %     Foo
 %   \end{function}
-%   \begin{function}{\stex_close_module:n}
+%   \begin{function}{\stex_close_module:}
+%     Foo
+%   \end{function}
+%   \begin{function}{\stex_activate_module:n}
 %     Foo
 %   \end{function}
 % \end{documentation}
@@ -1909,7 +1915,7 @@
     }
     \_@@_start_smsmode:n{#1}
   }
-  % TODO imports
+  \TODO imports
   \_@@_in_smsmode:n {
     \bool_set_false:N \l_@@_in_imports_bool
     #2
@@ -2033,92 +2039,15 @@
 %    \end{macrocode}
 % \end{variable}
 %
-% \begin{macro}[pTF]{\stex_if_in_module:}
-% Are we currently in a module?
-%    \begin{macrocode}
-\prg_new_conditional:Nnn \stex_if_in_module: {p, T, F, TF} {
-  \str_if_empty:NTF \l_stex_current_module_str
-    \prg_return_false: \prg_return_true:
-}
-%    \end{macrocode}
-% \end{macro}
-%
-% \begin{macro}[pTF]{\stex_if_module_exists:n}
-% Does a module with this URI exist?
-%    \begin{macrocode}
-\prg_new_conditional:Nnn \stex_if_module_exists:n {p, T, F, TF} {
-  \prop_if_exist:cTF { c_stex_module_#1_prop }
-    \prg_return_true: \prg_return_false:
-}
-%    \end{macrocode}
-% \end{macro}
-%
-% \begin{macro}{\stex_do_up_to_module:n,\stex_do_up_to_module:x}
-% Execute code in the current module (i.e. as if the \cs{begin}\Arg{smodule}
-% was the current tex group)
-%    \begin{macrocode}
-\cs_new_protected:Nn \stex_do_up_to_module:n {
-  \exp_args:No \stex_metagroup_do_in:nn \l_stex_current_module_str {#1}
-}
-\cs_generate_variant:Nn \stex_do_up_to_module:n {x}
-%    \end{macrocode}
-% \end{macro}
-%
-% \begin{macro}{\stex_add_to_current_module:n,\stex_add_to_current_module:x}
-%    \begin{macrocode}
-\cs_new_protected:Nn \stex_add_to_current_module:n {
-  \tl_gput_right:cn {c_stex_module_\l_stex_current_module_str _code} { #1 }
-}
-\cs_generate_variant:Nn \stex_add_to_current_module:n {x}
-%    \end{macrocode}
-% \end{macro}
-%
-% \begin{macro}{\stex_execute_in_module:n,\stex_execute_in_module:x}
-%    \begin{macrocode}
-\cs_new_protected:Nn \stex_execute_in_module:n { \stex_if_in_module:TF {
-  \stex_add_to_current_module:n { #1 }
-  \stex_do_up_to_module:n { #1 }
-}{ #1 }}
-\cs_generate_variant:Nn \stex_execute_in_module:n {x}
-%    \end{macrocode}
-% \end{macro}
-%
-% \begin{macro}{\STEXexport}
-%    \begin{macrocode}
-\NewDocumentCommand \STEXexport {} {
-  \ExplSyntaxOn
-  \_@@_export:n
-}
-\cs_new_protected:Nn \_@@_export:n {
-  \ignorespacesandpars#1\ExplSyntaxOff
-  \stex_add_to_current_module:n { \ignorespacesandpars#1}
-  \stex_smsmode_do:
-}
-%    \end{macrocode}
-% Only allowed in modules, and allowed (escaped) in sms mode:
-%    \begin{macrocode}
-\stex_deactivate_macro:Nn \STEXexport {module~environments}
-\stex_sms_allow_escape:N \STEXexport
-%    \end{macrocode}
-% \end{macro}
-%
-% \begin{macro}{\stex_get_current_namespace:}
-%    \begin{macrocode}
-\cs_new_protected:Nn \stex_get_current_namespace: {
-  \stex_uri_from_current_file_nolang:Nn \l_stex_current_ns_uri {source-base}
-  \stex_debug:nn{modules}{Namespace~URI:~\stex_uri_use:N \l_stex_current_ns_uri}
-}
-%    \end{macrocode}
-% \end{macro}
 %
 % \begin{macro}{\stex_every_module:n}
 %    \begin{macrocode}
 %<@@=stex_module_setup>
-\tl_set:Nn \g_@@_every_module_tl {
+\tl_set:Nn \g_stex_every_module_tl {
   \stex_metagroup_new:o \l_stex_current_module_str
 }
 \cs_new_protected:Nn \stex_every_module:n {
-  \tl_gput_right:Nn \g_@@_every_module_tl { #1 }
+  \tl_gput_right:Nn \g_stex_every_module_tl { #1 }
 }
 %    \end{macrocode}
 % \end{macro}
@@ -2149,9 +2078,10 @@
     \prop_put:Nnn \l_@@_prop {name} { #1 }
     \prop_put:Nno \l_@@_prop {ns} \l_@@_ns_str
 
-    \prop_set_eq:cN {c_stex_module_ \l_@@_ns_str ? #1 _prop}
+    \prop_set_eq:cN {c_stex_module_ \l_@@_ns_str ? #1 _prop}\l_@@_prop
   }
   \str_set:Nx \l_stex_current_module_str {\l_@@_ns_str?#1}
+  \seq_put_right:No \l_stex_all_modules_seq \l_stex_current_module_str
 }
 
 \cs_new_protected:Nn \_@@_setup_top_sig:n {
@@ -2159,7 +2089,7 @@
     \stex_debug:nn{modules}{(already exists)}
   }{
     \stex_debug:nn{modules}{(needs loading)}
-    % TODO
+    \TODO
   }    
   \stex_if_smsmode:F { % WHY?
     \stex_activate_module:n {
@@ -2167,25 +2097,39 @@
     }
   }
   \str_set:Nx\l_stex_current_module_str{\l_@@_ns_str?#1}
+  \seq_put_right:No \l_stex_all_modules_seq \l_stex_current_module_str
 }
 
 \cs_new_protected:Nn \_@@_setup_top:n {
-  % TODO
   \_@@_get_uri_str:n{#1}
   \stex_debug:nn{module}{Module~URI:~\l_@@_ns_str?#1}
   \str_if_empty:NTF \l_stex_key_sig_str
-  \_@@_setup_top_nosig:n \_@@_setup_top_sig:n {#1} % TODO
-  \g_@@_every_module_tl
+  \_@@_setup_top_nosig:n \_@@_setup_top_sig:n {#1}
+  \g_stex_every_module_tl
   \_@@_load_meta:
   \cs_set_eq:NN \stex_module_setup:n \_@@_setup_nested:n
 }
 
 \cs_new_protected:Nn \_@@_setup_nested:n {
-  % TODO
+  \str_set:Nx \l_@@_ns_str {\prop_item:cn{
+    c_stex_module_ \l_stex_current_module_str _prop
+  }{ns}}
+  \exp_args:Nx \_@@_setup_top_nosig:n {\prop_item:cn{
+    c_stex_module_ \l_stex_current_module_str _prop
+  }{name} / #1}
+  \stex_debug:nn{module}{Nested~Module~URI:~\l_stex_current_module_str}
+  \seq_put_right:No \l_stex_all_modules_seq \l_stex_current_module_str
 }
 
+\bool_new:N \l_stex_in_meta_bool
+\bool_set_false:N \l_stex_in_meta_bool
+
 \cs_new_protected:Nn \_@@_load_meta: {
-  % TODO
+  \tl_if_empty:NF \l_stex_metatheory_uri {
+    \stex_pseudogroup_with:nn{\l_stex_in_meta_bool}{
+      \TODO
+    }
+  }
 }
 
 \cs_set_eq:NN \stex_module_setup:n \_@@_setup_top:n
@@ -2272,8 +2216,6 @@
   \stex_keys_set:nn { smodule }{ #1 }
   \exp_args:Nx \stex_module_setup:n { \tl_to_str:n{ #2 } }
 
-  \stex_reactivate_macro:N \STEXexport
-
   \stex_if_do_html:T {
     \begin{stex_annotate_env} {stex:theory} {
       \l_stex_current_module_str
@@ -2285,7 +2227,7 @@
         \stex_annotate:nnn{stex:metatheory}{ \stex_uri_use:N \l_stex_metatheory_uri }
       }
       %\str_if_empty:NF \thisstyle {
-      %  \stex_annotate:nnn{stex:type}{\smoduletype}{}
+      %  \stex_annotate:nnn{stex:type}{\thisstyle}{}
       %}
     }
   }
@@ -2303,12 +2245,116 @@
 % \end{environment}
 %
 %
+% \begin{macro}[pTF]{\stex_if_in_module:}
+% Are we currently in a module?
+%    \begin{macrocode}
+\prg_new_conditional:Nnn \stex_if_in_module: {p, T, F, TF} {
+  \str_if_empty:NTF \l_stex_current_module_str
+    \prg_return_false: \prg_return_true:
+}
+%    \end{macrocode}
+% \end{macro}
 %
+% \begin{macro}[pTF]{\stex_if_module_exists:n}
+% Does a module with this URI exist?
+%    \begin{macrocode}
+\prg_new_conditional:Nnn \stex_if_module_exists:n {p, T, F, TF} {
+  \prop_if_exist:cTF { c_stex_module_#1_prop }
+    \prg_return_true: \prg_return_false:
+}
+%    \end{macrocode}
+% \end{macro}
 %
+% \begin{macro}{\stex_do_up_to_module:n,\stex_do_up_to_module:x}
+% Execute code in the current module (i.e. as if the \cs{begin}\Arg{smodule}
+% was the current tex group)
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_do_up_to_module:n {
+  \exp_args:No \stex_metagroup_do_in:nn \l_stex_current_module_str {#1}
+}
+\cs_generate_variant:Nn \stex_do_up_to_module:n {x}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\stex_add_to_current_module:n,\stex_add_to_current_module:x}
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_add_to_current_module:n {
+  \tl_gput_right:cn {c_stex_module_\l_stex_current_module_str _code} { #1 }
+}
+\cs_generate_variant:Nn \stex_add_to_current_module:n {x}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\stex_execute_in_module:n,\stex_execute_in_module:x}
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_execute_in_module:n { \stex_if_in_module:TF {
+  \stex_add_to_current_module:n { #1 }
+  \stex_do_up_to_module:n { #1 }
+}{ #1 }}
+\cs_generate_variant:Nn \stex_execute_in_module:n {x}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\STEXexport}
+%    \begin{macrocode}
+\NewDocumentCommand \STEXexport {} {
+  \ExplSyntaxOn
+  \_@@_export:n
+}
+\cs_new_protected:Nn \_@@_export:n {
+  \ignorespacesandpars#1\ExplSyntaxOff
+  \stex_add_to_current_module:n { \ignorespacesandpars#1}
+  \stex_smsmode_do:
+}
+%    \end{macrocode}
+% Only allowed in modules, and allowed (escaped) in sms mode:
+%    \begin{macrocode}
+\stex_deactivate_macro:Nn \STEXexport {module~environments}
+\stex_sms_allow_escape:N \STEXexport
+\tl_put_right:Nn \g_stex_every_module_tl {\stex_reactivate_macro:N \STEXexport}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\stex_get_current_namespace:}
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_get_current_namespace: {
+  \stex_uri_from_current_file_nolang:Nn \l_stex_current_ns_uri {source-base}
+  \stex_debug:nn{modules}{Namespace~URI:~\stex_uri_use:N \l_stex_current_ns_uri}
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{environment}{mmtinterface}
+%    \begin{macrocode}
+\NewDocumentEnvironment { mmtinterface } { O{} m m } {
+  \TODO
+}{}
+%    \end{macrocode}
+% \end{environment}
+%
+% \begin{macro}{\stex_activate_module:n}
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_activate_module:n {
+  \exp_args:NNx \seq_if_in:NnF \l_stex_all_modules_seq { #1 } {
+    \stex_debug:nn{modules}{Activating~module~#1}
+    \seq_put_right:Nx \l_stex_all_modules_seq { #1 }
+    \TODO % \use:c{ c_stex_module_#1_code }
+    % morphisms
+  }
+}
+%    \end{macrocode}
+% \end{macro}
 %
 % \end{sfragment}
 %
 %
+% \begin{sfragment}{Inheritance}
+%
+%
+%
+%
+%
+% \end{sfragment}
 %
 %
 %

@@ -1266,7 +1266,7 @@
     }
     \__stex_smsmode_start_smsmode:n{#1}
   }
-  % TODO imports
+  \TODO imports
   \__stex_smsmode_in_smsmode:n {
     \bool_set_false:N \l__stex_smsmode_in_imports_bool
     #2
@@ -1358,47 +1358,11 @@
   \exp_after:wN \exp_not:N \cs:w c_stex_module_\l_stex_current_module_str _prop \cs_end:
 }
 \seq_new:N \l_stex_all_modules_seq
-\prg_new_conditional:Nnn \stex_if_in_module: {p, T, F, TF} {
-  \str_if_empty:NTF \l_stex_current_module_str
-    \prg_return_false: \prg_return_true:
-}
-\prg_new_conditional:Nnn \stex_if_module_exists:n {p, T, F, TF} {
-  \prop_if_exist:cTF { c_stex_module_#1_prop }
-    \prg_return_true: \prg_return_false:
-}
-\cs_new_protected:Nn \stex_do_up_to_module:n {
-  \exp_args:No \stex_metagroup_do_in:nn \l_stex_current_module_str {#1}
-}
-\cs_generate_variant:Nn \stex_do_up_to_module:n {x}
-\cs_new_protected:Nn \stex_add_to_current_module:n {
-  \tl_gput_right:cn {c_stex_module_\l_stex_current_module_str _code} { #1 }
-}
-\cs_generate_variant:Nn \stex_add_to_current_module:n {x}
-\cs_new_protected:Nn \stex_execute_in_module:n { \stex_if_in_module:TF {
-  \stex_add_to_current_module:n { #1 }
-  \stex_do_up_to_module:n { #1 }
-}{ #1 }}
-\cs_generate_variant:Nn \stex_execute_in_module:n {x}
-\NewDocumentCommand \STEXexport {} {
-  \ExplSyntaxOn
-  \__stex_modules_export:n
-}
-\cs_new_protected:Nn \__stex_modules_export:n {
-  \ignorespacesandpars#1\ExplSyntaxOff
-  \stex_add_to_current_module:n { \ignorespacesandpars#1}
-  \stex_smsmode_do:
-}
-\stex_deactivate_macro:Nn \STEXexport {module~environments}
-\stex_sms_allow_escape:N \STEXexport
-\cs_new_protected:Nn \stex_get_current_namespace: {
-  \stex_uri_from_current_file_nolang:Nn \l_stex_current_ns_uri {source-base}
-  \stex_debug:nn{modules}{Namespace~URI:~\stex_uri_use:N \l_stex_current_ns_uri}
-}
-\tl_set:Nn \g__stex_module_setup_every_module_tl {
+\tl_set:Nn \g_stex_every_module_tl {
   \stex_metagroup_new:o \l_stex_current_module_str
 }
 \cs_new_protected:Nn \stex_every_module:n {
-  \tl_gput_right:Nn \g__stex_module_setup_every_module_tl { #1 }
+  \tl_gput_right:Nn \g_stex_every_module_tl { #1 }
 }
 \cs_new_protected:Nn \__stex_module_setup_get_uri_str:n {
   \str_clear:N \l__stex_module_setup_ns_str
@@ -1422,9 +1386,10 @@
     \prop_put:Nnn \l__stex_module_setup_prop {name} { #1 }
     \prop_put:Nno \l__stex_module_setup_prop {ns} \l__stex_module_setup_ns_str
 
-    \prop_set_eq:cN {c_stex_module_ \l__stex_module_setup_ns_str ? #1 _prop}
+    \prop_set_eq:cN {c_stex_module_ \l__stex_module_setup_ns_str ? #1 _prop}\l__stex_module_setup_prop
   }
   \str_set:Nx \l_stex_current_module_str {\l__stex_module_setup_ns_str?#1}
+  \seq_put_right:No \l_stex_all_modules_seq \l_stex_current_module_str
 }
 
 \cs_new_protected:Nn \__stex_module_setup_setup_top_sig:n {
@@ -1432,7 +1397,7 @@
     \stex_debug:nn{modules}{(already exists)}
   }{
     \stex_debug:nn{modules}{(needs loading)}
-    % TODO
+    \TODO
   }
   \stex_if_smsmode:F { % WHY?
     \stex_activate_module:n {
@@ -1440,25 +1405,39 @@
     }
   }
   \str_set:Nx\l_stex_current_module_str{\l__stex_module_setup_ns_str?#1}
+  \seq_put_right:No \l_stex_all_modules_seq \l_stex_current_module_str
 }
 
 \cs_new_protected:Nn \__stex_module_setup_setup_top:n {
-  % TODO
   \__stex_module_setup_get_uri_str:n{#1}
   \stex_debug:nn{module}{Module~URI:~\l__stex_module_setup_ns_str?#1}
   \str_if_empty:NTF \l_stex_key_sig_str
-  \__stex_module_setup_setup_top_nosig:n \__stex_module_setup_setup_top_sig:n {#1} % TODO
-  \g__stex_module_setup_every_module_tl
+  \__stex_module_setup_setup_top_nosig:n \__stex_module_setup_setup_top_sig:n {#1}
+  \g_stex_every_module_tl
   \__stex_module_setup_load_meta:
   \cs_set_eq:NN \stex_module_setup:n \__stex_module_setup_setup_nested:n
 }
 
 \cs_new_protected:Nn \__stex_module_setup_setup_nested:n {
-  % TODO
+  \str_set:Nx \l__stex_module_setup_ns_str {\prop_item:cn{
+    c_stex_module_ \l_stex_current_module_str _prop
+  }{ns}}
+  \exp_args:Nx \__stex_module_setup_setup_top_nosig:n {\prop_item:cn{
+    c_stex_module_ \l_stex_current_module_str _prop
+  }{name} / #1}
+  \stex_debug:nn{module}{Nested~Module~URI:~\l_stex_current_module_str}
+  \seq_put_right:No \l_stex_all_modules_seq \l_stex_current_module_str
 }
 
+\bool_new:N \l_stex_in_meta_bool
+\bool_set_false:N \l_stex_in_meta_bool
+
 \cs_new_protected:Nn \__stex_module_setup_load_meta: {
-  % TODO
+  \tl_if_empty:NF \l_stex_metatheory_uri {
+    \stex_pseudogroup_with:nn{\l_stex_in_meta_bool}{
+      \TODO
+    }
+  }
 }
 
 \cs_set_eq:NN \stex_module_setup:n \__stex_module_setup_setup_top:n
@@ -1519,8 +1498,6 @@
   \stex_keys_set:nn { smodule }{ #1 }
   \exp_args:Nx \stex_module_setup:n { \tl_to_str:n{ #2 } }
 
-  \stex_reactivate_macro:N \STEXexport
-
   \stex_if_do_html:T {
     \begin{stex_annotate_env} {stex:theory} {
       \l_stex_current_module_str
@@ -1532,7 +1509,7 @@
         \stex_annotate:nnn{stex:metatheory}{ \stex_uri_use:N \l_stex_metatheory_uri }
       }
       %\str_if_empty:NF \thisstyle {
-      %  \stex_annotate:nnn{stex:type}{\smoduletype}{}
+      %  \stex_annotate:nnn{stex:type}{\thisstyle}{}
       %}
     }
   }
@@ -1546,6 +1523,54 @@
 }{}{}
 
 \stex_sms_allow_env:n{smodule}
+\prg_new_conditional:Nnn \stex_if_in_module: {p, T, F, TF} {
+  \str_if_empty:NTF \l_stex_current_module_str
+    \prg_return_false: \prg_return_true:
+}
+\prg_new_conditional:Nnn \stex_if_module_exists:n {p, T, F, TF} {
+  \prop_if_exist:cTF { c_stex_module_#1_prop }
+    \prg_return_true: \prg_return_false:
+}
+\cs_new_protected:Nn \stex_do_up_to_module:n {
+  \exp_args:No \stex_metagroup_do_in:nn \l_stex_current_module_str {#1}
+}
+\cs_generate_variant:Nn \stex_do_up_to_module:n {x}
+\cs_new_protected:Nn \stex_add_to_current_module:n {
+  \tl_gput_right:cn {c_stex_module_\l_stex_current_module_str _code} { #1 }
+}
+\cs_generate_variant:Nn \stex_add_to_current_module:n {x}
+\cs_new_protected:Nn \stex_execute_in_module:n { \stex_if_in_module:TF {
+  \stex_add_to_current_module:n { #1 }
+  \stex_do_up_to_module:n { #1 }
+}{ #1 }}
+\cs_generate_variant:Nn \stex_execute_in_module:n {x}
+\NewDocumentCommand \STEXexport {} {
+  \ExplSyntaxOn
+  \__stex_modules_export:n
+}
+\cs_new_protected:Nn \__stex_modules_export:n {
+  \ignorespacesandpars#1\ExplSyntaxOff
+  \stex_add_to_current_module:n { \ignorespacesandpars#1}
+  \stex_smsmode_do:
+}
+\stex_deactivate_macro:Nn \STEXexport {module~environments}
+\stex_sms_allow_escape:N \STEXexport
+\tl_put_right:Nn \g_stex_every_module_tl {\stex_reactivate_macro:N \STEXexport}
+\cs_new_protected:Nn \stex_get_current_namespace: {
+  \stex_uri_from_current_file_nolang:Nn \l_stex_current_ns_uri {source-base}
+  \stex_debug:nn{modules}{Namespace~URI:~\stex_uri_use:N \l_stex_current_ns_uri}
+}
+\NewDocumentEnvironment { mmtinterface } { O{} m m } {
+  \TODO
+}{}
+\cs_new_protected:Nn \stex_activate_module:n {
+  \exp_args:NNx \seq_if_in:NnF \l_stex_all_modules_seq { #1 } {
+    \stex_debug:nn{modules}{Activating~module~#1}
+    \seq_put_right:Nx \l_stex_all_modules_seq { #1 }
+    \TODO % \use:c{ c_stex_module_#1_code }
+    % morphisms
+  }
+}
 
 
 \stex_read_persist:
