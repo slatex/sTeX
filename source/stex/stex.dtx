@@ -202,6 +202,12 @@
 %   \begin{function}{\setmetatheory}
 %     Foo
 %   \end{function}
+%   \begin{variable}{\l_stex_current_ns_uri}
+%     Foo
+%   \end{variable}
+%   \begin{function}{\stex_get_current_namespace:}
+%     Foo
+%   \end{function}
 %   \begin{function}{\stex_module_setup:n}
 %     Foo
 %   \end{function}
@@ -210,6 +216,11 @@
 %   \end{function}
 %   \begin{function}{\stex_activate_module:n}
 %     Foo
+%   \end{function}
+%   \begin{function}{\stex_import_module_uri:nn}
+%     Destructs a relative \verb|[some/archive]{some/path?Name}|-pair into
+%     absolute values \cs{l_stex_import_archive_str},
+%     \cs{l_stex_import_path_str}, \cs{l_stex_import_name_str}:
 %   \end{function}
 % \end{documentation}
 %
@@ -2349,8 +2360,41 @@
 %
 %
 % \begin{sfragment}{Inheritance}
+%    \begin{macrocode}
+%<@@=stex_importmodule>
+%    \end{macrocode}
 %
-%
+% \begin{macro}{\stex_import_module_uri:nn}
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_import_module_uri:nn {
+  \exp_args:NNnx \seq_set_split:Nnn \_@@_seq ? { \tl_to_str:n{ #2 } }
+  \seq_pop_right:NN \_@@_seq \l_stex_import_name_str
+  \str_set:Nx \l_stex_import_path_str { \seq_use:Nn \_@@_seq ? }
+  \tl_if_empty:nTF { #1 } {
+    \prop_if_exist:NTF \l_stex_current_repository_prop {
+      \str_set:Nx \l_stex_import_archive_str {
+        \prop_item:Nn \l_stex_current_repository_prop { id }
+      }
+    }{
+      \str_clear:N \l_stex_import_archive_str
+      \str_if_empty:NTF \l_stex_import_path_str {
+        \str_set:Nx \l_stex_import_path_str {
+          \stex_uri_use:N \l_stex_current_ns_uri
+        }
+      }{
+        \stex_file_resolve:Nx \l_@@_seq { \stex_uri_use:N \l_stex_current_ns_uri / .. / \l_stex_import_path_str}
+        \str_set:Nx \l_stex_import_path_str {
+          \stex_file_use:N \l_@@_seq
+        }
+      }
+    }
+  } {
+    \str_set:Nx \l_stex_import_archive_str { #1 }
+  }
+}
+
+%    \end{macrocode}
+% \end{macro}
 %
 %
 %
