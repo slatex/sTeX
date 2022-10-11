@@ -1584,10 +1584,10 @@
       \str_clear:N \l_stex_import_archive_str
       \str_if_empty:NTF \l_stex_import_path_str {
         \str_set:Nx \l_stex_import_path_str {
-          \stex_uri_use:N \l_stex_current_ns_uri
+          \stex_file_use:N \g_stex_current_file / ..
         }
       }{
-        \stex_file_resolve:Nx \l__stex_importmodule_seq { \stex_uri_use:N \l_stex_current_ns_uri / .. / \l_stex_import_path_str}
+        \stex_file_resolve:Nx \l__stex_importmodule_seq { \stex_file_use:N \g_stex_current_file / .. / \l_stex_import_path_str}
         \str_set:Nx \l_stex_import_path_str {
           \stex_file_use:N \l__stex_importmodule_seq
         }
@@ -1595,9 +1595,48 @@
     }
   } {
     \str_set:Nx \l_stex_import_archive_str { #1 }
+    \stex_require_respository:o \l_stex_import_archive_str
+  }
+}
+\cs_new_protected:Npn \stex_import_require_module:nnn #1 {
+  \tl_if_empty:nTF { #1 } {
+    \str_set:Nn \l__stex_importmodule_uri {file:}
+    \__stex_importmodule_get_from_path:nnn {}
+  }{
+    \str_set:Nx \l__stex_importmodule_uri { \prop_item:cn{ c_stex_mathhub_ #1 _manifest_prop}{ ns } }
+    \str_set:Nx \l__stex_importmodule_str { \stex_file_use:N \c_stex_mathhub_file / #1 / source }
+    \exp_args:No \__stex_importmodule_get_from_path:nnn \l__stex_importmodule_str
   }
 }
 
+\cs_new_protected:Nn \__stex_importmodule_get_from_path:nnn {
+  \str_clear:N \l_stex_import_ns_str
+  \stex_file_resolve:Nx \l__stex_importmodule_seq { \tl_if_empty:nF{ #1 }{ #1 / } #2 }
+  \str_set:Nx \l__stex_importmodule_str {\stex_file_use:N \l__stex_importmodule_seq}
+  \tl_if_empty:nF {#2}{
+    \str_set:Nx \l__stex_importmodule_uri {\l__stex_importmodule_uri / #2}
+  }
+  \__stex_importmodule_check_file:nn{ .tex }{
+    \__stex_importmodule_check_file:nn{. \l_stex_current_language_str .tex}{
+      \__stex_importmodule_check_file:nn{.en.tex}{
+        \__stex_importmodule_check_file:nn{/#3.tex}{
+          \__stex_importmodule_check_file:nn{/#3.\l_stex_current_language_str .tex}{
+            \__stex_importmodule_check_file:nn{/#3.en.tex}{
+              \msg_error:nnx{stex}{error/unknownmodule}{\l__stex_importmodule_uri \l__stex_importmodule_suffix_str?#3}
+            }
+          }
+        }
+      }
+    }
+  }
+  \TODO
+}
+
+\cs_new_protected:Npn \__stex_importmodule_check_file:nn #1 {
+  \IfFileExists{ \l__stex_importmodule_str #1 }{
+    \str_set:Nx \l__stex_importmodule_str { \l__stex_importmodule_str #1 }
+  }
+}
 
 
 \stex_read_persist:

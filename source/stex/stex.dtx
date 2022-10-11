@@ -222,6 +222,9 @@
 %     absolute values \cs{l_stex_import_archive_str},
 %     \cs{l_stex_import_path_str}, \cs{l_stex_import_name_str}:
 %   \end{function}
+%   \begin{function}{\stex_import_require_module:nnn}
+%     Foo
+%   \end{function}
 % \end{documentation}
 %
 % \begin{implementation}
@@ -2379,10 +2382,10 @@
       \str_clear:N \l_stex_import_archive_str
       \str_if_empty:NTF \l_stex_import_path_str {
         \str_set:Nx \l_stex_import_path_str {
-          \stex_uri_use:N \l_stex_current_ns_uri
+          \stex_file_use:N \g_stex_current_file / ..
         }
       }{
-        \stex_file_resolve:Nx \l_@@_seq { \stex_uri_use:N \l_stex_current_ns_uri / .. / \l_stex_import_path_str}
+        \stex_file_resolve:Nx \l_@@_seq { \stex_file_use:N \g_stex_current_file / .. / \l_stex_import_path_str}
         \str_set:Nx \l_stex_import_path_str {
           \stex_file_use:N \l_@@_seq
         }
@@ -2390,11 +2393,61 @@
     }
   } {
     \str_set:Nx \l_stex_import_archive_str { #1 }
+    \stex_require_respository:o \l_stex_import_archive_str
+  }
+}
+%    \end{macrocode}
+% \end{macro}
+%
+%
+% \begin{macro}{\stex_import_require_module:nnn}
+%    \begin{macrocode}
+\cs_new_protected:Npn \stex_import_require_module:nnn #1 {
+  \tl_if_empty:nTF { #1 } {
+    \str_set:Nn \l_@@_uri {file:}
+    \_@@_get_from_path:nnn {}
+  }{
+    \str_set:Nx \l_@@_uri { \prop_item:cn{ c_stex_mathhub_ #1 _manifest_prop}{ ns } }
+    \str_set:Nx \l_@@_str { \stex_file_use:N \c_stex_mathhub_file / #1 / source }
+    \exp_args:No \_@@_get_from_path:nnn \l_@@_str
   }
 }
 
+\cs_new_protected:Nn \_@@_get_from_path:nnn {
+  \str_clear:N \l_stex_import_ns_str
+  \stex_file_resolve:Nx \l_@@_seq { \tl_if_empty:nF{ #1 }{ #1 / } #2 }
+  \str_set:Nx \l_@@_str {\stex_file_use:N \l_@@_seq}
+  \tl_if_empty:nF {#2}{
+    \str_set:Nx \l_@@_uri {\l_@@_uri / #2}
+  }
+  \_@@_check_file:nn{ .tex }{
+    \_@@_check_file:nn{. \l_stex_current_language_str .tex}{
+      \_@@_check_file:nn{.en.tex}{
+        \_@@_check_file:nn{/#3.tex}{
+          \_@@_check_file:nn{/#3.\l_stex_current_language_str .tex}{
+            \_@@_check_file:nn{/#3.en.tex}{
+              \msg_error:nnx{stex}{error/unknownmodule}{\l_@@_uri \l_@@_suffix_str?#3}
+            }
+          }
+        }
+      }
+    }
+  }
+  \TODO
+}
+
+\cs_new_protected:Npn \_@@_check_file:nn #1 {
+  \IfFileExists{ \l_@@_str #1 }{
+    \str_set:Nx \l_@@_str { \l_@@_str #1 }
+  }
+}
 %    \end{macrocode}
 % \end{macro}
+%
+%
+%
+%
+%
 %
 %
 %
