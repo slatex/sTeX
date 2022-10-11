@@ -157,10 +157,13 @@
 %   \begin{function}{\stex_sms_allow_import:Nn, \stex_sms_allow_import_env:nn}
 %     Foo
 %   \end{function}
+%   \begin{variable}{\g_stex_sms_import_code}
+%     Foo
+%   \end{variable}
 %   \begin{function}[pTF]{\stex_if_smsmode:}
 %     Foo
 %   \end{function}
-%   \begin{function}{\stex_file_in_smsmode:nn}
+%   \begin{function}{\stex_file_in_smsmode:nn,\stex_file_in_smsmode:on}
 %     Foo
 %   \end{function}
 %   \begin{function}{\stex_smsmode_do:}
@@ -214,7 +217,7 @@
 %   \begin{function}{\stex_close_module:}
 %     Foo
 %   \end{function}
-%   \begin{function}{\stex_activate_module:n}
+%   \begin{function}{\stex_activate_module:n,\stex_activate_module:o,\stex_activate_module:x}
 %     Foo
 %   \end{function}
 %   \begin{function}{\stex_import_module_uri:nn}
@@ -223,6 +226,9 @@
 %     \cs{l_stex_import_path_str}, \cs{l_stex_import_name_str}:
 %   \end{function}
 %   \begin{function}{\stex_import_require_module:nnn}
+%     Foo
+%   \end{function}
+%   \begin{function}{\usemodule}
 %     Foo
 %   \end{function}
 % \end{documentation}
@@ -1080,16 +1086,17 @@
 %
 % \begin{macro}{\stex_uri_set:Nn, \stex_uri_set:No, \stex_uri_set:Nx}
 %    \begin{macrocode}
+\str_set:Nx\_@@_colonslash{\c_colon_str/}
 \cs_new_protected:Nn \_@@_uri_set:NnN {
   \str_if_empty:nTF {#2} {
     \msg_error:nnxx{stex}{error/invalid-uri}{\tl_to_str:n{#2}}{empty}
   }{
-    \exp_args:NNno \seq_set_split:Nnn #1 {:/} { \tl_to_str:n{#2} }
+    \exp_args:NNNo \exp_args:NNno \seq_set_split:Nnn #1 \_@@_colonslash { \tl_to_str:n{#2} }
     \seq_pop_left:NN #1 \l_@@_auth_str
     \seq_if_empty:NTF #1 {
       \msg_error:nnxx{stex}{error/invalid-uri}{\tl_to_str:n{#2}}{missing~authority}
     }{
-      \exp_args:NNnx \seq_set_split:Nnn #1 ? {\seq_use:Nn {:/} }
+      \exp_args:NNnx \seq_set_split:Nnn #1 ? {\exp_args:NNo \seq_use:Nn #1 \_@@_colonslash }
       \seq_pop_left:NN #1 \l_@@_path
       #3 \l_@@_path \l_@@_path
       \seq_if_empty:NTF #1 {
@@ -1271,6 +1278,7 @@
 % \begin{macro}{\stex_filestack_push:n}
 %    \begin{macrocode}
 \cs_new_protected:Nn \stex_filestack_push:n {
+  \stex_debug:nn{filestack}{Here:~>>\tl_to_str:n{#1}<<~Head:~>>\str_head:n{#1}<<}
   \exp_args:Nx \tl_if_eq:nnTF {\str_head:n{#1}} / {
     \str_set:Nn \l_@@_str {#1}
   }{
@@ -1372,6 +1380,7 @@
 %    \begin{macrocode}
 \cs_new_protected:Nn \stex_set_current_repository:n {
   \stex_require_repository:n { #1 }
+  \stex_debug:nn{mathhub}{switching~to~archive~#1}
   \prop_set_eq:Nc \l_stex_current_repository_prop { 
     c_stex_mathhub_#1_manifest_prop 
   }
@@ -1443,7 +1452,7 @@
   \ior_open:Nn \c_@@_manifest_ior \l_@@_manifest_str
   \prop_clear:N \l_@@_prop
   \ior_map_inline:Nn \c_@@_manifest_ior {
-    \seq_set_split:Nnn \l_@@_seq : {##1}
+    \exp_args:NNo \seq_set_split:Nnn \l_@@_seq \c_colon_str {##1}
     \seq_pop_left:NNT \l_@@_seq \l_@@_key {
       \exp_args:NNo \str_set:Nn \l_@@_key \l_@@_key
       \str_set:Nx \l_@@_val {\seq_use:Nn \l_@@_seq :}
@@ -1459,6 +1468,7 @@
   }
   \ior_close:N \c_@@_manifest_ior
   \prop_gset_eq:cN { c_stex_mathhub_#1_manifest_prop } \l_@@_prop
+  \stex_debug:nn{mathhub}{Result: \prop_to_keyval:N \l_@@_prop}
   \stex_persist:x {
     \prop_set_from_keyval:cn { c_stex_mathhub_#1_manifest_prop }{
       \exp_after:wN \prop_to_keyval:N 
@@ -1890,10 +1900,12 @@
   \exp_args:NNx \seq_gput_right:Nn \g_@@_allowed_import_env_seq {\tl_to_str{#1}}
   \tl_set:cn{#1 - env - smsmode} {#2}
 }
+
+\tl_new:N \g_stex_sms_import_code
 %    \end{macrocode}
 % \end{macro}
 %
-% \begin{macro}{\stex_file_in_smsmode:nn}
+% \begin{macro}{\stex_file_in_smsmode:nn,\stex_file_in_smsmode:on}
 %    \begin{macrocode}
 \cs_new_protected:Nn \_@@_in_smsmode:n { \stex_suppress_html:n {
   \vbox_set:Nn \l_tmpa_box {
@@ -1905,37 +1917,40 @@
 } }
 
 \quark_new:N \q_@@_break
-\bool_set_false:N \l_@@_in_imports_bool
 
 \cs_new_protected:Nn \_@@_start_smsmode:n {
-  \stex_filestack_push:n{#1}
   \everyeof{\q_@@_break\exp_not:N}
   \exp_after:wN \exp_after:wN \exp_after:wN
   \stex_smsmode_do:
   \cs:w @ @ input\cs_end: "#1" \relax
-  \stex_filestack_pop:
 }
 
 \cs_new_protected:Nn \stex_file_in_smsmode:nn {
   \seq_gclear:N \l_@@_importmodules_seq
   \seq_gclear:N \l_@@_sigmodules_seq
-  \_@@_in_smsmode:n {
-    \bool_set_true:N \l_@@_in_imports_bool
-    \tl_map_inline:Nn \g_@@_allowed_import_tl {
-      \use:c{##1 - smsmode}
-    }
-    \seq_map_inline:Nn \g_@@_allowed_import_env_seq {
-      \use:c{##1 - env - smsmode}
-    }
-    \_@@_start_smsmode:n{#1}
-  }
-  \TODO imports
-  \_@@_in_smsmode:n {
-    \bool_set_false:N \l_@@_in_imports_bool
+  \tl_clear:N \g_stex_sms_import_code
+  \group_begin:
     #2
-    \_@@_start_smsmode:n{#1}
-  }
+    \stex_filestack_push:n{#1}
+    \_@@_in_smsmode:n {
+      \let \_@@_do_aux_curr:N \_@@_do_aux_imports:N
+      \tl_map_inline:Nn \g_@@_allowed_import_tl {
+        \use:c{##1 - smsmode}
+      }
+      \seq_map_inline:Nn \g_@@_allowed_import_env_seq {
+        \use:c{##1 - env - smsmode}
+      }
+      \_@@_start_smsmode:n{#1}
+    }
+    \g_stex_sms_import_code
+    \_@@_in_smsmode:n {
+      \let \_@@_do_aux_curr:N \_@@_do_aux_normal:N
+      \_@@_start_smsmode:n{#1}
+    }
+    \stex_filestack_pop:
+  \group_end:
 }
+\cs_generate_variant:Nn \stex_file_in_smsmode:nn {on}
 %    \end{macrocode}
 % \end{macro}
 %
@@ -1963,16 +1978,14 @@
 
 \cs_new_protected:Nn \_@@_do_aux:N {
   \cs_if_eq:NNF #1 \q_@@_break {
-    \bool_if:NTF \l_@@_in_imports_bool {
-      \_@@_do_aux_imports:N #1
-    }{
-      \_@@_do_aux_normal:N #1
-    }
+    \_@@_do_aux_curr:N #1
   }
 }
 
 \cs_new_protected:Nn \_@@_do_aux_imports:N {
+ % \stex_debug:nn{sms}{Checking~\tl_to_str:n{#1}~in~import}
   \tl_if_in:NnTF \g_@@_allowed_import_tl {#1} {
+    \stex_debug:nn{sms}{Executing}
     #1
   }{
     \cs_if_eq:NNTF \begin #1 {
@@ -1988,10 +2001,13 @@
 }
 
 \cs_new_protected:Nn \_@@_do_aux_normal:N {
+ % \stex_debug:nn{sms}{Checking~\tl_to_str:n{#1}~in~sms~mode}
   \tl_if_in:NnTF \g_@@_allowed_tl {#1} {
+    \stex_debug:nn{sms}{Executing}
     #1\_@@_do:w
   }{
     \tl_if_in:NnTF \g_@@_allowed_escape_tl {#1} {
+      \stex_debug:nn{sms}{Executing~escaped}
       #1
     }{
       \cs_if_eq:NNTF \begin #1 {
@@ -2008,14 +2024,18 @@
 }
 
 \cs_new_protected:Nn \_@@_check_begin:Nn {
-  \seq_if_in:NxTF #1 { \detokenize{#2} }{
+ % \stex_debug:nn{sms}{Checking~environment~#2}
+  \seq_if_in:NxTF #1 { \tl_to_str:n{#2} }{
+    \stex_debug:nn{sms}{Environment~#2}
     \begin{#2}
   }{
     \_@@_do:w
   }
 }
 \cs_new_protected:Nn \_@@_check_end:Nn {
-  \seq_if_in:NxTF #1 { \detokenize{#2} }{
+%  \stex_debug:nn{sms}{Checking~end~environment~#2}
+  \seq_if_in:NxTF #1 { \tl_to_str:n{#2} }{
+    \stex_debug:nn{sms}{End~Environment~#2}
     \end{#2}\_@@_do:w
   }{
     \str_if_eq:nnTF{#2}{document} \endinput \_@@_do:w
@@ -2091,8 +2111,9 @@
     \prop_clear:N \l_@@_prop
     \prop_put:Nnn \l_@@_prop {name} { #1 }
     \prop_put:Nno \l_@@_prop {ns} \l_@@_ns_str
-
-    \prop_set_eq:cN {c_stex_module_ \l_@@_ns_str ? #1 _prop}\l_@@_prop
+    \tl_gclear:c{c_stex_module_ \l_@@_ns_str ? #1 _code}
+    % \stex_debug:nn{module}{creating~c_stex_module_ \l_@@_ns_str ? #1 _prop}
+    \prop_gset_eq:cN {c_stex_module_ \l_@@_ns_str ? #1 _prop}\l_@@_prop
   }
   \str_set:Nx \l_stex_current_module_str {\l_@@_ns_str?#1}
   \seq_put_right:No \l_stex_all_modules_seq \l_stex_current_module_str
@@ -2106,7 +2127,7 @@
     \TODO
   }    
   \stex_if_smsmode:F { % WHY?
-    \stex_activate_module:n {
+    \stex_activate_module:x {
       \l_stex_module_ns_str ? \l_stex_module_name_str
     }
   }
@@ -2121,7 +2142,6 @@
   \_@@_setup_top_nosig:n \_@@_setup_top_sig:n {#1}
   \g_stex_every_module_tl
   \_@@_load_meta:
-  \cs_set_eq:NN \stex_module_setup:n \_@@_setup_nested:n
 }
 
 \cs_new_protected:Nn \_@@_setup_nested:n {
@@ -2146,7 +2166,10 @@
   }
 }
 
-\cs_set_eq:NN \stex_module_setup:n \_@@_setup_top:n
+\cs_new_protected:Npn \stex_module_setup:n {
+  \stex_if_in_module:TF \_@@_setup_nested:n \_@@_setup_top:n
+}
+
 %<@@=stex_modules>
 %    \end{macrocode}
 % \end{macro}
@@ -2346,16 +2369,17 @@
 %    \end{macrocode}
 % \end{environment}
 %
-% \begin{macro}{\stex_activate_module:n}
+% \begin{macro}{\stex_activate_module:n,\stex_activate_module:o,\stex_activate_module:x}
 %    \begin{macrocode}
 \cs_new_protected:Nn \stex_activate_module:n {
-  \exp_args:NNx \seq_if_in:NnF \l_stex_all_modules_seq { #1 } {
+  \seq_if_in:NnF \l_stex_all_modules_seq { #1 } {
     \stex_debug:nn{modules}{Activating~module~#1}
     \seq_put_right:Nx \l_stex_all_modules_seq { #1 }
-    \TODO % \use:c{ c_stex_module_#1_code }
-    % morphisms
+    \use:c{ c_stex_module_#1_code }
+    % \TODO % morphisms
   }
 }
+\cs_generate_variant:Nn \stex_activate_module:n {o,x}
 %    \end{macrocode}
 % \end{macro}
 %
@@ -2393,7 +2417,7 @@
     }
   } {
     \str_set:Nx \l_stex_import_archive_str { #1 }
-    \stex_require_respository:o \l_stex_import_archive_str
+    \stex_require_repository:o \l_stex_import_archive_str
   }
 }
 %    \end{macrocode}
@@ -2422,11 +2446,11 @@
   \stex_if_module_exists:nF {\l_@@_uri?#3} {
     \_@@_get_from_file:nnn{#1}{#2}{#3}
   }
-  %\TODO
+  \str_set:Nx \l_stex_import_ns_str {\l_@@_uri?#3}
+  \stex_activate_module:o \l_stex_import_ns_str
 }
 
 \cs_new_protected:Nn \_@@_get_from_file:nnn {
-  \str_clear:N \l_stex_import_ns_str
   \stex_file_resolve:Nx \l_@@_seq { \tl_if_empty:nF{ #1 }{ #1 / } #2 }
   \str_set:Nx \l_@@_str {\stex_file_use:N \l_@@_seq}
   \stex_debug:nn{imports}{Looking~for~\l_@@_uri?#3...}
@@ -2447,11 +2471,11 @@
 }
 
 \cs_new_protected:Nn \_@@_load_file:n {
-  \stex_file_in_smsmode:nn{\l_@@_str}{
+  \stex_file_in_smsmode:on \l_@@_str {
     \seq_clear:N \l_stex_all_modules_seq
     \str_clear:N \l_stex_current_module_str
     \str_if_empty:NF \l_@@_archive_str {
-      \stex_set_current_repository:n \l_@@_srchive_str
+      \stex_set_current_repository:n \l_@@_archive_str
     }
     \stex_debug:nn{modules}{Loading~\l_@@_str}
   }
@@ -2470,7 +2494,21 @@
 %    \end{macrocode}
 % \end{macro}
 %
-%
+% \begin{macro}{\usemodule}
+%    \begin{macrocode}
+\NewDocumentCommand \usemodule { O{} m } {
+  \stex_import_module_uri:nn { #1 }{ #2 }
+  \stex_import_require_module:nnn 
+    \l_stex_import_archive_str
+    \l_stex_import_path_str
+    \l_stex_import_name_str
+  \stex_if_do_html:T {
+    \stex_annotate_invisible:nnn 
+      {usemodule} \l_stex_import_ns_str {}
+  }
+}
+%    \end{macrocode}
+% \end{macro}
 %
 %
 %
