@@ -1232,11 +1232,11 @@
   \exp_args:NNx \seq_gput_right:Nn \g__stex_smsmode_allowed_import_env_seq {\tl_to_str{#1}}
   \tl_set:cn{#1 - env - smsmode} {#2}
 }
-\cs_new_protected:Nn \__stex_smsmode_in_smsmode:nn { \stex_suppress_html:n {
+\cs_new_protected:Nn \__stex_smsmode_in_smsmode:n { \stex_suppress_html:n {
   \vbox_set:Nn \l_tmpa_box {
     \bool_set_true:N \g__stex_smsmode_bool
     \bool_set_false:N \_stex_html_do_output_bool
-    #2
+    #1
   }
   \box_clear:N \l_tmpa_box
 } }
@@ -1285,11 +1285,11 @@
   \exp_after:wN#2\fi
 }
 
-\cs_new_protected:Nn \__stex_smsmode_do:n {
+\cs_new_protected:Npn \__stex_smsmode_do:w #1 {
   \exp_args:Nx \tl_if_empty:nTF { \tl_tail:n{ #1 }}{
-    \__stex_smsmode_check_cs:NNn \__stex_smsmode_do_aux:N \__stex_smsmode_do:n { #1 }
+    \__stex_smsmode_check_cs:NNn \__stex_smsmode_do_aux:N \__stex_smsmode_do:w { #1 }
   }{
-    \__stex_smsmode_do:n
+    \__stex_smsmode_do:w
   }
 }
 
@@ -1313,7 +1313,7 @@
       \cs_if_eq:NNTF \end #1 {
         \__stex_smsmode_check_end:Nn \g__stex_smsmode_allowed_import_env_seq
       }{
-        \__stex_smsmode_do:n
+        \__stex_smsmode_do:w
       }
     }
   }
@@ -1321,7 +1321,7 @@
 
 \cs_new_protected:Nn \__stex_smsmode_do_aux_normal:N {
   \tl_if_in:NnTF \g__stex_smsmode_allowed_tl {#1} {
-    #1\__stex_smsmode_do:n
+    #1\__stex_smsmode_do:w
   }{
     \tl_if_in:NnTF \g__stex_smsmode_allowed_escape_tl {#1} {
       #1
@@ -1332,7 +1332,7 @@
         \cs_if_eq:NNTF \end #1 {
           \__stex_smsmode_check_end:Nn \g__stex_smsmode_allowedenvs_seq
         }{
-          \__stex_smsmode_do:n
+          \__stex_smsmode_do:w
         }
       }
     }
@@ -1343,14 +1343,14 @@
   \seq_if_in:NxTF #1 { \detokenize{#2} }{
     \begin{#2}
   }{
-    \__stex_smsmode_do:n
+    \__stex_smsmode_do:w
   }
 }
 \cs_new_protected:Nn \__stex_smsmode_check_end:Nn {
   \seq_if_in:NxTF #1 { \detokenize{#2} }{
-    \end{#2}\__stex_smsmode_do:n
+    \end{#2}\__stex_smsmode_do:w
   }{
-    \str_if_eq:nnTF{#2}{document} \endinput \__stex_smsmode_do:n
+    \str_if_eq:nnTF{#2}{document} \endinput \__stex_smsmode_do:w
   }
 }
 \str_new:N \l_stex_current_module_str
@@ -1600,40 +1600,66 @@
 }
 \cs_new_protected:Npn \stex_import_require_module:nnn #1 {
   \tl_if_empty:nTF { #1 } {
+    \str_clear:N \l__stex_importmodule_archive_str
     \str_set:Nn \l__stex_importmodule_uri {file:}
-    \__stex_importmodule_get_from_path:nnn {}
+    \__stex_importmodule_get_module:nnn {}
   }{
+    \str_set:Nx \l__stex_importmodule_archive_str {#1}
     \str_set:Nx \l__stex_importmodule_uri { \prop_item:cn{ c_stex_mathhub_ #1 _manifest_prop}{ ns } }
     \str_set:Nx \l__stex_importmodule_str { \stex_file_use:N \c_stex_mathhub_file / #1 / source }
-    \exp_args:No \__stex_importmodule_get_from_path:nnn \l__stex_importmodule_str
+    \exp_args:No \__stex_importmodule_get_module:nnn \l__stex_importmodule_str
   }
 }
 
-\cs_new_protected:Nn \__stex_importmodule_get_from_path:nnn {
-  \str_clear:N \l_stex_import_ns_str
-  \stex_file_resolve:Nx \l__stex_importmodule_seq { \tl_if_empty:nF{ #1 }{ #1 / } #2 }
-  \str_set:Nx \l__stex_importmodule_str {\stex_file_use:N \l__stex_importmodule_seq}
+\cs_new_protected:Nn \__stex_importmodule_get_module:nnn {
   \tl_if_empty:nF {#2}{
     \str_set:Nx \l__stex_importmodule_uri {\l__stex_importmodule_uri / #2}
   }
+  \stex_if_module_exists:nF {\l__stex_importmodule_uri?#3} {
+    \__stex_importmodule_get_from_file:nnn{#1}{#2}{#3}
+  }
+  %\TODO
+}
+
+\cs_new_protected:Nn \__stex_importmodule_get_from_file:nnn {
+  \str_clear:N \l_stex_import_ns_str
+  \stex_file_resolve:Nx \l__stex_importmodule_seq { \tl_if_empty:nF{ #1 }{ #1 / } #2 }
+  \str_set:Nx \l__stex_importmodule_str {\stex_file_use:N \l__stex_importmodule_seq}
+  \stex_debug:nn{imports}{Looking~for~\l__stex_importmodule_uri?#3...}
   \__stex_importmodule_check_file:nn{ .tex }{
     \__stex_importmodule_check_file:nn{. \l_stex_current_language_str .tex}{
       \__stex_importmodule_check_file:nn{.en.tex}{
         \__stex_importmodule_check_file:nn{/#3.tex}{
           \__stex_importmodule_check_file:nn{/#3.\l_stex_current_language_str .tex}{
             \__stex_importmodule_check_file:nn{/#3.en.tex}{
-              \msg_error:nnx{stex}{error/unknownmodule}{\l__stex_importmodule_uri \l__stex_importmodule_suffix_str?#3}
+              \msg_error:nnx{stex}{error/unknownmodule}{\l__stex_importmodule_uri?#3}
             }
           }
         }
       }
     }
   }
-  \TODO
+  \__stex_importmodule_load_file:n{#3}
+}
+
+\cs_new_protected:Nn \__stex_importmodule_load_file:n {
+  \stex_file_in_smsmode:nn{\l__stex_importmodule_str}{
+    \seq_clear:N \l_stex_all_modules_seq
+    \str_clear:N \l_stex_current_module_str
+    \str_if_empty:NF \l__stex_importmodule_archive_str {
+      \stex_set_current_repository:n \l__stex_importmodule_srchive_str
+    }
+    \stex_debug:nn{modules}{Loading~\l__stex_importmodule_str}
+  }
+  \stex_if_module_exists:nF {\l__stex_importmodule_uri?#1} {
+    \msg_error:nnx{stex}{error/unknownmodule}{\l__stex_importmodule_uri?#1}
+  }
 }
 
 \cs_new_protected:Npn \__stex_importmodule_check_file:nn #1 {
+  \stex_debug:nn{imports}{Checking~\l__stex_importmodule_str #1}
   \IfFileExists{ \l__stex_importmodule_str #1 }{
+    \stex_debug:nn{imports}{Success}
     \str_set:Nx \l__stex_importmodule_str { \l__stex_importmodule_str #1 }
   }
 }

@@ -1895,11 +1895,11 @@
 %
 % \begin{macro}{\stex_file_in_smsmode:nn}
 %    \begin{macrocode}
-\cs_new_protected:Nn \_@@_in_smsmode:nn { \stex_suppress_html:n {
+\cs_new_protected:Nn \_@@_in_smsmode:n { \stex_suppress_html:n {
   \vbox_set:Nn \l_tmpa_box {
     \bool_set_true:N \g_@@_bool
     \bool_set_false:N \_stex_html_do_output_bool
-    #2
+    #1
   }
   \box_clear:N \l_tmpa_box
 } }
@@ -1953,11 +1953,11 @@
   \exp_after:wN#2\fi
 }
 
-\cs_new_protected:Nn \_@@_do:n {
+\cs_new_protected:Npn \_@@_do:w #1 {
   \exp_args:Nx \tl_if_empty:nTF { \tl_tail:n{ #1 }}{
-    \_@@_check_cs:NNn \_@@_do_aux:N \_@@_do:n { #1 }
+    \_@@_check_cs:NNn \_@@_do_aux:N \_@@_do:w { #1 }
   }{
-    \_@@_do:n
+    \_@@_do:w
   }
 }
 
@@ -1981,7 +1981,7 @@
       \cs_if_eq:NNTF \end #1 {
         \_@@_check_end:Nn \g_@@_allowed_import_env_seq
       }{
-        \_@@_do:n
+        \_@@_do:w
       }
     }
   }
@@ -1989,7 +1989,7 @@
 
 \cs_new_protected:Nn \_@@_do_aux_normal:N {
   \tl_if_in:NnTF \g_@@_allowed_tl {#1} {
-    #1\_@@_do:n
+    #1\_@@_do:w
   }{
     \tl_if_in:NnTF \g_@@_allowed_escape_tl {#1} {
       #1
@@ -2000,7 +2000,7 @@
         \cs_if_eq:NNTF \end #1 {
           \_@@_check_end:Nn \g_@@_allowedenvs_seq
         }{
-          \_@@_do:n
+          \_@@_do:w
         }
       }
     }
@@ -2011,14 +2011,14 @@
   \seq_if_in:NxTF #1 { \detokenize{#2} }{
     \begin{#2}
   }{
-    \_@@_do:n
+    \_@@_do:w
   }
 }
 \cs_new_protected:Nn \_@@_check_end:Nn {
   \seq_if_in:NxTF #1 { \detokenize{#2} }{
-    \end{#2}\_@@_do:n
+    \end{#2}\_@@_do:w
   }{
-    \str_if_eq:nnTF{#2}{document} \endinput \_@@_do:n
+    \str_if_eq:nnTF{#2}{document} \endinput \_@@_do:w
   }
 }
 %    \end{macrocode}
@@ -2404,40 +2404,66 @@
 %    \begin{macrocode}
 \cs_new_protected:Npn \stex_import_require_module:nnn #1 {
   \tl_if_empty:nTF { #1 } {
+    \str_clear:N \l_@@_archive_str
     \str_set:Nn \l_@@_uri {file:}
-    \_@@_get_from_path:nnn {}
+    \_@@_get_module:nnn {}
   }{
+    \str_set:Nx \l_@@_archive_str {#1}
     \str_set:Nx \l_@@_uri { \prop_item:cn{ c_stex_mathhub_ #1 _manifest_prop}{ ns } }
     \str_set:Nx \l_@@_str { \stex_file_use:N \c_stex_mathhub_file / #1 / source }
-    \exp_args:No \_@@_get_from_path:nnn \l_@@_str
+    \exp_args:No \_@@_get_module:nnn \l_@@_str
   }
 }
 
-\cs_new_protected:Nn \_@@_get_from_path:nnn {
-  \str_clear:N \l_stex_import_ns_str
-  \stex_file_resolve:Nx \l_@@_seq { \tl_if_empty:nF{ #1 }{ #1 / } #2 }
-  \str_set:Nx \l_@@_str {\stex_file_use:N \l_@@_seq}
+\cs_new_protected:Nn \_@@_get_module:nnn {
   \tl_if_empty:nF {#2}{
     \str_set:Nx \l_@@_uri {\l_@@_uri / #2}
   }
+  \stex_if_module_exists:nF {\l_@@_uri?#3} {
+    \_@@_get_from_file:nnn{#1}{#2}{#3}
+  }
+  %\TODO
+}
+
+\cs_new_protected:Nn \_@@_get_from_file:nnn {
+  \str_clear:N \l_stex_import_ns_str
+  \stex_file_resolve:Nx \l_@@_seq { \tl_if_empty:nF{ #1 }{ #1 / } #2 }
+  \str_set:Nx \l_@@_str {\stex_file_use:N \l_@@_seq}
+  \stex_debug:nn{imports}{Looking~for~\l_@@_uri?#3...}
   \_@@_check_file:nn{ .tex }{
     \_@@_check_file:nn{. \l_stex_current_language_str .tex}{
       \_@@_check_file:nn{.en.tex}{
         \_@@_check_file:nn{/#3.tex}{
           \_@@_check_file:nn{/#3.\l_stex_current_language_str .tex}{
             \_@@_check_file:nn{/#3.en.tex}{
-              \msg_error:nnx{stex}{error/unknownmodule}{\l_@@_uri \l_@@_suffix_str?#3}
+              \msg_error:nnx{stex}{error/unknownmodule}{\l_@@_uri?#3}
             }
           }
         }
       }
     }
   }
-  \TODO
+  \_@@_load_file:n{#3}
+}
+
+\cs_new_protected:Nn \_@@_load_file:n {
+  \stex_file_in_smsmode:nn{\l_@@_str}{
+    \seq_clear:N \l_stex_all_modules_seq
+    \str_clear:N \l_stex_current_module_str
+    \str_if_empty:NF \l_@@_archive_str {
+      \stex_set_current_repository:n \l_@@_srchive_str
+    }
+    \stex_debug:nn{modules}{Loading~\l_@@_str}
+  }
+  \stex_if_module_exists:nF {\l_@@_uri?#1} {
+    \msg_error:nnx{stex}{error/unknownmodule}{\l_@@_uri?#1}
+  }
 }
 
 \cs_new_protected:Npn \_@@_check_file:nn #1 {
+  \stex_debug:nn{imports}{Checking~\l_@@_str #1}
   \IfFileExists{ \l_@@_str #1 }{
+    \stex_debug:nn{imports}{Success}
     \str_set:Nx \l_@@_str { \l_@@_str #1 }
   }
 }
