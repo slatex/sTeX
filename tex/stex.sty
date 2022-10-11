@@ -277,7 +277,7 @@
   }
 }
 \cs_new_protected:Nn \stex_reactivate_macro:N {
-  \exp_after:wN\let\exp_after:wN#1\csname \detokenize{#1} - orig\endcsname
+  \exp_after:wN\let\exp_after:wN#1\csname \detokenize{#1}~-~orig\endcsname
 }
 \protected\def\ignorespacesandpars{
   \begingroup\catcode13=10\relax
@@ -1230,11 +1230,11 @@
 \seq_new:N \g__stex_smsmode_allowed_import_env_seq
 \cs_new_protected:Nn \stex_sms_allow_import:Nn {
   \tl_gput_right:Nn \g__stex_smsmode_allowed_import_tl {#1}
-  \tl_set:cn{#1 - smsmode} {#2}
+  \tl_set:cn{\tl_to_str:n{#1}~-~smsmode} {#2}
 }
 \cs_new_protected:Nn \stex_sms_allow_import_env:nn {
   \exp_args:NNx \seq_gput_right:Nn \g__stex_smsmode_allowed_import_env_seq {\tl_to_str{#1}}
-  \tl_set:cn{#1 - env - smsmode} {#2}
+  \tl_set:cn{\tl_to_str:n{#1}~-~env~-~smsmode} {#2}
 }
 
 \tl_new:N \g_stex_sms_import_code
@@ -1266,10 +1266,10 @@
     \__stex_smsmode_in_smsmode:n {
       \let \__stex_smsmode_do_aux_curr:N \__stex_smsmode_do_aux_imports:N
       \tl_map_inline:Nn \g__stex_smsmode_allowed_import_tl {
-        \use:c{##1 - smsmode}
+        \use:c{\tl_to_str:n{##1}~-~smsmode}
       }
       \seq_map_inline:Nn \g__stex_smsmode_allowed_import_env_seq {
-        \use:c{##1 - env - smsmode}
+        \use:c{\tl_to_str:n{##1}~-~env~-~smsmode}
       }
       \__stex_smsmode_start_smsmode:n{#1}
     }
@@ -1311,7 +1311,7 @@
 \cs_new_protected:Nn \__stex_smsmode_do_aux_imports:N {
  % \stex_debug:nn{sms}{Checking~\tl_to_str:n{#1}~in~import}
   \tl_if_in:NnTF \g__stex_smsmode_allowed_import_tl {#1} {
-    \stex_debug:nn{sms}{Executing}
+    \stex_debug:nn{sms}{Executing~\tl_to_str:n{#1}~in~import}
     #1
   }{
     \cs_if_eq:NNTF \begin #1 {
@@ -1329,11 +1329,11 @@
 \cs_new_protected:Nn \__stex_smsmode_do_aux_normal:N {
  % \stex_debug:nn{sms}{Checking~\tl_to_str:n{#1}~in~sms~mode}
   \tl_if_in:NnTF \g__stex_smsmode_allowed_tl {#1} {
-    \stex_debug:nn{sms}{Executing}
+    \stex_debug:nn{sms}{Executing~\tl_to_str:n{#1}}
     #1\__stex_smsmode_do:w
   }{
     \tl_if_in:NnTF \g__stex_smsmode_allowed_escape_tl {#1} {
-      \stex_debug:nn{sms}{Executing~escaped}
+      \stex_debug:nn{sms}{Executing~escaped~\tl_to_str:n{#1}}
       #1
     }{
       \cs_if_eq:NNTF \begin #1 {
@@ -1399,6 +1399,7 @@
     \prop_put:Nnn \l__stex_module_setup_prop {name} { #1 }
     \prop_put:Nno \l__stex_module_setup_prop {ns} \l__stex_module_setup_ns_str
     \tl_gclear:c{c_stex_module_ \l__stex_module_setup_ns_str ? #1 _code}
+    \tl_gclear:c{c_stex_module_ \l__stex_module_setup_ns_str ? #1 _dependencies }
     % \stex_debug:nn{module}{creating~c_stex_module_ \l__stex_module_setup_ns_str ? #1 _prop}
     \prop_gset_eq:cN {c_stex_module_ \l__stex_module_setup_ns_str ? #1 _prop}\l__stex_module_setup_prop
   }
@@ -1470,6 +1471,11 @@
         { \cs:w c_stex_module_\l_stex_current_module_str _code \cs_end: }
       }
     }
+  }
+  \stex_debug:nn{module}{
+    Closing~module~\l_stex_current_module_str^^J
+    Code:~\expandafter\meaning\csname c_stex_module_\l_stex_current_module_str _code\endcsname^^J
+    Imports:\expandafter\meaning\csname c_stex_module_\l_stex_current_module_str _dependencies\endcsname
   }
 }
 \tl_new:N \l_stex_metatheory_uri
@@ -1555,6 +1561,10 @@
   \tl_gput_right:cn {c_stex_module_\l_stex_current_module_str _code} { #1 }
 }
 \cs_generate_variant:Nn \stex_add_to_current_module:n {x}
+\cs_new_protected:Nn \stex_add_module_dependency:n {
+  \tl_gput_right:cn {c_stex_module_\l_stex_current_module_str _dependencies} { #1 }
+}
+\cs_generate_variant:Nn \stex_add_module_dependency:n {x}
 \cs_new_protected:Nn \stex_execute_in_module:n { \stex_if_in_module:TF {
   \stex_add_to_current_module:n { #1 }
   \stex_do_up_to_module:n { #1 }
@@ -1571,7 +1581,7 @@
 }
 \stex_deactivate_macro:Nn \STEXexport {module~environments}
 \stex_sms_allow_escape:N \STEXexport
-\tl_put_right:Nn \g_stex_every_module_tl {\stex_reactivate_macro:N \STEXexport}
+\stex_every_module:n {\stex_reactivate_macro:N \STEXexport}
 \cs_new_protected:Nn \stex_get_current_namespace: {
   \stex_uri_from_current_file_nolang:Nn \l_stex_current_ns_uri {source-base}
   \stex_debug:nn{modules}{Namespace~URI:~\stex_uri_use:N \l_stex_current_ns_uri}
@@ -1690,6 +1700,47 @@
     \stex_annotate_invisible:nnn
       {usemodule} \l_stex_import_ns_str {}
   }
+}
+\NewDocumentCommand \importmodule { O{} m } {
+  \__stex_importmodule_import_module:nn {#1}{#2}
+  \stex_smsmode_do:
+}
+\stex_deactivate_macro:Nn \importmodule {module~environments}
+\cs_new_protected:Nn \__stex_importmodule_import_module:nn {
+  \stex_import_module_uri:nn { #1 }{ #2 }
+  \stex_import_require_module:nnn
+    \l_stex_import_archive_str
+    \l_stex_import_path_str
+    \l_stex_import_name_str
+  \stex_add_to_current_module:x{
+    \stex_activate_module:n{\l_stex_import_ns_str}
+  }
+  \stex_add_module_dependency:x{
+    \_stex_importmodule:n{\l_stex_import_ns_str}
+  }
+  \stex_if_do_html:T {
+    \stex_annotate_invisible:nnn
+      {import} \l_stex_import_ns_str {}
+  }
+  % TODO export to module
+}
+\cs_new_protected:Nn \_stex_importmodule:n {
+  \msg_error:nnn{stex}{error/misused-importmodule}{#1}
+}
+\cs_new_protected:Nn \__stex_importmodule_import_module_presms:nn {
+  \stex_import_module_uri:nn { #1 }{ #2 }
+  \tl_gput_right:Nx \g_stex_sms_import_code {
+    \stex_import_require_module:nnn
+      {\l_stex_import_archive_str}
+      {\l_stex_import_path_str}
+      {\l_stex_import_name_str}
+  }
+}
+\stex_sms_allow_escape:N \importmodule
+\stex_every_module:n {\stex_reactivate_macro:N \importmodule}
+\stex_sms_allow_import:Nn \importmodule {
+  \stex_reactivate_macro:N \importmodule
+  \let \__stex_importmodule_import_module:nn \__stex_importmodule_import_module_presms:nn
 }
 
 
