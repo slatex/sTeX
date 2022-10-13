@@ -218,7 +218,10 @@
 %   \begin{function}{\stex_add_module_dependency:nnnn,\stex_add_module_dependency:oonn}
 %     Foo
 %   \end{function}
-%   \begin{function}{\stex_add_module_decl:n,\stex_add_module_decl:x}
+%^^A   \begin{function}{\stex_iterate_module:nn}
+%^^A     Foo
+%^^A   \end{function}
+%   \begin{function}{\stex_add_module_decl:nnnnnnn}
 %     Foo
 %   \end{function}
 %   \begin{function}{\stex_add_module_notation:n,\stex_add_module_notation:x}
@@ -280,7 +283,7 @@
 %   \begin{function}{\stex_decl_parse_arity:}
 %     Foo
 %   \end{function}
-%   \begin{function}{\stex_symdecl_do:N}
+%   \begin{function}{\stex_symdecl_do:}
 %     Foo
 %   \end{function}
 %   \begin{function}{\stex_symdecl_html:}
@@ -832,7 +835,7 @@
 }{}
 
 \cs_new_protected:Nn \_stex_do_deprecation:n {
-  \str_if_empty:nF \l_stex_key_deprecate_str {
+  \str_if_empty:NF \l_stex_key_deprecate_str {
     \msg_warning:nnxx{stex}{warning/deprecated}{#1}{\l_stex_key_deprecate_str}
   }
 }
@@ -2494,7 +2497,53 @@
 %    \end{macrocode}
 % \end{macro}
 %
-% \begin{macro}{\stex_add_module_decl:nnnnnnn, \stex_add_module_decl:x}
+%^^A \begin{macro}{\stex_iterate_module:nn}
+%^^A    \begin{macrocode}
+%^^A\cs_new_protected:Nn \stex_iterate_module:nn {
+%^^A  \seq_clear:N \l_@@_seq
+%^^A  \bool_set_true:N \l_@@_bool
+%^^A  \tl_clear:N \l_@@_tl
+%^^A  \str_clear:N \l_@@_prefix
+%^^A  \cs_set:Npn \stex_iterate_break: {\bool_set_false:N \l_@@_bool}
+%^^A  \cs_set:Npn \stex_iterate_break:n ##1 {
+%^^A    \bool_set_false:N \l_@@_bool
+%^^A    \tl_set:Nn \l_@@_tl {##1}
+%^^A  }
+%^^A  \cs_set:Npn \_@@_cs:nnnn ##1 ##2 ##3 ##4 { #2 }
+%^^A  \stex_pseudogroup_with:nn{\_stex_morphism:nnn}{
+%^^A    \cs_set:Npn \_stex_morphism:nnnn ##1 ##2 ##3 ##4 {
+%^^A      \bool_if:NT \l_@@_bool {
+%^^A        \stex_pseudogroup_with:nn{\l_@@_prefix}{
+%^^A          \tl_if_empty:nF {##1}{
+%^^A            \tl_if_empty:NTF \l_@@_prefix {
+%^^A              \str_set:Nn \l_@@_prefix { ##1 }
+%^^A            }{
+%^^A              \str_put_right:Nn \l_@@_prefix { / ##1 }
+%^^A            }
+%^^A          }
+%^^A          \exp_args:No \_@@_cs:nnnn \l_@@_prefix {##2} {##3} {##4}
+%^^A          \_@@_iterate_module:n {##2}
+%^^A        }
+%^^A      }
+%^^A    }
+%^^A    \exp_args:Nno \_stex_morphism:nnnn {} \l_stex_current_module_str {top} {}
+%^^A    \_@@_iterate_module:n \l_stex_current_module_str
+%^^A    \l_@@_tl
+%^^A  }
+%^^A}
+%^^A
+%^^A\cs_new_protected:Nn \_@@_iterate_module:n {
+%^^A  \bool_if:NT \l_@@_bool {
+%^^A    \exp_args:NNx\seq_if_in:NnF \l_@@_seq {#1 / \l_@@_prefix}{
+%^^A      \seq_push_right:Nx \l_@@_seq {#1 / \l_@@_prefix}
+%^^A      \use:c{c_stex_module_#1_dependencies}
+%^^A    }
+%^^A  }
+%^^A}
+%^^A    \end{macrocode}
+%^^A \end{macro}
+%
+% \begin{macro}{\stex_add_module_decl:nnnnnnn}
 %    \begin{macrocode}\
 \cs_new_protected:Nn \_stex_symbol:nnnnnnn {
   \exp_not:N \_stex_symbol:nnnnnnn
@@ -2570,7 +2619,7 @@
 \cs_new_protected:Nn \stex_activate_module:n {
   \seq_if_in:NnF \l_stex_all_modules_seq { #1 } {
     \stex_debug:nn{modules}{Activating~module~#1}
-    \seq_put_right:Nx \l_stex_all_modules_seq { #1 }
+    \seq_put_left:Nx \l_stex_all_modules_seq { #1 }
     \use:c{ c_stex_module_#1_code }
     % \TODO % morphisms
   }
@@ -2877,25 +2926,66 @@
 %    \end{macrocode}
 % \end{macro}
 %
-% \begin{macro}{\stex_symdecl_do:n}
+% \begin{macro}{\symdecl}
+%    \begin{macrocode}
+\stex_new_stylable_cmd:nnnnn {symdecl} { s m O{}} {
+  \stex_keys_set:nn{decl}{#3}
+  \str_if_empty:NT \l_stex_key_name_str {
+    \str_set:Nx \l_stex_key_name_str { #2 }
+  }
+  \IfBooleanTF #1 {
+    \str_clear:N \l_stex_macroname_str
+  }{
+    \str_set:Nx \l_stex_macroname_str { #2 }
+  }
+  \stex_symdecl_do:
+  \stex_if_smsmode:F{
+    \tl_se:Nx \symdecluri {\l_stex_current_module_str ? \l_stex_key_name_str}
+    \tl_set_eq:NN \symdeclname \l_stex_key_name_str
+    \tl_clear:N \thisstyle
+    \stex_style_apply:
+  }
+  \stex_smsmode_do:
+}{}{}
+\stex_deactivate_macro:Nn \symdecl {module~environments}
+\stex_every_module:n {\stex_reactivate_macro:N \symdecl}
+\stex_sms_allow_escape:N \symdecl
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\stex_symdecl_do:}
 % Requires the above keys and \cs{l_stex_macroname_str} to be
 % set first
 %    \begin{macrocode}
-\cs_new_protected:Npn \_stex_symbol: {}
-\cs_new_protected:Nn \stex_symdecl_do:n {
+\cs_new_protected:Nn \_stex_invoke_symbol:nnnnnn { \TODO }
+\cs_new_protected:Nn \stex_invoke_symdecl: { \TODO }
+
+\cs_new_protected:Nn \stex_symdecl_do: {
   \_stex_do_deprecation:n \l_stex_key_name_str
   \stex_decl_parse_arity:
-  \tl_set:Nx \l_stex_decl {
-    \_stex_symbol:nnnnnnn {\l_stex_macroname_str}
-      {\l_stex_key_name_str}
-      {\int_use:N \l_stex_args_count}
-      {\l_stex_key_args_str}
-      {\seq_use:Nn \l_stex_argnames_seq , }
-      {\tl_if_empty:NTF \l_stex_key_def_tl 
-        {\tl_to_str:n{true}}{\tl_to_str:n{false}}
-      }{#1}
-      %{\exp_args:No \exp_not:n \l_stex_key_type_tl}
-      %{\exp_args:No \exp_not:n \l_stex_key_def_tl}
+  \exp_args:Nnx \use:nn {\stex_add_module_decl:nnnnnnn}{
+    {\l_stex_macroname_str}
+    {\l_stex_key_name_str}
+    {\int_use:N \l_stex_args_count}
+    {\l_stex_key_args_str}
+    {\seq_use:Nn \l_stex_argnames_seq , }
+    {\tl_if_empty:NTF \l_stex_key_def_tl 
+      {\tl_to_str:n{true}}{\tl_to_str:n{false}}
+    }{\stex_invoke_symdecl:}
+  }
+  \stex_symdecl_html:
+  \str_if_empty:NF \l_stex_macroname_str {
+    \stex_execute_in_module:x {
+      \tl_set:cn {\l_stex_macroname_str}{
+        \_stex_invoke_symbol:nnnnnn
+          {\l_stex_current_module_str}
+          {\l_stex_key_name_str}
+          {\int_use:N \l_stex_args_count}
+          {\l_stex_key_args_str}
+          {\seq_use:Nn \l_stex_argnames_seq , }
+          {\stex_invoke_symdecl:}
+      } 
+    }
   }
 }
 %    \end{macrocode}
