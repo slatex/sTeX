@@ -269,6 +269,12 @@
 
 \newif\ifstexhtml
 \stex_html_backend:TF\stexhtmltrue\stexhtmlfalse
+\cs_new_protected:Nn \_stex_html_checkempty:n {
+  \tl_set:Nn \l_stex_html_arg_tl { #1 }
+  \tl_if_empty:NT \l_stex_html_arg_tl {
+    \tl_set_eq:NN \l_stex_html_arg_tl \c_stex_html_emptyarg_tl
+  }
+}
 
 \cs_new_protected:Nn \stex_deactivate_macro:Nn {
   \tl_set_eq:cN{\tl_to_str:n{#1}~-~orig}#1
@@ -335,11 +341,23 @@
 }{
   style .str_set_x:N = \l_stex_key_style_str
 }{}
+
+\stex_keys_define:nnnn{deprecate}{
+  \str_clear:N \l_stex_key_deprecate_str
+}{
+  deprecate     .str_set_x:N  = \l_stex_key_deprecate_str
+}{}
+
+\cs_new_protected:Nn \_stex_do_deprecation:n {
+  \str_if_empty:nF \l_stex_key_deprecate_str {
+    \msg_warning:nnxx{stex}{warning/deprecated}{#1}{\l_stex_key_deprecate_str}
+  }
+}
 \cs_new_protected:Nn \stex_new_stylable_cmd:nnnnn {
   \exp_after:wN \newcommand \cs:w stexstyle#1 \cs_end:[2][]{
     \__stex_aux_patch:nnn{#1}{##1}{##2}
   }
-  \NewDocumentCommand{#1}{#2}{
+  \exp_after:wN \NewDocumentCommand\cs:w #1\cs_end:{#2}{
     \cs_set:Npn \stex_style_apply: {
       \__stex_aux_apply_patch:n{#1}
     }
@@ -347,6 +365,18 @@
   }
   \tl_set:cn {__stex_aux_style_#1:} { #4 }
   \tl_set:cn {__stex_aux_style_#1:} { #5 }
+}
+
+\cs_new_protected:Nn \__stex_aux_apply_patch:n {
+  \tl_if_empty:NTF \thisstyle {
+    \use:c{__stex_aux_style_#1:}
+  }{
+    \tl_if_exist:cTF{__stex_aux_style_#1_\thisstyle :}{
+      \use:c{__stex_aux_style_#1_\thisstyle :}
+    }{
+      \use:c{__stex_aux_style_#1:}
+    }
+  }
 }
 
 \cs_new_protected:Nn \__stex_aux_patch:nnn {
@@ -742,7 +772,6 @@
 \seq_gclear_new:N\g__stex_path_stack
 \seq_gclear_new:N\g_stex_current_file
 \cs_new_protected:Nn \stex_filestack_push:n {
-  \stex_debug:nn{filestack}{Here:~>>\tl_to_str:n{#1}<<~Head:~>>\str_head:n{#1}<<}
   \exp_args:Nx \tl_if_eq:nnTF {\str_head:n{#1}} / {
     \str_set:Nn \l__stex_path_str {#1}
   }{
@@ -927,6 +956,37 @@
     }
   }
 }
+\tl_new:N \g_stex_document_title
+\cs_new_protected:Npn \STEXtitle #1 {
+  \tl_if_empty:NT \g_stex_document_title {
+    \tl_gset:Nn \g_stex_document_title { #1 }
+  }
+}
+\cs_new_protected:Nn \stex_document_title:n {
+  \tl_if_empty:NT \g_stex_document_title {
+    \tl_gset:Nn \g_stex_document_title { #1 }
+    \stex_annotate_invisible:n{\noindent
+      \stex_annotate:nnn{stex:doctitle}{}{ #1 }
+    \par}
+  }
+}
+
+\AtBeginDocument {
+  \let \STEXtitle \stex_document_title:n
+  \tl_if_empty:NF \g_stex_document_title {
+    \stex_annotate_invisible:n{\noindent
+      \stex_annotate:nnn{stex:doctitle}{}{ \g_stex_document_title }
+    \par}
+  }
+  \let\_stex_maketitle:\maketitle
+  \def\maketitle{
+    \tl_if_empty:NF \@title {
+      \exp_args:No \stex_document_title:n \@title
+    }
+    \_stex_maketitle:
+  }
+}
+
 \iow_new:N \c__stex_refs_iow
 \AtBeginDocument{\iow_open:Nn \c__stex_refs_iow {\jobname.sref}}
 \AtEndDocument{\iow_close:N \c__stex_refs_iow}
@@ -1400,6 +1460,8 @@
     \prop_put:Nno \l__stex_module_setup_prop {ns} \l__stex_module_setup_ns_str
     \tl_gclear:c{c_stex_module_ \l__stex_module_setup_ns_str ? #1 _code}
     \tl_gclear:c{c_stex_module_ \l__stex_module_setup_ns_str ? #1 _dependencies }
+    \tl_gclear:c{c_stex_module_ \l__stex_module_setup_ns_str ? #1 _declarations }
+    \tl_gclear:c{c_stex_module_ \l__stex_module_setup_ns_str ? #1 _notations }
     % \stex_debug:nn{module}{creating~c_stex_module_ \l__stex_module_setup_ns_str ? #1 _prop}
     \prop_gset_eq:cN {c_stex_module_ \l__stex_module_setup_ns_str ? #1 _prop}\l__stex_module_setup_prop
   }
@@ -1464,6 +1526,17 @@
       \prop_set_from_keyval:Nn \stex_current_module_prop: {
         \exp_after:wN \prop_to_keyval:N \cs:w c_stex_module_\l_stex_current_module_str _prop\cs_end:
       }
+
+      \tl_set:cn{c_stex_module_\l_stex_current_module_str _dependencies}{
+        \use:c{c_stex_module_\l_stex_current_module_str _dependencies}
+      }
+      \tl_set:cn{c_stex_module_\l_stex_current_module_str _declarations}{
+        \use:c{c_stex_module_\l_stex_current_module_str _declarations}
+      }
+      \tl_set:cn{c_stex_module_\l_stex_current_module_str _notations}{
+        \use:c{c_stex_module_\l_stex_current_module_str _notations}
+      }
+
       % TODO more
       \tl_set:cn{c_stex_module_\l_stex_current_module_str _code}{
         \exp_after:wN \exp_after:wN \exp_after:wN \exp_not:n
@@ -1493,7 +1566,6 @@
   \stex_smsmode_do:
 }
 \stex_keys_define:nnnn{smodule}{
-  \str_clear:N \l_stex_key_deprecate_str
   \str_clear:N \l_stex_key_sig_str
 }{
   %meta          .str_set_x:N  = \l_stex_key_metatheory_str ,
@@ -1510,14 +1582,14 @@
   lang          .code:n       = {
     \stex_set_language:n { #1 }
   } ,
-  deprecate     .str_set_x:N  = \l_stex_key_deprecate_str ,
   sig           .str_set_x:N  = \l_stex_key_sig_str ,
   creators      .code:n       = {} , % todo ?
   contributors  .code:n       = {} , % todo ?
   srccite       .code:n       = {}   % todo ?
-}{id, title, style}
+}{id, title, style, deprecate}
 \stex_new_stylable_env:nnnnnn {module} {O{} m}{
   \stex_keys_set:nn { smodule }{ #1 }
+  \_stex_do_deprecation:n{#2}
   \exp_args:Nx \stex_module_setup:n { \tl_to_str:n{ #2 } }
 
   \stex_if_do_html:T {
@@ -1561,10 +1633,31 @@
   \tl_gput_right:cn {c_stex_module_\l_stex_current_module_str _code} { #1 }
 }
 \cs_generate_variant:Nn \stex_add_to_current_module:n {x}
-\cs_new_protected:Nn \stex_add_module_dependency:n {
-  \tl_gput_right:cn {c_stex_module_\l_stex_current_module_str _dependencies} { #1 }
+\cs_new_protected:Nn \_stex_morphism:nnnn {
+  \exp_not:N \_stex_morphism:nnnn
+  {#1}{#2}{#3}{\exp_not:n{#4}}
+  %\msg_error:nnn{stex}{error/misused-importmodule}{#1:#2}
 }
-\cs_generate_variant:Nn \stex_add_module_dependency:n {x}
+\cs_new_protected:Nn \stex_add_module_dependency:nnnn {
+  \tl_gput_left:cn {c_stex_module_\l_stex_current_module_str _dependencies} {
+    \_stex_morphism:nnnn{#1}{#2}{#3}{#4}
+  }
+}
+\cs_generate_variant:Nn \stex_add_module_dependency:nnnn {nonn,oonn}
+\cs_new_protected:Nn \_stex_symbol:nnnnnnn {
+  \exp_not:N \_stex_symbol:nnnnnnn
+  {#1}{#2}{#3}{#4}{#5}{#6}{\exp_not:n{#7}}
+}
+
+\cs_new_protected:Nn \stex_add_module_decl:nnnnnnn {
+  \tl_gput_left:cn {c_stex_module_\l_stex_current_module_str _declarations} {
+    \_stex_symbol:nnnnnnn{#1}{#2}{#3}{#4}{#5}{#6}{#7}
+  }
+}
+\cs_new_protected:Nn \stex_add_module_notation:n {
+  \tl_gput_right:cn {c_stex_module_\l_stex_current_module_str _notations} { #1 }
+}
+\cs_generate_variant:Nn \stex_add_module_notation:n {x}
 \cs_new_protected:Nn \stex_execute_in_module:n { \stex_if_in_module:TF {
   \stex_add_to_current_module:n { #1 }
   \stex_do_up_to_module:n { #1 }
@@ -1598,6 +1691,12 @@
   }
 }
 \cs_generate_variant:Nn \stex_activate_module:n {o,x}
+\newenvironment{structural_feature_module}[2]{
+  \stex_module_setup:n {#1}
+  #2
+}{
+  \tl_gset_eq:Nc \g_stex_last_feature_str \l_stex_current_module_str
+}
 \cs_new_protected:Nn \stex_import_module_uri:nn {
   \exp_args:NNnx \seq_set_split:Nnn \__stex_importmodule_seq ? { \tl_to_str:n{ #2 } }
   \seq_pop_right:NN \__stex_importmodule_seq \l_stex_import_name_str
@@ -1690,7 +1789,7 @@
     \str_set:Nx \l__stex_importmodule_str { \l__stex_importmodule_str #1 }
   }
 }
-\NewDocumentCommand \usemodule { O{} m } {
+\stex_new_stylable_cmd:nnnnn {usemodule} { O{} m } {
   \stex_import_module_uri:nn { #1 }{ #2 }
   \stex_import_require_module:nnn
     \l_stex_import_archive_str
@@ -1698,35 +1797,38 @@
     \l_stex_import_name_str
   \stex_if_do_html:T {
     \stex_annotate_invisible:nnn
-      {usemodule} \l_stex_import_ns_str {}
+      {stex:usemodule} \l_stex_import_ns_str {}
   }
-}
-\NewDocumentCommand \importmodule { O{} m } {
+}{}{}
+\stex_new_stylable_cmd:nnnnn{importmodule} { O{} m } {
   \__stex_importmodule_import_module:nn {#1}{#2}
   \stex_smsmode_do:
-}
+}{}{}
 \stex_deactivate_macro:Nn \importmodule {module~environments}
+
 \cs_new_protected:Nn \__stex_importmodule_import_module:nn {
   \stex_import_module_uri:nn { #1 }{ #2 }
   \stex_import_require_module:nnn
     \l_stex_import_archive_str
     \l_stex_import_path_str
     \l_stex_import_name_str
-  \stex_add_to_current_module:x{
+  \stex_execute_in_module:x{
     \stex_activate_module:n{\l_stex_import_ns_str}
   }
-  \stex_add_module_dependency:x{
-    \_stex_importmodule:n{\l_stex_import_ns_str}
-  }
+  \stex_add_module_dependency:nonn
+    {}{\l_stex_import_ns_str}{import}{}
   \stex_if_do_html:T {
     \stex_annotate_invisible:nnn
-      {import} \l_stex_import_ns_str {}
+      {stex:import} \l_stex_import_ns_str {}
   }
-  % TODO export to module
+  \stex_if_smsmode:F{
+    \tl_set_eq:NN \importmoduleuri \l_stex_import_ns_str
+    \tl_set_eq:NN \importmodulename \l_stex_import_name_str
+    \tl_clear:N \thisstyle
+    \stex_style_apply:
+  }
 }
-\cs_new_protected:Nn \_stex_importmodule:n {
-  \msg_error:nnn{stex}{error/misused-importmodule}{#1}
-}
+
 \cs_new_protected:Nn \__stex_importmodule_import_module_presms:nn {
   \stex_import_module_uri:nn { #1 }{ #2 }
   \tl_gput_right:Nx \g_stex_sms_import_code {
@@ -1742,11 +1844,115 @@
   \stex_reactivate_macro:N \importmodule
   \let \__stex_importmodule_import_module:nn \__stex_importmodule_import_module_presms:nn
 }
+\stex_new_stylable_cmd:nnnnn{MMTinclude} {m}{
+  \stex_annotate_invisible:nnn{stex:import}{#1}{}
+}{}{}
+\stex_every_module:n {\stex_reactivate_macro:N \MMTinclude}
+\stex_keys_define:nnnn{decl}{
+  \str_clear:N \l_stex_key_name_str
+  \str_clear:N \l_stex_key_args_str
+  \tl_clear:N \l_stex_key_type_tl
+  \tl_clear:N \l_stex_key_def_tl
+  \clist_clear:N \l_stex_key_argnames_clist
+  \str_clear:N \l_stex_key_args_str
+  \str_clear:N \l_stex_key_reorder_str
+  \str_clear:N \l_stex_key_assoc_str
+  \str_clear:N \l_stex_key_intent_str
+}{
+  name      .str_set_x:N  = \l_stex_key_name_str ,
 
+  args      .str_set_x:N  = \l_stex_key_args_str ,
+  reorder   .str_set_x:N  = \l_stex_key_reorder_str ,
+  argnames  .clist_set:N  = \l_stex_key_argnames_clist ,
+  assoc     .choices:nn   = {bin,binl,binr,pre,conj,pwconj}
+    {\str_set:Nx \l_stex_key_assoc_str \l_keys_choice_tl},
+  intent    .str_set_x:N  = \l_stex_key_intent_str ,
+
+  type      .tl_set:N     = \l_stex_key_type_tl  ,
+  def       .tl_set:N     = \l_stex_key_def_tl   ,
+
+  align     .code:n       = {},
+  gfc       .code:n       = {}
+}{style,deprecate}
+\cs_new_protected:Nn \stex_decl_parse_arity: {
+  \int_zero:N \l_stex_args_count
+  \int_zero:N \l_stex_assoc_args_count
+  \str_map_inline:Nn \l_stex_key_args_str {
+    \token_case_meaning:NnF ##1 {
+      0 { \str_map_break: }
+      1 { \str_map_break:n{\int_set:Nn \l_stex_args_count {1}} }
+      2 { \str_map_break:n{\int_set:Nn \l_stex_args_count {2}} }
+      3 { \str_map_break:n{\int_set:Nn \l_stex_args_count {3}} }
+      4 { \str_map_break:n{\int_set:Nn \l_stex_args_count {4}} }
+      5 { \str_map_break:n{\int_set:Nn \l_stex_args_count {5}} }
+      6 { \str_map_break:n{\int_set:Nn \l_stex_args_count {6}} }
+      7 { \str_map_break:n{\int_set:Nn \l_stex_args_count {7}} }
+      8 { \str_map_break:n{\int_set:Nn \l_stex_args_count {8}} }
+      9 { \str_map_break:n{\int_set:Nn \l_stex_args_count {9}} }
+      i {\int_incr:N \l_stex_args_count}
+      b {\int_incr:N \l_stex_args_count}
+      a {\int_incr:N \l_stex_args_count \int_incr:N \l_stex_assoc_args_count}
+      B {\int_incr:N \l_stex_args_count \int_incr:N \l_stex_assoc_args_count}
+    }{
+      \msg_error:nnxx{stex}{error/wrongargs}{
+        \l_stex_current_module_str ? \l_stex_key_name_str
+      }{##1}
+    }
+  }
+  \seq_clear:N \l_stex_argnames_seq
+  \int_step_inline:nn \l_stex_args_count {
+    \clist_if_empty:NTF \l_stex_key_argnames_clist {
+      \exp_args:NNo \seq_put_right:Nn \l_stex_argnames_seq {\c_dollar_str##1}
+    }{
+      \clist_pop:NN \l_stex_key_argnames_clist \l__stex_symdecl_tmp
+      \exp_args:NNx \seq_put_right:Nn \l_stex_argnames_seq {
+        \c_dollar_str\exp_args:No\tl_to_str:n\l__stex_symdecl_tmp
+      }
+    }
+  }
+}
+\cs_new_protected:Npn \_stex_symbol: {}
+\cs_new_protected:Nn \stex_symdecl_do:n {
+  \_stex_do_deprecation:n \l_stex_key_name_str
+  \stex_decl_parse_arity:
+  \tl_set:Nx \l_stex_decl {
+    \_stex_symbol:nnnnnnn {\l_stex_macroname_str}
+      {\l_stex_key_name_str}
+      {\int_use:N \l_stex_args_count}
+      {\l_stex_key_args_str}
+      {\seq_use:Nn \l_stex_argnames_seq , }
+      {\tl_if_empty:NTF \l_stex_key_def_tl
+        {\tl_to_str:n{true}}{\tl_to_str:n{false}}
+      }{#1}
+      %{\exp_args:No \exp_not:n \l_stex_key_type_tl}
+      %{\exp_args:No \exp_not:n \l_stex_key_def_tl}
+  }
+}
+\cs_new_protected:Nn \stex_symdecl_html: {
+  \stex_if_do_html:T {
+    \stex_annotate_invisible:nnn {stex:symdecl} {
+      \l_stex_current_module_str ? \l_stex_key_name_str
+    }{
+      \stex_annotate_invisible:nnn{stex:args}{\l_stex_key_args_str}{}
+      \stex_annotate_invisible:nnn{stex:macroname}{\l_stex_macroname_str}{}
+      \tl_if_empty:NF \l_stex_key_type_tl {
+        \stex_annotate_invisible:nnn{stex:type}{}{$\l_stex_key_type_tl$}
+      }
+      \tl_if_empty:NF \l_stex_key_def_tl {
+        \stex_annotate_invisible:nnn{stex:definiens}{}{$\l_stex_key_def_tl$}
+      }
+      \str_if_empty:NF \l_stex_key_assoc_str {
+        \stex_annotate_invisible:nnn{stex:assoctype}{\l_stex_key_assoc_str}{}
+      }
+      \str_if_empty:NF \l_stex_key_reorder_str {
+        \stex_annotate_invisible:nnn{stex:reorderargs}{\l_stex_key_reorder_str}{}
+      }
+    }
+  }
+}
 
 \stex_read_persist:
 \cs_undefine:N \stex_read_persist:
-
 \endinput
 %%
 %% End of file `stex.sty'.

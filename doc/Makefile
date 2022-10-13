@@ -20,6 +20,7 @@ pack: $(DTX) $(INS)
 $(DOC): %.pdf: %.tex pack
 	$(PDFLATEX) $<
 	biber -q $(basename $<)
+	makeindex -s gind.ist -o $(basename $<).ind $(basename $<).idx
 	$(PDFLATEX) $<
 
 echo:
