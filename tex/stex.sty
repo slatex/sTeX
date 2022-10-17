@@ -1116,7 +1116,7 @@
     }
   }
 }
-\NewDocumentCommand \slabel {m} {\stex_ref_new_doc_target:n {#1}}
+\NewDocumentCommand \sreflabel {m} {\stex_ref_new_doc_target:n {#1}}
 \stex_keys_define:nnnn{sref / 1}{}{
   % TODO get rid of this
   fallback  .code:n = {},
@@ -1544,7 +1544,7 @@
   }
   \stex_if_smsmode:F { % WHY?
     \stex_activate_module:x {
-      \l_stex_module_ns_str ? \l_stex_module_name_str
+      \l_stex_module_ns_str ? #1
     }
   }
   \str_set:Nx\l_stex_current_module_str{\l__stex_module_setup_ns_str?#1}
@@ -1675,8 +1675,11 @@
       %}
     }
   }
-  \stex_if_smsmode:F \stex_style_apply:
-
+  \stex_if_smsmode:F {
+    \str_set_eq:NN \thismoduleuri \l_stex_current_module_str
+    \tl_set:Nn \thismodulename {#2}
+    \stex_style_apply:
+  }
   \stex_smsmode_do:
 }{
   \stex_close_module:
@@ -2004,6 +2007,14 @@
     \stex_annotate_invisible:nnn
       {stex:usemodule} \l_stex_import_ns_str {}
   }
+  \stex_if_smsmode:F{
+    \group_begin:
+    \tl_set_eq:NN \thismoduleuri \l_stex_import_ns_str
+    \tl_set_eq:NN \thismodulename \l_stex_import_name_str
+    \tl_clear:N \thisstyle
+    \stex_style_apply:
+    \group_end:
+  }
 }{}{}
 \stex_new_stylable_cmd:nnnnn{importmodule} { O{} m } {
   \__stex_importmodule_import_module:nn {#1}{#2}
@@ -2027,10 +2038,12 @@
       {stex:import} \l_stex_import_ns_str {}
   }
   \stex_if_smsmode:F{
-    \tl_set_eq:NN \importmoduleuri \l_stex_import_ns_str
-    \tl_set_eq:NN \importmodulename \l_stex_import_name_str
+    \group_begin:
+    \tl_set_eq:NN \thismoduleuri \l_stex_import_ns_str
+    \tl_set_eq:NN \thismodulename \l_stex_import_name_str
     \tl_clear:N \thisstyle
     \stex_style_apply:
+    \group_end:
   }
 }
 
@@ -2168,10 +2181,12 @@
   \stex_symdecl_top:n{#2}
 
   \stex_if_smsmode:F{
-    \tl_set:Nx \symdecluri {\l_stex_current_module_str ? \l_stex_key_name_str}
-    \tl_set_eq:NN \symdeclname \l_stex_key_name_str
+    \group_begin:
+    \tl_set:Nx \thisdecluri {\l_stex_current_module_str ? \l_stex_key_name_str}
+    \tl_set_eq:NN \thisdeclname \l_stex_key_name_str
     \tl_clear:N \thisstyle
     \stex_style_apply:
+    \group_end:
   }
   \stex_smsmode_do:
 }{}{}
@@ -2186,9 +2201,9 @@
   \stex_if_check_terms:T{
     \vbox_set:Nn \l_tmpa_box {
       \group_begin:
-        \stex_debug:nn{check_terms}{Checking type...}
+        \stex_debug:nn{check_terms}{Checking~type...}
         {$\l_stex_key_type_tl$}
-        \stex_debug:nn{check_terms}{Checking definiens...}
+        \stex_debug:nn{check_terms}{Checking~definiens...}
         {$\l_stex_key_def_tl$}
       \group_end:
     }
@@ -2359,10 +2374,10 @@
   }
 }{style}
 \cs_new:Nn \__stex_notations_make_args: {
-  \str_map_function:NN \l_stex_key_args_str \__stex_notations_make_arg:n
+  \str_map_function:NN \l_stex_get_symbol_args_str \__stex_notations_make_arg:n
 }
 \cs_new:Nn \__stex_notations_make_arg:n {
-  \str_case:nn ##1 {
+  \str_case:nn #1 {
     i {{i}}
     b {{b}}
     a {{a1,a2,a3}}
@@ -2372,20 +2387,29 @@
 \stex_new_stylable_cmd:nnnnn {notation} { m O{}} {
   \stex_keys_set:nn{notation}{#2}
   \stex_get_symbol:n{#1}
-  \stex_notation_top:nn{
-    \stex_add_module_notation:eoex{
-      \l_stex_get_symbol_mod_str ? \l_stex_get_symbol_name_str
-    }\l_stex_key_variant_str{\int_use:N \l_stex_args_count}{
-      \stex_macro_body:N \l_stex_notation_macrocode_cs
+  \stex_notation_top:nnn{
+    \l_stex_get_symbol_mod_str ? \l_stex_get_symbol_name_str
+  }{
+    \stex_if_smsmode:F{
+      \group_begin:
+      \str_set_eq:NN\thisnotationvariant\l_stex_key_variant_str
+      \str_set:Nn \thisdeclname \l_stex_get_symbol_name_str
+      \tl_set:Nx \thisdecluri {\l_stex_get_symbol_mod_str ? \l_stex_get_symbol_name_str}
+      \def\thisnotation{
+        $\exp_args:Nne \use:nn{\l_stex_notation_macrocode_cs}{
+          \__stex_notations_make_args:
+        }$
+      }
+      \stex_style_apply:
+      \group_end:n
     }
-    \stex_style_apply: % TODO
     \stex_smsmode_do:
   }
 }{}{}
 \stex_deactivate_macro:Nn \notation {module~environments}
 \stex_every_module:n {\stex_reactivate_macro:N \notation}
 \stex_sms_allow_escape:N \notation
-\cs_new_protected:Npn \stex_notation_top:nn #1 {
+\cs_new_protected:Npn \stex_notation_top:nnn #1 #2 {
   \stex_notation_do:nn {
     \stex_if_check_terms:T{
       \vbox_set:Nn \l_tmpa_box {
@@ -2393,7 +2417,7 @@
         \str_set:Nn \STEXInternalCurrentSymbolStr {test}
         \tl_set:Nn \STEXInternalSymbolAfterInvokationTL {}
         \cs_set:Npn \comp ##1 {##1}
-        \stex_debug:nn{check_terms}{Checking notation...}
+        \stex_debug:nn{check_terms}{Checking~notation...}
           ${
             \exp_args:Nne \use:nn{\l_stex_notation_macrocode_cs}{
               \__stex_notations_make_args:
@@ -2402,22 +2426,22 @@
         \group_end:
       }
     }
-    %\let \thisnotation \l_stex_notation_macrocode_cs
-    %\cs_set_eq:cN {l_stex_notation_
-    %  \l_stex_get_symbol_mod_str ?
-    %  \l_stex_get_symbol_name_str _
-    %  \l_stex_key_variant_str _cs
-    %}\l_stex_notation_macrocode_cs
-    %\stex_execute_in_module:x {
-    %  \exp_after:wN \stex_macro_definition:N
-    %  \cs:w
-    %    l_stex_notation_
-    %    \l_stex_get_symbol_mod_str ?
-    %    \l_stex_get_symbol_name_str _
-    %    \l_stex_key_variant_str _cs
-    %  \cs_end:
-    %}
-    #1
+    \stex_add_module_notation:eoex{#1}\l_stex_key_variant_str
+      {\int_use:N \l_stex_args_count}{
+      \stex_macro_body:N \l_stex_notation_macrocode_cs
+    }
+    \cs_set_eq:cN {l_stex_notation_
+      #1 _
+      \l_stex_key_variant_str _cs
+    }\l_stex_notation_macrocode_cs
+    \stex_execute_in_module:x {
+      \exp_after:wN \stex_macro_definition:N
+      \cs:w
+        l_stex_notation_#1_
+        \l_stex_key_variant_str _cs
+      \cs_end:
+    }
+    #2
   }
 }
 \cs_new_protected:Npn \stex_notation_do:nn {
@@ -2441,10 +2465,11 @@
   \let \STEXInternalCurrentSymbolStr \relax
   \exp_args:NNe
   \cs_set_nopar:Npn \l_stex_notation_macrocode_cs {
-    \STEXInternalTermMathOMSiiii { \exp_not:N \STEXInternalCurrentSymbolStr }
+    \STEXInternalTermMathOMSiii
       { \l_stex_key_variant_str }
       { \l__stex_notations_opprec_tl }
-      { \exp_not:n { \comp{#2} \STEXInternalSymbolAfterInvokationTL} }
+      { \exp_not:n { \comp{#2} } }
+      \exp_not:N \STEXInternalSymbolAfterInvokationTL
   }
   \stex_debug:nn{notation}{Notation:~\meaning\l_stex_notation_macrocode_cs}
   #1
@@ -2572,7 +2597,7 @@
   {
   \cs_generate_from_arg_count:NNnn \l_stex_notation_macrocode_cs
   \cs_set:Npn \l_stex_get_symbol_arity_int } { {
-    \STEXInternalTermMathOMBiiii { \STEXInternalCurrentSymbolStr }
+    \STEXInternalTermMathOMBiii
       { \l_stex_key_variant_str }
       { \l__stex_notations_opprec_tl }
       { \exp_not:n { #1 } }
@@ -2584,7 +2609,7 @@
   {
   \cs_generate_from_arg_count:NNnn \l_stex_notation_macrocode_cs
   \cs_set:Npn \l_stex_get_symbol_arity_int } { {
-    \STEXInternalTermMathOMAiiii { \STEXInternalCurrentSymbolStr }
+    \STEXInternalTermMathOMAiii
       { \l_stex_key_variant_str }
       { \l__stex_notations_opprec_tl }
       { \exp_not:n { #1 } }
@@ -2617,52 +2642,192 @@
   \str_set:Nx \l_stex_macroname_str { #1 }
   \stex_symdecl_top:n{#1}
 
-  \stex_if_smsmode:F{
-    \tl_set:Nx \symdecluri {\l_stex_current_module_str ? \l_stex_key_name_str}
-    \tl_set_eq:NN \symdeclname \l_stex_key_name_str
-    \tl_clear:N \thisstyle
-  }
-
   \str_set_eq:NN \l_stex_get_symbol_args_str \l_stex_key_args_str
   \int_set:Nn \l_stex_get_symbol_arity_int {\l_stex_args_count}
   \stex_debug:nn{symdef}{Doing~\l_stex_current_module_str ? \l_stex_key_name_str}
-
-  \stex_notation_top:nn{
-    \stex_add_module_notation:eoex{
-      \l_stex_current_module_str ? \l_stex_key_name_str
-    }\l_stex_key_variant_str{\int_use:N \l_stex_args_count}{
-      \stex_macro_body:N \l_stex_notation_macrocode_cs
+  \str_set_eq:NN \l_stex_get_symbol_args_str \l_stex_key_args_str
+  \stex_notation_top:nnn{
+    \l_stex_current_module_str ? \l_stex_key_name_str
+  }{
+    \stex_if_smsmode:F{
+      \group_begin:
+      \tl_set:Nx \thisdecluri {\l_stex_current_module_str ? \l_stex_key_name_str}
+      \tl_set_eq:NN \thisdeclname \l_stex_key_name_str
+      \tl_clear:N \thisstyle
+      \str_set_eq:NN\thisnotationvariant\l_stex_key_variant_str
+      \def\thisnotation{
+        $\let\STEXInternalCurrentSymbolStr\thisdecluri
+          \def\comp{\_comp}\exp_args:Nne \use:nn{\l_stex_notation_macrocode_cs}{
+          \__stex_notations_make_args:
+        }$
+      }
+      \stex_style_apply:
+      \group_end:
     }
-    \stex_style_apply: % TODO
     \stex_smsmode_do:
   }
 }{}{}
 \stex_deactivate_macro:Nn \symdef {module~environments}
 \stex_every_module:n {\stex_reactivate_macro:N \symdef}
 \stex_sms_allow_escape:N \symdef
+\tl_const:Nx \infprec {\int_use:N \c_max_int}
+\tl_const:Nx \neginfprec {-\int_use:N \c_max_int}
+\int_new:N \l__stex_expr_downprec
+\int_set_eq:NN \l__stex_expr_downprec \infprec
+\tl_set:Nn \l__stex_expr_left_bracket_str (
+\tl_set:Nn \l__stex_expr_right_bracket_str )
+\bool_new:N \l_stex_allow_semantic_bool
+\bool_set_true:N \l_stex_allow_semantic_bool
 \cs_new_protected:Nn \_stex_invoke_symbol:nnnnnn {
-  \group_begin:
-  \tl_set:Nn \STEXInternalSymbolAfterInvokationTL {\group_end:}
-  %\tl_set:Nx \STEXInternalSymbolAfterInvokationTL {
-  %  \stex_pseudogroup_restore:N \STEXInternalCurrentSymbolStr
-  %  \stex_pseudogroup_restore:N \STEXInternalCurrentArgsStr
-  %  \stex_pseudogroup_restore:N \STEXInternalCurrentArityStr
-  %  \stex_pseudogroup_restore:N \STEXInternalCurrentArgnamesSeq
-  %}
-  \str_set:Nx \STEXInternalCurrentSymbolStr{ #1?#2 }
-  \str_set:Nx \STEXInternalCurrentArityStr{ #3 }
-  \str_set:Nx \STEXInternalCurrentArgsStr{ #4 }
-  \seq_set_split:Nnn\STEXInternalCurrentArgnamesSeq , { #5 }
-  #6
+  \stex_html_backend:T{\ifvmode\indent\fi}
+  \bool_if:NTF \l_stex_allow_semantic_bool{
+    %\group_begin:
+    \bool_set_false:N \l_stex_allow_semantic_bool
+    \tl_set:Nn \STEXInternalSymbolAfterInvokationTL {
+      \bool_set_true:N \l_stex_allow_semantic_bool
+    }%{\group_end:}
+    %\tl_set:Nx \STEXInternalSymbolAfterInvokationTL {
+    %  \stex_pseudogroup_restore:N \STEXInternalCurrentSymbolStr
+    %  \stex_pseudogroup_restore:N \STEXInternalCurrentArgsStr
+    %  \stex_pseudogroup_restore:N \STEXInternalCurrentArityStr
+    %  \stex_pseudogroup_restore:N \STEXInternalCurrentArgnamesSeq
+    %}
+    \str_set:Nx \STEXInternalCurrentSymbolStr{ #1?#2 }
+    \str_set:Nx \STEXInternalCurrentArityStr{ #3 }
+    \str_set:Nx \STEXInternalCurrentArgsStr{ #4 }
+    \seq_set_split:Nnn\STEXInternalCurrentArgnamesSeq , { #5 }
+    #6
+  }{
+    \msg_error:nnnx{stex}{error/notallowed}{#1?#2}{\STEXInternalCurrentSymbolStr}
+  }
 }
-\cs_new_protected:Nn \stex_invoke_symdecl: { \TODO }
-\cs_new:Npn \infprec {}
-\cs_new:Npn \neginfprec {}
-\cs_new_protected:Npn \STEXInternalTermMathArgiii #1 #2 #3 {}
+\cs_new_protected:Nn \stex_invoke_symdecl: {
+  \stex_debug:nn{expressions}{Here:~\STEXInternalCurrentSymbolStr}
+  \if_mode_math:
+    \exp_after:wN \__stex_expr_invoke_math:
+  \else:
+    \exp_after:wN \__stex_expr_invoke_text:
+  \fi:
+}
+
+\cs_new_protected:Nn \__stex_expr_invoke_text: {
+  \stex_debug:nn{expressions}{text~mode}
+  \peek_charcode_remove:NTF ! {
+    \__stex_expr_invoke_op_custom:n
+  }{
+    \__stex_expr_invoke_custom:n
+  }
+}
+
+\cs_new_protected:Nn \__stex_expr_invoke_math: {
+  \stex_debug:nn{expressions}{math~mode}
+  \peek_charcode_remove:NTF ! {
+    % operator
+    \peek_charcode_remove:NTF * {
+      % custom op
+      \__stex_expr_invoke_op_custom:n
+    }{
+      % op notation
+      \peek_charcode:NTF [ {
+        \__stex_expr_invoke_op_notation:w
+      }{
+        \__stex_expr_invoke_op_notation:w []
+      }
+    }
+  }{
+    \peek_charcode_remove:NTF * {
+      \__stex_expr_invoke_custom:n
+      % custom
+    }{
+      % normal
+      \peek_charcode:NTF [ {
+        \__stex_expr_invoke_notation:w
+      }{
+        \__stex_expr_invoke_notation:w []
+      }
+    }
+  }
+}
+
+\cs_new_protected:Nn \__stex_expr_invoke_op_custom:n {
+  \stex_debug:nn{expressions}{custom~op}
+  \TODO
+}
+
+\cs_new_protected:Nn \__stex_expr_invoke_custom:nn {
+  \stex_debug:nn{expressions}{custom~notation}
+  \TODO
+}
+
+\cs_new_protected:Npn \__stex_expr_invoke_op_notation:w [#1] {
+  \stex_debug:nn{expressions}{op~notation}
+  \TODO
+}
+
+\cs_new_protected:Npn \__stex_expr_invoke_notation:w [#1] {
+  \stex_debug:nn{expressions}{using~notation~#1}
+  \def\comp{\_comp}
+  \use:c{l_stex_notation_\STEXInternalCurrentSymbolStr _#1_cs}
+}
+
+\cs_new_protected:Npn \_comp #1 {
+  \str_if_empty:NF \STEXInternalCurrentSymbolStr {
+    \stex_html_backend:TF {
+      \stex_annotate:nnn { stex:comp }{ \STEXInternalCurrentSymbolStr }{ #1 }
+    }{
+      \exp_args:Nnx \compemph@uri { #1 } { \STEXInternalCurrentSymbolStr }
+    }
+  }
+}
+
+\cs_new_protected:Npn \_varcomp #1 {
+  \str_if_empty:NF \STEXInternalCurrentSymbolStr {
+    \stex_html_backend:TF {
+      \stex_annotate:nnn { stex:varcomp }{ \STEXInternalCurrentSymbolStr }{ #1 }
+    }{
+      \exp_args:Nnx \varemph@uri { #1 } { \STEXInternalCurrentSymbolStr }
+    }
+  }
+}
+
+\cs_new_protected:Npn \comp {}
+
+\cs_new_protected:Npn \compemph@uri #1 #2 {
+    \compemph{ #1 }
+}
+
+\cs_new_protected:Npn \compemph #1 {
+    #1
+}
+
+\cs_new_protected:Npn \defemph@uri #1 #2 {
+    \defemph{#1}
+}
+
+\cs_new_protected:Npn \defemph #1 {
+    \textbf{#1}
+}
+
+\cs_new_protected:Npn \symrefemph@uri #1 #2 {
+    \symrefemph{#1}
+}
+
+\cs_new_protected:Npn \symrefemph #1 {
+    \emph{#1}
+}
+
+\cs_new_protected:Npn \varemph@uri #1 #2 {
+    \varemph{#1}
+}
+
+\cs_new_protected:Npn \varemph #1 {
+    #1
+}
+\cs_new_protected:Npn \STEXInternalTermMathArgiii #1 #2 #3 { #3 }
 \cs_new_protected:Npn \STEXInternalTermMathAssocArgiiiii #1 #2 #3 #4 #5 {}
-\cs_new_protected:Npn \STEXInternalTermMathOMSiiii #1 #2 #3 #4 {}
-\cs_new_protected:Npn \STEXInternalTermMathOMBiiii #1 #2 #3 #4 {}
-\cs_new_protected:Npn \STEXInternalTermMathOMAiiii #1 #2 #3 #4 {}
+\cs_new_protected:Npn \STEXInternalTermMathOMSiii #1 #2 #3 { #3 }
+\cs_new_protected:Npn \STEXInternalTermMathOMBiii #1 #2 #3 { #3 }
+\cs_new_protected:Npn \STEXInternalTermMathOMAiii #1 #2 #3 { #3 }
 \cs_new_protected:Nn \_stex_term_arg:nn {}
 \cs_new_protected:Npn \STEXInternalSymbolAfterInvokationTL {}
 \cs_new_protected:Npn \STEXInternalAssocArgMarkerI {}
