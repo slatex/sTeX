@@ -3051,7 +3051,6 @@
       \int_step_function:nN \STEXInternalCurrentArityStr \__stex_expr_return_arg:n
       \__stex_expr_invoke_return_next:
     }
-  \stex_debug:nn{Here1}{\meaning\__stex_expr_ret_cs}
   \__stex_expr_ret_cs
 }
 
@@ -3069,7 +3068,6 @@
         \exp_args:No \exp_not:n \STEXInteralCurrentReturn
       %}
     }
-  \stex_debug:nn{Here2}{\meaning\__stex_expr_ret_cs^^J\meaning\l__stex_expr_return_args_tl}
 
   \exp_args:Nnx \use:nn {
     \exp_after:wN \STEXInternalSymbolAfterInvokationTL\__stex_expr_ret_cs
@@ -3131,11 +3129,68 @@
   \group_end:
 }
 
-\cs_new_protected:Nn \_stex_term_omv:n {
-  \stex_annotate:nnn{ stex:OMV }\STEXInternalCurrentSymbolStr{
-    #1
+\cs_new_protected:Npn \STEXInternalTermMathAssocArgiiiii #1 #2 #3 #4 #5 {
+  \stex_debug:nn{HERE!}{
+    1:~\tl_to_str:n{#1}^^J
+    2:~\tl_to_str:n{#2}^^J
+    3:~\tl_to_str:n{#3}^^J
+    4:~\tl_to_str:n{#4}^^J
+    5:~\tl_to_str:n{#5}^^J
+  }
+  \tl_if_empty:nTF{#3}{
+    \STEXInternalTermMathArgiii{#5#1}{#2}{}
+  }{
+    % TODO: check whether #3 is sequence
+    \tl_clear:N \l__stex_expr_ret_tl
+    \__stex_expr_assoc_simple:nnnnn{#1}{#2}{#3}{#4}{#5}
   }
 }
+
+\int_new:N \l__stex_expr_assoc_count
+\cs_new_protected:Nn \__stex_expr_assoc_simple:nnnnn {
+  \group_begin:
+    \int_set:Nn \l__stex_expr_assoc_count {1}
+    \__stex_expr_assoc_simple_inner:nnnnn{#1}{#2}{#3}{#4}{#5}
+  %\group_begin:
+  %  \let \STEXInternalCurrentSymbolStr \undefined
+  %  \int_set:Nn \l__stex_expr_downprec { #2 }
+  %  \bool_set_true:N \l_stex_allow_semantic_bool
+  %
+  \group_end:
+}
+
+\quark_new:N \__stex_expr_end:
+\cs_new:Npn \__stex_expr_head:w #1,#2\__stex_expr_end:{\exp_not:n{#1}}
+\cs_new:Npn \__stex_expr_tail:w #1,#2\__stex_expr_end:{\exp_not:n{#2}}
+
+\cs_new_protected:Nn \__stex_expr_assoc_simple_inner:nnnnn {
+  \stex_debug:nn{here!}{
+    ^^J1:\tl_to_str:n{#1}
+    ^^J2:\tl_to_str:n{#2}
+    ^^J3:\tl_to_str:n{#3}
+    ^^J4:\tl_to_str:n{#4}
+    ^^J5:\tl_to_str:n{#5}
+  }
+  %\rustexBREAK
+  \int_compare:nNnTF {\clist_count:n {#3}} = 1 {
+    \STEXInternalTermMathArgiii{A#5#1\int_use:N\l__stex_expr_assoc_count}{#2}{#3}
+  }{
+    %\group_begin:
+    \exp_args:NNx \cs_set:Npn \STEXInternalAssocArgMarkerI {
+      \STEXInternalTermMathArgiii{A#5#1\int_use:N\l__stex_expr_assoc_count}{#2}{
+        \__stex_expr_head:w #3 \__stex_expr_end:
+      }
+    }
+    \int_incr:N \l__stex_expr_assoc_count
+    \exp_args:NNx \cs_set:Npn \STEXInternalAssocArgMarkerII {
+      \__stex_expr_assoc_simple_inner:nnnnn{#1}{#2}
+        {\__stex_expr_tail:w#3\__stex_expr_end:}{\exp_not:n{#4}}{#5}
+    }
+    #4
+    %\group_end:
+  }
+}
+
 
 \cs_new_protected:Nn \_stex_term_oms:n {
   \stex_annotate:nnn{ stex:OMID }\STEXInternalCurrentSymbolStr{
@@ -3325,18 +3380,10 @@
 \cs_new_protected:Npn \varemph #1 {
     #1
 }
-\cs_new_protected:Npn \STEXInternalTermMathAssocArgiiiii #1 #2 #3 #4 #5 {}
 \cs_new_protected:Npn \STEXInternalSymbolAfterInvokationTL {}
 \cs_new_protected:Npn \STEXInternalAssocArgMarkerI #1 {}
 \cs_new_protected:Npn \STEXInternalAssocArgMarkerII #1 #2 {}
-\cs_new_protected:Npn \STEXInternalExecuteReturnII #1 #2 {
-  \peek_charcode_remove:NTF ! {
-    #1 \STEXInternalSymbolAfterInvokationTL
-  }{
-    \tl_if_empty:nTF{#2}{#1}{#2{#1}}
-    \STEXInternalSymbolAfterInvokationTL
-  }
-}
+
 \let\stex_par:\par
 \bool_new:N \l_stex_inparray_bool
 \stex_read_persist:
