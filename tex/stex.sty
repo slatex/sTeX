@@ -2959,7 +2959,7 @@
 \bool_new:N \l_stex_allow_semantic_bool
 \bool_set_true:N \l_stex_allow_semantic_bool
 
-\cs_new_protected:Nn \__stex_expr_setup:nnnn {
+\cs_new_protected:Nn \__stex_expr_setup:nnnnn {
   \group_begin:
   \bool_set_false:N \l_stex_allow_semantic_bool
   \def\comp{#1}
@@ -2971,68 +2971,33 @@
   \str_set:Nn \STEXInternalCurrentArityStr{ #3 }
   \tl_set:Nn \STEXInternalCurrentArgsTl{ #4 }
   %    \seq_set_split:Nnn\STEXInternalCurrentArgnamesSeq , { #5 }
-  %    \tl_set:Nn \STEXInteralCurrentReturn{ #7 }
+  \tl_set:Nn \STEXInteralCurrentReturn{ #5 }
 }
 
-\cs_new_protected:Npn \_stex_invoke_symbol:nnnnnnn #1 #2 {
-  \__stex_expr_invoke:nnnnnnn{\_comp}{#1?#2}
-}
-
-\cs_new_protected:Nn \__stex_expr_invoke:nnnnnnn {
-  \stex_html_backend:T{\ifvmode\indent\fi}
+\cs_new_protected:Nn \_stex_invoke_symbol:nnnnnnn {
   \bool_if:NTF \l_stex_allow_semantic_bool{
-    \mode_if_math:TF{
-      \peek_charcode_remove:NTF ! {
-        % operator
-        \peek_charcode_remove:NTF * {
-          \TODO
-        }{
-          \__stex_expr_setup:nnnn{#1}{#2}{#3}{#4}
-          \peek_charcode:NTF [ {
-            \__stex_expr_invoke_op_notation:w
-          }{
-            \__stex_expr_invoke_op_notation:w []
-          }
-        }
-      }{
-        % with arguments
-        \peek_charcode_remove:NTF * {
-          \TODO
-        }{
-          \tl_if_empty:nTF{#7}{
-            \__stex_expr_setup:nnnn{#1}{#2}{#3}{#4}
-            \peek_charcode:NTF [ {
-              \__stex_expr_invoke_notation:w
-            }{
-              \__stex_expr_invoke_notation:w []
-            }
-          }{
-            \TODO
-          }
-        }
-      }
-    }{
-      \TODO
-    }
-
+    \stex_html_backend:T{\ifvmode\indent\fi}
+    \__stex_expr_setup:nnnnn{\_comp}{#1?#2}{#3}{#4}{#7}
+    \stex_invoke_symbol:
   }{
     \msg_error:nnxx{stex}{error/notallowed}{#2}{\STEXInternalCurrentSymbolStr}
   }
 }
 
-\cs_new_protected:Npn \_stex_invoke_variable:nnnnnn {
-  \__stex_expr_invoke:nnnnnnn{\_varcomp}
+\cs_new_protected:Nn \_stex_invoke_variable:nnnnnn {
+  \bool_if:NTF \l_stex_allow_semantic_bool{
+    \stex_html_backend:T{\ifvmode\indent\fi}
+    \__stex_expr_setup:nnnnn{\_varcomp}{#1}{#2}{#3}{#6}
+    \stex_invoke_symbol:
+  }{
+    \msg_error:nnxx{stex}{error/notallowed}{#2}{\STEXInternalCurrentSymbolStr}
+  }
 }
 
-\cs_new_protected:Nn \stex_invoke_symdecl: {
+\cs_new_protected:Nn \stex_invoke_symbol: {
   \stex_debug:nn{expressions}{Here:~\STEXInternalCurrentSymbolStr}
-  \if_mode_math:
-    \exp_after:wN \__stex_expr_invoke_math:
-  \else:
-    \exp_after:wN \__stex_expr_invoke_text:
-  \fi:
+  \mode_if_math:TF \__stex_expr_invoke_math: \__stex_expr_invoke_text:
 }
-\cs_set_eq:NN \stex_invoke_vardecl: \stex_invoke_symdecl:
 
 \cs_new_protected:Nn \__stex_expr_invoke_text: {
   \stex_debug:nn{expressions}{text~mode}
@@ -3073,6 +3038,59 @@
   }
 }
 
+\cs_new:Nn \__stex_expr_return_arg:n {
+  \tl_put_right:Nn \exp_not:N \l__stex_expr_return_args_tl {{#### #1}}
+}
+
+\cs_new_protected:Nn \__stex_expr_invoke_return_maybe:n {
+  \tl_clear:N \l__stex_expr_return_args_tl
+  \tl_set:Nn \l__stex_expr_return_this_tl {#1}
+  \exp_args:Nnx \use:n {
+  \cs_generate_from_arg_count:NNnn \__stex_expr_ret_cs
+    \cs_set:Npn \STEXInternalCurrentArityStr } {
+      \int_step_function:nN \STEXInternalCurrentArityStr \__stex_expr_return_arg:n
+      \__stex_expr_invoke_return_next:
+    }
+  \stex_debug:nn{Here1}{\meaning\__stex_expr_ret_cs}
+  \__stex_expr_ret_cs
+}
+
+\cs_new_protected:Nn \__stex_expr_invoke_return_next: {
+  \peek_charcode_remove:NTF ! {
+    \exp_after:wN \l__stex_expr_return_this_tl \l__stex_expr_return_args_tl
+  }\__stex_expr_invoke_return:
+}
+
+\cs_new_protected:Nn \__stex_expr_invoke_return: {
+  \exp_args:Nnx \use:n {
+  \cs_generate_from_arg_count:NNnn \__stex_expr_ret_cs
+    \cs_set:Npn \STEXInternalCurrentArityStr } {
+      %\exp_not:N \exp_not:n {
+        \exp_args:No \exp_not:n \STEXInteralCurrentReturn
+      %}
+    }
+  \stex_debug:nn{Here2}{\meaning\__stex_expr_ret_cs^^J\meaning\l__stex_expr_return_args_tl}
+
+  \exp_args:Nnx \use:nn {
+    \exp_after:wN \STEXInternalSymbolAfterInvokationTL\__stex_expr_ret_cs
+  }{
+    \exp_args:No \exp_not:n \l__stex_expr_return_args_tl
+    {
+      \__stex_expr_setup:nnnnn{
+        \exp_args:No \exp_not:n \comp
+      }{
+        \STEXInternalCurrentSymbolStr
+      }{
+        \STEXInternalCurrentArityStr
+      }{
+        \STEXInternalCurrentArgsTl
+      }{}
+      \exp_args:No \exp_not:n \l__stex_expr_return_this_tl
+      \exp_args:No \exp_not:n \l__stex_expr_return_args_tl
+    }
+  }
+}
+
 \cs_new_protected:Nn \__stex_expr_invoke_op_custom:n {
   \stex_debug:nn{expressions}{custom~op}
   \TODO
@@ -3091,7 +3109,13 @@
 
 \cs_new_protected:Npn \__stex_expr_invoke_notation:w [#1] {
   \stex_debug:nn{expressions}{using~notation~#1~for~\STEXInternalCurrentSymbolStr}
-  \use:c{l_stex_notation_\STEXInternalCurrentSymbolStr _#1_cs}
+  \tl_if_empty:NTF \STEXInteralCurrentReturn {
+    \use:c{l_stex_notation_\STEXInternalCurrentSymbolStr _#1_cs}
+  }{
+    \exp_args:Ne \__stex_expr_invoke_return_maybe:n{
+      \exp_args:Nne \use:n {\exp_not:N \use:c}{l_stex_notation_\STEXInternalCurrentSymbolStr _#1_cs}
+    }
+  }
 }
 
 \cs_new_protected:Nn \_stex_term_arg:nn {
