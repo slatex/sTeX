@@ -3006,7 +3006,7 @@
 \newenvironment{structural_feature_module}[3]{
   \stex_module_setup:n {#1}
   \stex_if_do_html:T {
-    \begin{stex_annotate_env} {stex:feature-#2} {
+    \begin{stex_annotate_env} {stex:feature:#2} {
       \l_stex_current_module_str
     }
   }
@@ -4378,7 +4378,7 @@
 \cs_new_protected:Npn \@@_invoke_op_notation:w [#1] {
   \stex_debug:nn{expressions}{op~notation}
   \cs_if_exist:cTF{l_stex_notation_\stex_current_symbol_str _op_#1_cs}{
-    \use:c{l_stex_notation_\stex_current_symbol_str _op_#1_cs}
+    \STEXInternalTermMathOMSiii{#1}{0}{\use:c{l_stex_notation_\stex_current_symbol_str _op_#1_cs}}
     \STEXInternalSymbolAfterInvokationTL
   }{
     \int_compare:nNnTF \STEXInternalCurrentArityStr = 0 {
@@ -4691,7 +4691,7 @@
 \cs_new_protected:Npn \_comp #1 {
   \str_if_empty:NF \stex_current_symbol_str {
     \stex_html_backend:TF {
-      \stex_annotate:nnn { stex:comp }{ \stex_current_symbol_str }{ #1 }
+      \stex_annotate:nnn { stex:comp }{}{ #1 }
     }{
       \exp_args:Nnx \compemph@uri { #1 } { \stex_current_symbol_str }
     }
@@ -4701,7 +4701,7 @@
 \cs_new_protected:Npn \_varcomp #1 {
   \str_if_empty:NF \stex_current_symbol_str {
     \stex_html_backend:TF {
-      \stex_annotate:nnn { stex:varcomp }{ \stex_current_symbol_str }{ #1 }
+      \stex_annotate:nnn { stex:varcomp }{}{ #1 }
     }{
       \exp_args:Nnx \varemph@uri { #1 } { \stex_current_symbol_str }
     }
@@ -4833,10 +4833,44 @@
 %    \end{macrocode}
 % \end{environment}
 %
+% Invoking structures:
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_invoke_structure: {
+  \exp_args:No \_stex_invoke_structure:nn \STEXInteralCurrentType {}
+}
+
+\cs_new_protected:Nn \_stex_invoke_structure:nn {
+  \stex_debug:nn{structure}{invoking~structure~#1<\tl_to_str:n{#2}>}
+  \peek_charcode:NTF < {
+    \_@@_invoke_merge:nnw{#1}{#2}
+  }{
+    \peek_charcode_remove:NTF ! {
+      \peek_charcode:NTF [ {
+        \_@@_maybe_notation:nnw{#1}{#2}
+      }{
+        \_@@_maybe_notation:nnw{#1}{#2}[]
+      }
+    }{
+      \_@@_invoke_this:nnn{#1}{#2}
+    }
+  }
+}
+
+\cs_new_protected:Npn \_@@_invoke_merge:nnw #1 #2 < #3 > {
+  \tl_if_empty:nTF{#2}{
+    \_stex_invoke_structure:nn{#1}{#3}
+  }{
+    \tl_if_empty:nTF{#3}{
+      \_stex_invoke_structure:nn{#1}{#2}
+    }{
+      \_stex_invoke_structure:nn{#1}{#2,#3}
+    }
+  }
+}
+%    \end{macrocode}
 %
 % Preparing anonymous records:
 %    \begin{macrocode}
-
 \cs_new_protected:Nn \_@@_make_prop:nn {
   \_@@_make_prop:n{ #1 }
   \tl_if_empty:nF{ #2 }{
@@ -4926,8 +4960,13 @@
 
 \cs_new_protected:Nn \_@@_make_term:nn {
   \clist_clear:N \l_@@_clist
-  \clist_map_inline:nn{#1}{
+  %\str_if_exist:NT \stex_current_symbol_str {
     \clist_put_right:Nx \l_@@_clist {
+      \stex_annotate:nnn{stex:OMS}{\stex_current_symbol_str}{}
+    }
+  %}
+  \clist_map_inline:nn{#1}{
+    \clist_put_right:Nn \l_@@_clist {
       \stex_annotate:nnn{stex:OMMOD}{##1}{}
     }
   }
@@ -4954,61 +4993,22 @@
 }
 %    \end{macrocode}
 %
-% Invoking structures:
-%    \begin{macrocode}
-\cs_new_protected:Nn \stex_invoke_structure: {
-  \exp_args:No \_stex_invoke_structure:nn \STEXInteralCurrentType {}
-}
-% #1 module clist, #2 assignments
-\cs_new_protected:Nn \_stex_invoke_structure:nn {
-  \STEXInternalSymbolAfterInvokationTL
-  \stex_debug:nn{structure}{invoking~structure~#1<\tl_to_str:n{#2}>}
-  \peek_charcode:NTF < {
-    \_@@_invoke_merge:nnw{#1}{#2}
-  }{
-    \peek_charcode_remove:NTF ! {
-      \_@@_present:nn{#1}{#2}
-    }{
-      \_@@_invoke_this:nnn{#1}{#2}
-    }
-  }
-}
-
-\cs_new_protected:Nn \_@@_invoke_this:nnn{
-  \peek_charcode_remove:NTF ! {
-    #3
-  }{
-    \_@@_make_prop:nn{#1}{#2}
-    \tl_set:Nx \this { 
-      \group_begin:
-      \_stex_term_arg:nn{this}{
-        %\let \exp_not:N\stex_current_symbol_str \exp_not:N \undefined
-        \bool_set_true:N \l_stex_allow_semantic_bool
-        \symuse{Metatheory?in-module}{#3}{
-          \exp_args:No \exp_not:n \l_@@_type_cs
-        }
-      }
-      \group_end:
-    }
-    \_stex_invoke_field:n
-  }
-}
-
-\cs_new_protected:Npn \_@@_invoke_merge:nnw #1 #2 < #3 > {
-  \tl_if_empty:nTF{#2}{
-    \_stex_invoke_structure:nn{#1}{#3}
-  }{
-    \tl_if_empty:nTF{#3}{
-      \_stex_invoke_structure:nn{#1}{#2}
-    }{
-      \_stex_invoke_structure:nn{#1}{#2,#3}
-    }
-  }
-}
-%    \end{macrocode}
-%
 % Presenting structures:
 %    \begin{macrocode}
+\cs_new_protected:Npn \_@@_maybe_notation:nnw #1 #2 [ #3 ] {
+  \cs_if_exist:cTF{l_stex_notation_\stex_current_symbol_str _#3_cs}{
+    \use:c{l_stex_notation_\stex_current_symbol_str _#3_cs}
+  }{
+    \exp_args:Nnx \use:nn {\STEXInternalSymbolAfterInvokationTL}{
+      \tl_set:Nn \exp_not:N \stex_current_symbol_str {\stex_current_symbol_str}
+    }
+    \tl_if_empty:nTF{#3}{
+      \_@@_present:nn{#1}{#2}
+    }{
+      \_@@_present:nn{#1}{#2}[#3]
+    }
+  }
+}
 
 \cs_new_protected:Nn \_stex_structure_as_type:nn{
   \exp_args:Nno \use:n{\symuse{Metatheory?in-module}[hidden]{
@@ -5102,6 +5102,29 @@
 %
 % Invoking record fields:
 %    \begin{macrocode}
+\cs_new_protected:Nn \_@@_invoke_this:nnn{
+  \exp_args:Nnx \use:nn {\STEXInternalSymbolAfterInvokationTL}{
+    \tl_set:Nn \exp_not:N \stex_current_symbol_str {\stex_current_symbol_str}
+  }
+  \peek_charcode_remove:NTF ! {
+    #3
+  }{
+    \_@@_make_prop:nn{#1}{#2}
+    \tl_set:Nx \this { 
+      \group_begin:
+      \_stex_term_arg:nn{this}{
+        %\let \exp_not:N\stex_current_symbol_str \exp_not:N \undefined
+        \bool_set_true:N \l_stex_allow_semantic_bool
+        \symuse{Metatheory?in-module}{#3}{
+          \exp_args:No \exp_not:n \l_@@_type_cs
+        }
+      }
+      \group_end:
+    }
+    \_stex_invoke_field:n
+  }
+}
+
 \cs_new_protected:Nn \_stex_invoke_field:n {
   \prop_if_in:NnTF \l_@@_prop {#1}{
     \exp_args:Nnx \use:nn {\use_ii:nn} {\prop_item:Nn \l_@@_prop {#1}}
