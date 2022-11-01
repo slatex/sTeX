@@ -3217,23 +3217,132 @@
 }
 
 \cs_new_protected:Nn \stex_invoke_sequence: {
-  \peek_charcode_remove:NTF ! \__stex_seqs_doop:\__stex_seqs_do_first:n
+  \exp_after:wN \__stex_seqs_setup:nnn \STEXInteralCurrentType
+  \peek_charcode_remove:NTF ! {
+    \peek_charcode:NTF [ \__stex_seqs_doop:w { \__stex_seqs_doop:w [] }
+  }\__stex_seqs_do_first:
 }
 
-\cs_new_protected:Nn \__stex_seqs_doop: {}
-\cs_new_protected:Nn \__stex_seqs_do_first:n {
-  \peek_charcode_remove:NTF ! {
-    \__stex_seqs_do_one:n{#1}
+\cs_new_protected:Nn \__stex_seqs_setup:nnn{
+  \int_set:Nn \l__stex_seqs_seq_arity_int {#1}
+  \clist_set:Nn \l__stex_seqs_index_clist {#2}
+  \clist_set:Nn \l__stex_seqs_range_clist {#3}
+}
+
+\cs_new_protected:Npn \__stex_seqs_doop:w [#1] {
+  \stex_debug:nn {Here}{Do~op}
+  \__stex_seqs_get_index_notation:n{#1}
+  % TODO different criterion?
+  \int_compare:nNnTF{\clist_count:N\l__stex_seqs_range_clist}=1{
+    \peek_charcode:NTF [ \__stex_seqs_doop_in:w { \__stex_seqs_doop_in:w[] }
   }{
-    \__stex_seqs_do_all:{#1}
+    \peek_charcode:NTF [ \__stex_seqs_doop_range:w { \__stex_seqs_doop_range:w[] }
   }
 }
 
-\cs_new_protected:Nn \__stex_seqs_do_one:n {
-  \TODO
+\cs_new_protected:Nn \__stex_seqs_doop_arg_range:n {
+  \tl_if_eq:nnTF{#1}{\ellipses}{
+    \clist_put_right:Nx \l__stex_seqs_clist {
+      \exp_not:n{
+        \tl_clear:N \STEXInternalSymbolAfterInvokationTL
+        \def\comp{\_varcomp}
+        \str_set:Nn \stex_current_symbol_str
+      }{\stex_current_symbol_str}
+      \exp_not:N #1
+    }
+  }{
+    \clist_put_right:Nx \l__stex_seqs_clist {
+      \exp_not:n{
+        \tl_clear:N \STEXInternalSymbolAfterInvokationTL
+        \def\comp{\_varcomp}
+        \str_set:Nn \stex_current_symbol_str
+      }{\stex_current_symbol_str}
+      \exp_after:wN\exp_not:n\exp_after:wN{ \l__stex_seqs_cs #1 }
+    }
+  }
 }
-\cs_new_protected:Nn \__stex_seqs_do_all: {
-  \TODO
+
+\cs_new_protected:Npn \__stex_seqs_doop_range:w [#1] {
+  \bool_set_true:N \l_stex_allow_semantic_bool
+  \clist_clear:N \l__stex_seqs_clist
+  \clist_map_function:NN \l__stex_seqs_range_clist \__stex_seqs_doop_arg_range:n
+  \exp_args:Nnx \use:nn{\symuse{Metatheory?stex-sequence}[#1]}{
+    {
+      \exp_args:No \exp_not:n \l__stex_seqs_clist
+    }
+  }
+  \STEXInternalSymbolAfterInvokationTL
+}
+
+\cs_new:Nn \__stex_seqs_doop_arg_idx:n {
+  {\exp_not:n{#1}}
+}
+
+\cs_new_protected:Npn \__stex_seqs_doop_in:w [#1] {
+  \bool_set_true:N \l_stex_allow_semantic_bool
+  \exp_args:Nnx \use:nn{\symuse{Metatheory?stex-sequence-in}[#1]}{
+    {
+      \exp_args:NNe \exp_args:No \exp_not:n {
+        \exp_not:n{
+          \tl_clear:N \STEXInternalSymbolAfterInvokationTL
+          \def\comp{\_varcomp}
+          \str_set:Nn \stex_current_symbol_str
+        }
+       {\stex_current_symbol_str}
+      \exp_args:Nne \use:nn {\exp_not:N \l__stex_seqs_cs} {\clist_map_function:NN \l__stex_seqs_index_clist \__stex_seqs_doop_arg_idx:n}}
+    }
+    { \exp_args:No \exp_not:n \l__stex_seqs_index_clist}
+    { \exp_args:No \exp_not:n \l__stex_seqs_range_clist }
+  }
+  \STEXInternalSymbolAfterInvokationTL
+}
+
+\cs_new_protected:Nn \__stex_seqs_get_index_notation:n {
+  \cs_if_exist:cTF {l_stex_notation_\stex_current_symbol_str! _#1_cs}{
+    \cs_set_eq:Nc \l__stex_seqs_cs {l_stex_notation_\stex_current_symbol_str! _#1_cs}
+  }{
+    \int_compare:nNnTF \l__stex_seqs_seq_arity_int = \STEXInternalCurrentArityStr {
+      \cs_if_exist:cTF {l_stex_notation_\stex_current_symbol_str _#1_cs}{
+        \cs_set_eq:Nc \l__stex_seqs_cs {l_stex_notation_\stex_current_symbol_str _#1_cs}
+      }{
+        \msg_error:nnxx{stex}{error/nonotation}{\stex_current_symbol_str}{#1}
+      }
+    }{
+      \msg_error:nnxx{stex}{error/nonotation}{\stex_current_symbol_str}{#1}
+    }
+  }
+}
+
+\cs_new:Nn \__stex_seqs_do_first_arg:n {{\exp_not:n{## #1}}}
+\cs_new_protected:Nn \__stex_seqs_do_first: {
+  \exp_args:Nnx \use:nn{
+  \cs_generate_from_arg_count:NNnn \l__stex_seqs_cs \cs_set:Npn
+  \l__stex_seqs_seq_arity_int} {{
+    \tl_set:Nn \exp_not:N \l__stex_seqs_first_args_tl {
+      \int_step_function:nN \l__stex_seqs_seq_arity_int \__stex_seqs_do_first_arg:n
+    }
+    \exp_not:N \__stex_seqs_do_first_next:
+  }}
+  \l__stex_seqs_cs
+}
+\cs_new_protected:Nn \__stex_seqs_do_first_next: {
+  \peek_charcode_remove:NTF ! {
+    \peek_charcode:NTF [ \__stex_seqs_do_one:w {\__stex_seqs_do_one:w []}
+  }{
+    \peek_charcode:NTF [ \__stex_seqs_do_all:w {\__stex_seqs_do_all:w []}
+    \exp_after:wN \__stex_seqs_do_all: \l__stex_seqs_first_args_tl
+  }
+}
+
+\cs_new_protected:Npn \__stex_seqs_do_one:w [#1] {
+  \stex_debug:nn {Here}{Do~one}
+  \__stex_seqs_get_index_notation:n{#1}
+  \exp_args:Nno\use:nn{\l__stex_seqs_cs}\l__stex_seqs_first_args_tl
+}
+
+\cs_new_protected:Npn \__stex_seqs_do_all:w [#1] {
+  \stex_debug:nn {Here}{Do~all}
+  \exp_args:Nno\use:nn{\_stex_invoke_notation:w [#1]}\l__stex_seqs_first_args_tl
 }
 \tl_const:Nx \infprec {\int_use:N \c_max_int}
 \tl_const:Nx \neginfprec {-\int_use:N \c_max_int}
@@ -3300,8 +3409,8 @@
   }{
     \peek_charcode_remove:NTF * \__stex_expr_invoke_custom:n {
       % normal
-      \peek_charcode:NTF [ \__stex_expr_invoke_notation:w {
-        \__stex_expr_invoke_notation:w []
+      \peek_charcode:NTF [ \_stex_invoke_notation:w {
+        \_stex_invoke_notation:w []
       }
     }
   }
@@ -3377,14 +3486,14 @@
   }{
     \int_compare:nNnTF \STEXInternalCurrentArityStr = 0 {
       \tl_clear:N \STEXInteralCurrentReturn
-      \__stex_expr_invoke_notation:w [#1]
+      \_stex_invoke_notation:w [#1]
     }{
       \msg_error:nnxx{stex}{error/noop}{\stex_current_symbol_str}{#1}
     }
   }
 }
 
-\cs_new_protected:Npn \__stex_expr_invoke_notation:w [#1] {
+\cs_new_protected:Npn \_stex_invoke_notation:w [#1] {
   \stex_debug:nn{expressions}{using~notation~#1~for~\stex_current_symbol_str}
   \cs_if_exist:cTF{l_stex_notation_\stex_current_symbol_str _#1_cs}{
     \tl_if_empty:NTF \STEXInteralCurrentReturn {
@@ -4092,6 +4201,8 @@
 
   % sequences
   \symdef{ellipses}[ldots]{\comp{\ldots}}
+  \symdef{stex-sequence-in}[parens,args=iai]{\comp(#1\comp)\c_math_subscript_token{#2\comp\in#3}}{##1\comp,##2}
+  \symdef{stex-sequence}[comma,args=a]{#1}{##1\comp,##2}
 
   \stex_close_module:
   \stex_uri_add_module:NNn \l_stex_metatheory_uri \l_stex_current_ns_uri {Metatheory}
