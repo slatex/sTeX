@@ -1970,8 +1970,28 @@
   \tl_gput_right:cn {c_stex_module_\l_stex_current_module_str _notations} {
     \_stex_notation:nnnnn{#1}{#2}{#3}{#4}{#5}
   }
+  \stex_execute_in_module:n {
+    \stex_set_notation_macro:nnnnn{#1}{#2}{#3}{#4}{#5}
+  }
 }
 \cs_generate_variant:Nn \stex_add_module_notation:nnnnn {eoexo}
+
+\cs_new_protected:Nn \stex_set_notation_macro:nnnnn {
+  %\stex_do_up_to_module:n{
+    \cs_generate_from_arg_count:cNnn {l_stex_notation_#1_#2_cs}
+      \cs_set:Npn {#3}{#4}
+    \cs_if_exist:cF{l_stex_notation_#1__cs}{
+      \cs_set_eq:cc {l_stex_notation_#1__cs}{l_stex_notation_#1_#2_cs}
+    }
+    \tl_if_empty:nF{#5}{
+      \tl_set:cn{l_stex_notation_#1_op_#2_cs}{#5}
+      \cs_if_exist:cF{l_stex_notation_#1_op__cs}{
+        \cs_set_eq:cc {l_stex_notation_#1_op__cs}{l_stex_notation_#1_op_#2_cs}
+      }
+    }
+  %}
+}
+\cs_generate_variant:Nn \stex_set_notation_macro:nnnnn {eoexo}
 \cs_new_protected:Nn \stex_iterate_all_notations:nn {
   \stex_pseudogroup_with:nn{\_stex_notation:nnnnn}{
     \cs_set:Npn \_stex_notation:nnnnn ##1 ##2 ##3 ##4 ##5 {
@@ -2053,8 +2073,10 @@
   }
   \__stex_features_setup:
   \__stex_features_reactivate:
+  \str_gset:Nn \l_stex_feature_name_str {#1}
   #4
 }{
+  \str_gset_eq:NN \l_stex_current_domain_str \l_stex_current_domain_str
   \tl_gset_eq:NN \g_stex_last_feature_str \l_stex_current_module_str
   \seq_gset_eq:NN \l_stex_morphism_symbols_seq \l_stex_morphism_symbols_seq
   \seq_gset_eq:NN \l_stex_morphism_morphisms_seq \l_stex_morphism_morphisms_seq
@@ -2068,7 +2090,7 @@
   \seq_clear:N \l_stex_morphism_symbols_seq
   \seq_clear:N \l_stex_morphism_morphisms_seq
   \exp_args:No \stex_iterate_all_decls:nn \l_stex_current_domain_str {
-    \seq_put_right:Nn \l_stex_morphism_symbols_seq {##1?##3}
+    \seq_put_right:Nn \l_stex_morphism_symbols_seq {{##1}{##3}}
   }
   \exp_args:No \stex_iterate_all_modules:nn\l_stex_current_domain_str{
     \tl_if_empty:nF{##3}{
@@ -2080,6 +2102,31 @@
     Here: \seq_use:Nn \l_stex_morphism_morphisms_seq {,~}^^J
     \seq_use:Nn \l_stex_morphism_symbols_seq {,~}
   }
+}
+
+\cs_new_protected:Nn \stex_morphism_do_unassigned: {
+  \exp_args:No \stex_iterate_all_decls:nn \l_stex_current_domain_str {
+    \seq_if_in:NnT \l_stex_morphism_symbols_seq {{##1}{##3}} {
+      \stex_debug:nn{morphism}{generating~\l_stex_current_module_str?\l_stex_feature_name_str / ##3}
+      \exp_args:Nno \stex_add_module_decl:nnnnnnnN
+        {}
+        {\l_stex_feature_name_str / ##3}
+        {##4}{##5}{##6}{##7}{##8}##9
+    }
+  }
+  \exp_args:No \stex_iterate_all_notations:nn \l_stex_current_domain_str {
+    \seq_set_split:Nnn \l__stex_features_seq ? {##1}
+    \seq_pop_right:NN \l__stex_features_seq \l__stex_features_name
+    %\stex_debug:nn{morphism}{Here:~##1~##2~\tl_to_str:n{##3}~\tl_to_str:n{##4}~\tl_to_str:n{##5}}
+    \exp_args:NNx \seq_if_in:NnT \l_stex_morphism_symbols_seq {{\seq_use:Nn \l__stex_features_seq ?}{\l__stex_features_name}} {
+      \stex_debug:nn{morphism}{notation~##1~##2~for~\l_stex_current_module_str ?\l_stex_feature_name_str / \l__stex_features_name}
+      \exp_args:Nx \stex_add_module_notation:nnnnn {\l_stex_current_module_str ?\l_stex_feature_name_str / \l__stex_features_name }
+      {##2}{##3}{##4}{##5}
+      %\stex_set_notation_macro:nnnnn {\l_stex_current_module_str ?\l_stex_feature_name_str / \l__stex_features_name }
+      %{##2}{##3}{##4}{##5}
+    }
+  }
+ %  \l_stex_morphism_morphisms_seq \g_stex_last_feature_str
 }
 
 \cs_new_protected:Npn \__stex_features_reactivate: {
@@ -2292,12 +2339,21 @@
   \begin{structural_feature_morphism}{#1}{copymodule}{#2}{
 
   }
+  \stex_if_smsmode:F {
+    \tl_set:Nn \thiscopyname { #1 }
+    \tl_set_eq:NN \thismoduleuri \l_stex_current_domain_str
+    \stex_style_apply:
+  }
 }{
+  \stex_if_smsmode:F {
+    \stex_style_apply:
+  }
   \end{structural_feature_morphism}
   \stex_debug:nn{copymodule}{
-    Here: \seq_use:Nn \l_stex_morphism_morphisms_seq {,~}^^J
+    Here: \g_stex_last_feature_str^^J \l_stex_current_domain_str ^^J\seq_use:Nn \l_stex_morphism_morphisms_seq {,~}^^J
     \seq_use:Nn \l_stex_morphism_symbols_seq {,~}
   }
+  \stex_morphism_do_unassigned:
 }{}{}{}
 \stex_deactivate_macro:Nn \copymodule {module~environments}
 \stex_every_module:n {
@@ -2788,35 +2844,14 @@
     {\int_use:N \l_stex_args_count}{
     \stex_macro_body:N \l_stex_notation_macrocode_cs
   }\l_stex_key_op_tl
-  \cs_set_eq:cN {l_stex_notation_
-    #1 _
-    \l_stex_key_variant_str _cs
-  }\l_stex_notation_macrocode_cs
-  \stex_execute_in_module:x {
-    \exp_after:wN \stex_macro_definition:N
-    \cs:w
-      l_stex_notation_#1_
-      \l_stex_key_variant_str _cs
-    \cs_end:
-    \exp_not:N\cs_if_exist:cF {l_stex_notation_#1__cs}{
-      \cs_set_eq:cc{l_stex_notation_#1__cs}{
-        l_stex_notation_#1_
-        \l_stex_key_variant_str _cs
-      }
-    }
-    \tl_if_empty:NF \l_stex_key_op_tl {
-      \tl_set:cn {l_stex_notation_#1_op_
-      \l_stex_key_variant_str _cs}{
-        \exp_not:N\comp{\exp_args:No\exp_not:n\l_stex_key_op_tl}
-      }
-      \exp_not:N\cs_if_exist:cF {l_stex_notation_#1_op__cs}{
-        \cs_set_eq:cc{l_stex_notation_#1_op__cs}{
-          l_stex_notation_#1_op_
-          \l_stex_key_variant_str _cs
-        }
-      }
-    }
-  }
+
+  %\stex_execute_in_module:x {
+  %  \stex_set_notation_macro:nnnnn{#1}{\l_stex_key_variant_str}
+  %  {\int_use:N \l_stex_args_count}{
+  %    \stex_macro_body:N \l_stex_notation_macrocode_cs
+  %  }{\exp_args:No \exp_not:n \l_stex_key_op_tl}
+  %}
+
 }
 
 \cs_new_protected:Npn \stex_notation_top:nnn #1 #2 {
@@ -3969,7 +4004,7 @@
  \tl_if_empty:nTF{#3}{
   #2
  }{
-  \__stex_expr_split_slash: #2/#3/\_stex_args_end:
+  \__stex_expr_split_slash: #2 / #3 \_stex_args_end:
  }
 }
 
