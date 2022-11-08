@@ -3087,14 +3087,28 @@
 %
 % \begin{environment}{structural_feature_morphism}
 %    \begin{macrocode}
+\cs_new_protected:Nn \_@@_resolve_module:n {
+  \stex_import_module_uri:nn {}{#1}
+  \_stex_get_module_uri:ooo
+    \l_stex_import_archive_str
+    \l_stex_import_path_str
+    \l_stex_import_name_str
+  \str_set_eq:NN \l_stex_current_domain_str \l_stex_import_ns_str
+}
+
 \newenvironment{structural_feature_morphism}[4]{
-  \stex_module_setup:n {#1}
+  \_@@_resolve_module:n{#3}
+  \tl_if_empty:nTF{#1}{
+    \exp_args:No \stex_module_setup:n {\exp_after:wN[\l_stex_current_domain_str]}
+  }{
+    \stex_module_setup:n {#1}
+  }
   \stex_if_do_html:T {
     \begin{stex_annotate_env} {stex:feature-#2} {
       \l_stex_current_module_str
     }
   }
-  \_@@_setup:n{#3}
+  \_@@_setup:
   \_@@_reactivate:
   #4
 }{
@@ -3107,17 +3121,18 @@
   }
 }
 
-\cs_new_protected:Nn \_@@_setup:n {
+\cs_new_protected:Nn \_@@_setup: {
   \seq_clear:N \l_stex_morphism_symbols_seq
   \seq_clear:N \l_stex_morphism_morphisms_seq
-  \stex_iterate_all_decls:nn{#1}{
+  \exp_args:No \stex_iterate_all_decls:nn \l_stex_current_domain_str {
     \seq_put_right:Nn \l_stex_morphism_symbols_seq {##1?##3}
   }
-  \stex_iterate_all_modules:nn{#1}{
-    \seq_put_right:Nn \l_stex_morphism_morphisms_seq {##1}
+  \exp_args:No \stex_iterate_all_modules:nn\l_stex_current_domain_str{
+    \tl_if_empty:nF{##3}{
+      \seq_put_right:Nn \l_stex_morphism_morphisms_seq {{##1}{##2}{##3}}
+    }
   }
-  \stex_activate_module:n {#1}
-  \str_set:Nn \l_stex_current_domain_str {#1}
+  \exp_args:No \stex_activate_module:n \l_stex_current_domain_str
   \stex_debug:nn{morphism}{
     Here: \seq_use:Nn \l_stex_morphism_morphisms_seq {,~}^^J
     \seq_use:Nn \l_stex_morphism_symbols_seq {,~}
@@ -3165,10 +3180,13 @@
       }
     }{
       \str_clear:N \l_stex_import_archive_str
+      \str_set:Nn \l_@@_uri {file:}
       \str_if_empty:NTF \l_stex_import_path_str {
         \stex_debug:nn{importmodule}{Empty~Path}
+        \stex_file_split_off_ext:NN \l_@@_path_seq \g_stex_current_file
+        \stex_file_split_off_lang:NN \l_@@_path_seq \l_@@_path_seq
         \str_set:Nx \l_stex_import_path_str {
-          \stex_file_use:N \g_stex_current_file / ..
+          \stex_file_use:N \l_@@_path_seq
         }
       }{
         \stex_debug:nn{importmodule}{Resolving~path~\l_stex_import_path_str~relative~to~\stex_file_use:N \g_stex_current_file}
@@ -3183,6 +3201,7 @@
     \stex_debug:nn{importmodule}{Archive~#1}
     \str_set:Nx \l_stex_import_archive_str { #1 }
     \stex_require_repository:o \l_stex_import_archive_str
+    \str_set:Nx \l_@@_uri { \prop_item:cn{ c_stex_mathhub_ \l_stex_import_archive_str _manifest_prop}{ ns } }
   }
 }
 %    \end{macrocode}
@@ -3206,7 +3225,7 @@
 }
 \cs_generate_variant:Nn \stex_import_require_module:nnn {ooo}
 
-\cs_new_protected:Nn \_@@_get_module:nnn {
+\cs_new_protected:Nn \_stex_get_module_uri:nnn {
   \tl_if_empty:nF {#2}{
     \str_set:Nx \l_@@_uri {\l_@@_uri / #2}
   }
@@ -3215,6 +3234,11 @@
     \_@@_get_from_file:nnn{#1}{#2}{#3}
   }
   \str_set:Nx \l_stex_import_ns_str {\l_@@_uri?#3}
+}
+\cs_generate_variant:Nn \_stex_get_module_uri:nnn {ooo}
+
+\cs_new_protected:Nn \_@@_get_module:nnn {
+  \_stex_get_module_uri:nnn{#1}{#2}{#3}
   \stex_activate_module:o \l_stex_import_ns_str
 }
 
@@ -3378,11 +3402,16 @@
 
   }
 }{
+  \end{structural_feature_morphism}
   \stex_debug:nn{copymodule}{
     Here: \seq_use:Nn \l_stex_morphism_morphisms_seq {,~}^^J
     \seq_use:Nn \l_stex_morphism_symbols_seq {,~}
   }
 }{}{}{}
+\stex_deactivate_macro:Nn \copymodule {module~environments}
+\stex_every_module:n {
+  \stex_reactivate_macro:N \copymodule
+}
 %    \end{macrocode}
 %
 % \end{sfragment}
