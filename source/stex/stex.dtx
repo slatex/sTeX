@@ -1307,7 +1307,7 @@
   }{
     \seq_pop_left:NN \l_@@_a_seq \l_@@_a_tl
     \seq_pop_left:NN \l_@@_b_seq \l_@@_b_tl
-    \tl_if_eq:NNF \l_@@_a_seq \l_@@_b_seq {
+    \str_if_eq:NNF \l_@@_a_tl \l_@@_b_tl {
       \tl_set:Nn \l_@@_return_tl {\prg_return_false:}
     }
   }
@@ -1539,8 +1539,6 @@
 \seq_set_eq:NN \c_stex_main_file \c_stex_pwd_file
 \seq_put_right:Nx \c_stex_main_file {\jobname\tl_to_str:n{.tex}}
 
-%\stex_path_from_string:Nn\c_stex_pwd_seq\l_stex_kpsewhich_return_str
-%\stex_path_to_string:NN\c_stex_pwd_seq\c_stex_pwd_str
 \stex_debug:nn {files} {PWD:~\stex_file_use:N \c_stex_pwd_file}
 %    \end{macrocode}
 % \end{variable}
@@ -1707,7 +1705,7 @@
 \cs_generate_variant:Nn \stex_require_repository:n {o}
 
 \cs_new_protected:Nn \_@@_do_manifest:n {
-  \_@@_find_manifest:n {#1}
+  \exp_args:Ne \_@@_find_manifest:n {\stex_file_use:N \c_stex_mathhub_file / #1}
   \str_if_empty:NT \l_@@_manifest_str {
     \_stex_fatal_error:nxx{error/norepository}
       {#1}{\stex_file_use:N \c_stex_mathhub_file}
@@ -1717,8 +1715,7 @@
 
 \cs_new_protected:Nn \_@@_find_manifest:n {
   \str_clear:N \l_@@_manifest_str 
-  \exp_args:NNnx \seq_set_split:Nnn \l_@@_seq /
-    {\stex_file_use:N \c_stex_mathhub_file / #1}
+  \seq_set_split:Nnn \l_@@_seq / {#1}
   \bool_set_true:N \l_@@_bool
   \bool_while_do:Nn \l_@@_bool {
     \tl_if_eq:NNTF \l_@@_seq \c_stex_mathhub_file {
@@ -1756,11 +1753,11 @@
   \ior_open:Nn \c_@@_manifest_ior \l_@@_manifest_str
   \prop_clear:N \l_@@_prop
   \ior_map_inline:Nn \c_@@_manifest_ior {
-    \exp_args:NNo \seq_set_split:Nnn \l_@@_seq \c_colon_str {##1}
+    \exp_args:NNNo \exp_args:NNNx 
+      \seq_set_split:Nnn \l_@@_seq \c_colon_str {\tl_to_str:n{##1}}
     \seq_pop_left:NNT \l_@@_seq \l_@@_key {
       \exp_args:NNo \str_set:Nn \l_@@_key \l_@@_key
       \str_set:Nx \l_@@_val {\seq_use:Nn \l_@@_seq :}
-      \str_set:Nx \l_@@_val {\exp_args:No \tl_to_str:n \l_@@_val}
       \str_case:Nn \l_@@_key {
         {id}              {\prop_put:Nno \l_@@_prop { id }      \l_@@_val }
         {narration-base}  {\prop_put:Nno \l_@@_prop { narr }    \l_@@_val }
@@ -1772,7 +1769,7 @@
   }
   \ior_close:N \c_@@_manifest_ior
   \prop_gset_eq:cN { c_stex_mathhub_#1_manifest_prop } \l_@@_prop
-  \stex_debug:nn{mathhub}{Result: \prop_to_keyval:N \l_@@_prop}
+  \stex_debug:nn{mathhub}{Result:~\prop_to_keyval:N \l_@@_prop}
   \stex_persist:x {
     \prop_set_from_keyval:cn { c_stex_mathhub_#1_manifest_prop }{
       \exp_after:wN \prop_to_keyval:N 
@@ -1857,6 +1854,33 @@
 %    \end{macrocode}
 % \end{macro}
 %
+% \end{sfragment}
+%
+% \begin{sfragment}{Sectioning}
+%    \begin{macrocode}
+\int_new:N \l_stex_docheader_sect
+
+\cs_new_protected:Nn \stex_doc_do_section:n {
+  \int_case:nnF \l_stex_docheader_sect {
+    {0}{\cs_if_exist:NTF \part {\part{#1}}{
+      \int_incr:N \l_stex_docheader_sect
+      \stex_doc_do_section:n {#1}
+    }}
+    {1}{\cs_if_exist:NTF \chapter {\chapter{#1}}{
+      \int_incr:N \l_stex_docheader_sect
+      \stex_doc_do_section:n {#1}
+    }}
+    {2}{\section{#1}}
+    {3}{\subsection{#1}}
+    {4}{\subsubsection{#1}}
+  }{\paragraph{#1}}
+  \int_incr:N \l_stex_docheader_sect
+}
+%\int_incr:N \l_stex_docheader_sect
+\NewDocumentEnvironment{sfragment}{m}{
+  \stex_doc_do_section:n{#1}
+}{}
+%    \end{macrocode}
 % \end{sfragment}
 %
 %
@@ -2278,6 +2302,45 @@
 
 \NewDocumentCommand \inputref { O{} m}{
   \_@@_inputref:nn{ #1 }{ #2 }
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\libinput}
+%    \begin{macrocode}
+\cs_new_protected:Npn \libinput #1 {
+  \prop_if_exist:NF \l_stex_current_repository_prop {
+    \msg_error:nnn{stex}{error/notinarchive}\libinput
+  } 
+  \prop_get:NnNF \l_stex_current_repository_prop {id} \l_@@_id_str {
+    \msg_error:nnn{stex}{error/notinarchive}\libinput
+  }
+  \seq_clear:N \l_@@_libinput_files_seq
+  \seq_set_eq:NN \l_@@_path_seq \c_stex_mathhub_file
+  \seq_set_split:NnV \l_@@_id_seq / \l_@@_id_str
+
+
+  \bool_while_do:nn { ! \seq_if_empty_p:N \l_@@_id_seq }{
+    \str_set:Nx \l_@@_path_str {\stex_file_use:N \l_@@_path_seq / meta-inf / lib / #1.tex}
+    \IfFileExists{ \l_@@_path_str }{
+      \seq_put_right:No \l_@@_libinput_files_seq \l_@@_path_str
+    }{}
+    \seq_pop_left:NN \l_@@_id_seq \l_@@_path_str
+    \seq_put_right:No \l_@@_path_seq \l_@@_path_str
+  }
+
+  \str_set:Nx \l_@@_path_str {\stex_file_use:N \l_@@_path_seq / lib / #1.tex}
+  \IfFileExists{ \l_@@_path_str }{
+    \seq_put_right:No \l_@@_libinput_files_seq \l_@@_path_str
+  }{}
+
+  \seq_if_empty:NTF \l_@@_libinput_files_seq {
+    \msg_error:nnxx{stex}{error/nofile}{\exp_not:N\libinput}{#1.tex}
+  }{
+    \seq_map_inline:Nn \l_@@_libinput_files_seq {
+      \input{ ##1 }
+    }
+  }
 }
 %    \end{macrocode}
 % \end{macro}
@@ -3114,6 +3177,11 @@
   \tl_gput_right:cn {c_stex_module_\l_stex_current_module_str _notations} {
     \_stex_notation:nnnnn{#1}{#2}{#3}{#4}{#5}
   }
+  %\stex_debug:nn{notation}{New~notation~#2~for~#1:^^J
+  %  Arity:~\tl_to_str:n{#3}^^J
+  %  Notation:~\tl_to_str:n{#4}^^J
+  %  Op:~\tl_to_str:n{#5}
+  %}
   \stex_execute_in_module:n {
     \stex_set_notation_macro:nnnnn{#1}{#2}{#3}{#4}{#5}
   }
@@ -3121,11 +3189,6 @@
 \cs_generate_variant:Nn \stex_add_module_notation:nnnnn {eoexo}
 
 \cs_new_protected:Nn \stex_set_notation_macro:nnnnn {
-  \stex_debug:nn{notation}{New~notation~#2~for~#1:^^J
-    Arity:~\tl_to_str:n{#3}^^J
-    Notation:~\tl_to_str:n{#4}^^J
-    Op:~\tl_to_str:n{#5}
-  }
   %\stex_do_up_to_module:n{
     \cs_generate_from_arg_count:cNnn {l_stex_notation_#1_#2_cs}
       \cs_set:Npn {#3}{#4}
