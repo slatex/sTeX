@@ -1,0 +1,135 @@
+\ExplSyntaxOn
+\ifcsname g_docinput_clist\endcsname\else
+
+\DeclareDocumentCommand \cmd { O{} m }
+  { \_codedoc_cmd:no {#1} { \token_to_str:N #2 } }
+\DeclareDocumentCommand \cs  { O{} m }
+  { \_codedoc_cmd:no {#1} { \c_backslash_str #2 } }
+\DeclareDocumentCommand \tn  { O{} m }
+  {
+    \@@_cmd:no
+      { module = TeX , replace = false , #1 }
+      { \c_backslash_str #2 }
+  }
+\DeclareDocumentCommand \meta { m }
+  { \@@_meta:n {#1} }
+\providecommand\Arg[1]
+  { \texttt{\char`\{} \meta{#1} \texttt{\char`\}} }
+\providecommand\marg[1]{ \Arg{#1} }
+\providecommand\oarg[1]{ \texttt[ \meta{#1} \texttt] }
+\providecommand\parg[1]{ \texttt( \meta{#1} \texttt) }
+
+\DeclareRobustCommand \env {\texttt}
+\DeclareRobustCommand \pkg {\textsf}
+\DeclareRobustCommand \cls {\textsf}
+\DeclareDocumentEnvironment { variable } { O{} +v }
+  {
+    \bool_if:NTF \l_@@_in_implementation_bool
+      { \@@_macro:nnw { var , #1 } {#2} }
+      { \@@_function:nnw {#1} {#2} }
+  }
+  {
+    \bool_if:NTF \l_@@_in_implementation_bool
+      { \@@_macro_end: }
+      { \@@_function_end: }
+  }
+\DeclareDocumentEnvironment { function } { O{} +v }
+  { \@@_function:nnw {#1} {#2} }
+  { \@@_function_end: }
+\DeclareDocumentEnvironment { macro } { O{} +v }
+  { \@@_macro:nnw {#1} {#2} }
+  { \@@_macro_end: }
+\DeclareDocumentEnvironment { syntax } { }
+  { \@@_syntax:w }
+  {
+    \@@_syntax_end:
+    \ignorespacesafterend
+  }
+\DeclareDocumentEnvironment { texnote } { }
+  {
+    \endgraf
+    \vspace{3mm}
+    \small\textbf{\TeX~hackers~note:}
+  }
+  {
+    \vspace{3mm}
+  }
+\DeclareDocumentEnvironment { arguments } { }
+  {
+    \enumerate [
+      nolistsep ,
+      label = \texttt{\#\arabic*} ~ : ,
+      labelsep = * ,
+    ]
+  }
+  {
+    \endenumerate
+  }
+  \keys_define:nn { l3doc/cmd }
+  {
+    index     .tl_set:N     = \l_@@_cmd_index_tl        ,
+    module    .tl_set:N     = \l_@@_cmd_module_tl       ,
+    no-index  .bool_set:N   = \l_@@_cmd_noindex_bool    ,
+    replace   .bool_set:N   = \l_@@_cmd_replace_bool    ,
+  }
+  \cs_new_protected:Npn \@@_cmd:nn #1#2
+  {
+    \bool_set_false:N \l_@@_cmd_noindex_bool
+    \bool_set_true:N \l_@@_cmd_replace_bool
+    \tl_set:Nn \l_@@_cmd_index_tl { \q_no_value }
+    \tl_set:Nn \l_@@_cmd_module_tl { \q_no_value }
+    \keys_set:nn { l3doc/cmd } {#1}
+    \tl_set:Nn \l_@@_cmd_tl {#2}
+    \bool_if:NT \l_@@_cmd_replace_bool
+      {
+        \tl_set_rescan:Nnn \l_@@_tmpb_tl { } { _ }
+        \tl_replace_all:Non \l_@@_cmd_tl \l_@@_tmpb_tl { _ }
+        \@@_replace_at_at:N \l_@@_cmd_tl
+        \tl_replace_all:Nno \l_@@_cmd_tl { _ } \l_@@_tmpb_tl
+      }
+    \mode_if_math:T { \mbox }
+      {
+        \bool_if:NT \l_@@_allow_indexing_bool { \@@_target: }
+        \verbatim@font
+        \@@_if_almost_str:VT \l_@@_cmd_tl
+          {
+            \__kernel_tl_set:Nx \l_@@_cmd_tl { \tl_to_str:N \l_@@_cmd_tl }
+            \bool_if:NT \g_@@_cs_break_bool
+              {
+                \regex_replace_all:nnN
+                  { ([^\\\_]\_*) \_ ([^\_]) }
+                  { \1 \c{BreakableUnderscore} \2 }
+                  \l_@@_cmd_tl
+              }
+          }
+        \tl_replace_all:Nnn \l_@@_cmd_tl { ~ } { \@xobeysp }
+        \l_@@_cmd_tl
+        \@
+      }
+    \bool_if:NT \l_@@_allow_indexing_bool
+     {
+      \bool_if:NF \l_@@_cmd_noindex_bool
+       {
+        \quark_if_no_value:NF \l_@@_cmd_index_tl
+          {
+            \__kernel_tl_set:Nx \l_@@_cmd_tl
+              { \c_backslash_str \exp_not:o { \l_@@_cmd_index_tl } }
+          }
+        \exp_args:No \@@_key_get:n { \l_@@_cmd_tl }
+        \quark_if_no_value:NF \l_@@_cmd_module_tl
+          {
+            \__kernel_tl_set:Nx \l_@@_index_module_tl
+              { \tl_to_str:N \l_@@_cmd_module_tl }
+          }
+        \@@_special_index_module:ooonN
+          { \l_@@_index_key_tl }
+          { \l_@@_index_macro_tl }
+          { \l_@@_index_module_tl }
+          { usage }
+          \l_@@_index_internal_bool
+       }
+     }
+  }
+\cs_generate_variant:Nn \@@_cmd:nn { no }
+\fi
+\ExplSyntaxOff

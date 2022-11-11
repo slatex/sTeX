@@ -8,28 +8,10 @@
 \newcommand{\scaled}[2][0.9\hsize]{\begin{center}\resizebox{#1}{!}{\begin{minipage}{\textwidth} #2 \end{minipage}}\end{center}}
 
 \makeatletter
-\newcount\example@counter\example@counter=0
-\newtcolorbox{exampleborderbox}{
-  empty,
-  title={Example \the\example@counter},
-  attach boxed title to top left,
-     minipage boxed title,
-  boxed title style={empty,size=minimal,toprule=0pt,top=1pt,left=3mm,overlay={}},
-  coltitle=blue,fonttitle=\bfseries,
-  parbox=false,boxsep=0pt,left=3mm,right=0mm,top=2pt,breakable,pad at break=0mm,
-     before upper=\csname @totalleftmargin\endcsname0pt, 
-  overlay unbroken={\draw[blue,line width=2pt] ([xshift=-0pt]title.north west) -- ([xshift=-0pt]frame.south west); },
-  overlay first={\draw[blue,line width=2pt] ([xshift=-0pt]title.north west) -- ([xshift=-0pt]frame.south west); },
-  overlay middle={\draw[blue,line width=2pt] ([xshift=-0pt]frame.north west) -- ([xshift=-0pt]frame.south west); },
-  overlay last={\draw[blue,line width=2pt] ([xshift=-0pt]frame.north west) -- ([xshift=-0pt]frame.south west); },
-  outer arc=4pt%
-}
-
 \ExplSyntaxOn
 
-\def\doc_exbox:nn#1#2{
-  \global\advance\example@counter by 1
-  \begin{exampleborderbox}
+\def\doc_exbox:nnn#1#2#3{
+  \begin{sexample}[#3]
     Input:
     \begin{mdframed}[linewidth=1pt,backgroundcolor=white]\small
       #1
@@ -38,21 +20,26 @@
     \begin{mdframed}[linewidth=1pt,backgroundcolor=white]\small
       #2
     \end{mdframed}
-  \end{exampleborderbox}
+  \end{sexample}
 }
 
 
-\NewDocumentCommand\stexexamplefile{O{} m O{}}{
-  \stex_resolve_path_pair:Nnn \l_@@_filepath_str {#1} {#2}
-  \doc_exbox:nn{
+\NewDocumentCommand\stexexamplefile{O{} m O{} O{}}{
+  \exp_args:NNNx \exp_args:NNnx \stex_resolve_path_pair:Nnn \l_@@_filepath_str {\tl_to_str:n{#1}} {\tl_to_str:n{#2}}
+  \doc_exbox:nnn{
+    \hfill File~\str_if_empty:nTF{#1}{
+      \prop_if_exist:NT \l_stex_current_repository_prop {
+        [\prop_item:Nn \l_stex_current_repository_prop {id}]
+      }
+    }{[#1]}\texttt{\tl_to_str:n{#2}}
     \lstinputlisting[language=sTeX, #3]{\l_@@_filepath_str}
   }{
     \inputref[#1]{#2}
-  }
+  }{#4}
 }
 
 \newwrite\testoutfile
-\newcommand\stexexample[1][]{
+\NewDocumentCommand\stexexample{O{} O{}}{
   \begingroup 
   \catcode`\\=12\relax
   \catcode`\#=12\relax
@@ -65,26 +52,26 @@
   \endlinechar=`^^J
   \newlinechar=-1
 %^^A    \everyeof{\noexpand}
-  \example_a:nn{#1}
+  \example_a:nnn{#1}{#2}
 }
-\long\def\example_a:nn #1 #2 {
+\long\def\example_a:nnn #1 #2 #3 {
   \endgroup
   \immediate\openout\testoutfile=stextest.tex
   \immediate\write\testoutfile{
     \c_backslash_str begin{stexcode}[#1]
-    \detokenize{^^J}#2
+    \detokenize{^^J}#3
     \c_backslash_str end{stexcode}
   }
   \immediate\closeout\testoutfile
-  \doc_exbox:nn{
+  \doc_exbox:nnn{
     \catcode`\#=12\relax
     \csname @ @ input\endcsname{stextest.tex}
   }{
     \immediate\openout\testoutfile=stextest.tex
-    \immediate\write\testoutfile{#2}
+    \immediate\write\testoutfile{#3}
     \immediate\closeout\testoutfile
     \csname @ @ input\endcsname stextest.tex\relax
-  }
+  }{#2}
   \peek_charcode_remove:NT ^^J
 }
 
