@@ -1,0 +1,575 @@
+\usemodule[sTeX/Documentation]{macros?AllMacros}
+%\begin{smodule}{Aux Macros}
+
+  \begin{function}{\stex_debug:nn}
+    \begin{syntax}
+      \cs{stex_debug:nn} \marg{prefix} \marg{msg}
+    \end{syntax}
+    Logs the debug message \marg{msg} under the prefix
+    \marg{prefix}. A message is shown if its prefix
+    is in a list of prefixes given either via the
+    package option |debug=|\meta{prefixes} or
+    the environment variable |STEX_DEBUG=|\meta{prefixes},
+    where the latter overrides the former.
+  \end{function}
+
+\begin{sfragment}{Language Handling}
+  \begin{variable}{\c_stex_languages_prop,\c_stex_language_abbrevs_prop}
+    Property lists converting babel languages to/from their abreviations;
+    e.g.
+    \begin{itemize}
+      \item |\prop_item:Nn \c_stex_languages_prop {de}| yields |ngerman|, and 
+      \item |\c_stex_language_abbrevs_prop {ngerman}| yields |de|.
+    \end{itemize}  
+  \end{variable}
+  \begin{variable}{\l_stex_current_language_str}
+    Always stores the current language.
+  \end{variable}
+
+  \begin{function}{\stex_set_language:n, \stex_set_language:x, \stex_set_language:o}
+    \begin{syntax}\cs{stex_set_language:n}\marg{abbrev}\end{syntax}
+    Sets \cs{l_stex_current_language_str}, and, if the \pkg{babel}
+    package is loaded, calls \cs{selectlangage} on the
+    language corresponding to \marg{abbrev}.
+
+    If \marg{abbrev}|=tr|, additionally call \cs{selectlanguage}
+    with the option |shorthands=:!|.
+
+    Throws |error/unknownlanguage| if no language with abbreviation
+    \marg{abbrev} is known.
+  \end{function}
+
+  \begin{function}{\stex_language_from_file:}
+    Infers the current language from file ending (e.g. |.en.tex|)
+    and sets it appropriately.
+
+    Is called in a file hook, i.e. always switches language when inputting
+    a file |.<lang>.<ext>|.
+  \end{function}
+
+\end{sfragment}
+
+\begin{sfragment}{Inserting Annotations}
+  \stex can be used to produce either \HTML or \PDF. In \HTML-mode,
+  multiple macros exist to insert annotations. The same macros
+  are also valid in \PDF mode but implemented as null operations.
+
+  \begin{function}{\stex_suppress_html:n}
+    \begin{syntax}\cs{stex_suppress_html:n}\marg{code}\end{syntax}
+    Turns annotations off temporarily in \marg{code} (e.g. as to not 
+    generate additional annotations for elaborated declarations, 
+    or in sms-mode).
+  \end{function}
+
+  For that to work, code that inserts annotations should use
+  \begin{function}[pTF]{\stex_if_do_html:}
+    Whether to generate \HTML annotations.
+  \end{function}
+
+  \begin{function}{\stex@backend}
+    Should be set by a backend engine, such that a file
+    |stex-backend-|\cs{stex@backend}|.cfg| exists.
+  \end{function}
+
+  Such a backend config file should provide the following:
+
+  \begin{function}[pTF]{\stex_if_html_backend:}
+    Can be used to determine whether the backend produces \HTML (e.g.
+    \rustex or \LaTeXML) or not (e.g. |pdflatex|).
+    
+    \cs{ifstexhtml} is set accordingly.
+  \end{function}
+
+  \begin{function}{\stex_annotate:nnn}
+    \begin{syntax} \cs{stex_annotate:nnn}\marg{attr}\marg{value}\marg{code}
+    \end{syntax}
+    In \HTML mode, annotates the output of \marg{code} with the 
+    \XML-attribute \marg{attr}|="|\marg{value}|"|. In \PDF mode, just
+    calls \marg{code}.
+  \end{function}
+
+  \begin{function}{\stex_annotate_invisible:nnn,\stex_annotate_invisible:n}
+    \begin{syntax} \cs{stex_annotate_invisible:n}\marg{code}
+    \end{syntax}
+
+    Should annotate \marg{code} with
+    |shtml:visible="false" style="display:none;"|. In \PDF mode, does nothing.
+
+    \cs{stex_annotate_invisible:nnn} combines \cs{stex_annotate_invisible:n}
+    and \cs{stex_annotate:nnn}.
+  \end{function}
+
+  \DescribeEnv{stex_annotate_env}
+    \cs{begin}|{stex_annotate_env}|\marg{key}\marg{value}
+    \meta{code}
+    \cs{end}|{stex_annotate_env}| should behave
+    like \cs{stex_annotate:nnn}\marg{attr}\marg{value}\marg{code}
+
+  \begin{function}{\stex_mathml_intent:nn,\stex_mathml_arg:nn}
+    MathML Intent (TODO)
+  \end{function}
+
+\end{sfragment}
+
+
+\begin{sfragment}{Utility Methods}
+
+  \begin{function}{\stex_kpsewhich:Nn}
+    \begin{syntax}
+      \cs{stex_kpsewhich:Nn} \marg{\cs{macro}} \marg{args}
+    \end{syntax}
+    Calls ``|kpsewhich| \marg{args}'' and stores the result
+    in \cs{macro},
+%^^A     Foo
+    \begin{texnote} 
+      Does not require |shell-escape|
+    \end{texnote}
+%^^A
+%^^A
+%^^A     \begin{arguments}
+%^^A       \item Narf?
+%^^A     \end{arguments}
+%^^A
+  \end{function}
+
+  \begin{function}{\stex_get_env:Nn}
+    \begin{syntax}
+      \cs{stex_get_env:Nn} \marg{\cs{macro}} \marg{envvar}
+    \end{syntax}
+    Stores the value of the environment variable \marg{envvar}
+    in \cs{macro}.
+  \end{function}
+
+  \begin{function}{\_stex_fatal_error:n,\_stex_fatal_error:nnn,\_stex_fatal_error:nxx}
+    Mimic the \cs{msg_error:}-macros, but make sure that \TeX\ stops
+    processing.
+    \begin{texnote} 
+      Calls |\input{non-existent file}|.
+    \end{texnote}
+  \end{function}
+
+  \begin{sfragment}{Group-like Behaviours}
+
+    \begin{function}{\stex_pseudogroup_with:nn}
+      \begin{syntax}\cs{stex_pseudogroup_with:nn}\marg{macros}\marg{code}
+      \end{syntax}
+      Calls \marg{code} and subsequently restores the values of the
+      \marg{macros} given.
+      \begin{texnote}
+        Does \emph{not} work recursively!
+      \end{texnote} 
+    \end{function}
+
+    \begin{function}{\stex_pseudogroup:nn}
+      \begin{syntax}\cs{stex_pseudogroup:nn}\marg{code1}\marg{code2}
+      \end{syntax}
+      Expands \marg{code2}, and inserts the result after \marg{code1}. 
+      Works recursively and
+      allows for restoring the values of macros in combination with
+      \cs{stex_pseudogroup_restore:N}, but \emph{only for macros
+      that take no arguments}:
+    \end{function}
+
+    \begin{function}[EXP]{\stex_pseudogroup_restore:N}
+      \begin{syntax}\cs{stex_pseudogroup_restore:N}\marg{macro}
+      \end{syntax}
+    \end{function}
+
+    \begin{sexample}
+      \begin{stexcode}[gobble=8]
+        \stex_pseudogroup:nn{
+          something changing \foo
+          something changing \num
+        }{
+          \stex_pseudogroup_restore:N \foo
+          \int_set:Nn \num {\int_use:N \num}
+        }
+      \end{stexcode}
+      restores the values of macro \cs{foo} and register \cs{num}
+      after calling the first block.
+    \end{sexample}
+
+    Commands like \cs{symdecl} and \cs{importmodule} that generate
+    (semantic) macros should be local \emph{to the current module},
+    e.g. \env{smodule}. For that purpose, we open a new ``metagroup''
+    with some identifier (e.g. \cs{l_stex_current_module_str})
+    and then execute the relevant code \emph{in the metagroup with that
+    identifier}:
+    
+    \begin{function}{\stex_metagroup_new:n, \stex_metagroup_new:o}
+      \begin{syntax}\cs{stex_metagroup_new:n} \marg{id}\end{syntax}
+      Opens a new metagroup at the current \TeX\ group level with
+      identifier \marg{id}.
+    \end{function}
+
+    \begin{function}{\stex_metagroup_do_in:nn, \stex_metagroup_do_in:nx}
+      \begin{syntax}\cs{stex_metagroup_do_in:nn} \marg{id}\marg{code}\end{syntax}
+      Executes \marg{code} and adds its content to \cs{aftergroup} up
+      until the \TeX\ group level of the metagroup with identifier \marg{id}.
+    \end{function}
+
+
+
+
+
+
+  \end{sfragment}
+
+\end{sfragment}
+%\end{smodule}
+
+%^^A^^A   \begin{TemplateInterfaceDescription}{foo}
+%^^A^^A     \TemplateArgument{1}{Something Here}
+%^^A^^A     \TemplateSemantics{Some Narf Here}
+%^^A^^A   \end{TemplateInterfaceDescription}
+%^^A^^A   \begin{TemplateDescription}{foo}{bar}
+%^^A^^A     \TemplateKey{narf}{Something Here}
+%^^A^^A     \TemplateSemantics{Some Narf Here}
+%^^A^^A   \end{TemplateDescription}
+%^^A^^A   \begin{InstanceDescription}{foo}{newinst}{bar}
+%^^A^^A     \InstanceKey{narf}{Something Here}
+%^^A^^A     \InstanceSemantics{Some Narf Here}
+%^^A^^A   \end{InstanceDescription}
+%^^A^^A   \cs{stex_kpsewhich:Nn}
+%^^A   \begin{function}{\stex_kpsewhich:Nn}
+%^^A     Foo
+%^^A     \begin{texnote} Foo! \end{texnote}
+%^^A
+%^^A     \begin{syntax} \cs{stex_kpsewhich:Nn} \meta{something} \Arg{argh}
+%^^A     \end{syntax}
+%^^A
+%^^A     \begin{arguments}
+%^^A       \item Narf?
+%^^A     \end{arguments}
+%^^A
+%^^A   \end{function}
+%^^A   \begin{function}{\stex_get_env:Nn, \stex_get_env:Nnn}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\stex_debug:nn}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{variable}{\c_stex_pwd_file,\c_stex_main_file}
+%^^A     Foo
+%^^A   \end{variable}
+%^^A   \begin{variable}{\c_stex_languages_prop, \c_stex_language_abbrevs_prop}
+%^^A     Foo
+%^^A   \end{variable}
+%^^A   \begin{variable}{\l_stex_current_language_str}
+%^^A     Foo
+%^^A   \end{variable}
+%^^A   \begin{function}{\stex_set_language:n, \stex_set_language:x, \stex_set_language:o}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\stex_pseudogroup:nn,\stex_pseudogroup_restore:N}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\stex_pseudogroup_with:nn}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\stex_metagroup_new:n, \stex_metagroup_new:o}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\stex_metagroup_do_in:nn, \stex_metagroup_do_in:nx}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}[pTF]{\stex_if_do_html:}
+%^^A     Whether to currently produce any HTML annotations (can be false
+%^^A     in some advanced structuring environments, for example)
+%^^A   \end{function}
+%^^A   \begin{function}{\stex_suppress_html:n}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}[pTF]{\stex_html_backend:}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}[EXP]{\ifstexhtml}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\stex_keys_define:nnnn, \stex_keys_set:nn}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\stex_new_stylable_env:nnnnnnn, \stex_new_stylable_cmd:nnnnn, \stex_style_apply:}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\stex_deactivate_macro:Nn, \stex_reactivate_macro:N}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\ignorespacesandpars}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}[pTF]{\stex_str_if_ends_with:nn}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}[pTF]{\stex_str_if_starts_with:nn}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}[EXP]{\stex_macro_body:N}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}[EXP]{\stex_macro_definition:N}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\stex_persist:n,\stex_persist:o,\stex_persist:x}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\stex_file_set:Nn, \stex_file_set:No, \stex_file_set:Nx}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\stex_file_resolve:Nn, \stex_file_resolve:No, \stex_file_resolve:Nx}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\stex_map_uri:Nnnnn}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\stex_uri_set:Nn, \stex_uri_set:No, \stex_uri_set:Nx}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\stex_uri_resolve:Nn, \stex_uri_resolve:No, \stex_uri_resolve:Nx}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}[EXP]{\stex_file_use:N}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}[EXP]{\stex_uri_use:N}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\stex_uri_from_repo_file:NNNn, \stex_uri_from_repo_file_nolang:NNNn}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\stex_uri_from_current_file:Nn, \stex_uri_from_current_file_nolang:Nn}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\stex_uri_add_module:NNn, \stex_uri_add_module:NNo}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}[pTF]{\stex_file_absolute:N}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\stex_filestack_push:n, \stex_filestack_pop:}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}[TF]{\stex_file_starts_with:N}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\stex_file_split_off_ext:NN,\stex_file_split_off_lang:NN}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{variable}{\mathhub,\c_stex_mathhub_file}
+%^^A     Foo
+%^^A   \end{variable}
+%^^A   \begin{function}{\stex_require_repository:n, \stex_require_repository:o}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\stex_set_current_repository:n}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{variable}{\c_stex_mathhub_main_manifest_prop, \l_stex_current_repository_prop}
+%^^A     Foo
+%^^A   \end{variable}
+%^^A   \begin{variable}{\l_stex_current_doc_uri}
+%^^A     Foo
+%^^A   \end{variable}
+%^^A   \begin{function}{\stex_get_document_uri:}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\STEXtitle,\stex_document_title:n}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\stex_ref_new_doc_target:n,\sreflabel}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\stex_ref_new_sym_target:n}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\sref,\extref}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\stex_sms_allow:N,\stex_sms_allow_escape:N,\stex_sms_allow_env:n}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\stex_sms_allow_import:Nn, \stex_sms_allow_import_env:nn}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{variable}{\g_stex_sms_import_code}
+%^^A     Foo
+%^^A   \end{variable}
+%^^A   \begin{function}[pTF]{\stex_if_smsmode:}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\stex_file_in_smsmode:nn,\stex_file_in_smsmode:on}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\stex_smsmode_do:}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{variable}{\l_stex_current_module_str}
+%^^A     Foo
+%^^A   \end{variable}
+%^^A   \begin{function}[EXP]{\stex_current_module_prop:}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{variable}{\l_stex_all_modules_seq}
+%^^A     Foo
+%^^A   \end{variable}
+%^^A   \begin{function}[pTF]{\stex_if_in_module:}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}[pTF]{\stex_if_module_exists:n}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\stex_do_up_to_module:n, \stex_do_up_to_module:x}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\stex_add_to_current_module:n,\stex_add_to_current_module:x}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\stex_add_module_dependency:nnnn,\stex_add_module_dependency:oonn}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\stex_iterate_modules:n}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\stex_iterate_modules:nn}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\stex_add_module_decl:nnnnnnnN}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\stex_iterate_decls:n}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\stex_iterate_decls:nn}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\stex_add_module_notation:nnnnn,\stex_add_module_notation:eoexo}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\stex_execute_in_module:n,\stex_execute_in_module:x,\STEXexport}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\stex_every_module:n}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{variable}{\l_stex_metatheory_uri}
+%^^A     Foo
+%^^A   \end{variable}
+%^^A   \DescribeEnv{smodule}
+%^^A     Foo
+%^^A
+%^^A   \begin{function}{\setmetatheory}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{variable}{\l_stex_current_ns_uri}
+%^^A     Foo
+%^^A   \end{variable}
+%^^A   \begin{function}{\stex_get_current_namespace:}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\stex_module_setup:n}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\stex_close_module:}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\stex_activate_module:n,\stex_activate_module:o,\stex_activate_module:x}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \DescribeEnv{mmtinterface}
+%^^A     Foo
+%^^A
+%^^A   \DescribeEnv{structural_feature_module}
+%^^A     Foo
+%^^A
+%^^A   \DescribeEnv{structural_feature_morphism}
+%^^A     Foo
+%^^A
+%^^A   \begin{function}{\stex_import_module_uri:nn}
+%^^A     Destructs a relative \verb|[some/archive]{some/path?Name}|-pair into
+%^^A     absolute values \cs{l_stex_import_archive_str},
+%^^A     \cs{l_stex_import_path_str}, \cs{l_stex_import_name_str}:
+%^^A   \end{function}
+%^^A   \begin{function}{\stex_import_require_module:nnn}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\usemodule}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\importmodule}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\MMTinclude}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\stex_decl_parse_arity:}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\stex_symdecl_top:n}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\stex_symdecl_do:}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\textsymdecl}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\stex_get_symbol:n}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\stex_notation_top:nnn}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\stex_notation_do:nn}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\notation}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\symdef}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\vardef}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\_stex_invoke_symbol:nnnnnnnN}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\_stex_invoke_variable:nnnnnn}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\stex_invoke_symbol:}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\infprec,\neginfprec}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\STEXInternalTermMathArgiii,\STEXInternalTermMathOMSiii,\STEXInternalTermMathOMAiii,\STEXInternalTermMathOMBiii}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\dobrackets,\withbrackets,\dowithbrackets}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\STEXinvisible}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\symname,\sn,\sns,\Symname,\Sn,\Sns,\symref,\sr}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\comp}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\compemph,\compemph@uri}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\defemph,\defemph@uri}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\symrefemph,\symrefemph@uri}
+%^^A     Foo
+%^^A   \end{function}
+%^^A   \begin{function}{\varemph,\varemph@uri}
+%^^A     Foo
+%^^A   \end{function}
+%^^A
+%^^A   \DescribeEnv{mathstructure}
+%^^A     Foo

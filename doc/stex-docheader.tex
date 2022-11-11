@@ -4,14 +4,34 @@
 %\RequirePackage{document-structure}
 \usepackage[hyperref=auto,style=alphabetic]{biblatex}
 %\usepackage[mathhub=\stexdocpath/mh,usesms]{stex}
-\usepackage{stex}
+\usepackage{stex,rustex}
 \usepackage{stex-highlighting,stexthm}
+
+\makeatletter
+\providecommand{\HTML}{\textsc{html}\xspace}%
+\providecommand{\XML}{\textsc{html}\xspace}%
+\providecommand{\PDF}{\textsc{pdf}\xspace}%
+\DeclareRobustCommand\LaTeXML{L\kern-.36em%
+        {\sbox\z@ T%
+         \vbox to\ht\z@{\hbox{\check@mathfonts
+                              \fontsize\sf@size\z@
+                              \math@fontsfalse\selectfont
+                              A}%
+                        \vss}%
+        }%
+        \kern-.15em%
+%        T\kern-.1667em\lower.5ex\hbox{E}\kern-.125em\relax
+%        {\tt XML}}
+        T\kern-.1667em\lower.4ex\hbox{E}\kern-0.05em\relax
+        {\scshape xml}\xspace}%
+\makeatother
+
 
 \newif\ifhadtitle\hadtitlefalse
 
-\def\fileversion{3.3.0}
-\def\filedate{\today}
-\def\stexdoctitle#1#2{\title{#1\thanks{Version {\fileversion} (last revised {\filedate})} }\def\thispkg{#2}}
+\def\stexversion{3.3.0}
+\def\changedate{\today}
+\def\stexdoctitle#1#2{\title{#1\thanks{Version {\stexversion} (last revised {\changedate})} }\def\thispkg{#2}}
 
 \author{Michael Kohlhase, Dennis Müller\\
  	FAU Erlangen-Nürnberg\\
@@ -20,21 +40,23 @@
 
 \def\stexmaketitle{\ifhadtitle\else\hadtitletrue\maketitle\fi}
 
-\def\docmodule{
-\begin{document}
-  \EnableManual
-  \DisableImplementation
-  \DocInput{\jobname.dtx}
-  \EnableImplementation
-  \DisableDocumentation
-  \DisableManual
-  \DocInputAgain
-  \clearpage
-  \PrintIndex
-\end{document}
-}
-
 \ExplSyntaxOn
+
+  \def\docmodule{
+    \begin{document}
+      \EnableManual
+      \EnableDocumentation
+      \EnableImplementation
+      \stexmaketitle
+      \tableofcontents
+      \int_gincr:N \l_stex_docheader_sect
+      \usemodule[sTeX/Documentation]{macros?AllMacros}
+      \DocInput{\jobname.dtx}
+      \clearpage
+      \PrintIndex
+    \end{document}
+  }
+
   \bool_new:N \g_stexdoc_typeset_manual_bool
   \NewDocumentCommand \EnableManual {}{
     \bool_gset_true:N \g_stexdoc_typeset_manual_bool
@@ -55,27 +77,37 @@
 %\makeindex
 
 %\usepackage{document-structure}
-\ExplSyntaxOn
-
-\cs_set_nopar:Nn \_stexdoc_do_cs:Nn {
-  \stex_debug:nn{here}{\tl_to_str:n{#1},~#2}
-  \cs_if_exist:cTF{s\tl_to_str:n{#2}}{
-    \cs_if_exist:cTF{s\tl_to_str:n{#2}name}{
-    \symref{#2-sym}{#1{#2}}
-    }{#1{#2}}
-  }{
-    #1{#2}
-  }
-}
-\let\my_old_cs\cs
-\protected\def\cs#1{
-  \_stexdoc_do_cs:Nn \my_old_cs{#1}
-}
-\let\my_old_cmd\cmd
-\protected\def\cmd#1{
-  \_stexdoc_do_cs:Nn \my_old_cmd{#1}
-}
-
-\ExplSyntaxOff
 
 \mhinput[sTeX/Documentation]{../lib/examples.tex}
+
+\makeatletter
+\newcount\example@counter\example@counter=0
+\newtcolorbox{exampleborderbox}[1][]{
+  empty,
+  title={Example \the\example@counter #1},
+  attach boxed title to top left,
+     minipage boxed title,
+  boxed title style={empty,size=minimal,toprule=0pt,top=1pt,left=3mm,overlay={}},
+  coltitle=blue,fonttitle=\bfseries,
+  parbox=false,boxsep=0pt,left=3mm,right=0mm,top=2pt,breakable,pad at break=0mm,
+     before upper=\csname @totalleftmargin\endcsname0pt, 
+  overlay unbroken={\draw[blue,line width=2pt] ([xshift=-0pt]title.north west) -- ([xshift=-0pt]frame.south west); },
+  overlay first={\draw[blue,line width=2pt] ([xshift=-0pt]title.north west) -- ([xshift=-0pt]frame.south west); },
+  overlay middle={\draw[blue,line width=2pt] ([xshift=-0pt]frame.north west) -- ([xshift=-0pt]frame.south west); },
+  overlay last={\draw[blue,line width=2pt] ([xshift=-0pt]frame.north west) -- ([xshift=-0pt]frame.south west); },
+  outer arc=4pt%
+}
+
+\ExplSyntaxOn
+\stexstyleexample{
+  \global\advance\example@counter by 1
+  \tl_if_empty:NTF\thistitle{
+    \begin{exampleborderbox}
+  }{
+    \begin{exampleborderbox}[ (\thistitle)]
+  }
+}{
+    \end{exampleborderbox}
+}
+
+\ExplSyntaxOff\makeatother
