@@ -1,9 +1,15 @@
-\usemodule[sTeX/Documentation]{macros?AllMacros}
-%\begin{smodule}{Aux Macros}
+\begin{smodule}{Aux Macros}
+  \importmodule[sTeX/Documentation]{macros?AllMacros}
 
-  \begin{function}{\stex_debug:nn}
+  \CodedocExplain
+
+  %^^A\CodedocExplainEXP
+  %^^A\CodedocExplainREXP
+  %^^A\CodedocExplainTF
+
+  \begin{sfunction}{stex_debug:nn}{\stex_debug:nn}
     \begin{syntax}
-      \cs{stex_debug:nn} \marg{prefix} \marg{msg}
+      \dcs \marg{prefix} \marg{msg}
     \end{syntax}
     Logs the debug message \marg{msg} under the prefix
     \marg{prefix}. A message is shown if its prefix
@@ -11,41 +17,475 @@
     package option |debug=|\meta{prefixes} or
     the environment variable |STEX_DEBUG=|\meta{prefixes},
     where the latter overrides the former.
-  \end{function}
+  \end{sfunction}
+
+  \begin{sfunction}{_stex_do_deprecation:n}{\_stex_do_deprecation:n}
+    TODO \dcs
+  \end{sfunction}
+
+\begin{sfragment}{Documents}
+
+  \begin{svariable}{l_stex_docheader_sect}{\l_stex_docheader_sect}
+    integer register keeping track of the current sectioning level:
+    \begin{itemize}
+      \item[0] part
+      \item[1] chapter
+      \item[2] section
+      \item[3] subsection
+      \item[4] subsubsection
+      \item[5] paragraph
+      \item[$>5$] subparagraph
+    \end{itemize}
+    \cs{setsectionlevel} sets \cs{l_stex_docheader_sect} to the corresponding
+    integer value.
+  \end{svariable}
+
+  \begin{sfunction}{stex_ref_new_doc_target:n}{\stex_ref_new_doc_target:n}
+    internal variant of \cs{sreflabel}. If the argument is empty,
+    the label is determined to be |REF|\meta{counter}
+    and \meta{counter} is increased.
+  \end{sfunction}
+
+
+\end{sfragment}
+
+
+\begin{sfragment}{Optional (Key-Value) Argument Handling}
+  \LaTeX3 is surprisingly weak when it comes to handling
+  optional (key-val) arguments in such a manner that
+  \emph{only} the freshly set macros are defined, and to modularly
+  build up sets of argument keys. The following macros attempt
+  to fix that:
+
+  \begin{sfunction}{stex_keys_define:nnnn,stex_keys_set:nn}{\stex_keys_define:nnnn,\stex_keys_set:nn}
+    \begin{syntax}
+      \dcs\marg{id}\marg{setup code}
+        \marg{keyval setup code}\marg{parents}
+    \end{syntax}
+    Defines a set of keys and their allowed values with 
+    identifier |stex/|\meta{id}, that inherits from
+    the sets with identifiers in \meta{parents}.
+
+    \dcs[stex_keys_set:nn]\marg{id}\marg{CSL} first executes
+    \meta{setup code} (e.g. to empty the macros holding the values) 
+    and then sets the keys in
+    set \meta{id} with the values provided in \meta{CSL}.
+  \end{sfunction}
+
+  \begin{sexample}
+    If we define a set of keys with:
+    \begin{stexcode}[gobble=6]
+      \stex_keys_define:nnnn{archive file}{
+        \str_clear:N \l_stex_key_archive_str
+        \str_clear:N \l_stex_key_file_str
+      }{
+        archive .str_set_x:N = \l_stex_key_archive_str ,
+        file    .str_set_x:N = \l_stex_key_file_str
+      }{id}
+    \end{stexcode}
+    then calling \cs{stex_keys_set:nn}|{archive file}{id=foo,file=bar}|
+    sets \cs{l_stex_key_file_str}|={bar}|, assures that
+    \cs{l_stex_key_archive_str} is empty, and executes the
+    code associated with |id|, i.e. it sets
+    \cs{l_stex_key_id_str}|={foo}|.
+  \end{sexample}
+
+\end{sfragment}
+
+\begin{sfragment}{Stylable Commands and Environments}
+
+  \stexmacro{stex_style_apply:}
+
+  \begin{sfunction}{stex_new_stylable_cmd:nnnn,l_stex_key_style_clist}{\stex_new_stylable_cmd:nnnn}
+    \begin{syntax}
+      \dcs\marg{name}\marg{arity}\marg{code}
+        \marg{default}
+    \end{syntax}
+    Creates a new macro \cs{}\meta{name} with expansion \meta{code} taking 
+    \meta{arity} many arguments, that is customizable in presentation 
+    by a user by calling \cs{stexstyle}\meta{name}.
+    On calling
+    \cs{stex_style_apply:} executes the presentation code provided
+    by a user.
+
+    \meta{code} should:
+    \begin{itemize}
+      \item Call \cs{stex_keys_set:nn}|{style}{...}| (or a keyset inheriting
+        from |style|),
+      \item set macros with prefix |\this...| that a user might want
+        to use for presentation (e.g. \cs{thistitle}),
+      \item call \cs{stex_style_apply:} at some point.
+    \end{itemize}
+  \end{sfunction}
+
+  \begin{sfunction}{stex_new_stylable_env:nnnnnnn}{\stex_new_stylable_env:nnnnnnn}
+    \begin{syntax}
+      \dcs\marg{name}\marg{arity}\marg{begincode}
+        \marg{endcode}\marg{default begin}\marg{default end}\marg{prefix}
+    \end{syntax}
+
+    Like \cs{stex_new_stylable_cmd:nnnn}, but defines a new environment
+    |{|\meta{prefix}\meta{name}|}| stylable via
+    \cs{stexstyle}\meta{name}. Should call \cs{stex_style_apply:} twice;
+    once in the \meta{begincode} and once in \meta{endcode}.
+  \end{sfunction}
+
+  \begin{sfunction}{stex_style_apply:}{\stex_style_apply:}
+    Sets \cs{thisstyle} to be the head of the CSL
+    \cs{l_stex_key_style_clist} and checks whether a style
+    for the current stylable macro/environment has been defined;
+    if not, executes the code for the default style.
+  \end{sfunction}
+
+  \begin{sexample}
+    \cs{importmodule} is defined something like the following:
+    \begin{stexcode}[gobble=6]
+      \stex_new_stylable_cmd:nnnn{importmodule}{O{} m}{
+        ... 
+        \def\thismoduleuri{...}
+        \def\thismodulename{...}
+        \stex_style_apply:
+        ...
+      }{}
+    \end{stexcode}
+    A user can then customize the output generated by \cs{importmodule}
+    (by default none) via 
+    \cs{stexstyleimportmodule}|{...|\cs{thismodulename}|...}|.
+  \end{sexample}
+
+  \begin{sexample}
+    \env{smodule} does something like
+    \begin{stexcode}[gobble=6]
+      \stex_new_stylable_env:nnnnnnn{module}{O{} m}{
+        ... 
+        \def\thismoduleuri{...}
+        \def\thismodulename{...}
+        \stex_style_apply:
+        ...
+      }{
+        ...
+        \stex_style_apply:
+        ...
+      }{}{}{s}
+    \end{stexcode}
+    which defines the environment name to be \env{smodule} and
+    generates \cs{stexstylemodule}.
+  \end{sexample}
+
+\end{sfragment}
+
+\begin{sfragment}{Math Archives}
+  Math archives are represented as \LaTeX3 property lists,
+  the keys/values of which correspond to the entries in the
+  archive's manifest file. The most important fields are
+  \begin{itemize}
+    \item |id|,
+    \item |narr| the document namespace,
+    \item |ns| the content namespace, and
+    \item |docurl| the document URL base.
+  \end{itemize}
+
+  \begin{svariable}{l_stex_current_archive_prop}{\l_stex_current_archive_prop}
+    \dcs always points to the current math archive or is \cs{undefined},
+    if the current file is not part of a math archive.
+  \end{svariable}
+
+  \begin{svariable}{c_stex_main_archive_prop}{\c_stex_main_archive_prop}
+    \dcs represents the math archive in which the main file
+    resides (if existent).
+  \end{svariable}
+
+  \begin{sfunction}{stex_require_archive:n}{\stex_require_archive:n,\stex_require_archive:o}
+    \begin{syntax}\dcs\marg{id}
+    \end{syntax}
+    looks for a math archive \meta{id} in the MathHub directory,
+    parses its manifest file, creates the corresponding property
+    list |\c_stex_mathhub_|\meta{id}|_manifest_prop|,
+    and throws a fatal error if the archive is not found.
+
+    If the archive has been found and parsed before, does nothing,
+    so it is cheap and safe to call repeatedly for the same id.
+  \end{sfunction}
+
+  \begin{sfunction}{stex_set_current_archive:n}{\stex_set_current_archive:n}
+    \begin{syntax}\dcs\marg{id}
+    \end{syntax}
+    Calls \cs{stex_require_archive:n}\marg{id} and sets
+    \cs{l_stex_current_archive_prop}.
+  \end{sfunction}
+
+  \begin{sfunction}{stex_in_archive:nn}{\stex_in_archive:nn}
+    \begin{syntax}\dcs\marg{opt-id}\marg{code}
+    \end{syntax}
+    Executes \meta{code} in the context of math archive \meta{opt-id}
+    (using \cs{stex_require_archive:n}), i.e.
+    iff \meta{opt-id} is non-empty, changes the current archive
+    to the one with id \meta{opt-id},
+    call \meta{code} with \meta{opt-id} as argument (in |#1|) and changes
+    it back afterwards.
+
+    If \meta{opt-id} is empty, \meta{code} is called with the id
+    of the \emph{current} math archive as |#1|, or with |#1| empty
+    if there is no current math archive.
+  \end{sfunction}
+
+\end{sfragment}
+
+\begin{sfragment}{Strings, File Paths, URIs}
+
+  \begin{sfunction}{stex_str_if_starts_with:nn}[pTF]{\stex_str_if_starts_with:nn}
+    \begin{syntax}\dcs\marg{first}\marg{second}
+    \end{syntax}
+      Checks whether the string \meta{first} starts with the string
+      \meta{second} (i.e. \meta{second} is a prefix of \meta{first}).
+  \end{sfunction}
+
+  \begin{sfunction}{stex_str_if_ends_with:nn}[pTF]{\stex_str_if_ends_with:nn}
+    \begin{syntax}\dcs\marg{first}\marg{second}
+    \end{syntax}
+      Checks whether the string \meta{first} ends with the string
+      \meta{second} (i.e. \meta{second} is a suffix of \meta{first}).
+  \end{sfunction}
+
+  \begin{sfragment}{File Paths}
+
+  \emph{File paths} are represented as \LaTeX3 sequences. The following
+  methods make sure to
+  \begin{itemize}
+    \item canonicalize paths, i.e. resolve |..| and |.| segments,
+    \item set all category codes to 12 (other), and
+    \item tranform windows file path including |\| uniformly to |/|.
+  \end{itemize}
+
+  \begin{sfunction}{stex_file_resolve:Nn}{\stex_file_resolve:Nn, \stex_file_resolve:No, \stex_file_resolve:Nx}
+    \begin{syntax}\dcs\marg{\cs{macro}}\marg{string}
+    \end{syntax}
+    resolves and canonicalizes the file path string \meta{string} and
+    stores the result in \cs{macro}. 
+  \end{sfunction}
+
+  \begin{sfunction}{stex_file_set:Nn}{\stex_file_set:Nn, \stex_file_set:No, \stex_file_set:Nx}
+    \begin{syntax}\dcs\marg{\cs{macro}}\marg{string}
+    \end{syntax}
+    represents an already canonicalized file string path as a
+    \LaTeX3 sequence and stores it in \cs{macro}.
+  \end{sfunction}
+
+  \begin{sfunction}{stex_if_file_absolute:N}[pTF]{\stex_if_file_absolute:N}
+    \dcs tests whether the given file path (represented as a canonicalized
+    \LaTeX3 sequence) is an absolute file path.
+  \end{sfunction}
+
+  \begin{sfunction}{stex_file_use:N}[EXP]{\stex_file_use:N}
+    \dcs expands to a string representation of the given file path.
+  \end{sfunction}
+
+  \begin{sfunction}{stex_if_file_starts_with:NN}[TF]{\stex_if_file_starts_with:NN}
+    \begin{syntax}\dcs\marg{\cs{first}}\marg{\cs{second}}
+    \end{syntax}
+    tests whether the file path \cs{first} is a child of \cs{second}.
+    \emph{(Not expandable)}
+  \end{sfunction}
+
+  \begin{sfunction}{stex_file_split_off_ext:NN}{\stex_file_split_off_ext:NN}
+    \begin{syntax}\dcs\marg{\cs{target}}\marg{\cs{source}}
+    \end{syntax}
+    splits off the file extension of \cs{source} and stores the resulting
+    file path in \cs{target}
+  \end{sfunction}
+
+  \begin{sfunction}{stex_file_split_off_lang:NN}{\stex_file_split_off_lang:NN}
+    \begin{syntax}\dcs\marg{\cs{target}}\marg{\cs{source}}
+    \end{syntax}
+    checks whether the file path \cs{source} ends with a language
+    abbreviation (e.g. |.en|), if so removes it, and stores the result
+    in \cs{target}.
+  \end{sfunction}
+
+  The following are primarily used in file hooks,
+  but might occasionally be useful to call manually:
+
+  \stexmacro{g_stex_current_file}
+  \stexmacro{c_stex_main_file}
+
+  \begin{sfunction}{stex_filestack_push:n}{\stex_filestack_push:n}
+    pushes the given file to the file stack, recomputing
+    \cs{g_stex_current_file}, the current language,
+    document URI and namespace.
+  \end{sfunction}
+
+  \begin{sfunction}{stex_filestack_pop:}{\stex_filestack_pop:}
+    pops the current top entry of the file stack. If the file stack
+    is empty, resets to \cs{c_stex_main_file}.
+  \end{sfunction}
+
+  \begin{sfragment}{File Path Constants and Variables}
+
+    \begin{svariable}{c_stex_pwd_file,c_stex_main_file}{\c_stex_pwd_file,\c_stex_main_file}
+      store the parent working directory and
+      the absolute path of the main file being processed
+      (with guessed file extension |.tex|).
+    \end{svariable}
+  
+    \begin{svariable}{c_stex_home_file}{\c_stex_home_file}
+      stores the user's home directory
+    \end{svariable}
+  
+    \begin{svariable}{c_stex_mathhub_file}{\c_stex_mathhub_file}
+      stores the user's MathHub directory;
+      its string representation is stored in \cs{mathhub}.
+    \end{svariable}
+  
+    \begin{svariable}{g_stex_current_file}{\g_stex_current_file}
+      always points to the \emph{current} file.
+    \end{svariable}
+
+  \end{sfragment}
+
+  \end{sfragment}
+
+  \begin{sfragment}{URIs}
+
+    \stexmacro{__stex_path_auth:n}
+    \stexmacro{__stex_path_path:n}
+    \stexmacro{__stex_path_module:n}
+    \stexmacro{__stex_path_name:n}
+    \begin{sparagraph}[style=symdoc,for={__stex_path_auth:n,%
+      __stex_path_path:n,__stex_path_module:n,__stex_path_name:n}]
+      For analogous reasons as for file paths, \mmt URIs are represented
+      as token lists of the form
+
+      |{|\cs{__stex_path_auth:n}\marg{authority}
+      \cs{__stex_path_path:n}\marg{path}
+      \cs{__stex_path_module:n}\marg{modulename}
+      \cs{__stex_path_name:n}\marg{declname}|}|,
+
+      all of which may be empty.
+    \end{sparagraph}
+
+    \begin{sfunction}{stex_map_uri:Nnnnn}{\stex_map_uri:Nnnnn}
+      \begin{syntax}
+        \dcs\marg{\cs{uri}}\marg{authority code}
+        \marg{path code}\marg{modulename code}\marg{declname code}
+      \end{syntax}
+      executes the provided \meta{code}s with the components
+      of the \cs{uri} as arguments.
+    \end{sfunction}
+
+    \begin{sfunction}{stex_uri_resolve:Nn}{\stex_uri_resolve:Nn, \stex_uri_resolve:No, \stex_uri_resolve:Nx}
+      behaves analogously to \cs{stex_file_resolve:Nn}.
+    \end{sfunction}
+
+    \begin{sfunction}{stex_uri_set:Nn}{\stex_uri_set:Nn, \stex_uri_set:No, \stex_uri_set:Nx}
+      behaves analogously to \cs{stex_file_set:Nn}.
+    \end{sfunction}
+
+    \begin{sfunction}{stex_uri_use:N}[EXP]{\stex_uri_use:N}
+      behaves analogously to \cs{stex_file_use:N}.
+    \end{sfunction}
+
+    A common usage of URIs is computing the namespace of content
+    elements (modules or documents) from the namespace of a math
+    archive and some relative file path within that archive.
+
+    \begin{sfunction}{stex_uri_from_repo_file:NNNn}{\stex_uri_from_repo_file:NNNn}
+      \begin{syntax}
+        \dcs\marg{\cs{target}}\marg{\cs{repo_prop}}\marg{\cs{filepath}}
+        \marg{ns_field}
+      \end{syntax}
+      computes the namespace URI from the property list
+      \cs{repo_prop} of some math archive, the file path
+      \cs{filepath} and the archive field \marg{ns_field}
+      (|narr| or |ns|), and stores the result in \cs{target}.
+    \end{sfunction}
+
+    \begin{sfunction}{stex_uri_from_repo_file_nolang:NNNn}{\stex_uri_from_repo_file_nolang:NNNn}
+      behaves like \cs{stex_uri_from_repo_file:NNNn}, but makes 
+      sure
+      to split off language abbreviations from the file name
+      (e.g. |.en|).
+    \end{sfunction}
+
+    \begin{sfunction}{stex_uri_from_current_file:Nn, stex_uri_from_current_file_nolang:Nn}{\stex_uri_from_current_file:Nn, \stex_uri_from_current_file_nolang:Nn}
+      Special cases for \cs{stex_uri_from_repo_file}|[_nolang]:NNNn|,
+      for \cs{repo_prop}|=|\cs{l_stex_current_archive_prop} and
+      \cs{filepath}|=|\cs{g_stex_current_file}.
+    \end{sfunction}
+
+    \stexmacro{l_stex_current_doc_uri}
+    \begin{sfunction}{stex_set_document_uri:}{\stex_set_document_uri:}
+      sets the current value of \cs{l_stex_current_doc_uri} based
+      on the current file and archive.
+    \end{sfunction}
+
+    \stexmacro{l_stex_current_ns_uri}
+    \begin{sfunction}{stex_set_current_namespace:}{\stex_set_current_namespace:}
+      sets the current value of \cs{l_stex_current_ns_uri} based
+      on the current file and archive.
+    \end{sfunction}
+
+    \begin{sfunction}{stex_uri_add_module:NNn}{\stex_uri_add_module:NNn, \stex_uri_add_module:NNo}
+      \begin{syntax}
+        \dcs\marg{\cs{target}}\marg{\cs{uri}}
+          \marg{name}
+      \end{syntax}
+      Checks that URI \cs{uri} has no module name, adds the provided
+      \meta{name} and stores the result in \cs{target}.
+    \end{sfunction}
+
+  \begin{sfragment}{URI Constants and Variables}
+
+    \begin{svariable}{l_stex_current_doc_uri}{\l_stex_current_doc_uri}
+      always points to the current document URI.
+    \end{svariable}
+
+    \begin{svariable}{l_stex_current_ns_uri}{\l_stex_current_ns_uri}
+      always points to the current content namespace.
+    \end{svariable}
+
+  \end{sfragment}
+    
+  \end{sfragment}
+
+\end{sfragment}
 
 \begin{sfragment}{Language Handling}
-  \begin{variable}{\c_stex_languages_prop,\c_stex_language_abbrevs_prop}
+  \begin{svariable}{c_stex_languages_prop,c_stex_language_abbrevs_prop}{\c_stex_languages_prop,\c_stex_language_abbrevs_prop}
     Property lists converting babel languages to/from their abreviations;
     e.g.
     \begin{itemize}
-      \item |\prop_item:Nn \c_stex_languages_prop {de}| yields |ngerman|, and 
-      \item |\c_stex_language_abbrevs_prop {ngerman}| yields |de|.
+      \item |\prop_item:Nn |\cs{c_stex_languages_prop}| {de}| yields |ngerman|, and 
+      \item \cs{c_stex_language_abbrevs_prop}| {ngerman}| yields |de|.
     \end{itemize}  
-  \end{variable}
-  \begin{variable}{\l_stex_current_language_str}
-    Always stores the current language.
-  \end{variable}
+  \end{svariable}
 
-  \begin{function}{\stex_set_language:n, \stex_set_language:x, \stex_set_language:o}
-    \begin{syntax}\cs{stex_set_language:n}\marg{abbrev}\end{syntax}
+  \begin{svariable}{l_stex_current_language_str}{\l_stex_current_language_str}
+    always stores the current language.
+  \end{svariable}
+
+  \begin{sfunction}{stex_set_language:n}{\stex_set_language:n, \stex_set_language:x, \stex_set_language:o}
+    \begin{syntax}\dcs\marg{abbrev}\end{syntax}
     Sets \cs{l_stex_current_language_str}, and, if the \pkg{babel}
     package is loaded, calls \cs{selectlangage} on the
     language corresponding to \marg{abbrev}.
 
-    If \marg{abbrev}|=tr|, additionally call \cs{selectlanguage}
+    Note that the package option |lang=| automatically loads the
+    \pkg{babel} package.
+
+    If \meta{abbrev}|=tr|, additionally call \cs{selectlanguage}
     with the option |shorthands=:!|.
 
     Throws |error/unknownlanguage| if no language with abbreviation
     \marg{abbrev} is known.
-  \end{function}
+  \end{sfunction}
 
-  \begin{function}{\stex_language_from_file:}
-    Infers the current language from file ending (e.g. |.en.tex|)
+  \begin{sfunction}{stex_language_from_file:}{\stex_language_from_file:}
+    infers the current language from file ending (e.g. |.en.tex|)
     and sets it appropriately.
 
     Is called in a file hook, i.e. always switches language when inputting
     a file |.<lang>.<ext>|.
-  \end{function}
+  \end{sfunction}
 
 \end{sfragment}
 
@@ -54,71 +494,118 @@
   multiple macros exist to insert annotations. The same macros
   are also valid in \PDF mode but implemented as null operations.
 
-  \begin{function}{\stex_suppress_html:n}
-    \begin{syntax}\cs{stex_suppress_html:n}\marg{code}\end{syntax}
-    Turns annotations off temporarily in \marg{code} (e.g. as to not 
+  \begin{sfunction}{stex_suppress_html:n}{\stex_suppress_html:n}
+    \begin{syntax}\dcs\marg{code}\end{syntax}
+    turns annotations off temporarily in \meta{code} (e.g. as to not 
     generate additional annotations for elaborated declarations, 
     or in sms-mode).
-  \end{function}
+  \end{sfunction}
 
   For that to work, code that inserts annotations should use
-  \begin{function}[pTF]{\stex_if_do_html:}
-    Whether to generate \HTML annotations.
-  \end{function}
+  \begin{sfunction}{stex_if_do_html:}[pTF]{\stex_if_do_html:}
+    tests whether to generate \HTML annotations.
+  \end{sfunction}
 
-  \begin{function}{\stex@backend}
-    Should be set by a backend engine, such that a file
-    |stex-backend-|\cs{stex@backend}|.cfg| exists.
-  \end{function}
+  \begin{sfunction}{stex@backend}{\stex@backend}
+    should be set by a backend engine, such that a file
+    |stex-backend-|\dcs{}|.cfg| exists.
+  \end{sfunction}
+
+  \begin{sfragment}{Backend macros}
 
   Such a backend config file should provide the following:
 
-  \begin{function}[pTF]{\stex_if_html_backend:}
-    Can be used to determine whether the backend produces \HTML (e.g.
+  \begin{sfunction}{stex_if_html_backend:}[pTF]{\stex_if_html_backend:}
+    can be used to determine whether the backend produces \HTML (e.g.
     \rustex or \LaTeXML) or not (e.g. |pdflatex|).
     
     \cs{ifstexhtml} is set accordingly.
-  \end{function}
+  \end{sfunction}
 
-  \begin{function}{\stex_annotate:nnn}
-    \begin{syntax} \cs{stex_annotate:nnn}\marg{attr}\marg{value}\marg{code}
+  \begin{sfunction}{stex_annotate:nnn}{\stex_annotate:nnn}
+    \begin{syntax} \dcs\marg{attr}\marg{value}\marg{code}
     \end{syntax}
-    In \HTML mode, annotates the output of \marg{code} with the 
-    \XML-attribute \marg{attr}|="|\marg{value}|"|. In \PDF mode, just
-    calls \marg{code}.
-  \end{function}
+    In \HTML mode, annotates the output of \meta{code} with the 
+    \XML-attribute \meta{attr}|="|\meta{value}|"|. In \PDF mode, just
+    calls \meta{code}.
+  \end{sfunction}
 
-  \begin{function}{\stex_annotate_invisible:nnn,\stex_annotate_invisible:n}
-    \begin{syntax} \cs{stex_annotate_invisible:n}\marg{code}
+  \begin{sfunction}{stex_annotate_invisible:nnn,stex_annotate_invisible:n}{\stex_annotate_invisible:nnn,\stex_annotate_invisible:n}
+    \begin{syntax} \dcs[stex_annotate_invisible:n]\marg{code}
     \end{syntax}
 
-    Should annotate \marg{code} with
-    |shtml:visible="false" style="display:none;"|. In \PDF mode, does nothing.
+    Should annotate \meta{code} with
+    |shtml:visible="false" style="display:none;"|. In \PDF mode, does 
+    nothing.
 
-    \cs{stex_annotate_invisible:nnn} combines \cs{stex_annotate_invisible:n}
+    \dcs combines \cs{stex_annotate_invisible:n}
     and \cs{stex_annotate:nnn}.
-  \end{function}
+  \end{sfunction}
 
-  \DescribeEnv{stex_annotate_env}
-    \cs{begin}|{stex_annotate_env}|\marg{key}\marg{value}
+
+  \begin{senv}{stex_annotate_env}
+    \cs{begin}|{|\denv|}|\marg{attr}\marg{value}
     \meta{code}
-    \cs{end}|{stex_annotate_env}| should behave
+    \cs{end}|{|\denv|}| should behave
     like \cs{stex_annotate:nnn}\marg{attr}\marg{value}\marg{code}
+  \end{senv}
 
-  \begin{function}{\stex_mathml_intent:nn,\stex_mathml_arg:nn}
+  \begin{sfunction}{stex_mathml_intent:nn,stex_mathml_arg:nn}{\stex_mathml_intent:nn,\stex_mathml_arg:nn}
     MathML Intent (TODO)
-  \end{function}
+  \end{sfunction}
+
+  \end{sfragment}
+
+\end{sfragment}
+
+\begin{sfragment}{Persisting Content from Math Archives in sms-Files}
+
+  \begin{sfunction}{stex_persist:n}{\stex_persist:n,\stex_persist:o,\stex_persist:x}
+    \begin{syntax}\dcs\marg{code}\end{syntax}
+    writes \meta{code} to the \cs{jobname}|.sms|-file iff
+    the package option |writesms| or the environment variable
+    |STEX_WRITESMS| is set (the latter overrides the former).
+  \end{sfunction}
 
 \end{sfragment}
 
 
 \begin{sfragment}{Utility Methods}
 
-  \begin{function}{\stex_kpsewhich:Nn}
-    \begin{syntax}
-      \cs{stex_kpsewhich:Nn} \marg{\cs{macro}} \marg{args}
+  \begin{sfunction}{stex_macro_body:N}[EXP]{\stex_macro_body:N}
+    expands to the \emph{expansion} of the provided macro,
+    including parameter tokens, with the original category codes intact; 
+    e.g. if |\def\foo#1{First #1}|,
+    then \dcs\cs{foo} expands to
+    |First #1|.
+  \end{sfunction}
+
+  \begin{sfunction}{stex_macro_definition:N}[EXP]{\stex_macro_definition:N}
+    expands to the token list \emph{defining} the provided macro,
+    including parameters, command attributes (i.e. \cs{long}, 
+    \cs{protected}), with the original category codes intact; 
+    e.g. if |\protected\def\foo#1{First #1}|,
+    then \dcs\cs{foo} expands to
+    |\protected\def\foo#1{First #1}|.
+
+    \begin{texnote} Does not work with ``higher'' parameter
+    tokens, i.e. |##1|, |####1| etc.\end{texnote}
+  \end{sfunction}
+
+  \begin{sfunction}{stex_deactivate_macro:Nn, stex_reactivate_macro:N}{\stex_deactivate_macro:Nn, \stex_reactivate_macro:N}
+    \begin{syntax}\dcs \marg{\cs{macro}} \marg{msg}
     \end{syntax}
-    Calls ``|kpsewhich| \marg{args}'' and stores the result
+    Makes \cs{macro} throw an error message |error/deactivated-macro|\marg{msg},
+    notifying an author that the macro is only allowed in certain environments.
+
+    \dcs[stex_reactivate_macro:N] restores the functionality of the macro.
+  \end{sfunction}
+
+  \begin{sfunction}{stex_kpsewhich:Nn}{\stex_kpsewhich:Nn}
+    \begin{syntax}
+      \dcs \marg{\cs{macro}} \marg{args}
+    \end{syntax}
+    Calls ``|kpsewhich| \meta{args}'' and stores the result
     in \cs{macro},
 %^^A     Foo
     \begin{texnote} 
@@ -130,50 +617,61 @@
 %^^A       \item Narf?
 %^^A     \end{arguments}
 %^^A
-  \end{function}
+  \end{sfunction}
 
-  \begin{function}{\stex_get_env:Nn}
+  \begin{sfunction}{stex_get_env:Nn}{\stex_get_env:Nn}
     \begin{syntax}
-      \cs{stex_get_env:Nn} \marg{\cs{macro}} \marg{envvar}
+      \dcs \marg{\cs{macro}} \marg{envvar}
     \end{syntax}
-    Stores the value of the environment variable \marg{envvar}
+    Stores the value of the environment variable \meta{envvar}
     in \cs{macro}.
-  \end{function}
+  \end{sfunction}
 
-  \begin{function}{\_stex_fatal_error:n,\_stex_fatal_error:nnn,\_stex_fatal_error:nxx}
+  \begin{sfunction}{stex_fatal_error:n}{\stex_fatal_error:n,\stex_fatal_error:nnn,\stex_fatal_error:nxx}
     Mimic the \cs{msg_error:}-macros, but make sure that \TeX\ stops
     processing.
     \begin{texnote} 
       Calls |\input{non-existent file}|.
     \end{texnote}
-  \end{function}
+  \end{sfunction}
+
+  \begin{sfunction}{stex_ignore_spaces_and_pars:}{\stex_ignore_spaces_and_pars:}
+    As the name suggests, ignores all subsequent spaces and \cs{par}s
+    until the first non-expandable macro is encountered.
+
+    Useful for e.g. ending \cs{symdecl} and related macros with,
+    so that formatting sources with empty lines does not cause 
+    paragraph breaks.
+  \end{sfunction}
 
   \begin{sfragment}{Group-like Behaviours}
 
-    \begin{function}{\stex_pseudogroup_with:nn}
-      \begin{syntax}\cs{stex_pseudogroup_with:nn}\marg{macros}\marg{code}
+    \begin{sfunction}{stex_pseudogroup_with:nn}{\stex_pseudogroup_with:nn}
+      \begin{syntax}\dcs\marg{macros}\marg{code}
       \end{syntax}
-      Calls \marg{code} and subsequently restores the values of the
-      \marg{macros} given.
+      Calls \meta{code} and subsequently restores the values of the
+      \meta{macros} given.
       \begin{texnote}
         Does \emph{not} work recursively!
       \end{texnote} 
-    \end{function}
+    \end{sfunction}
 
-    \begin{function}{\stex_pseudogroup:nn}
-      \begin{syntax}\cs{stex_pseudogroup:nn}\marg{code1}\marg{code2}
+    \stexmacro{stex_pseudogroup_restore:N}
+
+    \begin{sfunction}{stex_pseudogroup:nn}{\stex_pseudogroup:nn}
+      \begin{syntax}\dcs\marg{code1}\marg{code2}
       \end{syntax}
-      Expands \marg{code2}, and inserts the result after \marg{code1}. 
+      Expands \meta{code2}, and inserts the result after \meta{code1}. 
       Works recursively and
       allows for restoring the values of macros in combination with
       \cs{stex_pseudogroup_restore:N}, but \emph{only for macros
       that take no arguments}:
-    \end{function}
+    \end{sfunction}
 
-    \begin{function}[EXP]{\stex_pseudogroup_restore:N}
-      \begin{syntax}\cs{stex_pseudogroup_restore:N}\marg{macro}
+    \begin{sfunction}{stex_pseudogroup_restore:N}[EXP]{\stex_pseudogroup_restore:N}
+      \begin{syntax}\dcs\marg{\cs{macro}}
       \end{syntax}
-    \end{function}
+    \end{sfunction}
 
     \begin{sexample}
       \begin{stexcode}[gobble=8]
@@ -196,27 +694,24 @@
     and then execute the relevant code \emph{in the metagroup with that
     identifier}:
     
-    \begin{function}{\stex_metagroup_new:n, \stex_metagroup_new:o}
-      \begin{syntax}\cs{stex_metagroup_new:n} \marg{id}\end{syntax}
+    \begin{sfunction}{stex_metagroup_new:n}{\stex_metagroup_new:n, \stex_metagroup_new:o}
+      \begin{syntax}\dcs \marg{id}\end{syntax}
       Opens a new metagroup at the current \TeX\ group level with
-      identifier \marg{id}.
-    \end{function}
+      identifier \meta{id}.
+    \end{sfunction}
 
-    \begin{function}{\stex_metagroup_do_in:nn, \stex_metagroup_do_in:nx}
-      \begin{syntax}\cs{stex_metagroup_do_in:nn} \marg{id}\marg{code}\end{syntax}
-      Executes \marg{code} and adds its content to \cs{aftergroup} up
-      until the \TeX\ group level of the metagroup with identifier \marg{id}.
-    \end{function}
-
-
-
-
-
+    \begin{sfunction}{stex_metagroup_do_in:nn}{\stex_metagroup_do_in:nn, \stex_metagroup_do_in:nx}
+      \begin{syntax}\dcs \marg{id}\marg{code}\end{syntax}
+      Executes \meta{code} and adds its content to \cs{aftergroup} up
+      until the \TeX\ group level of the metagroup with identifier 
+      \meta{id}.
+    \end{sfunction}
 
   \end{sfragment}
 
 \end{sfragment}
-%\end{smodule}
+
+\end{smodule}
 
 %^^A^^A   \begin{TemplateInterfaceDescription}{foo}
 %^^A^^A     \TemplateArgument{1}{Something Here}
@@ -358,13 +853,13 @@
 %^^A   \begin{variable}{\mathhub,\c_stex_mathhub_file}
 %^^A     Foo
 %^^A   \end{variable}
-%^^A   \begin{function}{\stex_require_repository:n, \stex_require_repository:o}
+%^^A   \begin{function}{\stex_require_archive:n, \stex_require_archive:o}
 %^^A     Foo
 %^^A   \end{function}
-%^^A   \begin{function}{\stex_set_current_repository:n}
+%^^A   \begin{function}{\stex_set_current_archive:n}
 %^^A     Foo
 %^^A   \end{function}
-%^^A   \begin{variable}{\c_stex_mathhub_main_manifest_prop, \l_stex_current_repository_prop}
+%^^A   \begin{variable}{\c_stex_mathhub_main_manifest_prop, \l_stex_current_archive_prop}
 %^^A     Foo
 %^^A   \end{variable}
 %^^A   \begin{variable}{\l_stex_current_doc_uri}
