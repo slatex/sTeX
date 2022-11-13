@@ -1413,17 +1413,97 @@
   }
   \__stex_refs_do_sref_in:n{#2}
 }
-\cs_new_protected:Nn \stex_ref_new_sym_target:n {
-  % TODO
+
+\cs_new_protected:Npn \STEXInternalSetSrefSymURL #1 #2 {
+  \bool_gset_false:c{g_stex_sref_sym_\tl_to_str:n{#1}_ref}
+  \str_gset:cn{g_stex_sref_sym_\tl_to_str:n{#1}_target}{#2}
 }
-\NewDocumentCommand \srefsym { O{} m}{
-  \stex_get_symbol:n { #2 }
-  \__stex_refs_sym_aux:nn{#1}{\l_stex_get_symbol_uri_str}
+\cs_new_protected:Npn \STEXInternalSetSrefSymLabel #1 {
+  \bool_gset_true:c{g_stex_sref_sym_\tl_to_str:n{#1}_ref}
 }
 
-\cs_new_protected:Nn \__stex_refs_sym_aux:nn {} % TODO
-\cs_new_protected:Npn \srefsymuri #1 #2 { % TODO
-  #2%\__stex_refs_sym_aux:nn{linktext={#2}}{#1}
+\cs_new_protected:Nn \stex_ref_new_symbol:n {
+  \bool_if_exist:cF{g_stex_sref_sym_\tl_to_str:n{#1}_ref}{
+    \prop_if_exist:NTF \l_stex_current_archive_prop {
+      \prop_get:NnNTF \l_stex_current_archive_prop {docurl} \l__stex_refs_str {
+        \exp_args:Ne \use:n {
+          \STEXInternalSetSrefSymURL{#1}{\l__stex_refs_str / symbol? #1}
+          \iow_now:Nn\@auxout{\STEXInternalSetSrefSymURL{#1}{\l__stex_refs_str / symbol? #1}}
+        }
+      }{
+        \STEXInternalSetSrefSymURL{#1}{}
+        \iow_now:Nn\@auxout{\STEXInternalSetSrefSymURL{#1}{}}
+      }
+    }{
+      \STEXInternalSetSrefSymURL{#1}{}
+      \iow_now:Nn\@auxout{\STEXInternalSetSrefSymURL{#1}{}}
+    }
+  }
+}
+
+\cs_new_protected:Nn \stex_ref_new_sym_target:n {
+  \stex_if_smsmode:TF{
+    \stex_ref_new_symbol:n{#1}
+  }{
+    \STEXInternalSetSrefSymLabel{#1}
+    \iow_now:Nn\@auxout{\STEXInternalSetSrefSymLabel{#1}}
+    \exp_args:Ne \label{\tl_to_str:n{sref_sym_ #1}}
+  }
+}
+
+\cs_new_protected:Nn \stex_ref_new_sym_target:nn {
+  \str_if_eq:nnTF{#1}{#2}{
+    \stex_ref_new_sym_target:n{#1}
+  }{
+    \stex_persist:n{
+      \str_gset:cn{g_stex_sref_sym_ #1 _label}{#2}
+    }
+    \str_gset:cn{g_stex_sref_sym_ #1 _label}{#2}
+  }
+}
+\AddToHook{begindocument/before}{
+  \cs_set_eq:NN \__stex_refs_old_newlabel_cs: \newlabel
+  \cs_set:Npn \newlabel #1 {
+    \exp_args:Ne \__stex_refs_old_newlabel_cs: {\tl_to_str:n{#1}}
+  }
+}
+\NewDocumentCommand \srefsym { m m}{
+  \stex_get_symbol:n { #1 }
+  \exp_args:Ne
+  \__stex_refs_sym_aux:nn{\l_stex_get_symbol_mod_str ? \l_stex_get_symbol_uri_str}
+}
+
+\cs_new_protected:Npn \__stex_refs_do_internal_link:nn #1 {
+  \cs_if_exist:NTF \hyperref {
+    \hyperref[#1]
+  }\use:n
+}
+
+\cs_new_protected:Npn \__stex_refs_do_url_link:nn {
+  \cs_if_exist:NTF \href \href \use_ii:nn
+}
+
+\cs_new_protected:Npn \__stex_refs_sym_aux:nn #1 {
+  \bool_if_exist:cTF{g_stex_sref_sym_#1_ref}{
+    \bool_if:cTF{g_stex_sref_sym_#1_ref}{
+      \exp_args:Ne \__stex_refs_do_internal_link:nn{\tl_to_str:n{sref_sym_#1}}
+    }{
+      \str_if_empty:cTF{g_stex_sref_sym_#1_target}{
+        \exp_args:Ne \__stex_refs_do_internal_link:nn{\tl_to_str:n{sref_sym_#1}}
+      }{
+        \exp_args:Ne \__stex_refs_do_url_link:nn{\use:c{g_stex_sref_sym_#1_target}}
+      }
+    }
+  }{
+    \str_if_exist:cTF{g_stex_sref_sym_#1_label}{
+      \exp_args:Ne \__stex_refs_sym_aux:nn{\use:c{g_stex_sref_sym_#1_label}}
+    }{
+      \exp_args:Ne \__stex_refs_do_internal_link:nn{\tl_to_str:n{sref_sym_#1}}
+    }
+  }
+}
+\cs_new_protected:Npn \srefsymuri #1 { % TODO
+  \__stex_refs_sym_aux:nn{#1}
 }
 \newif \ifinputref \inputreffalse
 
@@ -2875,6 +2955,8 @@
     \stex_invoke_symbol:
   }
   \_stex_symdecl_macro:
+  \exp_args:Ne \stex_ref_new_symbol:n
+    {\l_stex_current_module_str?\l_stex_key_name_str}
 }
 
 \cs_new_protected:Nn \_stex_symdecl_check_terms: {
@@ -3637,8 +3719,7 @@
   \tl_set_eq:NN \l_stex_get_symbol_invoke_cs #7
 }
 
-\cs_new_protected:Nn \stex_get_symbol_or_var:n {
-  \str_clear:N \l_stex_get_symbol_name_str
+\cs_new_protected:Nn \__stex_vars_get_var:n {
   \stex_pseudogroup_with:nn{\_stex_variable:nnnnnnnN}{
     \cs_set:Npn \_stex_variable:nnnnnnnN ##1 ##2 ##3 ##4 ##5 ##6 ##7 ##8 {
       \str_if_eq:nnTF{#1}{##1}{
@@ -3651,6 +3732,19 @@
     }
     \l_stex_variables_seq
   }
+}
+
+\cs_new_protected:Nn \stex_get_var:n {
+  \str_clear:N \l_stex_get_symbol_name_str
+  \__stex_vars_get_var:n{#1}
+  \str_if_empty:NT \l_stex_get_symbol_name_str {
+    \msg_error:nnn{stex}{error/unknownsymbol}{#1}
+  }
+}
+
+\cs_new_protected:Nn \stex_get_symbol_or_var:n {
+  \str_clear:N \l_stex_get_symbol_name_str
+  \__stex_vars_get_var:n{#1}
   \str_if_empty:NT \l_stex_get_symbol_name_str {
     \stex_debug:nn{symbols}{No~variable~#1~found}
     \stex_get_symbol:n{#1}
@@ -4365,11 +4459,6 @@
   \l_stex_get_symbol_return_tl
   \l_stex_get_symbol_invoke_cs
 }
-\NewDocumentCommand \symref { O{} m m} {
-  \stex_keys_set:nn{symname}{#1}
-  \__stex_expr_do_ref:nn{#2}{#3}
-}
-\let\sr\symref
 
 \stex_keys_define:nnnn{symname}{
   \tl_clear:N \l_stex_key_pre_tl
@@ -4381,20 +4470,32 @@
   root   .code:n     = {}%.tl_set:N   = \l_stex_key_root_tl
 }{}
 
-\NewDocumentCommand \symname { O{} m} {
+\NewDocumentCommand \symref { O{} m m} {
+  \group_begin:
   \stex_keys_set:nn{symname}{#1}
-  \__stex_expr_do_ref:nn{#2}{
+  \stex_get_symbol:n{#2}
+  \__stex_expr_do_ref:nN{#3}\symrefemph@uri
+}
+\let\sr\symref
+
+\NewDocumentCommand \symname { O{} m} {
+  \group_begin:
+  \stex_keys_set:nn{symname}{#1}
+  \stex_get_symbol:n{#2}
+  \__stex_expr_do_ref:nN{
     \l_stex_key_pre_tl\l_stex_get_symbol_name_str\l_stex_key_post_tl
-  }
+  }\symrefemph@uri
 }
 \let\sn\symname
 \protected\def\sns{\symname[post=s]}
 
 \NewDocumentCommand \Symname { O{} m} {
+  \group_begin:
   \stex_keys_set:nn{symname}{#1}
-  \__stex_expr_do_ref:nn{#2}{
+  \stex_get_symbol:n{#2}
+  \__stex_expr_do_ref:nN{
     \l_stex_key_pre_tl\exp_after:wN\_stex_capitalize:n\l_stex_get_symbol_name_str\l_stex_key_post_tl
-  }
+  }\symrefemph@uri
 }
 \cs_new_protected:Nn \_stex_capitalize:n {
   \uppercase{#1}
@@ -4410,10 +4511,33 @@
  }
 }
 
-\cs_new_protected:Nn \__stex_expr_do_ref:nn {
-  \stex_if_html_backend:T{\ifvmode\indent\fi}
+\NewDocumentCommand \varref { O{} m m} {
   \group_begin:
-  \stex_get_symbol:n{#1}
+  \stex_keys_set:nn{symname}{#1}
+  \stex_get_var:n{#2}
+  \__stex_expr_do_ref:nN{#3}\varemph@uri
+}
+
+\NewDocumentCommand \varname { O{} m} {
+  \group_begin:
+  \stex_keys_set:nn{symname}{#1}
+  \stex_get_var:n{#2}
+  \__stex_expr_do_ref:nN{
+    \l_stex_key_pre_tl\l_stex_get_symbol_name_str\l_stex_key_post_tl
+  }\varemph@uri
+}
+
+\NewDocumentCommand \Varname { O{} m} {
+  \group_begin:
+  \stex_keys_set:nn{symname}{#1}
+  \stex_get_var:n{#2}
+  \__stex_expr_do_ref:nN{
+    \l_stex_key_pre_tl\exp_after:wN\_stex_capitalize:n\l_stex_get_symbol_name_str\l_stex_key_post_tl
+  }\varemph@uri
+}
+
+\cs_new_protected:Nn \__stex_expr_do_ref:nN {
+  \stex_if_html_backend:T{\ifvmode\indent\fi}
   \bool_if:NTF \l_stex_allow_semantic_bool{
     \str_set:Nx\stex_current_symbol_str
       {\l_stex_get_symbol_mod_str ? \l_stex_get_symbol_name_str}
@@ -4424,8 +4548,8 @@
       }
     }
     \def\comp{\_comp}
-    \let\compemph@uri\symrefemph@uri
-    \_stex_term_oms:n{\comp{#2}}
+    \let\compemph@uri#2
+    \_stex_term_oms:n{\comp{#1}}
   }{
     \msg_error:nnnx{stex}{error/notallowed}{#1}{\stex_current_symbol_str}
   }
@@ -4979,6 +5103,10 @@
     \exp_args:NNo \exp_args:Nno \stex_add_module_decl:nnnnnnnN
       \l_stex_key_macroname_str \l_stex_key_name_str {0}
       {}{DEFINED}{}{}\stex_invoke_symbol:
+    \exp_args:Ne \stex_ref_new_sym_target:n {\l_stex_current_module_str?\l_stex_key_name_str}
+  }
+  \seq_map_inline:Nn \l__stex_statements_fors_seq {
+    \stex_ref_new_sym_target:n{##1}
   }
   \stex_reactivate_macro:N \definiendum
   \stex_reactivate_macro:N \definame
@@ -4994,7 +5122,6 @@
 
 \cs_new_protected:Nn \__stex_statements_do_defref:nn {
   \stex_if_html_backend:T{\ifvmode\indent\fi}
-  \rustexBREAK
   \group_begin:
   \stex_get_symbol:n{#1}
   \bool_if:NTF \l_stex_allow_semantic_bool{
@@ -5006,6 +5133,7 @@
         /\_stex_args_end:
       }
     }
+    \exp_args:No \stex_ref_new_sym_target:n \stex_current_symbol_str
     \def\comp{\_comp}
     \let\compemph@uri\defemph@uri
     \stex_annotate:nnn{shtml:definiendum}{\stex_current_symbol_str}{\comp{#2}}
@@ -5064,7 +5192,7 @@
   %      }
   %    }
   %} TODO add definiens to symbol
-  \stex_annotate:nnn{ shtml:definiens }{\l_stex_get_symbol_uri_str}{ #2 }
+  \stex_annotate:nnn{ shtml:definiens }{\l__stex_statements_uri_str}{ #2 }
 }
 
 \group_begin:

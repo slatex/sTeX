@@ -46,6 +46,36 @@
     and \meta{counter} is increased.
   \end{sfunction}
 
+  \begin{sfunction}{stex_ref_new_symbol:n}{\stex_ref_new_symbol:n}
+    registers a new link target for the symbol with the given full uri 
+    (as string), using the |url-base|-field of the current
+    archive's manifest file to link the symbol to
+    \meta{url-base}|/symbol?|\meta{uri}.
+  \end{sfunction}
+
+  \begin{sfunction}{stex_ref_new_sym_target:n}{\stex_ref_new_sym_target:n}
+    sets a new label for the symbol with the given full uri (as string).
+    If called in sms-mode, defers to \cs{stex_ref_new_symbol:n},
+    if not already registered. 
+    Otherwise, sets a \cs{label} for the symbol.
+  \end{sfunction}
+
+  \begin{sfunction}{stex_ref_new_sym_target:nn}{\stex_ref_new_sym_target:nn}
+    \begin{syntax}\dcs\marg{symbol}\marg{target}
+    \end{syntax}
+    redirects links for \meta{symbol} to the one for the symbol
+    \meta{target}. Useful for e.g. symbols elaborated from
+    structural features. Note that this acts as a \emph{default},
+    in that previous or subsequent 
+    calls of \cs{stex_ref_new_sym_target:n}\marg{symbol}
+    are prioritized.
+
+    Requires that either \cs{stex_ref_new_sym_target:n}\marg{target}
+    or
+    \cs{stex_ref_new_sym_target:nn}\marg{target}\marg{other-target}
+    have been called previously.
+  \end{sfunction}
+
 
 \end{sfragment}
 
@@ -74,13 +104,16 @@
 
   \begin{sexample}
     If we define a set of keys with:
+    \stexvarmacro{l_stex_key_archive_str}
+    \stexvarmacro{l_stex_key_file_str}
+    \stexvarmacro{l_stex_key_id_str}
     \begin{stexcode}[gobble=6]
-      \stex_keys_define:nnnn{archive file}{
-        \str_clear:N \l_stex_key_archive_str
-        \str_clear:N \l_stex_key_file_str
+      |\cs{stex_keys_define:nnnn}|{archive file}{
+        \str_clear:N |\cs{l_stex_key_archive_str}|
+        \str_clear:N |\cs{l_stex_key_file_str}|
       }{
-        archive .str_set_x:N = \l_stex_key_archive_str ,
-        file    .str_set_x:N = \l_stex_key_file_str
+        archive .str_set_x:N = |\cs{l_stex_key_archive_str}| ,
+        file    .str_set_x:N = |\cs{l_stex_key_file_str}|
       }{id}
     \end{stexcode}
     then calling \cs{stex_keys_set:nn}|{archive file}{id=foo,file=bar}|
@@ -140,11 +173,11 @@
   \begin{sexample}
     \cs{importmodule} is defined something like the following:
     \begin{stexcode}[gobble=6]
-      \stex_new_stylable_cmd:nnnn{importmodule}{O{} m}{
+      |\cs{stex_new_stylable_cmd:nnnn}|{importmodule}{O{} m}{
         ... 
-        \def\thismoduleuri{...}
-        \def\thismodulename{...}
-        \stex_style_apply:
+        \def|\cs{thismoduleuri}|{...}
+        \def|\cs{thismodulename}|{...}
+        |\cs{stex_style_apply:}|
         ...
       }{}
     \end{stexcode}
@@ -156,15 +189,15 @@
   \begin{sexample}
     \env{smodule} does something like
     \begin{stexcode}[gobble=6]
-      \stex_new_stylable_env:nnnnnnn{module}{O{} m}{
+      |\cs{stex_new_stylable_env:nnnnnnn}|{module}{O{} m}{
         ... 
-        \def\thismoduleuri{...}
-        \def\thismodulename{...}
-        \stex_style_apply:
+        \def|\cs{thismoduleuri}|{...}
+        \def|\cs{thismodulename}|{...}
+        |\cs{stex_style_apply:}|
         ...
       }{
         ...
-        \stex_style_apply:
+        |\cs{stex_style_apply:}|
         ...
       }{}{}{s}
     \end{stexcode}
@@ -257,6 +290,7 @@
     \item tranform windows file path including |\| uniformly to |/|.
   \end{itemize}
 
+  \stexvarmacro{macro}
   \begin{sfunction}{stex_file_resolve:Nn}{\stex_file_resolve:Nn, \stex_file_resolve:No, \stex_file_resolve:Nx}
     \begin{syntax}\dcs\marg{\cs{macro}}\marg{string}
     \end{syntax}
@@ -280,6 +314,8 @@
     \dcs expands to a string representation of the given file path.
   \end{sfunction}
 
+  \stexvarmacro{first}
+  \stexvarmacro{second}
   \begin{sfunction}{stex_if_file_starts_with:NN}[TF]{\stex_if_file_starts_with:NN}
     \begin{syntax}\dcs\marg{\cs{first}}\marg{\cs{second}}
     \end{syntax}
@@ -287,6 +323,8 @@
     \emph{(Not expandable)}
   \end{sfunction}
 
+  \stexvarmacro{source}
+  \stexvarmacro{target}
   \begin{sfunction}{stex_file_split_off_ext:NN}{\stex_file_split_off_ext:NN}
     \begin{syntax}\dcs\marg{\cs{target}}\marg{\cs{source}}
     \end{syntax}
@@ -350,9 +388,10 @@
     \stexmacro{__stex_path_path:n}
     \stexmacro{__stex_path_module:n}
     \stexmacro{__stex_path_name:n}
+    \stexmacro{stex_uri_resolve:Nn}
     \begin{sparagraph}[style=symdoc,for={__stex_path_auth:n,%
       __stex_path_path:n,__stex_path_module:n,__stex_path_name:n}]
-      For analogous reasons as for file paths, \mmt URIs are represented
+      \mmt URIs are represented
       as token lists of the form
 
       |{|\cs{__stex_path_auth:n}\marg{authority}
@@ -360,9 +399,13 @@
       \cs{__stex_path_module:n}\marg{modulename}
       \cs{__stex_path_name:n}\marg{declname}|}|,
 
-      all of which may be empty.
+      all of which may be empty. Largely, URIs are used as strings only,
+      but the above representation is used in \cs{stex_uri_resolve:Nn}
+      to canonicalize URIs when they are computed the first time.
+
     \end{sparagraph}
 
+    \stexvarmacro{uri}
     \begin{sfunction}{stex_map_uri:Nnnnn}{\stex_map_uri:Nnnnn}
       \begin{syntax}
         \dcs\marg{\cs{uri}}\marg{authority code}
@@ -388,14 +431,17 @@
     elements (modules or documents) from the namespace of a math
     archive and some relative file path within that archive.
 
+    \stexvarmacro{target}
+    \stexvarmacro{repo_prop}
+    \stexvarmacro{filepath}
     \begin{sfunction}{stex_uri_from_repo_file:NNNn}{\stex_uri_from_repo_file:NNNn}
       \begin{syntax}
         \dcs\marg{\cs{target}}\marg{\cs{repo_prop}}\marg{\cs{filepath}}
-        \marg{ns_field}
+        \marg{ns\_field}
       \end{syntax}
       computes the namespace URI from the property list
       \cs{repo_prop} of some math archive, the file path
-      \cs{filepath} and the archive field \marg{ns_field}
+      \cs{filepath} and the archive field \marg{ns\_field}
       (|narr| or |ns|), and stores the result in \cs{target}.
     \end{sfunction}
 
@@ -572,10 +618,11 @@
 
 \begin{sfragment}{Utility Methods}
 
+  \stexvarmacro{foo}
   \begin{sfunction}{stex_macro_body:N}[EXP]{\stex_macro_body:N}
     expands to the \emph{expansion} of the provided macro,
     including parameter tokens, with the original category codes intact; 
-    e.g. if |\def\foo#1{First #1}|,
+    e.g. if \cs{def}\cs{foo}|#1{First #1}|,
     then \dcs\cs{foo} expands to
     |First #1|.
   \end{sfunction}
@@ -584,14 +631,15 @@
     expands to the token list \emph{defining} the provided macro,
     including parameters, command attributes (i.e. \cs{long}, 
     \cs{protected}), with the original category codes intact; 
-    e.g. if |\protected\def\foo#1{First #1}|,
+    e.g. if \cs{protected}\cs{def}\cs{foo}|#1{First #1}|,
     then \dcs\cs{foo} expands to
-    |\protected\def\foo#1{First #1}|.
+    \cs{protected}\cs{def}\cs{foo}|#1{First #1}|.
 
     \begin{texnote} Does not work with ``higher'' parameter
     tokens, i.e. |##1|, |####1| etc.\end{texnote}
   \end{sfunction}
 
+  \stexvarmacro{macro}
   \begin{sfunction}{stex_deactivate_macro:Nn, stex_reactivate_macro:N}{\stex_deactivate_macro:Nn, \stex_reactivate_macro:N}
     \begin{syntax}\dcs \marg{\cs{macro}} \marg{msg}
     \end{syntax}
@@ -674,13 +722,15 @@
     \end{sfunction}
 
     \begin{sexample}
+      \stexvarmacro{foo}
+      \stexvarmacro{num}
       \begin{stexcode}[gobble=8]
-        \stex_pseudogroup:nn{
-          something changing \foo
-          something changing \num
+        |\cs{stex_pseudogroup:nn}|{
+          something changing |\cs{foo}|
+          something changing |\cs{num}|
         }{
-          \stex_pseudogroup_restore:N \foo
-          \int_set:Nn \num {\int_use:N \num}
+          |\cs{stex_pseudogroup_restore:N}\cs{foo}|
+          \int_set:Nn |\cs{num}| {\int_use:N |\cs{num}|}
         }
       \end{stexcode}
       restores the values of macro \cs{foo} and register \cs{num}
