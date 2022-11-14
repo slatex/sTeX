@@ -132,10 +132,10 @@
 % \begin{macro}{\stex_debug:nn}
 %    \begin{macrocode}
 \cs_new_protected:Nn \stex_debug:nn {
-  \clist_if_in:NnTF \c_stex_debug_clist { all }{
+  \exp_args:NNo \clist_if_in:NnTF \c_stex_debug_clist { \tl_to_str:n{all} }{
     \_@@_:nn{#1}{#2}
   }{
-    \clist_if_in:NnT \c_stex_debug_clist { #1 }{
+    \exp_args:NNo \clist_if_in:NnT \c_stex_debug_clist { \tl_to_str:n{#1} }{
       \_@@_:nn{#1}{#2}
     }
   }
@@ -169,8 +169,15 @@
 %
 %    \begin{macrocode}
 \stex_get_env:Nn\_@@_env_str{STEX_DEBUG}
-\str_if_empty:NF\_@@_env_str {
-  \clist_set:No \c_stex_debug_clist {\_@@_env_str}
+\str_if_empty:NTF\_@@_env_str {
+  \clist_set_eq:NN \l_@@_cl \c_stex_debug_clist
+}{
+  \clist_set:No \l_@@_cl {\_@@_env_str}
+}
+\clist_clear:N \c_stex_debug_clist
+\clist_map_inline:Nn \l_@@_cl {
+  \exp_args:NNo \clist_put_right:Nn \c_stex_debug_clist
+  { \tl_to_str:n{#1} }
 }
 
 \exp_args:NNo \clist_if_in:NnTF \c_stex_debug_clist {\tl_to_str:n{all}} {
@@ -2875,10 +2882,68 @@
 %    \end{macrocode}
 % \end{macro}
 %
-%
-% \begin{macro}{\stex_iterate_modules:nn,\stex_iterate_all_modules:nn}
+% Iterating:
 %    \begin{macrocode}
 %<@@=stex_iterate>
+%    \end{macrocode}
+%
+% \begin{macro}{\stex_iterate_all_modules:n}
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_iterate_all_modules:n {
+  \stex_pseudogroup_with:nn{\stex_iterate_break:\stex_iterate_break:n}{
+    \cs_set_eq:NN \stex_iterate_break: \seq_map_break:
+    \cs_set_eq:NN \stex_iterate_break:n \seq_map_break:n
+    \cs_set:Npn \_@@_cs:nn ##1 ? ##2 \_@@_end: {
+      #1
+    }
+    \seq_map_inline:Nn \l_stex_all_modules_seq {
+      \_@@_cs:nn ##1 \_@@_end:
+    }
+  }
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\stex_iterate_modules:nn}
+%    \begin{macrocode}
+
+
+\cs_new_protected:Nn \_@@_setup:n {
+  \seq_clear:N \l_@@_mod_seq
+  \bool_set_true:N \l_@@_bool
+  \tl_clear:N \l_@@_mod_tl
+  \str_clear:N \l_@@_prefix_str
+  \cs_set:Npn \_stex_morphism:nnnn ##1 ##2 ##3 ##4 { #1 }
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\stex_iterate_break:,\stex_iterate_break:n}
+%    \begin{macrocode}
+\cs_new_protected:Nn \_@@_break: {
+  \bool_set_false:N \l_@@_bool
+  \cs_set:Npn \_stex_morphism:nnnn ##1 ##2 ##3 ##4 {}
+}
+
+\cs_new_protected:Nn \_@@_break:n {
+  \tl_set:Nn \l_@@_mod_tl {#1}
+  \stex_iterate_break:
+}
+
+\cs_new_protected:Nn \_@@_break_sym: {
+  \exp_after:wN \seq_map_break: \_@@_gobble:
+}
+
+\cs_new_protected:Nn \_@@_break_sym:n {
+  \tl_set:Nn \l_@@_after {\seq_map_break:n{#1}}
+  \exp_after:wN \l_@@_after \_@@_gobble:
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\stex_iterate_modules_TODO:nn,\stex_iterate_all_modules_TODO:nn}
+%    \begin{macrocode}
+
 \cs_new_protected:Nn \_@@_iterate_setup:n {
   \seq_clear:N \l_@@_mod_seq
   \bool_set_true:N \l_@@_mod_bool
@@ -2890,9 +2955,10 @@
     \tl_set:Nn \l_@@_mod_tl {##1}
   }
   \cs_set:Npn \_@@_cs:nnnn ##1 ##2 ##3 ##4 { #1 }
+
 }
 
-\cs_new_protected:Nn \stex_iterate_all_modules:nn {
+\cs_new_protected:Nn \stex_iterate_all_modules_TODO:nn {
   \_@@_iterate_setup:n{#2}
   \_@@_iterate_modules:nn{#2}{
     \clist_map_inline:nn {#1} {
@@ -2904,7 +2970,7 @@
   }
 }
 
-\cs_new_protected:Nn \stex_iterate_modules:nn {
+\cs_new_protected:Nn \stex_iterate_modules_TODO:nn {
   \_@@_iterate_setup:n{#2}
   \stex_pseudogroup_with:nn{\_stex_morphism:nnnn}{
     \cs_set:Npn \_stex_morphism:nnnn ##1 ##2 ##3 ##4 {
@@ -2939,9 +3005,9 @@
 %    \end{macrocode}
 % \end{macro}
 %
-% \begin{macro}{\stex_iterate_modules:n}
+% \begin{macro}{\stex_iterate_modules_TODO_i:n}
 %    \begin{macrocode}
-\cs_new_protected:Nn \stex_iterate_modules:n {
+\cs_new_protected:Nn \stex_iterate_modules_TODO_i:n {
   \_@@_iterate_modules:nn{#1}{
     \str_if_empty:NF \l_stex_current_module_str {
       \exp_args:Nno \_stex_morphism:nnnn {} \l_stex_current_module_str{top}{}
@@ -2995,37 +3061,38 @@
 %
 % \begin{macro}{\stex_iterate_decls:n}
 %    \begin{macrocode}
+
+\cs_new:Npn \_@@_gobble: #1 \_@@_end_syms: {}
+
 \cs_new_protected:Nn \stex_iterate_decls:n {
-  \cs_set:Npn \_@@_sym_cs:nnnnnnnnN 
-  ##1 ##2 ##3 ##4 ##5 ##6 ##7 ##8 ##9 {
-    #1
-  }
-  \stex_pseudogroup_with:nn{\_stex_symbol:nnnnnnnN}{
-    \stex_iterate_modules:n{
+  \stex_pseudogroup_with:nn{\_stex_symbol:nnnnnnnN\_@@_end_syms:}{
+    \cs_set:Npn \_@@_end_syms: {}
+    \cs_set:Npn \_@@_sym_cs:nnnnnnnnN 
+    ##1 ##2 ##3 ##4 ##5 ##6 ##7 ##8 ##9 { #1 }
+    \stex_iterate_all_modules:n{
+      \cs_set_eq:NN \stex_iterate_break: \_@@_break_sym:
+      \cs_set_eq:NN \stex_iterate_break:n \_@@_break_sym:n
       \cs_set:Npn \_stex_symbol:nnnnnnnN 
       ####1 ####2 ####3 ####4 ####5 ####6 ####7 ####8 {
-        \bool_if:NT \l_@@_mod_bool {
-          \_@@_sym_cs:nnnnnnnnN {##2}{####1}{####2}{####3}
-          {####4}{####5}{####6}{####7}####8
-        }
+        \_@@_sym_cs:nnnnnnnnN {##1?##2}
+        {####1} {####2} {####3} {####4} {####5} {####6} {####7} {####8}
       }
-      ##4
-      \use:c{c_stex_module_##2_declarations}
+      \use:c{c_stex_module_##1?##2_declarations} \_@@_end_syms:
     }
   }
 }
 %    \end{macrocode}
 % \end{macro}
 %
-% \begin{macro}{\stex_iterate_decls:nn,\stex_iterate_all_decls:nn}
+% \begin{macro}{\stex_iterate_decls_TODO:nn,\stex_iterate_all_decls_TODO:nn}
 %    \begin{macrocode}
-\cs_new_protected:Nn \stex_iterate_all_decls:nn {
+\cs_new_protected:Nn \stex_iterate_all_decls_TODO:nn {
   \cs_set:Npn \_@@_sym_cs:nnnnnnnnN 
   ##1 ##2 ##3 ##4 ##5 ##6 ##7 ##8 ##9 {
     #2
   }
   \stex_pseudogroup_with:nn{\_stex_symbol:nnnnnnnN}{
-    \stex_iterate_all_modules:nn{#1}{
+    \stex_iterate_all_modules_TODO:nn{#1}{
       \cs_set:Npn \_stex_symbol:nnnnnnnN
       ####1 ####2 ####3 ####4 ####5 ####6 ####7 ####8 {
         \bool_if:NT \l_@@_mod_bool {
@@ -3039,13 +3106,13 @@
   }
 }
 
-\cs_new_protected:Nn \stex_iterate_decls:nn {
+\cs_new_protected:Nn \stex_iterate_decls_TODO:nn {
   \cs_set:Npn \_@@_sym_cs:nnnnnnnnN 
   ##1 ##2 ##3 ##4 ##5 ##6 ##7 ##8 ##9 {
     #2
   }
   \stex_pseudogroup_with:nn{\_stex_symbol:nnnnnnnN}{
-    \stex_iterate_modules:nn{#1}{
+    \stex_iterate_modules_TODO:nn{#1}{
       \cs_set:Npn \_stex_symbol:nnnnnnnN
       ####1 ####2 ####3 ####4 ####5 ####6 ####7 ####8 {
         \bool_if:NT \l_@@_mod_bool {
@@ -3068,7 +3135,7 @@
     \cs_set:Npn \_stex_notation:nnnnn ##1 ##2 ##3 ##4 ##5 {
       #2
     }
-    \stex_iterate_all_modules:nn{#1}{
+    \stex_iterate_all_modules_TODO:nn{#1}{
       \use:c{c_stex_module_##2_notations}
     }
   }
@@ -3176,7 +3243,7 @@
 }
 
 \cs_new_protected:Nn \_@@_do_decls: {
-  \exp_args:No \stex_iterate_all_decls:nn \l_stex_current_domain_str {
+  \exp_args:No \stex_iterate_all_decls_TODO:nn \l_stex_current_domain_str {
     \seq_put_right:Nn \l_stex_morphism_symbols_seq {{##1}{##3}}
     \tl_put_left:Nx \l_stex_morphisms_syms_tl {
       \exp_not:N \_stex_symbol:nnnnnnnN {{##1}{##3}{}}{\l_stex_feature_name_str / ##3}
@@ -3215,7 +3282,7 @@
   \seq_clear:N \l_stex_morphism_morphisms_seq
   \_@@_do_decls:
   \_@@_do_notations:
-  \exp_args:No \stex_iterate_all_modules:nn\l_stex_current_domain_str{
+  \exp_args:No \stex_iterate_all_modules_TODO:nn\l_stex_current_domain_str{
     \tl_if_empty:nF{##3}{
       \seq_put_right:Nn \l_stex_morphism_morphisms_seq {{##1}{##2}{##3}}
     }
@@ -4008,7 +4075,7 @@
 
 \cs_new_protected:Nn \_@@_get_symbol_from_modules:nn {
   \stex_debug:nn{symbols}{Getting~#2~in~#1...}
-  \stex_iterate_decls:nn{#1}{
+  \stex_iterate_decls_TODO:nn{#1}{
     %\stex_debug:nn{symbols}{>#2==##2<...}
     \bool_lazy_or:nnT
       {\str_if_eq_p:nn{#2}{##2}}
@@ -5700,7 +5767,7 @@
 
 \cs_new_protected:Nn \_@@_do_externals: {
   \tl_set:Nn \l_@@_replace_this_tl {####1}
-  \exp_args:No \stex_iterate_all_decls:nn{\g_stex_last_feature_str}{
+  \exp_args:No \stex_iterate_all_decls_TODO:nn{\g_stex_last_feature_str}{
     \_@@_external_decl:nnnn{##5}{##4}{##3}{##8}
   }
   %\exp_args:No \stex_iterate_all_notations:nn{\g_stex_last_feature_str}{
@@ -5819,7 +5886,7 @@
 }
 
 \cs_new_protected:Nn \_@@_prop_do_decls:n {
-  \stex_iterate_all_decls:nn{#1}{
+  \stex_iterate_all_decls_TODO:nn{#1}{
     \tl_if_empty:nTF{##2}{
       \prop_if_in:NnF \l_@@_prop {##3} {
         \stex_debug:nn{here}{##1?##3}
