@@ -1,4 +1,5 @@
 DTX =  $(shell ls *.dtx)
+DTX = $()
 DOC =  $(DTX:%.dtx=%.pdf)
 INS =  stex-extensions.ins
 
@@ -10,9 +11,10 @@ all: package doc
 
 doc: $(DOC)
 
-package: $(DTX) $(INS)
-	$(PDFLATEX) $(INS)
-	mv *.sty *.cls $(TEXDIR)
+#package: $(DTX) $(INS)
+#	$(PDFLATEX) $(INS)
+#	mv *.sty *.cls $(TEXDIR)
+package:
 
 $(DOC): %.pdf: %.dtx
 	$(PDFLATEX) $<
