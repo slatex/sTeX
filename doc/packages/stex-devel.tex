@@ -109,7 +109,7 @@
     contains the full URIs of all modules currently in scope.
   \end{svariable}
 
-  \stexmacro{l_stex_key_sig_str}
+  \stexvarmacro{l_stex_key_sig_str}
   \begin{sfunction}{stex_module_setup:n}{\stex_module_setup:n}
     \begin{syntax} \dcs\marg{name} \end{syntax}
     Computes the full URI of a new module with name \meta{name}
@@ -199,21 +199,54 @@
     \cs{c_stex_module_}\meta{\cs{l_stex_current_module}}|_symbols_prop|
     under key \meta{name}.
 
-
-    
     If the identifier \meta{id} is non-empty, the macro
     \cs{id} is defined as |{|\cs{_stex_invoke_symbol:nnnnnnnN}|}|
-    with the arguments below:
+    with the arguments described there.
+
+    \begin{texnote} \cs{invokation_macro} must be \cs{protected}
+    \end{texnote}
   \end{sfunction}
 
-  \begin{sfunction}{_stex_invoke_symbol:nnnnnnnN}{\_stex_invoke_symbol:nnnnnnnN}
+
+  \stexmacro{stex_invoke_symbol:}
+  \begin{sfunction}{_stex_invoke_symbol:nnnnnnnN,
+    l_stex_current_symbol_str,
+    l_stex_current_arity_str,
+    l_stex_current_args_tl,
+    l_stex_current_return_tl,
+    l_stex_current_type_tl,
+    STEXInternalSymbolAfterInvokationTL
+    }{\_stex_invoke_symbol:nnnnnnnN
+    \l_stex_current_symbol_str,
+    \l_stex_current_arity_str,
+    \l_stex_current_args_tl,
+    \l_stex_current_return_tl,
+    \l_stex_current_type_tl,
+    \STEXInternalSymbolAfterInvokationTL
+    }
     \begin{syntax}\dcs
       \marg{module}\marg{name}\marg{arity}\marg{args}\marg{definiens}
       \marg{type}
       \marg{return code}
       \marg{\cs{invokation_macro}}
     \end{syntax}
-    TODO
+    is how a semantic macro is/should be defined.
+    \dcs first checks whether semantic macros are currently allowed,
+    and throws an error if not. Otherwise, it
+    sets the \cs{comp}-controlled highlighting to \cs{compemph@uri},
+    initializes \dcs[STEXInternalSymbolAfterInvokationTL],
+    defines the following macros for all of its arguments, and subsequently
+    calls the \cs{invokation_macro}:
+    \begin{itemize}
+      \item \dcs[l_stex_current_symbol_str]|={|\meta{module}|?|\meta{name}|}|
+      \item \dcs[l_stex_current_arity_str]|=|\marg{arity}
+      \item \dcs[l_stex_current_args_tl]|=|\marg{args}
+      \item \dcs[l_stex_current_type_tl]|=|\marg{type}
+      \item \dcs[l_stex_current_return_tl]|=|\marg{return code}
+    \end{itemize}
+
+    The simplest example for an \cs{invokation_macro} is
+    \cs{stex_invoke_symbol:}.
   \end{sfunction}
 
   \begin{sfunction}{stex_iterate_symbols:n,stex_iterate_break:,stex_iterate_break:n}{\stex_iterate_symbols:n,\stex_iterate_break:,\stex_iterate_break:n}
@@ -283,9 +316,97 @@
 
 \end{sfragment}
 
+\begin{sfragment}{Structural Features}
+
+  \begin{sfunction}{stex_structural_feature_module:nn,
+    stex_structural_feature_module_end:,
+    g_stex_last_feature_str
+  }{\stex_structural_feature_module:nn,
+  \stex_structural_feature_module_end:,
+  \g_stex_last_feature_str
+  }
+    \begin{syntax}\dcs\marg{name}\marg{typeid}\end{syntax}
+    opens a new module-like structural feature of type \meta{typeid} 
+    with name \meta{name}, which needs to be closed with
+    \dcs[stex_structural_feature_module_end:].
+
+    Its body behaves like a nested module with name
+    \meta{modulename}|/|\meta{name}, the full URI of which is
+    stored in \dcs[g_stex_last_feature_str] for 
+    subsequent elaboration.
+  \end{sfunction}
+
+  \begin{sfunction}{
+    stex_structural_feature_morphism:nnnn,
+    stex_structural_feature_morphism_end:,
+    l_stex_current_domain_str,
+    l_stex_feature_name_str,
+    l_stex_morphism_symbols_prop,
+    l_stex_morphism_renames_prop,
+    l_stex_morphism_morphisms_seq
+    }{
+      \stex_structural_feature_morphism:nnnn,
+      \stex_structural_feature_morphism_end:,
+      \l_stex_current_domain_str,
+      \l_stex_feature_name_str,
+      \l_stex_morphism_symbols_prop,
+      \l_stex_morphism_renames_prop,
+      \l_stex_morphism_morphisms_seq
+    }
+    \begin{syntax}\dcs\marg{moprhismname}\marg{typeid}\marg{archive}\marg{domain}\end{syntax}
+    opens a new morphism-like structural feature of type \meta{typeid} 
+    with name \meta{morphismname} and the module
+    |[|\meta{archive}|]|\marg{domain} as domain, which needs to be closed with
+    \dcs[stex_structural_feature_morphism_end:].
+
+    Deactivates \cs{symdecl}, \cs{textsymdecl},
+    \cs{symdef}, \cs{notation} and \env{smodule}, and activates
+    \cs{assign}, \cs{assignMorphism} and \cs{renamedecl}.
+
+    Defines the following macros:
+    \begin{itemize}
+      \item \dcs[l_stex_feature_name_str]|=|\marg{name}.
+      \item \dcs[l_stex_current_domain_str]|=| the full uri of \meta{domain}.
+      \item \dcs[l_stex_morphism_symbols_prop]: This property list is
+        initialized as follows: For every symbol 
+        transitively included in \meta{domain} with data
+        \meta{module}, \meta{name}, \meta{id}, \meta{arity}, \meta{args},
+        \meta{definiens}, \meta{type}, and \meta{return code},
+        the property list contains an entry with key
+        |[|\meta{module}|]/[|\meta{name}]
+        and value \marg{id}\marg{arity}\marg{args}\marg{definiens}
+        \marg{type}\marg{return code}.
+      \item \dcs[l_stex_morphism_renames_prop]: An initially empty
+        property list.
+      \item \dcs[l_stex_morphism_morphisms_seq]: TODO
+    \end{itemize}
+
+    At \dcs[stex_structural_feature_morphism_end:], the elaboration
+    is computed from the above data thusly:
+
+    For every entry in \dcs[l_stex_morphism_symbols_prop],
+    a new symbol is created with the values \meta{arity}, \meta{args},
+    \meta{definiens}, \meta{type} and \meta{return code} from that
+    property list, and either:
+    \begin{itemize}
+      \item if \dcs[l_stex_morphism_renames_prop] does \emph{not}
+        contain an entry with key \meta{module}|?|\meta{name},
+        then the elaborated name is \meta{morphismname}|/|\meta{name}
+        and its \meta{id} is empty (no semantic macro is generated), or
+      \item if \dcs[l_stex_morphism_renames_prop] contains an
+        entry with key \meta{module}|?|\meta{name}, then its value
+        needs to be of the form \marg{id}\marg{name}, which are
+        used for the elaborated symbol.
+    \end{itemize}
+    All notations of the symbols transitively included in the domain
+    are copied over to their elaborations.
+  \end{sfunction}
+
+\end{sfragment}
+
 \begin{sfragment}{Imports and Morphisms}
 
-  \begin{sfunction}{stex_module_add_morphism:nnnn}{\stex_module_add_morphism:nnnn, \stex_module_add_morphism:nonn, \stex_module_add_morphism:oonn}
+  \begin{sfunction}{stex_module_add_morphism:nnnn}{\stex_module_add_morphism:nnnn, \stex_module_add_morphism:nonn, \stex_module_add_morphism:ooox}
     adds a new module morphism (i.e. inheritance, possibly with 
     modification) to the current module
     \begin{arguments}
@@ -303,51 +424,76 @@
     |\c_stex_module_|\meta{uri}|_morphisms_prop|
     with key |#1| (if non-empty) or |[#2]| (if |#1| is empty)
     and value |{#1}{#2}{#3}{#4}|
+  \end{sfunction}\bigskip
+
+  Import-like statements in \sTeX are usually given
+  as pairs |[|\meta{archive}|]{|\meta{path}|?|\meta{module}|}|,
+  which be relative to the current archive and/or
+  file path. For persistence and sms-mode, these
+  pairs first need to be resolved into an \emph{absolute}
+  specification:
+
+  \begin{sfunction}{
+    stex_import_module_uri:nn,
+    l_stex_import_archive_str,
+    l_stex_import_name_str,
+    l_stex_import_uri_str,
+    l_stex_import_path_str
+  }{
+    \stex_import_module_uri:nn,
+    \l_stex_import_archive_str,
+    \l_stex_import_name_str,
+    \l_stex_import_uri_str,
+    \l_stex_import_path_str
+  }
+    \begin{syntax}\dcs\marg{archive}\marg{pathstring}\end{syntax}
+    (where \meta{archive} may be empty) resolves the given arguments
+    into:
+    \begin{itemize}
+      \item \dcs[l_stex_import_archive_str] the given archive id
+        (in which case \cs{stex_require_archive:n} is called),
+        or the id of the current archive (if existent and \meta{archive}
+        empty), or empty,
+      \item \dcs[l_stex_import_uri_str] if an archive id is given,
+        or we currently are in an archive, its corresponding
+        namespace; otherwise |{file:}|,
+      \item \dcs[l_stex_import_path_str] the path of the URI
+        relative to the given (or current) archive, or (if not existent)
+        the absolute path of \meta{pathstring} (without a module name) 
+        resolved relative to the current file's parent directory, and
+      \item \dcs[l_stex_import_name_str] the name of the module.
+    \end{itemize}
+    If \meta{pathstring} does not contain the character |?|,
+    the whole pathstring is assumed to be the name of the module
+    and the path is empty (or the current file's parent directory, 
+    depending on the above).
+  \end{sfunction}
+
+  \begin{sfunction}{stex_import_require_module:nnn}{\stex_import_require_module:nnn}
+    takes as arguments values
+    \cs{l_stex_import_archive_str}, \cs{l_stex_import_path_str}
+    and \cs{l_stex_import_name_str} as computed by
+    \cs{stex_import_module_uri:nn} and
+    (optionally loads and) activates the corresponding
+    module (or throws an error if it does not exist).
+  \end{sfunction}\bigskip
+
+  Most complex morphisms (\env{copymodule} et al) are implemented
+  as structural features
+  using \cs{stex_structural_feature_morphism:nnnn}.
+
+  \begin{sfunction}{stex_get_in_morphism:n,
+    l_stex_get_symbol_macro_str}{\stex_get_in_morphism:n,
+    \l_stex_get_symbol_macro_str}
+    finds a symbol with the provided name or id in the domain
+    of the current morphism. Sets the same macros as
+    \cs{stex_get_symbol:n}, and additionaly
+    \dcs[l_stex_get_symbol_macro_str] to the \meta{id}
+    of the symbol. Throws an error if no such symbol is found.
   \end{sfunction}
 
 \end{sfragment}
 
-\begin{sfragment}{Structural Features}
-
-  \stexvarmacro{g_stex_last_feature_str}
-  \begin{sfunction}{stex_structural_feature_module:nn,stex_structural_feature_module_end:}{\stex_structural_feature_module:nn,\stex_structural_feature_module_end:}
-    \begin{syntax}\dcs\marg{name}\marg{typeid}\end{syntax}
-    opens a new module-like structural feature of type \meta{typeid} 
-    with name \meta{name}, which needs to be closed with
-    \dcs[stex_structural_feature_module_end:].
-
-    Its body behaves like a nested module with name
-    \meta{modulename}|/|\meta{name}, the full URI of which is
-    stored in \cs{g_stex_last_feature_str} for 
-    subsequent elaboration.
-  \end{sfunction}
-
-  \stexvarmacro{l_stex_feature_name_str}
-  \stexvarmacro{l_stex_current_domain_str}
-  \stexvarmacro{l_stex_morphism_symbols_seq}
-  \stexvarmacro{l_stex_morphism_morphisms_seq}
-  \begin{sfunction}{stex_structural_feature_morphism:nnn,stex_structural_feature_morphism_end:}{\stex_structural_feature_morphism:nnn,\stex_structural_feature_morphism_end:}
-    \begin{syntax}\dcs\marg{name}\marg{typeid}\marg{domain}\end{syntax}
-    opens a new morphism-like structural feature of type \meta{typeid} 
-    with name \meta{name} and domain \marg{domain}, which needs to be closed with
-    \dcs[stex_structural_feature_morphism_end:].
-
-    Deactivates \cs{symdecl}, \cs{textsymdecl},
-    \cs{symdef}, \cs{notation} and \env{smodule}, and activates
-    \cs{assign}, \cs{assignMorphism} and \cs{renamedecl}.
-
-    Defines \cs{l_stex_feature_name_str} as \meta{name},
-    \cs{l_stex_current_domain_str} as the full uri of \marg{domain},
-    \cs{l_stex_morphism_symbols_seq} and
-    \cs{l_stex_morphism_morphisms_seq}.
-
-    ...
-    
-  \end{sfunction}
-
-
-
-\end{sfragment}
 
 \begin{sfragment}{Optional (Key-Value) Argument Handling}
   \LaTeX3 is surprisingly weak when it comes to handling
