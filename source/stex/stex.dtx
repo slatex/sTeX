@@ -250,10 +250,12 @@
         }
       }{}
     }{
-      \str_if_eq:nnTF {#1} {tr} {
-        \RequirePackage[turkish,shorthands=:!]{babel}
-      }{
-        \RequirePackage[\prop_item:Nn \c_stex_languages_prop {#1}]{babel}
+      \ltx@ifpackageloaded{babel}{}{
+        \str_if_eq:nnTF {#1} {tr} {
+          \RequirePackage[turkish,shorthands=:!]{babel}
+        }{
+          \RequirePackage[\prop_item:Nn \c_stex_languages_prop {#1}]{babel}
+        }
       }
     }
   }{
@@ -812,18 +814,9 @@
 }
 %    \end{macrocode}
 %
-% \begin{macro}{\stex_persist_in:n,\stex_persist_deps:nn,\stex_persist_deps:ox,\stex_persist:n,\stex_persist:o,\stex_persist:x}
+% \begin{macro}{\stex_persist_deps:nn,\stex_persist_deps:ox,\stex_persist:n,\stex_persist:o,\stex_persist:x}
 %    \begin{macrocode}
 \str_set:Nx \c_stex_mdfive_str {\pdfmdfivesum file{stex.sty}}
-
-\cs_new_protected:Npn \stex_persist_in:n {
-  \stex_if_smsmode:TF{
-    \exp_args:NNe \_@@_persist_in:Nnn \c_@@_deps_iow
-  }{
-    \exp_args:NNe \_@@_persist_in:Nnn \c_@@_sms_iow
-  }
-  {\stex_file_use:N \g_stex_current_file}
-}
 
 \cs_new_protected:Npn \stex_persist_deps:nn {
   \_stex_persist:Nnn \c_@@_deps_iow
@@ -834,28 +827,13 @@
   \stex_if_smsmode:TF{
     \exp_args:NNe \_stex_persist:Nnn \c_@@_deps_iow
   }{
-    \exp_args:NNe \_stex_persist:Nnn \c_@@_sms_iow
+    \tl_if_eq:NNTF \g_stex_current_file \c_stex_main_file {
+      \exp_args:NNe \_stex_persist:Nnn \c_@@_sms_iow
+    }\use_none:nn
   }
   {\stex_file_use:N \g_stex_current_file}
 }
 \cs_generate_variant:Nn \stex_persist:n {o,x}
-
-
-\cs_new_protected:Nn \_@@_persist_in:Nnn {\stex_if_html_backend:F{
-  \group_begin:
-    \tl_clear:N \l_@@_ii_tl
-    \cs_set:Npn \persist:n ##1 {
-      \_@@_prepare:n{##1}
-      \exp_args:NNo \iow_now:Nn #1 \l_@@_tl
-    }
-    \exp_args:NNe \iow_now:Nn #1 {
-      \_@@_check:nnnw {#2}{\pdfmdfivesum file{#2}}
-      {\c_stex_mdfive_str}
-    }
-    #3
-    \iow_now:Nn #1 \_@@_check_end:
-  \group_end:
-}}
 
 \cs_new_protected:Nn \_stex_persist:Nnn{\stex_if_html_backend:F{
   %\_@@_prepare:n{#3}
@@ -906,31 +884,16 @@
 }
 \cs_new_protected:Npn \_@@_not: #1 \_@@_check_end: {}
 
-\cs_new_protected:Nn \_@@_prepare:n {
-
-
-    %\cs_set:Npn \l_@@_tl ##1 ##2 ##3 ##4 
-    %##5 ##6 ##7 ##8 ##9 { \exp_not:n{ #1 } }
-    %\tl_set:Nx \l_@@_tl {\l_@@_tl
-    %  {####1}{####2}{####3}{####4}
-    %  {####5}{####6}{####7}{####8}{####9}
-    %}
-
-   % \regex_replace_case_all:nN{
-   %   {\cP\#}{\cO\#}
-   %   {\cS\ }{\cO\~}
-   %   {\cD\_}{\c{c_math_subscript_token}}
-   % } \l_@@_tl
-    %\regex_replace_all:nnN { \cP. } { \cO\# } \l_@@_tl
-    %\regex_replace_all:nnN { \cS. } { \cO\~ } \l_@@_tl
-    %\regex_replace_all:nnN { \cD. } { \c{c_math_subscript_token} } \l_@@_tl
-}
-
 \iow_new:N \c_@@_deps_iow
 \iow_new:N \c_@@_sms_iow
 
 \bool_set_false:N \l_stex_in_persist_bool
-
+%    \end{macrocode}
+% \end{macro}
+%
+% Is called at the end of the |.sty|-file:
+%
+%    \begin{macrocode}
 \cs_new:Nn \_stex_persist_read_now: {
   \seq_if_empty:NT \g_stex_current_file {
     \seq_gset_eq:NN \g_stex_current_file \c_stex_main_file
@@ -953,8 +916,6 @@
       \stex_debug:nn{persist}{restoring~from~deps~file}
       \protected\def\persist:n{\iow_now:Nn \c_@@_deps_iow}
       \catcode`\ =10\relax
-      %\catcode`_=8\relax
-      %\catcode`:=12\relax
       \bool_set_true:N\l_stex_in_persist_bool
       \cs:w @ @ input \cs_end:\jobname.sms\relax
     \group_end:
@@ -970,7 +931,6 @@
   }
 }
 %    \end{macrocode}
-% \end{macro}
 %
 % \end{sfragment}
 %
@@ -1611,10 +1571,6 @@
     \_@@_restore_manifest:nnn{#1}{
       \prop_map_tokens:Nn\l_@@_prop{}
     }{\l_@@_manifest_str}
-%    \prop_set_from_keyval:cn { c_stex_mathhub_#1_manifest_prop }{
-%      \exp_after:wN \prop_to_keyval:N 
-%      \cs:w c_stex_mathhub_#1_manifest_prop \cs_end:
-%    }
   }
 }
 
@@ -2451,6 +2407,8 @@
   \seq_gclear:N \l_@@_sigmodules_seq
   \tl_clear:N \g_stex_sms_import_code
   \group_begin:
+    \seq_clear:N \l_stex_all_modules_seq
+    \str_clear:N \l_stex_current_module_str
     #2
     \stex_filestack_push:n{#1}
     \_@@_in_smsmode:n {
@@ -2605,46 +2563,8 @@
 % \begin{macro}{\stex_module_setup:n}
 % Sets up a new module:
 %    \begin{macrocode}
-\cs_new_protected:Nn \_@@_get_uri_str:n {
-  \str_clear:N \l_@@_ns_str
-  \stex_map_uri:Nnnnn \l_stex_current_ns_uri {
-    \str_set:Nx \l_@@_ns_str{##1\c_colon_str/}
-  }{
-    \seq_set_split:Nnn \l_@@_seq / {##1}
-    \seq_pop_right:NN \l_@@_seq \l_@@_seg
-    \exp_args:No \str_if_eq:nnF \l_@@_seg {#1} {
-      \seq_put_right:No \l_@@_seq \l_@@_seg
-    }
-    \tl_put_right:Nx \l_@@_ns_str {\seq_use:Nn \l_@@_seq /}
-  }{}{}
-}
-
-\cs_new_protected:Nn \_@@_setup_top_nosig:n {  
-  \stex_if_module_exists:nTF{\l_@@_ns_str?#1}{
-    \stex_debug:nn{modules}{(already exists)}
-  }{
-    \tl_gclear:c{c_stex_module_ \l_@@_ns_str ? #1 _code}
-    \prop_gclear:c{c_stex_module_ \l_@@_ns_str ? #1 _dependencies_prop }
-    \prop_gclear:c{c_stex_module_ \l_@@_ns_str ? #1 _declarations_prop }
-    \prop_gclear:c{c_stex_module_ \l_@@_ns_str ? #1 _notations_prop }
-  }
-  \str_set:Nx \l_stex_current_module_str {\l_@@_ns_str?#1}
-  \seq_put_right:No \l_stex_all_modules_seq \l_stex_current_module_str
-}
-
-\cs_new_protected:Nn \_@@_setup_top_sig:n {
-  \stex_if_module_exists:nTF{\l_@@_ns_str?#1}{
-    \stex_debug:nn{modules}{(already exists)}
-  }{
-    \stex_debug:nn{modules}{(needs loading)}
-    \TODO
-  }    
-  \stex_if_smsmode:F { % WHY?
-    \stex_activate_module:x {
-      \l_stex_module_ns_str ? #1
-    }
-  }
-  \str_set:Nx\l_stex_current_module_str{\l_@@_ns_str?#1}
+\cs_new_protected:Npn \stex_module_setup:n {
+  \stex_if_in_module:TF \_@@_setup_nested:n \_@@_setup_top:n
 }
 
 \cs_new_protected:Nn \_@@_setup_top:n {
@@ -2659,9 +2579,40 @@
   \_@@_load_meta:
 }
 
-\cs_new_protected:Npn \_@@_split_module:n #1?#2 \_@@_end: #3 {
-  \str_set:Nn \l_@@_ns_str {#1}
-  \_@@_setup_top_nosig:n { #2 / #3}
+\cs_new_protected:Nn \_@@_setup_top_nosig:n {  
+  \stex_if_module_exists:nTF{\l_@@_ns_str?#1}{
+    \stex_debug:nn{modules}{(already exists)}
+  }{
+    \tl_gclear:c{c_stex_module_ \l_@@_ns_str ? #1 _code}
+    \prop_gclear:c{c_stex_module_ \l_@@_ns_str ? #1 _morphisms_prop }
+    \prop_gclear:c{c_stex_module_ \l_@@_ns_str ? #1 _symbols_prop }
+    \prop_gclear:c{c_stex_module_ \l_@@_ns_str ? #1 _notations_prop }
+  }
+  \str_set:Nx \l_stex_current_module_str {\l_@@_ns_str?#1}
+  \seq_put_right:No \l_stex_all_modules_seq \l_stex_current_module_str
+}
+
+\cs_new_protected:Nn \_@@_setup_top_sig:n {
+  \stex_if_module_exists:nTF{\l_@@_ns_str?#1}{
+    \stex_debug:nn{modules}{(already exists)}
+  }{
+    \stex_debug:nn{modules}{(needs loading)}
+    \_@@_load_sig:
+  }    
+  %\stex_if_smsmode:F { % WHY?
+    \stex_activate_module:x {
+      \l_@@_ns_str ? #1
+    }
+  %}
+  \str_set:Nx\l_stex_current_module_str{\l_@@_ns_str?#1}
+}
+
+\cs_new_protected:Nn \_@@_load_sig: {
+  \stex_file_split_off_ext:NN \l_@@_sigfile \g_stex_current_file
+  \stex_file_split_off_lang:NN \l_@@_sigfile \l_@@_sigfile
+  \exp_args:Ne \stex_file_in_smsmode:nn {
+    \stex_file_use:N \l_@@_sigfile . \l_stex_key_sig_str . tex
+  }{}
 }
 
 \cs_new_protected:Nn \_@@_setup_nested:n {
@@ -2670,6 +2621,26 @@
   \stex_debug:nn{module}{Nested~Module~URI:~\l_stex_current_module_str}
   \seq_put_right:No \l_stex_all_modules_seq \l_stex_current_module_str
   \stex_metagroup_new:o \l_stex_current_module_str
+}
+
+
+\cs_new_protected:Nn \_@@_get_uri_str:n {
+  \str_clear:N \l_@@_ns_str
+  \stex_map_uri:Nnnnn \l_stex_current_ns_uri {
+    \str_set:Nx \l_@@_ns_str{##1\c_colon_str/}
+  }{
+    \seq_set_split:Nnn \l_@@_seq / {##1}
+    \seq_pop_right:NN \l_@@_seq \l_@@_seg
+    \exp_args:No \str_if_eq:nnF \l_@@_seg {#1} {
+      \seq_put_right:No \l_@@_seq \l_@@_seg
+    }
+    \tl_put_right:Nx \l_@@_ns_str {\seq_use:Nn \l_@@_seq /}
+  }{}{}
+}
+
+\cs_new_protected:Npn \_@@_split_module:n #1?#2 \_@@_end: #3 {
+  \str_set:Nn \l_@@_ns_str {#1}
+  \_@@_setup_top_nosig:n { #2 / #3}
 }
 
 \bool_new:N \l_stex_in_meta_bool
@@ -2685,10 +2656,6 @@
   }
 }
 
-\cs_new_protected:Npn \stex_module_setup:n {
-  \stex_if_in_module:TF \_@@_setup_nested:n \_@@_setup_top:n
-}
-
 %<@@=stex_modules>
 %    \end{macrocode}
 % \end{macro}
@@ -2700,16 +2667,16 @@
   \stex_debug:nn{module}{
     Closing~module~\l_stex_current_module_str^^J
     Code:~\expandafter\meaning\csname c_stex_module_\l_stex_current_module_str _code\endcsname^^J
-    Imports:\exp_after:wN \prop_to_keyval:N \cs:w c_stex_module_\l_stex_current_module_str _dependencies_prop\cs_end:^^J
-    Declarations:\exp_after:wN \prop_to_keyval:N \cs:w c_stex_module_\l_stex_current_module_str _declarations_prop\cs_end:^^J
+    Imports:\exp_after:wN \prop_to_keyval:N \cs:w c_stex_module_\l_stex_current_module_str _morphisms_prop\cs_end:^^J
+    Declarations:\exp_after:wN \prop_to_keyval:N \cs:w c_stex_module_\l_stex_current_module_str _symbols_prop\cs_end:^^J
     Notations:\exp_after:wN \prop_to_keyval:N \cs:w c_stex_module_\l_stex_current_module_str _notations_prop\cs_end:^^J
   }
 }
 
 \cs_new_protected:Npn \_@@_restore_module:nnnn #1 #2 #3 #4 {
-  \prop_gset_from_keyval:cn{c_stex_module_#1_dependencies_prop}{#2}
+  \prop_gset_from_keyval:cn{c_stex_module_#1_morphisms_prop}{#2}
   \cs_set:Npn \_@@_tl {#3}
-  \exp_args:Nno \prop_gset_from_keyval:cn{c_stex_module_#1_declarations_prop}\_@@_tl
+  \exp_args:Nno \prop_gset_from_keyval:cn{c_stex_module_#1_symbols_prop}\_@@_tl
   \cs_gset:cpn{c_stex_module_\tl_to_str:n{#1}_code}{#4}
   \prop_gclear:c{c_stex_module_\tl_to_str:n{#1} _notations_prop}
   \str_set:Nn \l_@@_restore_mod_str {#1}
@@ -2722,54 +2689,25 @@
 \cs_new_protected:Nn \_@@_restore_end: {
   \group_end:
   \bool_if:NT \l_stex_in_persist_bool {
-    \_stex_persist_module:nN \l_@@_restore_mod_str \persist:n
+    \exp_args:No \_stex_persist_module:nN \l_@@_restore_mod_str \persist:n
   }
-
 }
 
 \cs_new_protected:Nn \_stex_persist_module:nN {
   \exp_args:Ne #2 {
     \_@@_restore_module:nnnn{#1}{
-      \exp_after:wN \prop_to_keyval:N \cs:w c_stex_module_#1_dependencies_prop\cs_end:
+      \exp_after:wN \prop_to_keyval:N \cs:w c_stex_module_#1_morphisms_prop\cs_end:
     }{
-      \exp_after:wN \prop_to_keyval:N \cs:w c_stex_module_#1_declarations_prop\cs_end:
+      \exp_after:wN \prop_to_keyval:N \cs:w c_stex_module_#1_symbols_prop\cs_end:
     }{
       \exp_after:wN \exp_after:wN \exp_after:wN \exp_not:n
       \exp_after:wN \exp_after:wN \exp_after:wN
-      { \cs:w c_stex_module_\l_stex_current_module_str _code \cs_end: }
+      { \cs:w c_stex_module_#1 _code \cs_end: }
     }{}
-    \prop_map_function:cN{c_stex_module_\l_stex_current_module_str _notations_prop}
+    \prop_map_function:cN{c_stex_module_#1 _notations_prop}
       \_@@_persist_nots_i:nn
     \exp_not:N \STEXRestoreNotsEnd {}
   }
-}
-
-\cs_new_protected:Nn \_@@_persist_deps: {
-  \exp_args:Ne \persist:n{
-    \prop_gset_from_keyval:cn {c_stex_module_\l_stex_current_module_str _dependencies_prop} {
-      \exp_after:wN \prop_to_keyval:N \cs:w c_stex_module_\l_stex_current_module_str _dependencies_prop\cs_end:
-    }
-  }
-}
-\cs_new_protected:Nn \_@@_persist_decls: {
-  \exp_args:Ne \persist:n{
-    \prop_gset_from_keyval:cn {c_stex_module_\l_stex_current_module_str _declarations_prop} {
-      \exp_after:wN \prop_to_keyval:N \cs:w c_stex_module_\l_stex_current_module_str _declarations_prop\cs_end:
-    }
-  }
-}
-\cs_new_protected:Nn \_@@_persist_nots: {
-  \exp_args:Ne \persist:n {
-    \exp_not:N \_@@_restore_nots:nw{\l_stex_current_module_str}
-      \prop_map_function:cN{c_stex_module_\l_stex_current_module_str _notations_prop}
-      \_@@_persist_nots_i:nn
-      \exp_not:N \STEXRestoreNotsEnd {}
-  }
-  %\exp_args:Ne \persist:n{
-  %  \prop_gset_from_keyval:cn {c_stex_module_\l_stex_current_module_str _notations_prop} {
-  %    \exp_after:wN \prop_to_keyval:N \cs:w c_stex_module_\l_stex_current_module_str _notations_prop\cs_end:
-  %  }
-  %}
 }
 
 \cs_new:Nn \_@@_persist_nots_i:nn {
@@ -2800,16 +2738,6 @@
     }
   }
   \_@@_restore_nots_i:n
-}
-
-\cs_new_protected:Nn \_@@_persist_code: {
-  \exp_args:Ne \persist:n{
-    \tl_gset:cn{c_stex_module_\l_stex_current_module_str _code}{
-      \exp_after:wN \exp_after:wN \exp_after:wN \exp_not:n
-      \exp_after:wN \exp_after:wN \exp_after:wN
-      { \cs:w c_stex_module_\l_stex_current_module_str _code \cs_end: }
-    }
-  }
 }
 %    \end{macrocode}
 % \end{macro}
@@ -2938,19 +2866,19 @@
 %    \end{macrocode}
 % \end{macro}
 %
-% \begin{macro}{\stex_add_to_current_module:n,\stex_add_to_current_module:x}
+% \begin{macro}{\stex_module_add_code:n,\stex_module_add_code:x}
 %    \begin{macrocode}
-\cs_new_protected:Nn \stex_add_to_current_module:n {
+\cs_new_protected:Nn \stex_module_add_code:n {
   \tl_gput_right:cn {c_stex_module_\l_stex_current_module_str _code} { #1 }
 }
-\cs_generate_variant:Nn \stex_add_to_current_module:n {x}
+\cs_generate_variant:Nn \stex_module_add_code:n {x}
 %    \end{macrocode}
 % \end{macro}
 %
 % \begin{macro}{\stex_execute_in_module:n,\stex_execute_in_module:x}
 %    \begin{macrocode}
 \cs_new_protected:Nn \stex_execute_in_module:n { \stex_if_in_module:TF {
-  \stex_add_to_current_module:n { #1 }
+  \stex_module_add_code:n { #1 }
   \stex_do_up_to_module:n { #1 }
 }{ #1 }}
 \cs_generate_variant:Nn \stex_execute_in_module:n {x}
@@ -2965,7 +2893,7 @@
 }
 \cs_new_protected:Nn \_@@_export:n {
   \stex_ignore_spaces_and_pars:#1\ExplSyntaxOff
-  \stex_add_to_current_module:n { \stex_ignore_spaces_and_pars:#1}
+  \stex_module_add_code:n { \stex_ignore_spaces_and_pars:#1}
   \stex_smsmode_do:
 }
 %    \end{macrocode}
@@ -2977,18 +2905,18 @@
 %    \end{macrocode}
 % \end{macro}
 %
-% \begin{macro}{\stex_add_module_dependency:nnnn, \stex_add_module_dependency:nonn, \stex_add_module_dependency:oonn}
+% \begin{macro}{\stex_module_add_morphism:nnnn, \stex_module_add_morphism:nonn, \stex_module_add_morphism:oonn}
 %    \begin{macrocode}
-\cs_new_protected:Nn \stex_add_module_dependency:nnnn {
-  \exp_args:Nne \prop_gput:cnn{c_stex_module_\l_stex_current_module_str _dependencies_prop}{
+\cs_new_protected:Nn \stex_module_add_morphism:nnnn {
+  \exp_args:Nne \prop_gput:cnn{c_stex_module_\l_stex_current_module_str _morphisms_prop}{
     \tl_if_empty:nTF{#1}{[#2]}{#1}
   }{{#1}{#2}{#3}{#4}}
 }
-\cs_generate_variant:Nn \stex_add_module_dependency:nnnn {nonn,oonn}
+\cs_generate_variant:Nn \stex_module_add_morphism:nnnn {nonn,oonn}
 %    \end{macrocode}
 % \end{macro}
 %
-% \begin{macro}{\stex_add_module_decl:nnnnnnN}
+% \begin{macro}{\stex_module_add_symbol:nnnnnnN}
 % \begin{arguments}
 %   \item \Arg{Macro name}
 %   \item \Arg{Name}
@@ -3000,14 +2928,14 @@
 %   \item Command
 % \end{arguments}
 %    \begin{macrocode}
-\cs_new_protected:Nn \stex_add_module_decl:nnnnnnnN {
+\cs_new_protected:Nn \stex_module_add_symbol:nnnnnnnN {
   \stex_debug:nn{declaration}{New~declaration:~\l_stex_current_module_str?#2^^J
     Macro:#1^^JArity:#3~(#4)^^J
     Def:~\tl_to_str:n{#5}^^J
     Type:~\tl_to_str:n{#6}^^J
     Returns:~\tl_to_str:n{#7}
   }
-  \prop_gput:cnn{c_stex_module_\l_stex_current_module_str _declarations_prop}
+  \prop_gput:cnn{c_stex_module_\l_stex_current_module_str _symbols_prop}
   {#2}{{#1}{#2}{#3}{#4}{#5}{#6}{#7}{#8}}
   \tl_if_empty:nF{#1}{
     \stex_execute_in_module:n {
@@ -3017,7 +2945,7 @@
 }
 
 \cs_new_protected:Nn \_@@_activate_sym:n {
-  \prop_map_inline:cn{c_stex_module_\l_stex_current_module_str _declarations_prop}{
+  \prop_map_inline:cn{c_stex_module_\l_stex_current_module_str _symbols_prop}{
     \str_if_eq:nnT{#1}{##1}{
       \_@@_activate_i:nnnnnnnn ##2
     }
@@ -3044,7 +2972,7 @@
 %    \end{macrocode}
 % \end{macro}
 %
-% \begin{macro}{\stex_add_module_notation:nnnnn, \stex_add_module_notation:eoexo}
+% \begin{macro}{\stex_module_add_notation:nnnnn, \stex_module_add_notation:eoexo,\stex_set_notation_macro:nnnnn}
 %   \begin{arguments}
 %     \item URI
 %     \item variant
@@ -3053,14 +2981,14 @@
 %     \item op
 %   \end{arguments}
 %    \begin{macrocode}
-\cs_new_protected:Nn \stex_add_module_notation:nnnnn {
+\cs_new_protected:Nn \stex_module_add_notation:nnnnn {
   \prop_gput:cnn{c_stex_module_\l_stex_current_module_str _notations_prop}
   {#1!#2}{{#1}{#2}{#3}{#4}{#5}}
   \stex_execute_in_module:n {
     \_@@_activate_not:nn{#1}{#2}
   }
 }
-\cs_generate_variant:Nn \stex_add_module_notation:nnnnn {eoexo}
+\cs_generate_variant:Nn \stex_module_add_notation:nnnnn {eoexo}
 
 
 \cs_new_protected:Nn \_@@_activate_not:nn {
@@ -3070,7 +2998,11 @@
     }
   }
 }
-
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\stex_set_notation_macro:nnnnn,\stex_set_notation_macro:eoexo}
+%    \begin{macrocode}
 \cs_new_protected:Nn \stex_set_notation_macro:nnnnn {
   %\stex_do_up_to_module:n{
     \cs_generate_from_arg_count:cNnn {l_stex_notation_#1_#2_cs}
@@ -3121,9 +3053,9 @@
 %<@@=stex_iterate>
 %    \end{macrocode}
 %
-% \begin{macro}{\stex_iterate_decls:n}
+% \begin{macro}{\stex_iterate_symbols:n}
 %    \begin{macrocode}
-\cs_new_protected:Nn \stex_iterate_decls:n {
+\cs_new_protected:Nn \stex_iterate_symbols:n {
   \stex_pseudogroup_with:nn{\_@@_sym_cs:nnnnnnnnN\stex_iterate_break:\stex_iterate_break:n}{
     \cs_set:Npn \_@@_sym_cs:nnnnnnnnN 
     ##1 ##2 ##3 ##4 ##5 ##6 ##7 ##8 ##9 { #1 }
@@ -3134,7 +3066,7 @@
       \prop_map_break:n{\seq_map_break:n{##1}}
     }
     \seq_map_inline:Nn \l_stex_all_modules_seq {
-      \prop_map_inline:cn{c_stex_module_##1_declarations_prop}{
+      \prop_map_inline:cn{c_stex_module_##1_symbols_prop}{
         \_@@_sym_cs:nnnnnnnnN {##1} ####2
       }
     }
@@ -3143,9 +3075,9 @@
 %    \end{macrocode}
 % \end{macro}
 %
-% \begin{macro}{\stex_iterate_decls:nn}
+% \begin{macro}{\stex_iterate_symbols:nn}
 %    \begin{macrocode}
-\cs_new_protected:Nn \stex_iterate_decls:nn {
+\cs_new_protected:Nn \stex_iterate_symbols:nn {
   \seq_clear:N \l_@@_mods_seq
   \stex_pseudogroup_with:nn{\_@@_sym_cs:nnnnnnnnN}{
     \cs_set:Npn \_@@_sym_cs:nnnnnnnnN 
@@ -3157,11 +3089,11 @@
 \cs_new_protected:Nn \_@@_it_decl_i:n {
   \seq_if_in:NnF \l_@@_mods_seq {#1} {
     \seq_put_left:Nn \l_@@_mods_seq {#1}
-    \prop_map_inline:cn{c_stex_module_#1_declarations_prop}{
-      \_@@_sym_cs:nnnnnnnnN {#1} ##2
-    }
-    \prop_map_inline:cn{c_stex_module_#1_dependencies_prop}{
+    \prop_map_inline:cn{c_stex_module_#1_morphisms_prop}{
       \_@@_it_decl_check:nnnn ##2
+    }
+    \prop_map_inline:cn{c_stex_module_#1_symbols_prop}{
+      \_@@_sym_cs:nnnnnnnnN {#1} ##2
     }
   }
 }
@@ -3190,7 +3122,7 @@
     \prop_map_inline:cn{c_stex_module_#1_notations_prop}{
       \_@@_not_cs:nnnnn ##2
     }
-    \prop_map_inline:cn{c_stex_module_#1_dependencies_prop}{
+    \prop_map_inline:cn{c_stex_module_#1_morphisms_prop}{
       \_@@_it_not_check:nnnn ##2
     }
   }
@@ -3210,28 +3142,60 @@
 %<@@=stex_features>
 %    \end{macrocode}
 %
-% \begin{environment}{structural_feature_module}
+% \begin{macro}{\stex_structural_feature_module:nn,\stex_structural_feature_module_end:}
 %    \begin{macrocode}
-\newenvironment{structural_feature_module}[3]{
-  \stex_module_setup:n {#1}
-  \stex_if_do_html:T {
+\cs_new_protected:Nn \stex_structural_feature_module:nn {
+  \stex_if_do_html:TF {
     \begin{stex_annotate_env} {shtml:feature-#2} {
       \l_stex_current_module_str
     }
-  }
-  #3
-}{
+  }\group_begin:
+  \stex_module_setup:n {#1}
+}
+
+\cs_new_protected:Nn \stex_structural_feature_module_end: {
   \tl_gset_eq:NN \g_stex_last_feature_str \l_stex_current_module_str
   \stex_close_module:
-  \stex_if_do_html:T{
+  \stex_if_do_html:TF{
     \end{stex_annotate_env}
-  }
+  }\group_end:
 }
 %    \end{macrocode}
-% \end{environment}
+% \end{macro}
 %
-% \begin{environment}{structural_feature_morphism}
+% \begin{macro}{\stex_structural_feature_morphism:nnn,\stex_structural_feature_morphism_end:}
 %    \begin{macrocode}
+\cs_new_protected:Nn \stex_structural_feature_morphism:nnn {
+  \_@@_resolve_module:n{#3}
+  \stex_if_do_html:TF {
+    \begin{stex_annotate_env} {shtml:feature-#2} {
+      \l_stex_current_module_str
+    }
+  }\group_begin:
+  \str_set:Nn \l_stex_feature_name_str {#1}
+  \_@@_setup:
+  \_@@_reactivate:
+}
+\cs_new_protected:Nn \stex_structural_feature_morphism_end: {
+  \str_gset_eq:NN \l_stex_feature_name_str \l_stex_feature_name_str
+  \str_gset_eq:NN \l_stex_current_domain_str \l_stex_current_domain_str
+  \seq_gset_eq:NN \l_stex_morphism_symbols_seq \l_stex_morphism_symbols_seq
+  \seq_gset_eq:NN \l_stex_morphism_morphisms_seq \l_stex_morphism_morphisms_seq
+  \_@@_do_elaboration:
+  \stex_if_do_html:TF{
+    \end{stex_annotate_env}
+  }\group_end:
+}
+
+\cs_new_protected:Nn \_@@_setup: {
+  \tl_clear:N \l_stex_morphisms_syms_tl
+  \seq_clear:N \l_stex_morphism_symbols_seq
+  \seq_clear:N \l_stex_morphism_morphisms_seq
+  \_@@_do_decls:
+  \_@@_do_notations:
+  \exp_args:No \_@@_do_morphisms:n \l_stex_current_domain_str
+}
+
 \cs_new_protected:Nn \_@@_resolve_module:n {
   \stex_import_module_uri:nn {}{#1}
   \_stex_get_module_uri:ooo
@@ -3239,33 +3203,6 @@
     \l_stex_import_path_str
     \l_stex_import_name_str
   \str_set_eq:NN \l_stex_current_domain_str \l_stex_import_ns_str
-}
-
-\NewDocumentEnvironment{structural_feature_morphism}{m m m m}{
-  \_@@_resolve_module:n{#3}
-  %\tl_if_empty:nTF{#1}{
-  %  \exp_args:No \stex_module_setup:n {\exp_after:wN[\l_stex_current_domain_str]}
-  %}{
-  %  \stex_module_setup:n {#1}
-  %}
-  \stex_if_do_html:T {
-    \begin{stex_annotate_env} {shtml:feature-#2} {
-      \l_stex_current_module_str
-    }
-  }
-  \str_set:Nn \l_stex_feature_name_str {#1}
-  \_@@_setup:
-  \_@@_reactivate:
-  #4
-}{
-  \str_gset:Nn \l_stex_feature_name_str {#1}
-  \str_gset_eq:NN \l_stex_current_domain_str \l_stex_current_domain_str
-  \seq_gset_eq:NN \l_stex_morphism_symbols_seq \l_stex_morphism_symbols_seq
-  \seq_gset_eq:NN \l_stex_morphism_morphisms_seq \l_stex_morphism_morphisms_seq
-  \_@@_do_elaboration:
-  \stex_if_do_html:T{
-    \end{stex_annotate_env}
-  }
 }
 
 \cs_new_protected:Nn \_@@_do_elaboration: {
@@ -3294,16 +3231,16 @@
       %\stex_debug:nn{morphism}{##1~==~#1?#2?}
       \str_if_eq:nnT {##1}{#1?#2}{
         \stex_debug:nn{morphism}{Notation~##1~->~\l_stex_current_module_str ? #4}
-        \exp_args:Ne \stex_add_module_notation:nnnnn{\l_stex_current_module_str ? #4}
+        \exp_args:Ne \stex_module_add_notation:nnnnn{\l_stex_current_module_str ? #4}
         {##2}{##3}{##4}{##5}
       }
     }
   %}
-  \stex_add_module_decl:nnnnnnnN {#3} {#4}
+  \stex_module_add_symbol:nnnnnnnN {#3} {#4}
 }
 
 \cs_new_protected:Nn \_@@_do_decls: {
-  \exp_args:No \stex_iterate_decls:nn \l_stex_current_domain_str {
+  \exp_args:No \stex_iterate_symbols:nn \l_stex_current_domain_str {
     \seq_put_right:Nn \l_stex_morphism_symbols_seq {{##1}{##3}}
     \tl_put_left:Nx \l_stex_morphisms_syms_tl {
       \exp_not:N \_stex_symbol:nnnnnnnN {{##1}{##3}{}}{\l_stex_feature_name_str / ##3}
@@ -3336,17 +3273,8 @@
   }
 }
 
-\cs_new_protected:Nn \_@@_setup: {
-  \tl_clear:N \l_stex_morphisms_syms_tl
-  \seq_clear:N \l_stex_morphism_symbols_seq
-  \seq_clear:N \l_stex_morphism_morphisms_seq
-  \_@@_do_decls:
-  \_@@_do_notations:
-  \exp_args:No \_@@_do_morphisms:n \l_stex_current_domain_str
-}
-
 \cs_new_protected:Nn \_@@_do_morphisms:n {
-    \prop_map_inline:cn {c_stex_module_#1_dependencies_prop}{
+    \prop_map_inline:cn {c_stex_module_#1_morphisms_prop}{
       \_@@_do_morph:nnnn ##2
     }
 }
@@ -3370,6 +3298,12 @@
   \stex_reactivate_macro:N \renamedecl
 }
 
+
+
+
+
+
+
 \cs_new_protected:Nn \stex_get_in_morphism:n {
   \stex_pseudogroup_with:nn{\_stex_symbol:nnnnnnnN}{
     \cs_set:Npn \_stex_symbol:nnnnnnnN ##1 ##2 ##3 ##4 ##5 ##6 ##7 ##8 {
@@ -3386,7 +3320,7 @@
   }
 }
 %    \end{macrocode}
-% \end{environment}
+% \end{macro}
 %
 % \end{sfragment}
 %
@@ -3500,8 +3434,6 @@
 
 \cs_new_protected:Nn \_@@_load_file:n {
   \stex_file_in_smsmode:on \l_@@_str {
-    \seq_clear:N \l_stex_all_modules_seq
-    \str_clear:N \l_stex_current_module_str
     \str_if_empty:NF \l_@@_archive_str {
       \stex_set_current_archive:n \l_@@_archive_str
     }
@@ -3563,7 +3495,7 @@
   \stex_execute_in_module:x{ 
     \stex_activate_module:n{\l_stex_import_ns_str}
   }
-  \stex_add_module_dependency:nonn
+  \stex_module_add_morphism:nonn
     {}{\l_stex_import_ns_str}{import}{}
   \stex_if_do_html:T {
     \stex_annotate_invisible:nnn 
@@ -3712,9 +3644,8 @@
 %    \begin{macrocode}
 \stex_new_stylable_env:nnnnnnn {copymodule}{m m}{
   %\TODO find domain
-  \begin{structural_feature_morphism}{#1}{copymodule}{#2}{
-
-  }
+  \stex_structural_feature_morphism:nnn{#1}{copymodule}{#2}
+  
   \stex_if_smsmode:F {
     \tl_set:Nn \thiscopyname { #1 }
     \tl_set_eq:NN \thismoduleuri \l_stex_current_domain_str
@@ -3724,7 +3655,7 @@
   \stex_if_smsmode:F {
     \stex_style_apply:
   }
-  \end{structural_feature_morphism}
+  \stex_structural_feature_morphism_end:
 }{}{}{}
 \stex_deactivate_macro:Nn \copymodule {module~environments}
 \stex_every_module:n {
@@ -3773,38 +3704,41 @@
 %
 % |symdecl| arguments:
 %    \begin{macrocode}
-\stex_keys_define:nnnn{decl}{
-  \str_clear:N \l_stex_key_name_str
-  \str_clear:N \l_stex_key_args_str
-  \tl_clear:N \l_stex_key_type_tl
-  \tl_clear:N \l_stex_key_def_tl
-  \clist_clear:N \l_stex_key_argnames_clist
+\stex_keys_define:nnnn{symargs}{
   \str_clear:N \l_stex_key_args_str
   \str_clear:N \l_stex_key_role_str
   \str_clear:N \l_stex_key_reorder_str
+  \clist_clear:N \l_stex_key_argnames_clist
   \str_clear:N \l_stex_key_assoc_str
   \str_clear:N \l_stex_key_intent_str
-  \tl_clear:N \l_stex_key_return_tl
-  \clist_clear:N \l_stex_key_argtypes_tl
 }{
-  name      .str_set:N  = \l_stex_key_name_str ,
-
   args      .str_set:N  = \l_stex_key_args_str ,
   reorder   .str_set:N  = \l_stex_key_reorder_str ,
   argnames  .clist_set:N  = \l_stex_key_argnames_clist ,
   assoc     .choices:nn   = {bin,binl,binr,pre,conj,pwconj}
     {\str_set:Nx \l_stex_key_assoc_str \l_keys_choice_tl},
   intent    .str_set_x:N  = \l_stex_key_intent_str ,
+  role      .str_set:N     = \l_stex_key_role_str
+}{}
+\stex_keys_define:nnnn{decl}{
+  \str_clear:N \l_stex_key_name_str
+  \str_clear:N \l_stex_key_args_str
+  \tl_clear:N \l_stex_key_type_tl
+  \tl_clear:N \l_stex_key_def_tl
+  \tl_clear:N \l_stex_key_return_tl
+  \clist_clear:N \l_stex_key_argtypes_tl
+}{
+  name      .str_set:N  = \l_stex_key_name_str ,
+
   return    .tl_set:N     = \l_stex_key_return_tl ,
   argtypes  .clist_set:N  = \l_stex_key_argtypes_tl ,
 
   type      .tl_set:N     = \l_stex_key_type_tl  ,
   def       .tl_set:N     = \l_stex_key_def_tl   ,
-  role      .str_set:N     = \l_stex_key_role_str   ,
 
   align     .code:n       = {},
   gfc       .code:n       = {}
-}{style,deprecate}
+}{style,deprecate,symargs}
 % \_stex_do_deprecation:n{#2}
 %    \end{macrocode}
 %
@@ -3912,7 +3846,7 @@
 % \begin{macro}{\stex_symdecl_top:n}
 %    \begin{macrocode}
 \cs_new_protected:Nn \_stex_symdecl_add_decl: {
-  \exp_args:Nnx \use:nn {\stex_add_module_decl:nnnnnnnN}{
+  \exp_args:Nnx \use:nn {\stex_module_add_symbol:nnnnnnnN}{
     {\l_stex_macroname_str}
     {\l_stex_key_name_str}
     {\int_use:N \l_stex_args_count}
@@ -4061,9 +3995,9 @@
   \cs_if_exist:cTF { #1 }{
     \cs_set_eq:Nc \l_@@_cs { #1 }
     % command name
-    \exp_args:Nx \tl_if_empty:nTF { \cs_argument_spec:N \l_@@_cs }{
+    \exp_args:Ne \tl_if_empty:nTF { \cs_argument_spec:N \l_@@_cs }{
       % ...that takes no arguments
-      \exp_args:Nx \cs_if_eq:NNTF {\tl_head:N \l_@@_cs}
+      \exp_args:Ne \cs_if_eq:NNTF {\tl_head:N \l_@@_cs}
         \_stex_invoke_symbol:nnnnnnnN
         \_@@_get_symbol_from_cs:
         {\_@@_get_symbol_from_string:n { #1 }}
@@ -4137,7 +4071,7 @@
   \stex_debug:nn{symbols}{Getting~#2~in~#1...}
   \seq_map_inline:Nn \l_stex_all_modules_seq {
     \stex_str_if_ends_with:nnT{##1}{#1}{
-      \prop_map_inline:cn{c_stex_module_##1_declarations_prop}{
+      \prop_map_inline:cn{c_stex_module_##1_symbols_prop}{
         \_@@_sym_from_str_i:nnnn{##1}{#2} ####2
       }
     }
@@ -4146,7 +4080,7 @@
 
 \cs_new_protected:Nn \_@@_get_from_one_string:n {
   \stex_debug:nn{symbols}{Getting~#1~anywhere...}
-  \stex_iterate_decls:n{
+  \stex_iterate_symbols:n{
     %\stex_debug:nn{symbols}{>#1==##2~|~#1==##3<...}
     \bool_lazy_or:nnT
       {\str_if_eq_p:nn{#1}{##2}}
@@ -4240,26 +4174,11 @@
   }
 }
 
-\cs_new_protected:Nn \_stex_notation_set_default:{
-  \stex_execute_in_module:x{
-    \cs_set_eq:cc{l_stex_notation_
-      \l_stex_get_symbol_mod_str ? \l_stex_get_symbol_name_str 
-      _cs}{
-      l_stex_notation_
-        \l_stex_get_symbol_mod_str ? \l_stex_get_symbol_name_str
-      _ \l_stex_key_variant_str _cs
-    }
-    \tl_if_empty:NF \l_stex_key_op_tl {
-      \cs_set_eq:cc{l_stex_notation_
-        \l_stex_get_symbol_mod_str ? \l_stex_get_symbol_name_str
-        _op__cs}{
-        l_stex_notation_
-        \l_stex_get_symbol_mod_str ? \l_stex_get_symbol_name_str
-        _op_
-        \l_stex_key_variant_str _cs
-      }
-    }
-  }
+\cs_new_protected:Nn \_stex_notation_set_default:n{
+  \stex_module_add_notation:eoexo{#1}{}
+    {\int_use:N \l_stex_get_symbol_arity_int}{
+    \stex_macro_body:N \l_stex_notation_macrocode_cs
+  }\l_stex_key_op_tl
 }
 
 \cs_new_protected:Nn \_@@_notation_i:n {
@@ -4290,7 +4209,7 @@
         \group_begin:
         \_stex_notation_styledefs:
         \IfBooleanTF#1{
-          \_stex_notation_set_default:
+          \_stex_notation_set_default:n{\l_stex_get_symbol_mod_str ? \l_stex_get_symbol_name_str}
         }{}
         \stex_style_apply:
         \group_end:
@@ -4318,6 +4237,14 @@
 %    \end{macrocode}
 % \end{macro}
 %
+% \begin{macro}{\setnotation}
+%    \begin{macrocode}
+\cs_new_protected:Npn \setnotation #1 #2 {
+  \TODO
+}
+%    \end{macrocode}
+% \end{macro}
+%
 % \begin{macro}{\stex_notation_top:nnn}
 %    \begin{macrocode}
 \cs_new_protected:Nn \_stex_notation_check: {
@@ -4339,7 +4266,7 @@
 }
 
 \cs_new_protected:Nn \_stex_notation_add:n {
-  \stex_add_module_notation:eoexo{#1}\l_stex_key_variant_str
+  \stex_module_add_notation:eoexo{#1}\l_stex_key_variant_str
     {\int_use:N \l_stex_get_symbol_arity_int}{
     \stex_macro_body:N \l_stex_notation_macrocode_cs
   }\l_stex_key_op_tl
@@ -5777,28 +5704,31 @@
 % \begin{environment}{mathstructure}
 %    \begin{macrocode}
 \stex_new_stylable_env:nnnnnnn {mathstructure}{m O{}}{
+  \_@@_begin:nn{#1}{#2}
+  \stex_smsmode_do:
+}{
+  \stex_structural_feature_module_end:
+  \_@@_do_externals:
+}{}{}{}
+
+\cs_new_protected:Nn \_@@_begin:nn {
   \tl_if_empty:nTF {#2} {
     \str_set:Nn \l_@@_name_str {#1}
   }{
     \str_set:Nn \l_@@_name_str {#2}
   }
 
-  \exp_args:Nne \use:nn { \stex_add_module_decl:nnnnnnnN }
+  \exp_args:Nne \use:nn { \stex_module_add_symbol:nnnnnnnN }
     { {#1}{\l_@@_name_str}{0}{}{defed}{
       \l_stex_current_module_str / \l_@@_name_str - structure
     }}
     {}\stex_invoke_structure:
 
-  \exp_args:Nno 
-  \begin{structural_feature_module}{\l_@@_name_str-structure}{structure}{
-    \protected\def\this{}
-  }
-  \stex_smsmode_do:
-}{
-  \end{structural_feature_module}
-  \_@@_do_externals:
+  \exp_args:No \stex_structural_feature_module:nn
+    {\l_@@_name_str-structure}{structure}
+  \protected\def\this{}
 
-}{}{}{}
+}
 
 \stex_sms_allow_env:n{mathstructure}
 \stex_deactivate_macro:Nn \mathstructure {module~environments}
@@ -5806,7 +5736,7 @@
 
 \cs_new_protected:Nn \_@@_do_externals: {
   \tl_set:Nn \l_@@_replace_this_tl {####1}
-  \exp_args:No \stex_iterate_decls:nn{\g_stex_last_feature_str}{
+  \exp_args:No \stex_iterate_symbols:nn{\g_stex_last_feature_str}{
     \_@@_external_decl:nnnn{##5}{##4}{##3}{##8}
   }
 }
@@ -5818,7 +5748,7 @@
     \tl_to_str:n{#1}^^J\tl_to_str:n{#2}^^J\tl_to_str:n{#4}
   }
   \tl_set:Nn \l_stex_get_symbol_args_tl {#1}
-  \exp_args:Nnx \use:nn {\stex_add_module_decl:nnnnnnnN} {
+  \exp_args:Nnx \use:nn {\stex_module_add_symbol:nnnnnnnN} {
     {}{\l_@@_name_str/#3}{\int_eval:n{#2 + 1}}
     {1i{\tl_to_str:n{$this}}\tl_if_empty:nF{#1}{\_stex_make_args_with:N \_@@_shift_argls:nnnw}}
     {defed}{typed}
@@ -5830,6 +5760,121 @@
   \int_eval:n{#1+1}#2{#3}
   \_stex_make_args_i:Nw \_@@_shift_argls:nnnw #4 \_stex_args_end:
 }
+%    \end{macrocode}
+% \end{environment}
+%
+% \begin{macro}{\stex_get_mathstructure:n}
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_get_mathstructure:n {
+  \str_clear:N \l_stex_get_structure_module_str
+  \stex_get_symbol:n{#1}
+  \exp_args:No \tl_if_eq:NNTF \l_stex_get_symbol_invoke_cs \stex_invoke_structure: {
+    \str_set_eq:NN \l_stex_get_structure_module_str \l_stex_get_symbol_type_tl
+  }{
+    \TODO Error
+  }
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{environment}{extstructure}
+%    \begin{macrocode}
+\stex_new_stylable_env:nnnnnnn {extstructure}{m O{} m}{
+  \_@@_begin:nn{#1}{#2}
+  \clist_map_inline:nn{#3}{
+    \stex_get_mathstructure:n{##1}
+    \stex_if_do_html:T {
+      \stex_annotate_invisible:nnn 
+        {shtml:import} \l_stex_get_structure_module_str {}
+    }
+    \stex_module_add_morphism:nonn
+      {}{\l_stex_get_structure_module_str}{import}{}
+    \stex_execute_in_module:x{ 
+      \stex_activate_module:n{\l_stex_get_structure_module_str}
+    }
+  }
+  \stex_smsmode_do:
+}{
+  \stex_structural_feature_module_end:
+  \_@@_do_externals:
+}{}{}{}
+
+\stex_sms_allow_env:n{extstructure}
+\stex_deactivate_macro:Nn \extstructure {module~environments}
+\stex_every_module:n {
+  \stex_reactivate_macro:N \extstructure
+}
+
+\stex_new_stylable_env:nnnnnnn {extstructure*}{m}{
+  \str_clear:N \l_@@_exstruct_name_str
+  \_@@_new_extstruct_name:n {1}
+  \stex_get_mathstructure:n{#1}
+
+  \stex_execute_in_module:x{
+    \tl_set:cn{#1}{
+      \_stex_invoke_symbol:nnnnnnnN
+      {\l_stex_get_symbol_mod_str}
+      {\l_stex_get_symbol_name_str}
+      {0}{}{defed}{
+        \l_stex_current_module_str?\l_@@_exstruct_name_str,
+        \l_stex_get_symbol_type_tl
+      }{}\stex_invoke_structure:
+    }
+  }
+
+  \exp_args:No \_@@_begin:nn\l_@@_exstruct_name_str{}
+  
+  \stex_if_do_html:T {
+    \stex_annotate_invisible:nnn 
+      {shtml:import} \l_stex_get_structure_module_str {}
+  }
+  \stex_module_add_morphism:nonn
+    {}{\l_stex_get_structure_module_str}{import}{}
+  \stex_execute_in_module:x{ 
+    \stex_activate_module:n{\l_stex_get_structure_module_str}
+  }
+
+  \stex_smsmode_do:
+}{
+  \prop_map_inline:cn{
+    c_stex_module_ \l_stex_current_module_str _symbols_prop
+  }{
+    \_@@_check_def:nnnnnnnn ##2
+  }
+  \stex_structural_feature_module_end:
+  \_@@_do_externals:
+}{}{}{}
+
+\stex_sms_allow_env:n{extstructure*}
+\exp_after:wN \stex_deactivate_macro:Nn 
+  \cs:w extstructure*\cs_end: {module~environments}
+\stex_every_module:n {
+  \exp_after:wN \stex_reactivate_macro:N \cs:w extstructure*\cs_end:
+}
+
+\cs_new_protected:Nn \_@@_check_def:nnnnnnnn {
+  \tl_if_empty:nT{#5}{
+    \TODO error
+  }
+}
+
+\cs_new_protected:Nn \_@@_new_extstruct_name:n {
+  \prop_map_inline:cn
+    {c_stex_module_ \l_stex_current_module_str _symbols_prop}{
+      \_@@_name_check:nnnnnnnnn{#1}##2
+  }
+  \str_if_empty:NT \l_@@_exstruct_name_str {
+    \str_set:Nn \l_@@_exstruct_name_str {EXTSTRUCT_#1}
+  }
+}
+\cs_new:Nn \_@@_name_check:nnnnnnnnn {
+  \str_if_eq:nnT{EXTSTRUCT_#1}{#3}{
+    \prop_map_break:n{
+      \exp_args:Ne \_@@_new_extstruct_name:n {\int_eval:n{#1+1}}
+    }
+  }
+}
+
 %    \end{macrocode}
 % \end{environment}
 %
@@ -5910,7 +5955,8 @@
 }
 
 \cs_new_protected:Nn \_@@_prop_do_decls:n {
-  \stex_iterate_decls:nn{#1}{
+  \stex_iterate_symbols:nn{#1}{
+    \stex_debug:nn{structuredecl}{Here: ##1?##3}
     \tl_if_empty:nTF{##2}{
       \prop_if_in:NnF \l_@@_prop {##3} {
         \seq_put_left:Nx \l_@@_seq{\tl_to_str:n{##1?##3}}
@@ -6082,7 +6128,7 @@
     %\stex_debug:nn{check}{##1~in~#1}
     \clist_if_in:nnT{#1}{##1}{
       %\stex_debug:nn{check}{...yes}
-      \clist_put_left:Nn \l_@@_clist { ##3! }
+      \clist_put_right:Nn \l_@@_clist { ##3! }
     }
   }
   \prop_map_inline:Nn \l_@@_prop { \l_@@_cs {##1} ##2}
@@ -6095,7 +6141,7 @@
   \cs_set:Npn \l_@@_cs ##1 ##2 ##3 {
     %\stex_debug:nn{empty?}{##2~(args:~\tl_to_str:n{##1},~\tl_to_str:n{##2},~\tl_to_str:n{##3})}
     \tl_if_empty:nF{##2}{
-      \clist_put_left:Nn \l_@@_clist { ##3! }
+      \clist_put_right:Nn \l_@@_clist { ##3! }
     }
   }
   \prop_map_inline:Nn \l_@@_prop { \l_@@_cs {##1} ##2}
@@ -6203,7 +6249,7 @@
   macro   .str_set_x:N = \l_stex_key_macroname_str ,
   type    .code:n = {}, % TODO remove
   judgment .code:n = {}
-}{id,title,style}
+}{id,title,style,symargs}
 %    \end{macrocode}
 %
 % \begin{macro}{\stex_new_statement:nn}
@@ -6273,13 +6319,25 @@
 
 \cs_new_protected:Nn \_@@_setup_def: {
   \str_if_empty:NF \l_stex_key_name_str {
-    \exp_args:NNo \exp_args:Nno \stex_add_module_decl:nnnnnnnN
-      \l_stex_key_macroname_str \l_stex_key_name_str {0}
-      {}{DEFINED}{}{}\stex_invoke_symbol:
+    \stex_symdecl_do:
+    \exp_args:Nnx \use:nn {\stex_module_add_symbol:nnnnnnnN}{
+      {\l_stex_key_macroname_str}{\l_stex_key_name_str}
+      {\int_use:N \l_stex_args_count}
+      {\l_stex_get_symbol_args_tl}
+      {DEFINED}{}{}\stex_invoke_symbol:
+    }
     \exp_args:Ne \stex_ref_new_sym_target:n {\l_stex_current_module_str?\l_stex_key_name_str}
   }
   \seq_map_inline:Nn \l_@@_fors_seq {
     \stex_ref_new_sym_target:n{##1}
+  }
+  \str_clear:N \l_@@_uri_str
+  \str_if_empty:NTF \l_stex_key_name_str {
+    \int_compare:nNnT {\seq_count:N \l_@@_fors_seq} = 1 {
+      \str_set:Nx \l_@@_uri_str {\seq_item:Nn \l_@@_fors_seq 1}
+    }
+  }{
+    \str_set:Nx \l_@@_uri_str {\l_stex_current_module_str ? \l_stex_key_name_str}
   }
   \stex_reactivate_macro:N \definiendum
   \stex_reactivate_macro:N \definame
@@ -6345,33 +6403,37 @@
 
 
 \NewDocumentCommand \definiens { O{} m }{
+  \group_begin:
   \str_clear:N \l_stex_get_symbol_name_str
   \tl_if_empty:nF {#1} {
     \stex_get_symbol:n { #1 }
+    \str_set:Nx \l_@@_uri_str
+      {\l_stex_get_symbol_mod_str ? \l_stex_get_symbol_name_str}
   }
-  \str_if_empty:NTF \l_stex_key_name_str {
-    \int_compare:nNnTF {\seq_count:N \l_@@_fors_seq} = 1 {
-      \str_set:Nx \l_@@_uri_str {\seq_item:Nn \l_@@_fors_seq 1}
-    }{
-      \TODO error?
+  \str_if_empty:NT \l_@@_uri_str {
+    \TODO error
+  } 
+  \stex_debug:nn{definiens}{Checking~\l_@@_uri_str}
+
+  \exp_args:NNo \exp_args:Nno \stex_str_if_starts_with:nnT
+    \l_@@_uri_str
+    \l_stex_current_module_str{
+    \prop_map_inline:cn{c_stex_module_\l_stex_current_module_str _symbols_prop}{
+      \stex_debug:nn{definiens}{\l_@@_uri_str == \l_stex_current_module_str?##1}
+      \exp_args:No \str_if_eq:noT \l_@@_uri_str {\l_stex_current_module_str?##1}{
+        \prop_map_break:n{\_@@_add_definiens:nnnnnnnn ##2}
+      }
     }
-  }{
-    \str_set:Nx \l_@@_uri_str {\l_stex_current_module_str ? \l_stex_key_name_str}
   }
 
-  %\stex_str_if_starts_with:nnT
-
-  %\str_if_eq:eeT {\prop_item:cn {l_stex_symdecl_ \l_stex_get_symbol_uri_str _prop}{module}}
-  %  {\l_stex_current_module_str}{
-  %    \str_if_eq:eeF {\prop_item:cn {l_stex_symdecl_ \l_stex_get_symbol_uri_str _prop}{defined}}
-  %    {true}{
-  %      \prop_put:cnn{l_stex_symdecl_ \l_stex_get_symbol_uri_str _prop}{defined}{true}
-  %      \exp_args:Nx \stex_add_to_current_module:n {
-  %        \prop_put:cnn{l_stex_symdecl_ \l_stex_get_symbol_uri_str _prop}{defined}{true}
-  %      }
-  %    }
-  %} TODO add definiens to symbol
   \stex_annotate:nnn{ shtml:definiens }{\l_@@_uri_str}{ #2 }
+  \group_end:
+}
+
+\cs_new_protected:Nn \_@@_add_definiens:nnnnnnnn {
+  \stex_debug:nn{definiens}{Adding~definiens~to~\l_stex_current_module_str?#2}
+  \prop_gput:cnn{c_stex_module_\l_stex_current_module_str _symbols_prop}
+    {#2}{{#1}{#2}{#3}{#4}{defed}{#6}{#7}{#8}}
 }
 
 %    \end{macrocode}
@@ -6386,7 +6448,7 @@
 
 %<@@=stex_meta>
 \group_begin:
-  \cs_set:Npn \_stex_persist_module: {}
+  \cs_set:Npn \_stex_persist_module:nN #1 #2 {}
   \bool_set_false:N \_stex_html_do_output_bool
   \bool_set_false:N \c_stex_check_terms_bool
   \stex_uri_resolve:Nn \l_stex_current_ns_uri {http://mathhub.info/sTeX/meta}

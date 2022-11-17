@@ -80,9 +80,9 @@
 
 \begin{sfragment}{Modules}
 
-  \stexmacro{stex_add_module_decl:nnnnnnN}
+  \stexmacro{stex_module_add_symbol:nnnnnnN}
   \stexmacro{stex_add_module_notation:nnnnn}
-  \stexmacro{stex_add_module_dependency:nnn}
+  \stexmacro{stex_module_add_morphism:nnn}
 
   The contents of a module with full URI
   \meta{uri} are represented as four macros:
@@ -91,11 +91,11 @@
       every time the module is \emph{activated}; e.g. the contents
       of \cs{STEXexport}, defines semantic macros and macros for
       notations, activates dependency modules, etc.
-    \item |\c_stex_module_|\meta{uri}|_dependencies_prop|: property list
+    \item |\c_stex_module_|\meta{uri}|_morphisms_prop|: property list
       containing all module dependencies of this module 
-      (see \cs{stex_add_module_dependency:nnn}).
-    \item |\c_stex_module_|\meta{uri}|_declarations_prop|: property list
-      containing all declarations in this module (see \cs{stex_add_module_decl:nnnnnnN}).
+      (see \cs{stex_module_add_morphism:nnn}).
+    \item |\c_stex_module_|\meta{uri}|symbols_prop|: property list
+      containing all declarations in this module (see \cs{stex_module_add_symbol:nnnnnnN}).
     \item |\c_stex_module_|\meta{uri}|_notations_prop|: property list
       containing all notations introduced in this module
       (see \cs{stex_add_module_notation:nnnnn}).
@@ -148,8 +148,6 @@
 
   \stexmacro{stex_metagroup_do_in:nn}
 
-  \begin{sfragment}{Adding Activation Code to Modules}
-
   \begin{sfunction}{stex_execute_in_module:n}{\stex_execute_in_module:n,\stex_execute_in_module:x}
     executes the provided code, adds it to the current module
     activation code, and makes
@@ -165,76 +163,191 @@
     (using \cs{stex_metagroup_do_in:nn}).
   \end{sfunction}
 
-  \begin{sfunction}{stex_add_to_current_module:n}{\stex_add_to_current_module:n,\stex_add_to_current_module:x}
+  \begin{sfunction}{stex_module_add_code:n}{\stex_module_add_code:n,\stex_module_add_code:x}
     adds the provided code to the module's
     |\c_stex_module_|\meta{uri}|_code|-macro.
   \end{sfunction}
-
-  \end{sfragment}
-
-  \begin{sfragment}{Adding Module Dependencies to a Module}
-    \begin{sfunction}{stex_add_module_dependency:nnnn}{\stex_add_module_dependency:nnnn, \stex_add_module_dependency:nonn, \stex_add_module_dependency:oonn}
-      adds a new module dependency to the current module
-      \begin{arguments}
-        \item The name of the dependency (may be empty for e.g. \cs{importmodule},
-          but may be named for e.g. \env{copymodule}),
-        \item the URI of the module being ``imported'',
-        \item the ``type'' of the dependency (e.g. |import| or |copymdule|),
-        \item a list of assignments as pairs 
-          |{|\meta{source}|}{|\meta{target}|}| that signify that
-          the symbol with full URI \meta{source} is being mapped or elaborated to
-          the new symbol with name \meta{target} in the current module.
-          May be empty for e.g. \cs{importmodule}.
-      \end{arguments}
-      The provided arguments are stored in 
-      |\c_stex_module_|\meta{uri}|_dependencies_prop|
-      with key |#1| (if non-empty) or |[#2]| (if |#1| is empty)
-      and value |{#1}{#2}{#3}{#4}|
-    \end{sfunction}
-  \end{sfragment}
 
 \end{sfragment}
 
 \begin{sfragment}{Symbols}
 
   A symbol in \stex is represented as a tuple of several components:
-  \begin{itemize}
-    \item An \emph{identifier} (possibly empty) that determines its
-      semantic macro name, or e.g. in \env{mathstructure} its
-      accessor-identifier (if empty, the name is used for that),
-    \item a unique \emph{name}, which in combination with the
-      containing module determines its URI as \meta{module-URI}|?|\meta{name},
-    \item its \emph{arity} (a numeric string in the range |0..9|),
-    \item a list of its argument specifiers of the form
-      \meta{i}\meta{mode}|{|\meta{argname}|}|,
-    \item its definiens,
-    \item its type,
-    \item its return code, and
-    \item an invocation macro.
-  \end{itemize}
 
-  \begin{sfunction}{_stex_invoke_symbol:nnnnnnnN}{\_stex_invoke_symbol:nnnnnnnN}
-    todo
+  \stexvarmacro{id}
+  \stexvarmacro{invokation_macro}
+  \stexmacro{_stex_invoke_symbol:nnnnnnnN}
+
+  \begin{sfunction}{stex_module_add_symbol:nnnnnnnN}{\stex_module_add_symbol:nnnnnnnN}
+    \begin{arguments}
+      \item \meta{id}: An \emph{identifier} (possibly empty) that determines its
+        semantic macro name, or e.g. in \env{mathstructure} its
+        accessor-identifier (if empty, the name is used for that),
+      \item \meta{name} a unique \emph{name}, which in combination with the
+        containing module determines its URI as \meta{module-URI}|?|\meta{name},
+      \item \meta{arity} a numeric string in the range |0..9|,
+      \item \meta{args} a list of argument specifiers of the form
+        \meta{i}\meta{mode}|{|\meta{argname}|}| (the length of \meta{args}
+        must be $3\cdot$\meta{arity}),
+      \item \meta{definiens} (or empty),
+      \item \meta{type} (or empty),
+      \item \meta{return code} (or empty), and
+      \item \meta{\cs{invokation_macro}}.
+    \end{arguments}
+
+    the arguments are stored in the property list 
+    \cs{c_stex_module_}\meta{\cs{l_stex_current_module}}|_symbols_prop|
+    under key \meta{name}.
+
+
+    
+    If the identifier \meta{id} is non-empty, the macro
+    \cs{id} is defined as |{|\cs{_stex_invoke_symbol:nnnnnnnN}|}|
+    with the arguments below:
   \end{sfunction}
 
-  \begin{sfragment}{Adding Symbols to a Module}
-  \end{sfragment}
+  \begin{sfunction}{_stex_invoke_symbol:nnnnnnnN}{\_stex_invoke_symbol:nnnnnnnN}
+    \begin{syntax}\dcs
+      \marg{module}\marg{name}\marg{arity}\marg{args}\marg{definiens}
+      \marg{type}
+      \marg{return code}
+      \marg{\cs{invokation_macro}}
+    \end{syntax}
+    TODO
+  \end{sfunction}
 
-  \begin{sfragment}{Iterating Over Symbols}
-  \end{sfragment}
+  \begin{sfunction}{stex_iterate_symbols:n,stex_iterate_break:,stex_iterate_break:n}{\stex_iterate_symbols:n,\stex_iterate_break:,\stex_iterate_break:n}
+    \begin{syntax}\dcs\marg{code}\end{syntax}
+    iterates over all symbols currently in scope and calls
+    \meta{code} for all of them with arguments
+    \marg{module}\marg{name}\marg{arity}\meta{args}\marg{definiens}
+    \marg{type}\marg{return code}\marg{\cs{invokation_macro}}.
+
+    Iteration can be stopped prematurely with
+    \dcs[stex_iterate_break:] and can stop and return code
+    with \dcs[stex_iterate_break:n].
+  \end{sfunction}
+
+  \begin{sfunction}{stex_iterate_symbols:nn}{\stex_iterate_symbols:nn}
+    \begin{syntax}\dcs\marg{csl}\marg{code}\end{syntax}
+    iterates over all symbols in the provided \meta{csl}
+    of full module URIs. \meta{code} 
+    receives the same arguments as \cs{stex_iterate_symbols:n},
+    but iteration can not be stopped early.
+  \end{sfunction}
 
 \end{sfragment}
 
 \begin{sfragment}{Notations}
 
-  \begin{sfragment}{Adding Notations to a Module}
-  \end{sfragment}
+  \stexmacro{stex_set_notation_macro:nnnnn}
+  \begin{sfunction}{stex_module_add_notation:nnnnn}{\stex_module_add_notation:nnnnn, \stex_module_add_notation:eoexo}
+    \begin{syntax}\dcs
+      \marg{symboluri}\marg{id}\marg{arity}\meta{code}\meta{op code}
+    \end{syntax}
+    stores the arguments in the property list 
+    \cs{c_stex_module_}\meta{\cs{l_stex_current_module}}|_notations_prop|
+    under key \meta{symboluri}|!|\meta{id} and calls
+    \cs{stex_set_notation_macro:nnnnn}.
+  \end{sfunction}
 
-  \begin{sfragment}{Iterating Over Notations}
-  \end{sfragment}
+  \begin{sfunction}{stex_set_notation_macro:nnnnn}{\stex_set_notation_macro:nnnnn,\stex_set_notation_macro:eoexo}
+    \begin{syntax}\dcs
+      \marg{symboluri}\marg{id}\marg{arity}\meta{code}\meta{op code}
+    \end{syntax}
+    Declares the following macros:
+
+    An active notation for a symbol with uri \meta{symboluri} and id
+    \meta{id} is represented as
+    a macro \cs{l_stex_notation_}\meta{symboluri}|_|\meta{id}|_cs|,
+    that takes \meta{arity} many argument
+    and expands to \meta{code},
+    and (if nonempty) an \emph{operator} notation as
+    a macro \cs{l_stex_notation_}\meta{symboluri}|_op_|\meta{id}|_cs|
+    that expands to \meta{op code}.
+
+    The default notation is represented as the \emph{empty} id.
+    If the correponding macros
+    \cs{l_stex_notation_}\meta{symboluri}|__cs|,
+    and \cs{l_stex_notation_}\meta{symboluri}|_op__cs| do not yet exist,
+    they are now defined as \meta{id}.
+  \end{sfunction}
+
+  \begin{sfunction}{stex_iterate_notations:nn}{\stex_iterate_notations:nn}
+    \begin{syntax}\dcs\marg{csl}\marg{code}\end{syntax}
+    iterates over all notations in the provided \meta{csl}
+    of full module URIs and calls \meta{code} on each of them with
+    arguments
+    \marg{symboluri}\marg{id}\marg{arity}\meta{code}\meta{op code}.
+  \end{sfunction}
 
 \end{sfragment}
 
+\begin{sfragment}{Imports and Morphisms}
+
+  \begin{sfunction}{stex_module_add_morphism:nnnn}{\stex_module_add_morphism:nnnn, \stex_module_add_morphism:nonn, \stex_module_add_morphism:oonn}
+    adds a new module morphism (i.e. inheritance, possibly with 
+    modification) to the current module
+    \begin{arguments}
+      \item The name of the morphism (may be empty for e.g. \cs{importmodule},
+        but may be named for e.g. \env{copymodule}),
+      \item the URI of the module being ``imported'',
+      \item the ``type'' of the morphism (e.g. |import| or |copymodule|),
+      \item a list of assignments as pairs 
+        |{|\meta{source}|}{|\meta{target}|}| that signify that
+        the symbol with full URI \meta{source} is being mapped or elaborated to
+        the new symbol with name \meta{target} in the current module.
+        May be empty for e.g. \cs{importmodule}.
+    \end{arguments}
+    The provided arguments are stored in 
+    |\c_stex_module_|\meta{uri}|_morphisms_prop|
+    with key |#1| (if non-empty) or |[#2]| (if |#1| is empty)
+    and value |{#1}{#2}{#3}{#4}|
+  \end{sfunction}
+
+\end{sfragment}
+
+\begin{sfragment}{Structural Features}
+
+  \stexvarmacro{g_stex_last_feature_str}
+  \begin{sfunction}{stex_structural_feature_module:nn,stex_structural_feature_module_end:}{\stex_structural_feature_module:nn,\stex_structural_feature_module_end:}
+    \begin{syntax}\dcs\marg{name}\marg{typeid}\end{syntax}
+    opens a new module-like structural feature of type \meta{typeid} 
+    with name \meta{name}, which needs to be closed with
+    \dcs[stex_structural_feature_module_end:].
+
+    Its body behaves like a nested module with name
+    \meta{modulename}|/|\meta{name}, the full URI of which is
+    stored in \cs{g_stex_last_feature_str} for 
+    subsequent elaboration.
+  \end{sfunction}
+
+  \stexvarmacro{l_stex_feature_name_str}
+  \stexvarmacro{l_stex_current_domain_str}
+  \stexvarmacro{l_stex_morphism_symbols_seq}
+  \stexvarmacro{l_stex_morphism_morphisms_seq}
+  \begin{sfunction}{stex_structural_feature_morphism:nnn,stex_structural_feature_morphism_end:}{\stex_structural_feature_morphism:nnn,\stex_structural_feature_morphism_end:}
+    \begin{syntax}\dcs\marg{name}\marg{typeid}\marg{domain}\end{syntax}
+    opens a new morphism-like structural feature of type \meta{typeid} 
+    with name \meta{name} and domain \marg{domain}, which needs to be closed with
+    \dcs[stex_structural_feature_morphism_end:].
+
+    Deactivates \cs{symdecl}, \cs{textsymdecl},
+    \cs{symdef}, \cs{notation} and \env{smodule}, and activates
+    \cs{assign}, \cs{assignMorphism} and \cs{renamedecl}.
+
+    Defines \cs{l_stex_feature_name_str} as \meta{name},
+    \cs{l_stex_current_domain_str} as the full uri of \marg{domain},
+    \cs{l_stex_morphism_symbols_seq} and
+    \cs{l_stex_morphism_morphisms_seq}.
+
+    ...
+    
+  \end{sfunction}
+
+
+
+\end{sfragment}
 
 \begin{sfragment}{Optional (Key-Value) Argument Handling}
   \LaTeX3 is surprisingly weak when it comes to handling
@@ -914,23 +1027,23 @@
     mean time).
 
     \begin{texnote}
-      \meta{code} is being process using regular expressions before
-      writing out to make it compliant with \pkg{expl3} category
-      codes, which is somewhat expensive.
-      Care should be taken that \meta{code} is not too big.
+      \meta{code} is being read with \pkg{expl3} category
+      codes (except for spaces having catcode 10), 
+      but not pretokenized; i.e. \meta{code} can safely
+      change the current catcode scheme.
     \end{texnote}
   \end{sfunction}
 
-  \begin{sfunction}{stex_persist_in:n,persist:n}{\stex_persist_in:n,\persist:n}
-    \begin{syntax}\dcs\marg{code}\end{syntax}
-    writes the md5 checksums like \cs{stex_persist:n},
-    and subsequently executes \meta{code}. In \meta{code}, we can
-    call \dcs[persist:n] to \emph{actually} persist content.
-    This wraps all individual code fragments provided in
-    \cs{persist:n} with the same file path and md5 checksum,
-    and is useful if we want to persist e.g. multiple macro
-    definitions individually.
+  \begin{sfunction}{stex_persist_deps:nn}{\stex_persist_deps:nn,\stex_persist_deps:ox}
+    \begin{syntax}\dcs\marg{file}\marg{code}\end{syntax}
+    persists \meta{code} explicitly as stemming from 
+    the file with string path \marg{file} (regarding the checksum-test) 
+    in the |.deps|-file.
   \end{sfunction}
+
+  \begin{svariable}{l_stex_in_persist_bool}{\l_stex_in_persist_bool}
+    is true iff the |.deps|-file is currently being read.
+  \end{svariable}
 
 \end{sfragment}
 
