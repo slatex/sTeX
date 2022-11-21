@@ -203,50 +203,8 @@
     \cs{id} is defined as |{|\cs{_stex_invoke_symbol:nnnnnnnN}|}|
     with the arguments described there.
 
-    \begin{texnote} \cs{invokation_macro} must be \cs{protected}
+    \begin{texnote} \cs{invokation_macro} must be \cs{protected}.
     \end{texnote}
-  \end{sfunction}
-
-
-  \stexmacro{stex_invoke_symbol:}
-  \begin{sfunction}{_stex_invoke_symbol:nnnnnnnN,
-    l_stex_current_symbol_str,
-    l_stex_current_arity_str,
-    l_stex_current_args_tl,
-    l_stex_current_return_tl,
-    l_stex_current_type_tl,
-    STEXInternalSymbolAfterInvokationTL
-    }{\_stex_invoke_symbol:nnnnnnnN
-    \l_stex_current_symbol_str,
-    \l_stex_current_arity_str,
-    \l_stex_current_args_tl,
-    \l_stex_current_return_tl,
-    \l_stex_current_type_tl,
-    \STEXInternalSymbolAfterInvokationTL
-    }
-    \begin{syntax}\dcs
-      \marg{module}\marg{name}\marg{arity}\marg{args}\marg{definiens}
-      \marg{type}
-      \marg{return code}
-      \marg{\cs{invokation_macro}}
-    \end{syntax}
-    is how a semantic macro is/should be defined.
-    \dcs first checks whether semantic macros are currently allowed,
-    and throws an error if not. Otherwise, it
-    sets the \cs{comp}-controlled highlighting to \cs{compemph@uri},
-    initializes \dcs[STEXInternalSymbolAfterInvokationTL],
-    defines the following macros for all of its arguments, and subsequently
-    calls the \cs{invokation_macro}:
-    \begin{itemize}
-      \item \dcs[l_stex_current_symbol_str]|={|\meta{module}|?|\meta{name}|}|
-      \item \dcs[l_stex_current_arity_str]|=|\marg{arity}
-      \item \dcs[l_stex_current_args_tl]|=|\marg{args}
-      \item \dcs[l_stex_current_type_tl]|=|\marg{type}
-      \item \dcs[l_stex_current_return_tl]|=|\marg{return code}
-    \end{itemize}
-
-    The simplest example for an \cs{invokation_macro} is
-    \cs{stex_invoke_symbol:}.
   \end{sfunction}
 
   \begin{sfunction}{stex_iterate_symbols:n,stex_iterate_break:,stex_iterate_break:n}{\stex_iterate_symbols:n,\stex_iterate_break:,\stex_iterate_break:n}
@@ -268,6 +226,136 @@
     receives the same arguments as \cs{stex_iterate_symbols:n},
     but iteration can not be stopped early.
   \end{sfunction}
+
+  \begin{sfunction}{
+    stex_get_symbol:n,
+    l_stex_get_symbol_mod_str,
+    l_stex_get_symbol_name_str,
+    l_stex_get_symbol_arity_int,
+    l_stex_get_symbol_args_tl,
+    l_stex_get_symbol_def_tl,
+    l_stex_get_symbol_type_tl,
+    l_stex_get_symbol_return_tl,
+    l_stex_get_symbol_invoke_cs
+    }{\stex_get_symbol:n,
+    \l_stex_get_symbol_mod_str,
+    \l_stex_get_symbol_name_str,
+    \l_stex_get_symbol_arity_int,
+    \l_stex_get_symbol_args_tl,
+    \l_stex_get_symbol_def_tl,
+    \l_stex_get_symbol_type_tl,
+    \l_stex_get_symbol_return_tl,
+    \l_stex_get_symbol_invoke_cs
+    }
+    \dcs attemps to find a symbol with the given name or id
+    that is currently in scope.
+    A name may be prefixed with a module name/path separated by |?|.
+
+    Throws an error if no such symbol is found; otherwise, sets the
+    listed |\l_stex_get_symbol_...|-macros to the components of the
+    found symbol.
+  \end{sfunction}
+
+  \begin{sfunction}{stex_if_check_terms:}[pTF]{\stex_if_check_terms:}
+    whether to typeset declaration components (notations, types,
+    definientia etc.) in a throwaway box. Is true iff
+    the backend is |pdflatex| and
+    either the |STEX_CHECKTERMS| environment variable
+    or |checkterms| package option is set.
+  \end{sfunction}
+
+  \begin{sfunction}{stex_check_term:n}{\stex_check_term:n}
+      typesets the argument in a throwaway box in math mode
+      iff \cs{stex_if_check_terms:} is true.
+
+      Is deactivated in sms-mode.
+  \end{sfunction}
+
+  \begin{sfunction}{
+    stex_symdecl_do:,
+    l_stex_key_name_str,
+    l_stex_key_args_str,
+    l_stex_key_argnames_clist,
+    l_stex_assoc_args_count,
+    l_stex_argnames_seq
+    }{\stex_symdecl_do:,
+    \l_stex_key_name_str,
+    \l_stex_key_args_str,
+    \l_stex_key_argnames_clist,
+    \l_stex_assoc_args_count,
+    \l_stex_argnames_seq
+    }
+      \dcs processes the shared (mandatory and optional) arguments
+      of e.g. \cs{symdecl}, \cs{symdef}, \cs{vardef} etc.
+
+      Requires the following macros to be set
+      \begin{itemize}
+        \item \dcs[l_stex_key_name_str]: the name of the symbol,
+        \item \dcs[l_stex_key_args_str]: the |args|-string (e.g.
+        |3| or |ai|)
+        \item \dcs[l_stex_key_argnames_clist]: a list of \emph{names}
+          for the arguments, the length of which should be $\leq$ the
+          arity of the symbol
+      \end{itemize}
+
+      and will generate the following macros:
+      \begin{itemize}
+        \item \cs{l_stex_get_symbol_arity_int}: the arity of the symbol,
+        \item \dcs[l_stex_key_args_str]: the args string as a
+          definite sequence of argument-mode characters, whose
+          length is the arity of the symbol; e.g.
+          |3| is turned into |iii|,
+        \item \dcs[l_stex_assoc_args_count]: the number of
+          sequence arguments (i.e. |a| or |B| mode),
+        \item \dcs[l_stex_argnames_seq]: the full sequence of
+          argument names; those not provided by
+          \cs{l_stex_key_argnames_clist} are set to be
+          |$j|\iffalse$\fi, where |j| is the index of the
+          argument,
+        \item \cs{l_stex_get_symbol_args_tl}: a token list of
+          triples |jm{|\meta{argname}|}|, where |j| is the index and
+          |m| the respective argument mode character (i.e. |i|, |a|,
+          |b| or |B|). 
+      \end{itemize}
+  \end{sfunction}
+
+  \begin{sfunction}{_stex_symdecl_check_terms:,
+    l_stex_key_type_tl,l_stex_key_def_tl}{\_stex_symdecl_check_terms:}
+    calls \cs{stex_check_term:n} for
+    the type and definiens stored in \cs{l_stex_key_type_tl} and
+    \cs{l_stex_key_def_tl}
+  \end{sfunction}
+
+  \stexmacro{stex_invoke_symbol:}
+  \begin{sfunction}{stex_symdecl_top:n,\l_stex_macroname_str}{\stex_symdecl_top:n}
+    \begin{syntax}\dcs\marg{maybename}\end{syntax}
+    checks whether \cs{l_stex_key_name_str} is empty,
+    and if so, sets it to be \meta{maybename}.
+    Then calls \cs{stex_symdecl_do:} and
+    \cs{_stex_symdecl_check_terms:}, writes the components to the HTML
+    (if applicable) and adds the symbol to the current module
+    with invokation macro \cs{stex_invoke_symbol:} and id/macroname
+    \cs{l_stex_macroname_str}.
+  \end{sfunction}
+
+\end{sfragment}
+
+\begin{sfragment}{Variables}
+  Variables work very similar to symbols, except that their declarations
+  are local to the current \TeX-group rather than the
+  current module, and they are not exported in modules.
+
+  \stexvarmacro{invokation_macro}
+
+  \begin{svariable}{l_stex_variables_prop}{\l_stex_variables_prop}
+    stores all variables currently in scope as a property list
+    with key \meta{name} and value
+    \marg{id}\marg{name}\marg{arity}\meta{args}\marg{definiens}
+    \marg{type}\marg{return code}\marg{\cs{invokation_macro}}.
+
+    The invokation macro for ``normal'' variables declared with
+    \cs{vardef} is \cs{stex_invoke_symbol:}.
+  \end{svariable}
 
 \end{sfragment}
 
@@ -312,6 +400,157 @@
     of full module URIs and calls \meta{code} on each of them with
     arguments
     \marg{symboluri}\marg{id}\marg{arity}\meta{code}\meta{op code}.
+  \end{sfunction}
+
+  \begin{sfunction}{
+    stex_notation_parse_and_then:nw,
+    l_stex_key_prec_str,
+    l_stex_key_variant_str,
+    l_stex_notation_macrocode_cs
+    }{\stex_notation_parse_and_then:nw,
+    \l_stex_key_prec_str,
+    \l_stex_key_variant_str,
+    \l_stex_notation_macrocode_cs
+    }
+    \begin{syntax}\dcs\marg{code}\meta{notations}
+    \end{syntax}
+
+    parses a notation (which may consist of multiple
+    braced components, depending on the argument modes)
+    and subsequently calls \meta{code}.
+
+    Requires the following macros to be set:
+    \begin{itemize}
+      \item \cs{l_stex_get_symbol_arity_int},
+      \item \cs{l_stex_get_symbol_args_tl},
+      \item \dcs[l_stex_key_prec_str]: The precedence string
+        as provided by a user in the optional |precs|-argument,
+      \item \dcs[l_stex_key_variant_str]: the id of the
+        notation variant.
+    \end{itemize}
+
+    Stores the final notation in the macro 
+    \dcs[l_stex_notation_macrocode_cs] taking 
+    \cs{l_stex_get_symbol_arity_int} many arguments.
+  \end{sfunction}\bigskip
+
+
+  Some thing to consider when we generate a notation macro:
+  \begin{itemize}
+    \item The notation macro generated by the \cs{notation}-command
+      should contain the variant identifier and the precedences,
+      as these are intrinsic parts of the notation. 
+    \item It should
+      \emph{not} contain the symbol itself however, so that
+      notations can be copied between symbols.
+    \item Notations as provided by users will largely adhere
+      to the standard \LaTeX\ category code scheme, and
+    \item notations need to be ``persistable'' in |.deps|-files.
+  \end{itemize}
+
+  We therefore want to augment the simple code provided by
+  a user by various ``annotations'' that contain the
+  relevant information (such as precedences) and to mark
+  the argument positions for semantic extractions, but we should
+  adhere to the default \LaTeX\ category code scheme in doing
+  so.
+
+  \begin{sfunction}{
+    STEXInternalTermMathArgiii,
+    STEXInternalTermMathOMSOrOMViii,
+    STEXInternalTermMathAssocArgiiiii,
+    STEXInternalAssocArgMarkerI,
+    STEXInternalAssocArgMarkerII,
+    STEXInternalTermMathOMAiii,
+    STEXInternalTermMathOMBiii,
+    STEXInternalSymbolAfterInvokationTL
+  }{
+    \STEXInternalTermMathArgiii,
+    \STEXInternalTermMathAssocArgiiiii,
+    \STEXInternalAssocArgMarkerI,
+    \STEXInternalAssocArgMarkerII,
+    \STEXInternalTermMathOMSOrOMViii,
+    \STEXInternalTermMathOMAiii,
+    \STEXInternalTermMathOMBiii,
+    \STEXInternalSymbolAfterInvokationTL
+  }
+
+  In \openmath/\OMDoc, there are (for our purposes) 
+  three kinds of expressions that an application of a semantic macro
+  -- and hence a notation macro -- can represent, each of which
+  corresponds to a macro taking care of the semantic annotations:
+  \begin{itemize}
+    \item |OMS/OMV|: a simple symbol (arity 0) (\dcs[STEXInternalTermMathOMSOrOMViii])
+    \item |OMA|: an application of a symbol to argument (arity $>0$,
+      \dcs[STEXInternalTermMathOMAiii])
+    \item |OMB|: a binding application of a symbol that
+      binds/declares one or more variables (argument string contains
+      |b| or |B|, \dcs[STEXInternalTermMathOMBiii]).
+  \end{itemize}
+
+  The arguments are marked with \dcs[STEXInternalTermMathArgiii]
+  (|i| or |b|) or \dcs[STEXInternalTermMathAssocArgiiiii] (|a|
+  or |B|). Finally, the notation is closed with 
+  \dcs[STEXInternalSymbolAfterInvokationTL].
+  
+  How this works is best explained by example.
+  \end{sfunction}
+
+
+  \begin{sexample}
+    Assume we have a symbol and notation:
+    \begin{stexcode}
+\symdecl{somesymbol}[args=iai]
+\notation{somesymbol}[prec=10;20x30x40,variant=foo]
+{First: #1; Second: #2; Third: #3; End}
+{(#1 -- ##1 split ##2 -- #3)}
+    \end{stexcode}
+
+    Since the symbol corresponds to an |OMA|, the whole notation
+    is wrapped in \cs{STEXInternalTermMathOMAiii}, taking as
+    arguments the variant identifier (|foo|), 
+    the operator precedence (|10|) and the body of the notation.
+
+    The second argument in the notation, being associative,
+    is wrapped in a \cs{STEXInternalTermMathAssocArgiiiii},
+    taking as arguments the argument number (|2|), the
+    precedence (|30|), the \TeX\ parameter token (|#2|)
+    the notation body (|(#1 -- ##1 split ##2 -- #3)|), and finally
+    the argument mode (|a|). Additionally, the markers |##1|
+    and |##2| are replaced by \cs{STEXInternalAssocArgMarkerI}
+    and \cs{STEXInternalAssocArgMarkerII}, respectively.
+
+    Subsequently, the non-sequence parameter tokens
+    are wrapped in \cs{STEXInternalTermMathArgiii} with
+    arguments |mj| (where |m| is the mode und |j| the index),
+    the precedence (|20| or |40| respectively), and the
+    parameter token.
+
+    Finally, a \cs{STEXInternalSymbolAfterInvokationTL}
+    is inserted.
+
+    The final expansion of \cs{l_stex_notation_macrocode_cs}
+    is thus:
+    \begin{stexcode}
+\STEXInternalTermMathOMAiii{foo}{10}{
+  First: \STEXInternalTermMathArgiii{i1}{20}{#1};
+  Second: \STEXInternalTermMathAssocArgiiiii{2}{30}{#2}{
+    (\STEXInternalTermMathArgiii{i1}{20}{##1} -- 
+      \STEXInternalAssocArgMarkerI  split
+      \STEXInternalAssocArgMarkerII  -- 
+      \STEXInternalTermMathArgiii{i3}{40}{##3})
+  }{a}; 
+  Third: \STEXInternalTermMathArgiii {i3}{40}{#3}; End
+}\STEXInternalSymbolAfterInvokationTL 
+    \end{stexcode}
+  \end{sexample}
+
+  \begin{sfunction}{stex_notation_top:nnw}{\stex_notation_top:nnw}
+    \begin{syntax}\dcs\marg{symboluri}\marg{code}\end{syntax}
+    calls \cs{stex_notation_parse_and_then:nw}\marg{code}
+    and, adds the notation for the symbol with
+    URI \meta{symboluri} to the current module and
+    exports it to the HTML (if applicable).
   \end{sfunction}
 
 \end{sfragment}
@@ -373,7 +612,7 @@
         \meta{module}, \meta{name}, \meta{id}, \meta{arity}, \meta{args},
         \meta{definiens}, \meta{type}, and \meta{return code},
         the property list contains an entry with key
-        |[|\meta{module}|]/[|\meta{name}]
+        |[|\meta{module}|]/[|\meta{name}|]|
         and value \marg{id}\marg{arity}\marg{args}\marg{definiens}
         \marg{type}\marg{return code}.
       \item \dcs[l_stex_morphism_renames_prop]: An initially empty
@@ -490,6 +729,48 @@
     \cs{stex_get_symbol:n}, and additionaly
     \dcs[l_stex_get_symbol_macro_str] to the \meta{id}
     of the symbol. Throws an error if no such symbol is found.
+  \end{sfunction}
+
+\end{sfragment}
+
+\begin{sfragment}{Expressions and Semantic Macros}
+
+  \begin{sfunction}{_stex_invoke_symbol:nnnnnnnN,
+    l_stex_current_symbol_str,
+    l_stex_current_arity_str,
+    l_stex_current_args_tl,
+    l_stex_current_return_tl,
+    l_stex_current_type_tl
+    }{\_stex_invoke_symbol:nnnnnnnN
+    \l_stex_current_symbol_str,
+    \l_stex_current_arity_str,
+    \l_stex_current_args_tl,
+    \l_stex_current_return_tl,
+    \l_stex_current_type_tl
+    }
+    \begin{syntax}\dcs
+      \marg{module}\marg{name}\marg{arity}\marg{args}\marg{definiens}
+      \marg{type}
+      \marg{return code}
+      \marg{\cs{invokation_macro}}
+    \end{syntax}
+    is how a semantic macro is/should be defined.
+    \dcs first checks whether semantic macros are currently allowed,
+    and throws an error if not. Otherwise, it
+    sets the \cs{comp}-controlled highlighting to \cs{compemph@uri},
+    initializes \cs{STEXInternalSymbolAfterInvokationTL},
+    defines the following macros for all of its arguments, and subsequently
+    calls the \cs{invokation_macro}:
+    \begin{itemize}
+      \item \dcs[l_stex_current_symbol_str]|={|\meta{module}|?|\meta{name}|}|
+      \item \dcs[l_stex_current_arity_str]|=|\marg{arity}
+      \item \dcs[l_stex_current_args_tl]|=|\marg{args}
+      \item \dcs[l_stex_current_type_tl]|=|\marg{type}
+      \item \dcs[l_stex_current_return_tl]|=|\marg{return code}
+    \end{itemize}
+
+    The simplest example for an \cs{invokation_macro} is
+    \cs{stex_invoke_symbol:}.
   \end{sfunction}
 
 \end{sfragment}
