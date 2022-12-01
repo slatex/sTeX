@@ -5367,7 +5367,7 @@
     }
     #7
   }{
-    \msg_error:nnxx{stex}{error/notallowed}{#2}{\l_stex_current_symbol_str}
+    \msg_error:nnxx{stex}{error/notallowed}{#1}{\l_stex_current_symbol_str}
   }
 }
 
@@ -5467,22 +5467,67 @@
   \tl_if_empty:nF{#4}{\_@@_add_prop_arg:nnnw #4 \_stex_args_end:}
 }
 
+\int_new:N \l_@@_arg_counter_int
 \cs_new_protected:Nn \@@_invoke_custom:n {
   \stex_debug:nn{expressions}{custom~notation}
   \prop_clear:N \l_@@_customs_prop
+  \int_zero:N \l_@@_arg_counter_int
   \tl_if_empty:NF \l_stex_current_args_tl {
     \exp_after:wN \_@@_add_prop_arg:nnnw \l_stex_current_args_tl \_stex_args_end:
     \cs_set_eq:NN \arg \_@@_arg:n
   }
-  #1
+  \tl_set_eq:NN \l_stex_get_symbol_args_tl \l_stex_current_args_tl
+  \cs_set_eq:NN \_@@_do_ab_next:nn \_stex_term_oma:nn
+  \_stex_map_args:N \_@@_check_b:nnn
+  \_@@_do_ab_next:nn{}{#1}
+  % TODO check that all arguments are present
   \STEXInternalSymbolAfterInvokationTL
 }
 
-\cs_new_protected:Nn \_@@_arg:n {
+\cs_new:Nn \_@@_check_b:nnn {
+  \str_case:nn #2 {
+    b {\cs_set_eq:NN \_@@_do_ab_next:nn \_stex_term_omb:nn}
+    B {\cs_set_eq:NN \_@@_do_ab_next:nn \_stex_term_omb:nn}
+  }
+}
+
+\NewDocumentCommand \_@@_arg:n {O{} m} {
   \group_begin:
     \bool_set_true:N \l_stex_allow_semantic_bool
-    #1
+    \tl_if_empty:nTF{#1}{
+      \int_incr:N \l_@@_arg_counter_int
+      % TODO check if empty
+      \cs_set:Npn \_@@_check:nnnn ##1 ##2 ##3 ##4 {
+        \int_compare:nNnT{##1}=\l_@@_arg_counter_int {
+          \prop_map_break:n{\_@@_arg_do:nnnNn {##1##2##3}{##1}{##2}}
+        }
+      }
+    }{
+      \cs_set:Npn \_@@_check:nnnn ##1 ##2 ##3 ##4 {
+        \exp_args:No \str_if_eq:nnTF{\c_dollar_str ##3} {#1}{##4}{
+          \str_if_eq:nnT{#1}{##1}{
+            \prop_map_break:n{\_@@_arg_do:nnnNn {##1##2##3}{##1}{##2}}
+          }
+        }
+      }
+    }
+    \prop_map_function:NN \l_@@_customs_prop \_@@_arg_check:nn
+    \_@@_arg_error: {#2}
   \group_end:
+}
+
+\cs_new:Nn \_@@_arg_check:nn {
+  \_@@_check:nnnn #1 {#2}
+}
+
+\cs_new_protected:Nn \_@@_arg_error: {
+  \TODO error
+}
+
+\cs_new_protected:Nn \_@@_arg_do:nnnNn {
+  % TODO: check that prop allows for a(nother) #1 = 1i{$foo} (where #3 = i)
+  \prop_put:Nnn \l_@@_customs_prop {#1}{X}
+  \_stex_term_arg:nnn{#3}{#2}{#5}
 }
 
 \cs_new_protected:Npn \@@_invoke_op_notation:w [#1] {
@@ -5546,7 +5591,9 @@
   \tl_if_empty:nTF{#3}{
     \STEXInternalTermMathArgiiii{#5}{#1}{#2}{}
   }{
-    % TODO: check whether #3 is sequence
+    % TODO: check whether #3 is sequence (
+      %\_stex_invoke_variable:nnnnnnN
+      % {name}{arity}{i1{$1}}{args}{dim{clist}}\stex_invoke_sequence_range:)
     \tl_clear:N \l_@@_ret_tl
     \_@@_assoc_simple:nnnnn{#1}{#2}{#3}{#4}{#5}
   }
@@ -5794,24 +5841,28 @@
 %
 % \begin{macro}{\comp,\compemph@uri,\compemph,\defemph,\defemph@uri,\symrefemph,\symrefemph@uri,\varemph,\varemph@uri}
 %    \begin{macrocode}
-\cs_new_protected:Npn \_comp #1 {
-  \str_if_empty:NF \l_stex_current_symbol_str {
+\cs_new_protected:Nn \_do_comp:nNn {
+  \str_if_empty:NTF \l_stex_current_symbol_str {
+    #3
+  }{
     \stex_if_html_backend:TF {
-      \stex_annotate:nn { shtml:comp = \l_stex_current_symbol_str}{ #1 }
+      \stex_annotate:nn { shtml:#1 = \l_stex_current_symbol_str}{ #3 }
     }{
-      \exp_args:Nnx \compemph@uri { #1 } { \l_stex_current_symbol_str }
+      \exp_args:Nno #2 { #3 } \l_stex_current_symbol_str
     }
   }
 }
 
-\cs_new_protected:Npn \_varcomp #1 {
-  \str_if_empty:NF \l_stex_current_symbol_str {
-    \stex_if_html_backend:TF {
-      \stex_annotate:nn { shtml:varcomp = \l_stex_current_symbol_str}{ #1 }
-    }{
-      \exp_args:Nnx \varemph@uri { #1 } { \l_stex_current_symbol_str }
-    }
-  }
+\cs_new_protected:Npn \_comp {
+  \_do_comp:nNn {comp}\compemph@uri
+}
+
+\cs_new_protected:Npn \_varcomp {
+  \_do_comp:nNn {varcomp}\varemph@uri
+}
+
+\cs_new_protected:Npn \_defcomp {
+  \_do_comp:nNn {definiendum}\defemph@uri
 }
 
 \cs_new_protected:Npn \comp {}
@@ -5829,7 +5880,7 @@
 }
 
 \cs_new_protected:Npn \defemph #1 {
-    \textbf{#1}
+    \ifmmode\else\expandafter\textbf\fi{#1}
 }
 
 \cs_new_protected:Npn \symrefemph@uri #1 #2 {
@@ -6606,7 +6657,7 @@
   name    .str_set_x:N = \l_stex_key_name_str ,
   for     .clist_set:N = \l_stex_key_for_clist ,
   macro   .str_set_x:N = \l_stex_key_macroname_str ,
-  type    .code:n = {}, % TODO remove
+  %type    .code:n = {}, % TODO remove
   judgment .code:n = {}
 }{id,title,style,symargs}
 %    \end{macrocode}
@@ -6635,7 +6686,33 @@
     #3
 
     \stex_if_smsmode:F {
-      \begin{stex_annotate_env}{shtml:#1={\seq_use:Nn \l_@@_fors_seq ,}}
+      \exp_args:Nne \begin{stex_annotate_env}{
+        shtml:#1={},
+        \seq_if_empty:NF \l_@@_fors_seq {,
+          shtml:fors={\seq_use:Nn \l_@@_fors_seq ,}
+        }
+        \str_if_empty:NF \l_stex_key_macroname_str {,
+          shtml:macroname={\l_stex_key_macroname_str}
+        }
+        \str_if_empty:NF \l_stex_key_name_str {,
+          shtml:name={\l_stex_key_name_str}
+        }
+        \str_if_empty:NF \l_stex_key_assoc_str {,
+          shtml:assoctype={\l_stex_key_assoc_str}
+        }
+        \str_if_empty:NF \l_stex_key_role_str {,
+          shtml:role={\l_stex_key_role_str}
+        }
+        \str_if_empty:NF \l_stex_key_reorder_str {,
+          shtml:reorderargs={\l_stex_key_reorder_str}
+        }
+        \str_if_empty:NF \l_stex_key_id_str {,
+          shtml:id={\l_stex_key_id_str}
+        }
+        \clist_if_empty:NF \l_stex_key_style_clist {,
+          shtml:styles={\l_stex_key_style_clist}
+        }
+      }
       \tl_set_eq:NN \thistitle \l_stex_key_title_tl
       \str_set_eq:NN \thisname \l_stex_key_name_str
       \clist_set_eq:NN \thisfor \l_stex_key_for_str
@@ -6699,6 +6776,7 @@
     \str_set:Nx \l_@@_uri_str {\l_stex_current_module_str ? \l_stex_key_name_str}
   }
   \stex_reactivate_macro:N \definiendum
+  \stex_reactivate_macro:N \defnotation
   \stex_reactivate_macro:N \definame
   \stex_reactivate_macro:N \Definame
 }
@@ -6729,14 +6807,18 @@
       }
     }
     \exp_args:No \stex_ref_new_sym_target:n \l_stex_current_symbol_str
-    \def\comp{\_comp}
-    \let\compemph@uri\defemph@uri
+    \def\comp{\_defcomp}
     \stex_annotate:nn{shtml:definiendum=\l_stex_current_symbol_str}{\comp{#2}}
   }{
     \msg_error:nnnx{stex}{error/notallowed}{#1}{\l_stex_current_symbol_str}
   }
   \group_end:
 }
+
+\NewDocumentCommand \defnotation{ m } {
+  \_stex_next_symbol:n { \def\comp{\_defcomp}}#1
+}
+\stex_deactivate_macro:Nn \defnotation {definition~environments}
 
 \NewDocumentCommand \definiendum { O{} m m} {
   \stex_keys_set:nn{symname}{ #1 }
@@ -6850,8 +6932,8 @@
   \notation{bind}[Pi]{\mathop{\comp\prod}\c_math_subscript_token{#1}#2}
     {##1 \mathpunct{\comp,} ##2}
 
-  \symdecl*{natliteral}
-  \notation{natliteral}{\comp{\mathbb N}}
+  \symdecl*{integer literal}
+  \notation{integer literal}{\comp{\mathbb Z}}
 
   % propositions
   \symdef{prop}[name=proposition]{\comp{\mathtt{Prop}}}
@@ -6896,13 +6978,15 @@
   \stex_annotate_invisible:n{
     $
     \stex_annotate:nn{shtml:rule={scala://#1}}{
-      \seq_if_empty:NF \l_tmpa_seq {
-        \seq_map_inline:Nn \l_tmpa_seq {
-          \int_incr:N \l_tmpa_int
-          \stex_annotate:nn{
-            shtml:argmode=i,
-            shtml:arg={\int_use:N \l_tmpa_int}
-          }{ ##1 }
+      \_stex_annotate_force_break:n{
+        \seq_if_empty:NF \l_tmpa_seq {
+          \seq_map_inline:Nn \l_tmpa_seq {
+            \int_incr:N \l_tmpa_int
+            \stex_annotate:nn{
+              shtml:argmode=i,
+              shtml:arg={\int_use:N \l_tmpa_int}
+            }{ ##1 }
+          }
         }
       }
     }$
