@@ -406,18 +406,18 @@
 }
 
 \cs_new_protected:Nn \_@@_do: {
-    \seq_map_inline:Nn \l_@@_ids_seq {
-        \tl_if_exist:cT{g_@@_##1_\int_eval:n{\currentgrouplevel+1}_content}{
-            \exp_args:NNno \exp_args:Nno \_@@_do_in:nn{##1}{
-                \csname g_@@_##1_\int_eval:n{\currentgrouplevel+1}_content\endcsname
-            }
-            \cs_undefine:c{g_@@_##1_\int_eval:n{\currentgrouplevel+1}_content}
-        }
-        \bool_if_exist:cF {l_@@_\int_eval:n\currentgrouplevel _bool} {
-            \group_insert_after:N \_@@_do:
-            \bool_set_true:c {l_@@_\int_eval:n\currentgrouplevel _bool}
-        }
+  \seq_map_inline:Nn \l_@@_ids_seq {
+    \tl_if_exist:cT{g_@@_##1_\int_eval:n{\currentgrouplevel+1}_content}{
+      \exp_args:NNno \exp_args:Nno \_@@_do_in:nn{##1}{
+        \csname g_@@_##1_\int_eval:n{\currentgrouplevel+1}_content\endcsname
+      }
+      \cs_undefine:c{g_@@_##1_\int_eval:n{\currentgrouplevel+1}_content}
     }
+    \bool_if_exist:cF {l_@@_\int_eval:n\currentgrouplevel _bool} {
+      \group_insert_after:N \_@@_do:
+      \bool_set_true:c {l_@@_\int_eval:n\currentgrouplevel _bool}
+    }
+  }
 }
 %    \end{macrocode}
 %   \end{macro}
@@ -467,17 +467,24 @@
   \expandafter\newif\csname if@rustex\endcsname
   \@rustexfalse
 \fi
-\tl_if_exist:NF\stex@backend{
-  \if@rustex
-    \def\stex@backend{rustex}
-  \else
-    \cs_if_exist:NTF\HCode{
-      \def\stex@backend{tex4ht}
-    }{
-      \def\stex@backend{pdflatex}
-    }
-  \fi
+
+\stex_get_env:Nn\_@@_env_str{STEX_FORCE_PDF}
+\str_if_empty:NTF\_@@_env_str {
+  \tl_if_exist:NF\stex@backend{
+    \if@rustex
+      \def\stex@backend{rustex}
+    \else
+      \cs_if_exist:NTF\HCode{
+        \def\stex@backend{tex4ht}
+      }{
+        \def\stex@backend{pdflatex}
+      }
+    \fi
+  }
+}{
+  \def\stex@backend{pdflatex}
 }
+
 \input{stex-backend-\stex@backend.cfg}
 
 \newif\ifstexhtml
@@ -1464,7 +1471,10 @@
 % \begin{macro}{\stex_in_archive:nn}
 %    \begin{macrocode}
 \cs_new_protected:Nn \stex_in_archive:nn {
-  \stex_pseudogroup_with:nn{\l_stex_current_archive_prop\l_@@_cs}{
+  \cs_if_exist:NF \l_@@_cs {
+    \cs_set:Npn \l_@@_cs ##1 {}
+  }
+  \stex_pseudogroup:nn{
     \cs_set:Npn \l_@@_cs ##1 {#2}
     \tl_if_empty:nTF{#1}{
       \prop_if_exist:NTF \l_stex_current_archive_prop {
@@ -1475,6 +1485,11 @@
     }{
       \stex_set_current_archive:n{#1}
       \l_@@_cs {#1}
+    }
+  }{
+    \stex_pseudogroup_restore:N \l_stex_current_archive_prop
+    \cs_set:Npn \exp_not:N \l_@@_cs ##1 {
+      \exp_args:No \exp_not:n {\l_@@_cs {##1}}
     }
   }
 }
@@ -2171,19 +2186,25 @@
 % \begin{macro}{\stex_resolve_path_pair:Nnn,\stex_resolve_path_pair:Nxx}
 %    \begin{macrocode}
 \cs_new_protected:Nn \stex_resolve_path_pair:Nnn {
+  \stex_debug:nn{resolving~path}{#3~in~[#2]}
   \str_if_empty:nTF{#2}{
     \prop_if_exist:NTF \l_stex_current_archive_prop {
       \str_set:Nx #1 {\stex_file_use:N \c_stex_mathhub_file / 
       \prop_item:Nn \l_stex_current_archive_prop { id } / source /
       #3}
+      \stex_debug:nn{resolving~path}{In~current~archive~
+        \prop_item:Nn \l_stex_current_archive_prop { id }
+        ;~result:~#1}
     }{
       \str_set:Nx #1 {\stex_file_use:N \c_stex_pwd_file / .. / #3 }
+      \stex_debug:nn{resolving~path}{No~current~archive;~result:~#1}
     }
   }{
     \stex_require_archive:n { #2 }
     \str_set:Nx #1 {\stex_file_use:N \c_stex_mathhub_file / 
     \prop_item:cn {c_stex_mathhub_#2_manifest_prop} { id } / source /
     #3}
+    \stex_debug:nn{resolving~path}{result:~#1}
   }
 }
 \cs_generate_variant:Nn \stex_resolve_path_pair:Nnn {Nxx}
@@ -4314,7 +4335,7 @@
     \STEXInternalTermMathOMSOrOMViii 
       { \l_stex_key_variant_str }
       { \l_@@_opprec_tl } 
-      { \exp_not:n { #2 } }
+      { \comp{ \exp_not:n { #2 } } }
     \STEXInternalSymbolAfterInvokationTL
   }
   \stex_debug:nn{notation}{Notation:~\meaning\l_stex_notation_macrocode_cs}
@@ -4521,6 +4542,11 @@
 }
 
 \cs_new_protected:Nn \_stex_notation_add:n {
+  \tl_if_empty:NF \l_stex_key_op_tl {
+    \tl_set:Nx \l_stex_key_op_tl { \exp_not:N\comp {
+      \exp_args:No \exp_not:n \l_stex_key_op_tl
+    } }
+  }
   \stex_module_add_notation:eoexo{#1}\l_stex_key_variant_str
     {\int_use:N \l_stex_get_symbol_arity_int}{
     \stex_macro_body:N \l_stex_notation_macrocode_cs
@@ -4565,7 +4591,7 @@
       $
     }
     \tl_if_empty:NF \l_stex_key_op_tl {
-      $\stex_annotate:nn{shtml:notationopcomp={}}{\l_stex_key_op_tl}$
+      $\stex_annotate:nn{shtml:notationopcomp={}}{\comp{\l_stex_key_op_tl}}$
     }
   }
 }
@@ -4609,6 +4635,11 @@
 }
 
 \cs_new_protected:Nn \_stex_notation_set_default:n{
+  \tl_if_empty:NF \l_stex_key_op_tl {
+    \tl_set:Nx \l_stex_key_op_tl { \exp_not:N\comp {
+      \exp_args:No \exp_not:n \l_stex_key_op_tl
+    } }
+  }
   \stex_module_add_notation:eoexo{#1}{}
     {\int_use:N \l_stex_get_symbol_arity_int}{
     \stex_macro_body:N \l_stex_notation_macrocode_cs
@@ -4831,7 +4862,7 @@
   \tl_if_empty:NF \l_stex_key_op_tl {
     \tl_set:cx {l_stex_notation_\l_stex_key_name_str _op_
     \l_stex_key_variant_str _cs}{
-      \exp_args:No\exp_not:n\l_stex_key_op_tl
+      \exp_not:N\comp{\exp_args:No\exp_not:n\l_stex_key_op_tl}
     }
     \cs_if_exist:cF {l_stex_notation_\l_stex_key_name_str _op__cs}{
       \cs_set_eq:cc{l_stex_notation_\l_stex_key_name_str _op__cs}{
@@ -5308,11 +5339,11 @@
 
 \cs_new_protected:Nn \_stex_next_symbol:n {
   \tl_set:Nx \l_stex_every_symbol_tl {
-    \exp_not:n{ #1 }
     \tl_set:Nn \exp_not:N \l_stex_every_symbol_tl  {
       \exp_args:No \exp_not:n \l_stex_every_symbol_tl
     }
     \exp_not:N \l_stex_every_symbol_tl
+    \exp_not:n{ #1 }
   }
 }
 \cs_generate_variant:Nn \_stex_next_symbol:n {e}
@@ -5464,6 +5495,7 @@
 
 \cs_new_protected:Npn \_@@_add_prop_arg:nnnw #1 #2 #3 #4 \_stex_args_end: {
   \prop_put:Nnn \l_@@_customs_prop {#1#2#3} {}
+  \seq_put_right:Nn \l_@@_customs_seq {#1#2#3}
   \tl_if_empty:nF{#4}{\_@@_add_prop_arg:nnnw #4 \_stex_args_end:}
 }
 
@@ -5471,6 +5503,7 @@
 \cs_new_protected:Nn \@@_invoke_custom:n {
   \stex_debug:nn{expressions}{custom~notation}
   \prop_clear:N \l_@@_customs_prop
+  \seq_clear:N \l_@@_customs_seq
   \int_zero:N \l_@@_arg_counter_int
   \tl_if_empty:NF \l_stex_current_args_tl {
     \exp_after:wN \_@@_add_prop_arg:nnnw \l_stex_current_args_tl \_stex_args_end:
@@ -5496,7 +5529,19 @@
     \bool_set_true:N \l_stex_allow_semantic_bool
     \tl_if_empty:nTF{#1}{
       \int_incr:N \l_@@_arg_counter_int
-      % TODO check if empty
+      \exp_args:NNe \prop_if_in:NnTF \l_@@_customs_prop {
+        \seq_item:Nn \l_@@_customs_seq \l_@@_arg_counter_int
+      }{
+        \exp_args:Ne \str_if_eq:nnT {
+          \exp_args:NNe \prop_item:Nn \l_@@_customs_prop {
+            \seq_item:Nn \l_@@_customs_seq \l_@@_arg_counter_int
+          }
+        }{X}{
+          \TODO skip
+        }
+      }{
+        \TODO error
+      }
       \cs_set:Npn \_@@_check:nnnn ##1 ##2 ##3 ##4 {
         \int_compare:nNnT{##1}=\l_@@_arg_counter_int {
           \prop_map_break:n{\_@@_arg_do:nnnNn {##1##2##3}{##1}{##2}}
@@ -5525,7 +5570,17 @@
 }
 
 \cs_new_protected:Nn \_@@_arg_do:nnnNn {
-  % TODO: check that prop allows for a(nother) #1 = 1i{$foo} (where #3 = i)
+  \exp_args:Ne \str_if_eq:nnT{
+    \prop_item:Nn \l_@@_customs_prop {#1}
+  }{X}{
+    \str_if_eq:nnTF{#3}{i}{
+      \TODO error
+    }{
+      \str_if_eq:nnT{#3}{b}{
+        \TODO error
+      }
+    }
+  }
   \prop_put:Nnn \l_@@_customs_prop {#1}{X}
   \_stex_term_arg:nnn{#3}{#2}{#5}
 }
@@ -5676,10 +5731,10 @@
   \stex_pseudogroup_with:nn{\l_@@_brackets_done_bool\l_@@_downprec}{ 
     \bool_set_true:N \l_@@_brackets_done_bool
     \int_set:Nn \l_@@_downprec \infprec
-    \comp\l_@@_left_bracket_str 
+    \mathopen{\comp\l_@@_left_bracket_str} 
     #1
   }
-  \comp\l_@@_right_bracket_str
+  \mathclose{\comp\l_@@_right_bracket_str}
   %\fi}
 }
 %    \end{macrocode}
@@ -5937,8 +5992,6 @@
 
   \exp_args:No \stex_structural_feature_module:nn
     {\l_@@_name_str}{structure}
-  \protected\def\this{}
-
 }
 
 \stex_sms_allow_env:n{mathstructure}
@@ -6107,7 +6160,7 @@
   }{
     \_@@_invokation_term:n {#1}
     \peek_charcode_remove:NTF ! {
-      \tl_set:Nn \this {}
+      \tl_set:Nn \l_stex_structure_this_tl {}
       \peek_charcode:NTF [ {
         \_@@_maybe_notation:w
       }{
@@ -6234,20 +6287,30 @@
 
 \cs_new_protected:Nn \_@@_invoke_field:n {
   \prop_if_in:cnTF {l_@@_ \l_stex_current_symbol_str _prop} {#1}{
-    \_stex_next_symbol:e {
-      \tl_set:Nn \exp_not:N \l_stex_current_term_tl {
-        \symuse{Metatheory?record~field}{
-          \exp_args:No \exp_not:n \l_stex_current_term_tl
-        }{
-          \stex_annotate:nn{shtml:term=OML,shtml:head={#1}}{}
-        }
-      }
-    }
     \tl_put_right:Nn \l_stex_current_redo_tl {
       \bool_set_true:N \l_stex_allow_semantic_bool
     }
+    \tl_clear:N \l_@@_more_nextsymbol_tl
+    \exp_args:NNe \seq_if_in:NnF \l_@@_assigned_seq {\tl_to_str:n{#1}}{
+      \tl_set:Nn \l_@@_more_nextsymbol_tl {
+        \exp_not:n{\edef\comp {\_thiscomp{\comp}}}
+      }
+    }
     \exp_args:Nnx \use:nn {\STEXInternalSymbolAfterInvokationTL} {
       \exp_args:No \exp_not:n \l_stex_current_redo_tl
+      \tl_set:Nn \exp_not:N \l_stex_structure_this_tl {
+        \exp_args:No \exp_not:n \l_stex_structure_this_tl
+      }
+      \_stex_next_symbol:n {
+        \tl_set:Nn \exp_not:N \l_stex_current_term_tl {
+          \symuse{Metatheory?record~field}{
+            \exp_args:No \exp_not:n \l_stex_current_term_tl
+          }{
+            \stex_annotate:nn{shtml:term=OML,shtml:head={#1}}{}
+          }
+        }
+        \l_@@_more_nextsymbol_tl
+      }
       \exp_not:N \use_ii:nn
       \prop_item:cn {l_@@_ \l_stex_current_symbol_str _prop} {#1}
     }
@@ -6258,20 +6321,20 @@
 
 \cs_new_protected:Nn \_@@_set_this:n {
   \tl_if_empty:nTF{#1}{
-    \tl_clear:N \this
+    \tl_clear:N \l_stex_structure_this_tl
     \tl_put_right:Nn \l_stex_current_redo_tl {
-      \tl_clear:N \this
+      \tl_clear:N \l_stex_structure_this_tl
     }
   }{
     \stex_debug:nn{here}{letting~this~=~\tl_to_str:n{#1}}
-    \tl_set:Nn \this {
+    \tl_set:Nn \l_stex_structure_this_tl {
       \group_begin:
         \bool_set_true:N \l_stex_allow_semantic_bool
         #1
       \group_end:
     }
     \tl_put_right:Nn \l_stex_current_redo_tl {
-      \tl_set:Nn \this { 
+      \tl_set:Nn \l_stex_structure_this_tl { 
         \group_begin:
           \bool_set_true:N \l_stex_allow_semantic_bool
           #1
@@ -6325,18 +6388,35 @@
   \_@@_present:nn{#1}{#2}
 }
 
+\cs_new_protected:Npn \_thiscomp #1 #2 {
+  #1{#2}_{\l_stex_structure_this_tl}
+}
+
+\cs_new_protected:Nn \_@@_present_entry:nn {
+  \seq_if_in:NnTF \l_@@_assigned_seq {#1}{
+    \clist_put_right:Nn \l_@@_clist {#2!}
+  }{
+    \clist_put_right:Nn \l_@@_clist {
+      \_stex_next_symbol:n {
+        \edef\comp { \_thiscomp{\comp} }
+      }
+      \exp_not:n{#2!}
+    }
+  }
+}
+
 \cs_new_protected:Nn \_@@_present:nn {
   \clist_clear:N \l_@@_clist
   \tl_if_empty:nTF{#1}{
     \cs_set:Npn \l_@@_cs ##1 ##2 ##3 {
       \tl_if_empty:nF{##2}{
-        \clist_put_right:Nn \l_@@_clist { ##3! }
+        \_@@_present_entry:nn {##1}{##3}
       }
     }
   }{
     \cs_set:Npn \l_@@_cs ##1 ##2 ##3 {
       \exp_args:Ne \clist_if_in:nnT{\tl_to_str:n{#1}}{##1}{
-        \clist_put_right:Nn \l_@@_clist { ##3! }
+        \_@@_present_entry:nn {##1}{##3}
       }
     }
   }
@@ -6354,6 +6434,7 @@
 \cs_new_protected:Nn \_@@_make_prop: {
   \prop_clear:N \l_@@_prop
   \seq_clear:N \l_@@_seq
+  \seq_clear:N \l_@@_assigned_seq
   \_@@_prop_do_decls:
   \_@@_prop_do_notations:
   \clist_if_empty:NF \l_@@_fields_clist {
@@ -6366,6 +6447,7 @@
 
 \cs_new_protected:Nn \_@@_make_prop_assign:nn {
   \prop_if_in:NnTF \l_@@_prop {#1}{
+    \exp_args:NNe \seq_put_right:Nn \l_@@_assigned_seq {\tl_to_str:n{#1}}
     \exp_args:Nne \use:nn {\_@@_make_prop_assign_replace:nnnn {#1}{#2}}
     {\prop_item:Nn \l_@@_prop {#1}}
   }{
@@ -6419,7 +6501,6 @@
       }
     }
   }
-  \stex_debug:nn{here}{Defining~#1~as~#2?#3}
   \tl_set:cn{#1}{
     \_stex_invoke_symbol:nnnnnnnN
     {#2}{#3}{#4}{#5}{#6}{#7}{#8}#9
@@ -6456,189 +6537,6 @@
         }
       }
     }
-  }
-}
-%    \end{macrocode}
-%
-% Presenting structures:
-%    \begin{macrocode}
-
-
-\cs_new_protected:Nn \_stex_structure_as_type:nn{
-  \_stex_term_oms:nn{}{
-    \stex_debug:nn{Here}{\tl_to_str:n{#2}}
-    %\exp_args:Nno \use:n{\symuse{Metatheory?in~module}[hidden]{
-      \mathstruct[#1]{#2}
-    %}}{\l_@@_type_cs}
-  }
-}
-
-% #1 module clist, #2 assignments
-%\cs_new_protected:Nn \_@@_present:nn {
-%  \stex_debug:nn{structure}{structure!}
-%  \group_begin:
-%  \tl_set:Nn \this{}
-%  \_@@_make_prop:nn{#1}{#2}
-%  \peek_charcode:NTF [ {
-%    \_@@_pres_not_or_fields:w
-%  }{
-%    \_@@_present_do:n{
-%      \_stex_structure_as_type:nn{}
-%    }
-%    \group_end:
-%  }
-%}
-
-% #1 modules; #2: assignments; #3 notation or fields
-\cs_new_protected:Npn \_@@_pres_not_or_fields:w [ #1 ] {
-  %\stex_debug:nn{structure}{notation~or~fields?~#1}
-  \int_compare:nNnTF {\clist_count:n {#1}} = 1 {
-    %\stex_debug:nn{structure}{notation~#1}
-    \peek_charcode:NTF [ {
-      \_@@_pres_not:nw{#1}
-    }{
-      \_@@_present_do:n{
-        \_stex_structure_as_type:nn{#1}
-      }
-      \group_end:
-    }
-  }{
-   % \stex_debug:nn{structure}{fields~#1}
-    \peek_charcode:NTF [ {
-      \_@@_pres_fields:nw{#1}
-    }{
-      \exp_args:No \_@@_present_do:nn{ \tl_to_str:n{#1} }{
-        \_stex_structure_as_type:nn{}
-      }
-    }
-  }
-}
-
-% #1: notation; #2: fields
-\cs_new_protected:Npn \_@@_pres_not:nw #1 [ #2 ] {
-  %\stex_debug:nn{structure}{fields~#2}
-  \exp_args:No \_@@_present_do:nn{ \tl_to_str:n{#2} }{
-    \_stex_structure_as_type:nnn{#1}
-  }
-}
-
-% #1: fields; #2: notation
-\cs_new_protected:Npn \_@@_pres_fields:nw #1 [ #2 ] {
-  %\stex_debug:nn{structure}{notation~#2}
-  \exp_args:No \_@@_present_do:nn{ \tl_to_str:n{#1} }{
-    \_stex_structure_as_type:nnn{#2}
-  }
-} 
-
-% First: fields, Second: Term
-\cs_new_protected:Nn \_@@_present_do:nn {
-  \clist_clear:N \l_@@_clist
-  \cs_set:Npn \l_@@_cs ##1 ##2 ##3 {
-    %\stex_debug:nn{check}{##1~in~#1}
-    \clist_if_in:nnT{#1}{##1}{
-      %\stex_debug:nn{check}{...yes}
-      \clist_put_right:Nn \l_@@_clist { ##3! }
-    }
-  }
-  \prop_map_inline:Nn \l_@@_prop { \l_@@_cs {##1} ##2}
-  \exp_args:Nno \use:nn{#2}{\exp_after:wN{\l_@@_clist}}
-  \group_end:
-}
-
-\cs_new_protected:Nn \_@@_present_do:n {
-  \clist_clear:N \l_@@_clist
-  \cs_set:Npn \l_@@_cs ##1 ##2 ##3 {
-    %\stex_debug:nn{empty?}{##2~(args:~\tl_to_str:n{##1},~\tl_to_str:n{##2},~\tl_to_str:n{##3})}
-    \tl_if_empty:nF{##2}{
-      \clist_put_right:Nn \l_@@_clist { ##3! }
-    }
-  }
-  \prop_map_inline:Nn \l_@@_prop { \l_@@_cs {##1} ##2}
-  \exp_args:Nno \use:nn{#1}{\exp_after:wN{\l_@@_clist}}
-}
-%    \end{macrocode}
-%
-% Invoking record fields:
-%    \begin{macrocode}
-\cs_new_protected:Nn \_@@_invoke_this:nnn{
-  \exp_args:Nnx \use:nn {\STEXInternalSymbolAfterInvokationTL}{
-    \tl_set:Nn \exp_not:N \l_stex_current_symbol_str {\l_stex_current_symbol_str}
-  }
-  \peek_charcode_remove:NTF ! {
-    #3
-  }{
-    \_@@_make_prop:nn{#1}{#2}
-    \tl_set:Nx \this { 
-      \group_begin:
-      \cs_if_exist:NT \this {
-        \def\exp_not:N\this{\exp_args:No \exp_not:n{\this}}
-      }
-      \_stex_term_arg:nnn{i}{0}{
-        %\let \exp_not:N\l_stex_current_symbol_str \exp_not:N \undefined
-        \bool_set_true:N \l_stex_allow_semantic_bool
-        \symuse{Metatheory?in~module}[hidden]{\exp_not:n{#3}}{
-          \def\exp_not:N\this{}\exp_args:No \exp_not:n \l_@@_type_cs
-        }
-      }
-      \group_end:
-    }
-    \_stex_invoke_field:n
-  }
-}
-
-\cs_new_protected:Nn \_stex_invoke_field:n {
-  \tl_if_empty:nTF{#1}{
-    \stex_debug:nn{mathstructure}{empty~field}
-    \_@@_present_do:n{
-      \_stex_structure_as_type:nn{}
-    }
-  }{
-    \prop_if_in:NnTF \l_@@_prop {#1}{
-      \exp_args:Nnx \use:nn {\use_ii:nn} {\prop_item:Nn \l_@@_prop {#1}}
-    }{
-      \TODOk error
-    }
-  }
-}
-
-\cs_new_protected:Nn \stex_invoke_outer_field: {
-  \stex_debug:nn{expressions}{Invoking~\l_stex_current_symbol_str}
-  \mode_if_math:TF \_@@_invoke_outer_field_math: \__stex_expr_invoke_text:
-}
-
-\cs_new_protected:Nn \_@@_invoke_outer_field_math: {
-  \stex_debug:nn{expressions}{math~mode}
-  \peek_charcode_remove:NTF ! {
-    % operator
-    \peek_charcode_remove:NTF * \__stex_expr_invoke_op_custom:n {
-      % op notation
-      \peek_charcode:NTF [ \__stex_expr_invoke_op_notation:w {
-        \__stex_expr_invoke_op_notation:w []
-      }
-    }
-  }{
-    \peek_charcode_remove:NTF * \__stex_expr_invoke_custom:n {
-      % normal
-      \peek_charcode:NTF [ \_@@_invoke_outer_notation:w {
-        \_@@_invoke_outer_notation:w []
-      }
-    }
-  }
-}
-
-% TODO adapt to inherited notations too!
-\cs_new_protected:Npn \_@@_invoke_outer_notation:w [#1] {
-  \stex_debug:nn{expressions}{using~notation~#1~for~\l_stex_current_symbol_str}
-  \cs_if_exist:cTF{l_stex_notation_\l_stex_current_symbol_str _#1_cs}{
-    \tl_if_empty:NTF \l_stex_current_return_tl {
-      \use:c{l_stex_notation_\l_stex_current_symbol_str _#1_cs}
-    }{
-      \exp_args:Ne \__stex_expr_invoke_return_maybe:n{
-        \exp_args:Nne \use:n {\exp_not:N \use:c}{l_stex_notation_\l_stex_current_symbol_str _#1_cs}
-      }
-    }
-  }{
-    \msg_error:nnxx{stex}{error/nonotation}{\l_stex_current_symbol_str}{#1}
   }
 }
 %    \end{macrocode}
