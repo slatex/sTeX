@@ -6,211 +6,182 @@
 %%
 %% notesslides.dtx  (with options: `package')
 %% 
-\ProvidesExplPackage{notesslides}{2022/09/14}{3.2.0}{notesslides Package}
+\ProvidesExplPackage{notesslides}{2022/12/13}{3.3.0}{notesslides Package}
 \RequirePackage{l3keys2e}
 
 \keys_define:nn{notesslides / pkg}{
-  topsect         .str_set_x:N  = \c__notesslides_topsect_str,
-  defaulttopsect  .str_set_x:N  = \c__notesslides_defaulttopsec_str,
   notes           .bool_set:N   = \c__notesslides_notes_bool ,
   slides          .code:n       = { \bool_set_false:N \c__notesslides_notes_bool },
   sectocframes    .bool_set:N   = \c__notesslides_sectocframes_bool ,
-  frameimages     .bool_set:N   = \c__notesslides_frameimages_bool ,
-  fiboxed         .bool_set:N   = \c__notesslides_fiboxed_bool ,
-  noproblems      .bool_set:N   = \c__notesslides_noproblems_bool,
   unknown         .code:n       = {
-    \PassOptionsToClass{\CurrentOption}{stex}
-    \PassOptionsToClass{\CurrentOption}{tikzinput}
+    \PassOptionsToPackage{\CurrentOption}{stex}
+    \PassOptionsToPackage{\CurrentOption}{tikzinput}
   }
 }
 \ProcessKeysOptions{ notesslides / pkg }
 
 \RequirePackage{stex}
-\stex_html_backend:T {
+\stex_if_html_backend:T {
   \bool_set_true:N\c__notesslides_notes_bool
 }
 
 \newif\ifnotes
 \bool_if:NTF \c__notesslides_notes_bool {
   \notestrue
+  \RequirePackage[noamsthm]{beamerarticle}
+  \RequirePackage{mdframed}
 }{
   \notesfalse
 }
-
-\str_if_empty:NTF \c__notesslides_topsect_str {
-  \str_set_eq:NN \__notesslidestopsect \c__notesslides_defaulttopsec_str
-}{
-  \str_set_eq:NN \__notesslidestopsect \c__notesslides_topsect_str
-}
-\PassOptionsToPackage{topsect=\__notesslidestopsect}{document-structure}
-\bool_if:NT \c__notesslides_notes_bool {
-  \RequirePackage{a4wide}
-  \RequirePackage{marginnote}
-  \PassOptionsToPackage{usenames,dvipsnames,svgnames}{xcolor}
-  \RequirePackage{mdframed}
-  \RequirePackage[noxcolor,noamsthm]{beamerarticle}
-  \RequirePackage[bookmarks,bookmarksopen,bookmarksnumbered,breaklinks,hidelinks]{hyperref}
-}
-\RequirePackage{stex-tikzinput}
-\RequirePackage{comment}
-\RequirePackage{url}
-\RequirePackage{graphicx}
-\RequirePackage{pgf}
-\RequirePackage{bookmark}
 \bool_if:NT \c__notesslides_notes_bool {
   \renewcommand\usetheme[2][]{\usepackage[#1]{beamertheme#2}}
 }
 \NewDocumentCommand \libusetheme {O{} m} {
   \libusepackage[#1]{beamertheme#2}
 }
-
 \newcounter{slide}
 \newlength{\slidewidth}\setlength{\slidewidth}{13.5cm}
 \newlength{\slideheight}\setlength{\slideheight}{9cm}
+\ifnotes
+
+\newlength{\slideframewidth}
+\setlength{\slideframewidth}{1.5pt}
+\cs_new_protected:Nn \__notesslides_do_yes_param:Nn {
+  \exp_args:Nx \str_if_eq:nnTF { \str_uppercase:n{ #2 } }{ yes }{
+    \bool_set_true:N #1
+  }{
+    \bool_set_false:N #1
+  }
+}
+
+\stex_keys_define:nnnn{notesslides / frame}{
+  \str_clear:N \l__notesslides_frame_label_str
+  \bool_set_true:N \l__notesslides_frame_allowframebreaks_bool
+  \bool_set_true:N \l__notesslides_frame_allowdisplaybreaks_bool
+  \bool_set_true:N \l__notesslides_frame_fragile_bool
+  \bool_set_true:N \l__notesslides_frame_shrink_bool
+  \bool_set_true:N \l__notesslides_frame_squeeze_bool
+  \bool_set_true:N \l__notesslides_frame_t_bool
+}{
+  label               .str_set_x:N  = \l__notesslides_frame_label_str,
+  allowframebreaks    .code:n       = {
+    \__notesslides_do_yes_param:Nn \l__notesslides_frame_allowframebreaks_bool { #1 }
+  },
+  allowdisplaybreaks  .code:n       = {
+    \__notesslides_do_yes_param:Nn \l__notesslides_frame_allowdisplaybreaks_bool { #1 }
+  },
+  fragile             .code:n       = {
+    \__notesslides_do_yes_param:Nn \l__notesslides_frame_fragile_bool { #1 }
+  },
+  shrink              .code:n       = {
+    \__notesslides_do_yes_param:Nn \l__notesslides_frame_shrink_bool { #1 }
+  },
+  squeeze             .code:n       = {
+    \__notesslides_do_yes_param:Nn \l__notesslides_frame_squeeze_bool { #1 }
+  },
+  t                   .code:n       = {
+    \__notesslides_do_yes_param:Nn \l__notesslides_frame_t_bool { #1 }
+  },
+  unknown   .code:n       = {}
+}{}
+\cs_new_protected:Nn \__notesslides_setup_itemize: {
+  \def\itemize@level{outer}
+  \def\itemize@outer{outer}
+  \def\itemize@inner{inner}
+  \renewcommand\newpage{\addtocounter{framenumber}{1}}
+  %\newcommand\metakeys@show@keys[2]{\marginnote{{\scriptsize ##2}}}
+  \renewenvironment{itemize}{
+    \ifx\itemize@level\itemize@outer
+      \def\itemize@label{$\rhd$}
+    \fi
+    \ifx\itemize@level\itemize@inner
+      \def\itemize@label{$\scriptstyle\rhd$}
+    \fi
+    \begin{list}
+    {\itemize@label}
+    {\setlength{\labelsep}{.3em}
+      \setlength{\labelwidth}{.5em}
+      \setlength{\leftmargin}{1.5em}
+    }
+    \edef\itemize@level{\itemize@inner}
+  }{
+    \end{list}
+  }
+}
+\stex_if_html_backend:TF {
+  \cs_new_protected:Nn \__notesslides_frame_box_begin: {
+    \vbox\bgroup
+    \begin{stex_annotate_env}{shtml:frame={}}
+      \mdf@patchamsthm
+  }
+  \cs_new_protected:Nn \__notesslides_frame_box_end: {
+    %^^A \miko@slidelabel
+    \end{stex_annotate_env}\egroup
+  }
+}{
+  \cs_new_protected:Nn \__notesslides_frame_box_begin: {
+    \begin{mdframed}[
+      linewidth=\slideframewidth,
+      skipabove=1ex,
+      skipbelow=1ex,
+      userdefinedwidth=\slidewidth,
+      align=center
+    ]\sf
+  }
+  \cs_new_protected:Nn \__notesslides_frame_box_end: {
+    \medskip%^^A\miko@slidelabel
+    \end{mdframed}
+  }
+}
+\renewenvironment{frame}[1][]{
+  \stex_keys_set:nn{notesslides / frame}{#1}
+  \sffamily
+  \stepcounter{slide}
+  \def\@currentlabel{\theslide}
+  \str_if_empty:NF \l__notesslides_frame_label_str {
+    \label{\l__notesslides_frame_label_str}
+  }
+  \__notesslides_setup_itemize:
+  \__notesslides_frame_box_begin:
+}{
+  \__notesslides_frame_box_end:
+}
+\renewcommand{\frametitle}[1]{
+  \stexdoctitle { #1 }
+  \titleemph{#1}\medskip
+}
+\newcommand\pause{}
+\fi
 \bool_if:NTF \c__notesslides_notes_bool {
   \renewenvironment{note}{\ignorespaces}{}
 }{
-  \excludecomment{note}
+  \renewenvironment{note}{\setbox \l_tmpa_box\vbox\bgroup}{\egroup}
 }
-\bool_if:NT \c__notesslides_notes_bool {
-  \newlength{\slideframewidth}
-  \setlength{\slideframewidth}{1.5pt}
-  \cs_new_protected:Nn \__notesslides_do_yes_param:Nn {
-    \exp_args:Nx \str_if_eq:nnTF { \str_uppercase:n{ #2 } }{ yes }{
-      \bool_set_true:N #1
-    }{
-      \bool_set_false:N #1
-    }
-  }
-  \keys_define:nn{notesslides / frame}{
-    label               .str_set_x:N  = \l__notesslides_frame_label_str,
-    allowframebreaks    .code:n       = {
-      \__notesslides_do_yes_param:Nn \l__notesslides_frame_allowframebreaks_bool { #1 }
-    },
-    allowdisplaybreaks  .code:n       = {
-      \__notesslides_do_yes_param:Nn \l__notesslides_frame_allowdisplaybreaks_bool { #1 }
-    },
-    fragile             .code:n       = {
-      \__notesslides_do_yes_param:Nn \l__notesslides_frame_fragile_bool { #1 }
-    },
-    shrink              .code:n       = {
-      \__notesslides_do_yes_param:Nn \l__notesslides_frame_shrink_bool { #1 }
-    },
-    squeeze             .code:n       = {
-      \__notesslides_do_yes_param:Nn \l__notesslides_frame_squeeze_bool { #1 }
-    },
-    t                   .code:n       = {
-      \__notesslides_do_yes_param:Nn \l__notesslides_frame_t_bool { #1 }
-    },
-    unknown   .code:n       = {}
-  }
-  \cs_new_protected:Nn \__notesslides_frame_args:n {
-    \str_clear:N \l__notesslides_frame_label_str
-    \bool_set_true:N \l__notesslides_frame_allowframebreaks_bool
-    \bool_set_true:N \l__notesslides_frame_allowdisplaybreaks_bool
-    \bool_set_true:N \l__notesslides_frame_fragile_bool
-    \bool_set_true:N \l__notesslides_frame_shrink_bool
-    \bool_set_true:N \l__notesslides_frame_squeeze_bool
-    \bool_set_true:N \l__notesslides_frame_t_bool
-    \keys_set:nn { notesslides / frame }{ #1 }
-  }
-  \renewenvironment{frame}[1][]{
-    \__notesslides_frame_args:n{#1}
-    \sffamily
-    \stepcounter{slide}
-    \def\@currentlabel{\theslide}
-    \str_if_empty:NF \l__notesslides_frame_label_str {
-      \label{\l__notesslides_frame_label_str}
-    }
-    \def\itemize@level{outer}
-    \def\itemize@outer{outer}
-    \def\itemize@inner{inner}
-    \renewcommand\newpage{\addtocounter{framenumber}{1}}
-    %\newcommand\metakeys@show@keys[2]{\marginnote{{\scriptsize ##2}}}
-    \renewenvironment{itemize}{
-      \ifx\itemize@level\itemize@outer
-        \def\itemize@label{$\rhd$}
-      \fi
-      \ifx\itemize@level\itemize@inner
-        \def\itemize@label{$\scriptstyle\rhd$}
-      \fi
-      \begin{list}
-      {\itemize@label}
-      {\setlength{\labelsep}{.3em}
-       \setlength{\labelwidth}{.5em}
-       \setlength{\leftmargin}{1.5em}
-      }
-      \edef\itemize@level{\itemize@inner}
-    }{
-      \end{list}
-    }
-    \stex_html_backend:TF {
-      \begin{stex_annotate_env}{frame}{}\vbox\bgroup
-        \mdf@patchamsthm
-    }{
-      \begin{mdframed}[linewidth=\slideframewidth,skipabove=1ex,skipbelow=1ex,userdefinedwidth=\slidewidth,align=center]\sf
-    }
+\cs_new_protected:Nn \__notesslides_notes_env:nnnn {
+  \bool_if:NTF \c__notesslides_notes_bool {
+    \newenvironment{#1}#2{#3}{#4}
   }{
-    \stex_html_backend:TF {
-      \miko@slidelabel\egroup\end{stex_annotate_env}
-    }{\medskip\miko@slidelabel\end{mdframed}}
-  }
-  \renewcommand{\frametitle}[1]{
-    \stex_document_title:n { #1 }
-    {\Large\bf\sf\color{blue}{#1}}\medskip
+    \newenvironment{#1}{\setbox\l_tmpa_box\vbox\bgroup}{\egroup}
   }
 }
-\bool_if:NT \c__notesslides_notes_bool {
-  \newcommand\pause{}
-}
+
+\__notesslides_notes_env:nnnn{nparagraph}{[1][]}{\begin{sparagraph}[#1]}{\end{sparagraph}}
+\__notesslides_notes_env:nnnn{nfragment}{[2][]}{\begin{sfragment}[#1]{#2}}{\end{sfragment}}
+\__notesslides_notes_env:nnnn{ndefinition}{[1][]}{\begin{sdefinition}[#1]}{\end{sdefinition}}
+\__notesslides_notes_env:nnnn{nassertion}{[1][]}{\begin{sassertion}[#1]}{\end{sassertion}}
+\__notesslides_notes_env:nnnn{nproof}{[2][]}{\begin{sproof}[#1]{#2}}{\end{sproof}}
+\__notesslides_notes_env:nnnn{nexample}{[1][]}{\begin{sexample}[#1]}{\end{sexample}}
+\cs_set_eq:NN\__notesslides_inputref:\inputref
+\cs_set_protected:Npn\inputref{\@ifstar\ninputref\__notesslides_inputref:}
 \bool_if:NTF \c__notesslides_notes_bool {
-  \newenvironment{nparagraph}[1][]{\begin{sparagraph}[#1]}{\end{sparagraph}}
-}{
-  \excludecomment{nparagraph}
-}
-\bool_if:NTF \c__notesslides_notes_bool {
-  \newenvironment{nfragment}[2][]{\begin{sfragment}[#1]{#2}}{\end{sfragment}}
-}{
-  \excludecomment{nfragment}
-}
-\bool_if:NTF \c__notesslides_notes_bool {
-  \newenvironment{ndefinition}[1][]{\begin{sdefinition}[#1]}{\end{sdefinition}}
-}{
-  \excludecomment{ndefinition}
-}
-\bool_if:NTF \c__notesslides_notes_bool {
-  \newenvironment{nassertion}[1][]{\begin{sassertion}[#1]}{\end{sassertion}}
-}{
-  \excludecomment{nassertion}
-}
-\bool_if:NTF \c__notesslides_notes_bool {
-  \newenvironment{nproof}[2][]{\begin{sproof}[#1]{#2}}{\end{sproof}}
-}{
-  \excludecomment{nproof}
-}
-\bool_if:NTF \c__notesslides_notes_bool {
-  \newenvironment{nexample}[1][]{\begin{sexample}[#1]}{\end{sexample}}
-}{
-  \excludecomment{nexample}
-}
-\def\inputref@preskip{\smallskip}
-\def\inputref@postskip{\medskip}
-\let\orig@inputref\inputref
-\def\inputref{\@ifstar\ninputref\orig@inputref}
-\newcommand\ninputref[2][]{
-  \bool_if:NT \c__notesslides_notes_bool {
-    \orig@inputref[#1]{#2}
+  \newcommand\ninputref[2][]{
+    \__notesslides_inputref:[#1]{#2}
   }
+}{
+  \newcommand\ninputref[2][]{}
 }
 \newlength{\slidelogoheight}
-
 \RequirePackage{graphicx}
-
-\define@key{Gin}{mhrepos}{\def\Gin@mhrepos{#1}}
-\providecommand\mhgraphics[2][]{
-  \def\Gin@mhrepos{}\setkeys{Gin}{#1}
-  \includegraphics[#1]{\mhpath\Gin@mhrepos{#2}}
-}
 
 \bool_if:NTF \c__notesslides_notes_bool {
   \setlength{\slidelogoheight}{.4cm}
@@ -228,6 +199,7 @@
     \sbox{\slidelogo}{\mhgraphics[height=\slidelogoheight,mhrepos=#1]{#2}}
   }
 }
+
 \bool_if:NT \c__notesslides_notes_bool {
   \def\author{\@dblarg\ns@author}
   \long\def\ns@author[#1]#2{%
@@ -235,7 +207,9 @@
     \def\@author{#2}
   }
 }
+
 \newrobustcmd{\setsource}[1]{\def\source{#1}}
+
 \def\copyrightnotice{%
   \footnotesize\copyright :\hspace{.3ex}%
   \ifcsname source\endcsname\source\else%
@@ -277,9 +251,9 @@
     {\licensing\hfill\copyrightnotice\hfill\arabic{slide}\hfill\usebox{\slidelogo}}
   }
 }
-\def\Gin@mhrepos{}
-\define@key{Gin}{mhrepos}{\def\Gin@mhrepos{#1}}
+
 \define@key{Gin}{label}{\def\@currentlabel{\arabic{slide}}\label{#1}}
+
 \newrobustcmd\frameimage[2][]{
   \stepcounter{slide}
   \bool_if:NT \c__notesslides_frameimages_bool {
@@ -320,124 +294,6 @@
     \par\strut\hfill{\footnotesize Slide \arabic{slide}}%
     \bool_if:NF \c__notesslides_notes_bool { \vfill }
   }
-} % ifmks@sty@frameimages
-\stex_html_backend:F {
-  \bool_if:NT \c__notesslides_sectocframes_bool {
-    \str_if_eq:VnTF \__notesslidestopsect{part}{
-      \newcounter{chapter}\counterwithin*{section}{chapter}
-    }{
-      \str_if_eq:VnT\__notesslidestopsect{chapter}{
-        \newcounter{chapter}\counterwithin*{section}{chapter}
-      }
-    }
-  }
-}
-\def\part@prefix{}
-\@ifpackageloaded{document-structure}{}{
-  \str_case:VnF \__notesslidestopsect {
-    {part}{
-      \int_set:Nn \l_document_structure_section_level_int {0}
-      \def\thesection{\arabic{chapter}.\arabic{section}}
-      \def\part@prefix{\arabic{chapter}.}
-    }
-    {chapter}{
-      \int_set:Nn \l_document_structure_section_level_int {1}
-      \def\thesection{\arabic{chapter}.\arabic{section}}
-      \def\part@prefix{\arabic{chapter}.}
-    }
-  }{
-    \int_set:Nn \l_document_structure_section_level_int {2}
-    \def\part@prefix{}
-  }
-}
-
-\bool_if:NF \c__notesslides_notes_bool { % only in slides
-  \renewenvironment{sfragment}[2][]{
-    \__document_structure_sfragment_args:n { #1 }
-    \int_incr:N \l_document_structure_section_level_int
-    \bool_if:NT \c__notesslides_sectocframes_bool {
-      \stepcounter{slide}
-      \begin{frame}[noframenumbering]
-      \vfill\Large\centering
-      \red{
-        \ifcase\l_document_structure_section_level_int\or
-          \stepcounter{part}
-          \def\__notesslideslabel{{\omdoc@part@kw}~\Roman{part}}
-          \addcontentsline{toc}{part}{\protect\numberline{\thepart}#2}
-          \pdfbookmark[0]{\thepart\ #2}{part.\thepart}
-          \def\currentsectionlevel{\omdoc@part@kw}
-        \or
-          \stepcounter{chapter}
-          \def\__notesslideslabel{{\omdoc@chapter@kw}~\arabic{chapter}}
-          \addcontentsline{toc}{chapter}{\protect\numberline{\thechapter}#2}
-          \pdfbookmark[1]{\thechapter\ #2}{chapter.\cs_if_exist:cT{thepart}\thepart.\thechapter}
-          \def\currentsectionlevel{\omdoc@chapter@kw}
-        \or
-          \stepcounter{section}
-          \def\__notesslideslabel{\part@prefix\arabic{section}}
-          \addcontentsline{toc}{section}{\protect\numberline{\thesection}#2}
-          \pdfbookmark[2]{\cs_if_exist:cT{thechapter}{\thechapter.}\thesection\ #2}
-          {section.\cs_if_exist:cT{thepart}{\thepart}.\cs_if_exist:cT{thechapter}{\thechapter}.\thesection}
-          \def\currentsectionlevel{\omdoc@section@kw}
-        \or
-          \stepcounter{subsection}
-          \def\__notesslideslabel{\part@prefix\arabic{section}.\arabic{subsection}}
-          \addcontentsline{toc}{subsection}{\protect\numberline{\thesubsection}#2}
-          \pdfbookmark[3]{\cs_if_exist:cT{thechapter}{\thechapter.}\thesection.\thesubsection\ #2}
-          {subsection.\cs_if_exist:cT{thepart}{\thepart}.\cs_if_exist:cT{thechapter}{\thechapter}.\thesection.\thesubsection}
-          \def\currentsectionlevel{\omdoc@subsection@kw}
-        \or
-          \stepcounter{subsubsection}
-          \def\__notesslideslabel{\part@prefix\arabic{section}.\arabic{subsection}.\arabic{subsubsection}}
-          \addcontentsline{toc}{subsubsection}{\protect\numberline{\thesubsubsection}#2}
-          \pdfbookmark[4]{\cs_if_exist:cT{thechapter}{\thechapter.}\thesection.\thesubsection.\thesubsubsection\ #2}
-          {subsubsection.\cs_if_exist:cT{thepart}{\thepart}.\cs_if_exist:cT{thechapter}{\thechapter}.\thesection.\thesubsection.\thesubsubsection}
-          \def\currentsectionlevel{\omdoc@subsubsection@kw}
-        \or
-          \stepcounter{paragraph}
-          \def\__notesslideslabel{\part@prefix\arabic{section}.\arabic{subsection}.\arabic{subsubsection}.\arabic{paragraph}}
-          \addcontentsline{toc}{paragraph}{\protect\numberline{\theparagraph}#2}
-          \pdfbookmark[5]{\cs_if_exist:cT{thechapter}{\thechapter.}\thesection.\thesubsection.\thesubsubsection.\theparagraph\ #2}
-          {paragraph.\cs_if_exist:cT{thepart}{\thepart}.\cs_if_exist:cT{thechapter}{\thechapter}.\thesection.\thesubsection.\thesubsubsection.\theparagraph}
-          \def\currentsectionlevel{\omdoc@paragraph@kw}
-        \else
-          \def\__notesslideslabel{}
-          \def\currentsectionlevel{\omdoc@paragraph@kw}
-        \fi% end ifcase
-        \__notesslideslabel\quad #2%
-      }%
-      \vfill%
-      \end{frame}%
-    }
-    \str_if_empty:NF \l__document_structure_sfragment_id_str {
-      \stex_ref_new_doc_target:n\l__document_structure_sfragment_id_str
-    }
-  }{}
-}
-\def\inserttheorembodyfont{\normalfont}
-
-\AddToHook{begindocument}{ % this does not work for some reasone
-  \setbeamertemplate{theorems}[ams style]
-}
-\bool_if:NT \c__notesslides_notes_bool {
-  \renewenvironment{columns}[1][]{%
-    \par\noindent%
-    \begin{minipage}%
-    \slidewidth\centering\leavevmode%
-  }{%
-    \end{minipage}\par\noindent%
-  }%
-  \newsavebox\columnbox%
-  \renewenvironment<>{column}[2][]{%
-    \begin{lrbox}{\columnbox}\begin{minipage}{#2}%
-  }{%
-    \end{minipage}\end{lrbox}\usebox\columnbox%
-  }%
-}
-\bool_if:NTF \c__notesslides_noproblems_bool {
-  \newenvironment{problems}{}{}
-}{
-  \excludecomment{problems}
 }
 \gdef\printexcursions{}
 \newcommand\excursionref[2]{% label, text
@@ -448,7 +304,7 @@
   }
 }
 \newcommand\activate@excursion[2][]{
-  \gappto\printexcursions{\inputref[#1]{#2}}
+  \tl_gput_right:Nn\printexcursions{\inputref[#1]{#2}}
 }
 \newcommand\excursion[4][]{% repos, label, path, text
   \bool_if:NT \c__notesslides_notes_bool {
@@ -468,19 +324,35 @@
 }
 \newcommand\excursiongroup[1][]{
   \__notesslides_excursion_args:n{ #1 }
-  \ifdefempty\printexcursions{}% only if there are excursions
+  \tl_if_empty:NF\printexcursions% only if there are excursions
   {\begin{note}
-    \begin{sfragment}[#1]{Excursions}%
+    \begin{sfragment}{Excursions}% TODO pass on id
       \ifdefempty\l__notesslides_excursion_intro_tl{}{
-        \inputref[\l__notesslides_excursion_mhrepos_str]{
+        \exp_args:NNe \use:nn \inputref{[\l__notesslides_excursion_mhrepos_str]{
           \l__notesslides_excursion_intro_tl
-        }
+        }}
       }
       \printexcursions%
     \end{sfragment}
   \end{note}}
 }
 \ifcsname beameritemnestingprefix\endcsname\else\def\beameritemnestingprefix{}\fi
+\prop_new:N \g__notesslides_variables_prop
+\cs_set_protected:Npn \setSGvar #1 #2 {
+  \prop_gput:Nnn \g__notesslides_variables_prop {#1}{#2}
+}
+\cs_set_protected:Npn \useSGvar #1 {
+  \prop_item:Nn \g__notesslides_variables_prop {#1}
+}
+\cs_set_protected:Npn \ifSGvar #1 #2 #3 {
+  \prop_get:NnNF \g__notesslides_variables_prop {#1} \l__notesslides_tmp {
+    \PackageError{document-structure}
+    {The sTeX Global variable #1 is undefined}
+    {set it with \protect\setSGvar}\TODO better error
+  }
+  \tl_if_eq:NnT \l__notesslides_tmp {#2}{ #3 }
+}
+
 \endinput
 %%
 %% End of file `notesslides.sty'.

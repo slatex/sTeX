@@ -1239,21 +1239,32 @@
 }
 \int_new:N \l_stex_docheader_sect
 
-\cs_new_protected:Nn \__stex_doc_do_section:n {
+\cs_new_protected:Nn \__stex_doc_do_level:nn {
+  \stexdoctitle{#2}
+  \tl_if_empty:NTF \l_stex_key_short_tl {
+    \use:c{#1}
+  }{
+    \use:c{#1}[\l_stex_key_short_tl]
+  }{#2}
+  \int_incr:N \l_stex_docheader_sect
+  \tl_set:Nn \currentsectionlevel{#1}
+}
+
+\cs_new_protected:Npn \__stex_doc_do_section:n {
   \int_case:nnF \l_stex_docheader_sect {
-    {0}{\cs_if_exist:NTF \part {\stexdoctitle{#1}\part{#1}\int_incr:N \l_stex_docheader_sect}{
+    {0}{\cs_if_exist:NTF \part {\__stex_doc_do_level:nn{part}}{
       \int_incr:N \l_stex_docheader_sect
-      \__stex_doc_do_section:n {#1}
+      \__stex_doc_do_section:n
     }}
-    {1}{\cs_if_exist:NTF \chapter {\stexdoctitle{#1}\chapter{#1}\int_incr:N \l_stex_docheader_sect}{
+    {1}{\cs_if_exist:NTF \chapter {\__stex_doc_do_level:nn{chapter}}{
       \int_incr:N \l_stex_docheader_sect
-      \__stex_doc_do_section:n {#1}
+      \__stex_doc_do_section:n
     }}
-    {2}{\stexdoctitle{#1}\section{#1}\int_incr:N \l_stex_docheader_sect}
-    {3}{\stexdoctitle{#1}\subsection{#1}\int_incr:N \l_stex_docheader_sect}
-    {4}{\stexdoctitle{#1}\subsubsection{#1}\int_incr:N \l_stex_docheader_sect}
-    {5}{\stexdoctitle{#1}\paragraph{#1}\int_incr:N \l_stex_docheader_sect}
-  }{\stexdoctitle{#1}\subparagraph{#1}\int_incr:N \l_stex_docheader_sect}
+    {2}{\__stex_doc_do_level:nn{section}}
+    {3}{\__stex_doc_do_level:nn{subsection}}
+    {4}{\__stex_doc_do_level:nn{subsubsection}}
+    {5}{\__stex_doc_do_level:nn{paragraph}}
+  }{\__stex_doc_do_level:nn{subparagraph}}
 }
 
 \cs_new_protected:Nn \__stex_doc_skip_section: {
@@ -1268,8 +1279,14 @@
   \int_incr:N \l_stex_docheader_sect
 }
 
+\stex_keys_define:nnnn{ sfragment }{
+  \tl_clear:N \l_stex_key_short_tl
+}{
+  short   .tl_set:N   = \l_stex_key_short_tl
+}{id}
+
 \NewDocumentEnvironment{sfragment}{ O{} m}{
-  \stex_keys_set:nn{id}{#1}
+  \stex_keys_set:nn{sfragment}{#1}
   \__stex_doc_do_section:n{#2}
   \_stex_do_id:
 }{}
@@ -1571,31 +1588,32 @@
   }
 }
 
+\cs_new_protected:Nn \_stex_sref_do_aux:n {
+  #1 \iow_now:Nn \@auxout {#1}
+}
+
 \cs_new_protected:Nn \__stex_refs_new_symbol:n {
   \prop_if_exist:NTF \l_stex_current_archive_prop {
     \prop_get:NnNTF \l_stex_current_archive_prop {docurl} \l__stex_refs_str {
-      \exp_args:Ne \use:n {
+      \exp_args:Ne \_stex_sref_do_aux:n {
         \STEXInternalSetSrefSymURL{#1}{\l__stex_refs_str / symbol? #1}
-        \iow_now:Nn\@auxout{\STEXInternalSetSrefSymURL{#1}{\l__stex_refs_str / symbol? #1}}
       }
     }{
-      \STEXInternalSetSrefSymURL{#1}{}
-      \iow_now:Nn\@auxout{\STEXInternalSetSrefSymURL{#1}{}}
+      \_stex_sref_do_aux:n { \STEXInternalSetSrefSymURL{#1}{} }
     }
   }{
-    \STEXInternalSetSrefSymURL{#1}{}
-    \iow_now:Nn\@auxout{\STEXInternalSetSrefSymURL{#1}{}}
+    \_stex_sref_do_aux:n { \STEXInternalSetSrefSymURL{#1}{} }
   }
 }
 
 \cs_new_protected:Nn \stex_ref_new_sym_target:n {
-  \stex_if_smsmode:TF{
-    \stex_ref_new_symbol:n{#1}
-  }{
-    \iow_now:Nn\@auxout{\STEXInternalSetSrefSymLabel{#1}}
-    \STEXInternalSetSrefSymLabel{#1}
-    \exp_args:Ne \label{\tl_to_str:n{sref_sym_ #1}}
-  }
+ % \stex_if_smsmode:TF{
+ %   \stex_ref_new_symbol:n{#1}
+ % }{
+ %   \iow_now:Nn\@auxout{\STEXInternalSetSrefSymLabel{#1}}
+ %   \STEXInternalSetSrefSymLabel{#1}
+ %   \exp_args:Ne \label{\tl_to_str:n{sref_sym_ #1}}
+ % }
 }
 
 \cs_new_protected:Nn \stex_ref_new_sym_target:nn {
@@ -1647,7 +1665,7 @@
   }
 }
 \cs_new_protected:Npn \srefsymuri #1 {
-  \__stex_refs_sym_aux:nn{#1}
+  \use:n%\__stex_refs_sym_aux:nn{#1}
 }
 \cs_new_protected:Nn \stex_resolve_path_pair:Nnn {
   \stex_debug:nn{resolving~path}{#3~in~[#2]}
@@ -1737,6 +1755,14 @@
 \NewDocumentCommand \inputref { O{} m}{
   \exp_args:NNx \exp_args:Nnx \__stex_inputs_inputref:nn{ \tl_to_str:n{#1} }{ \tl_to_str:n{#2} }
 }
+\newcommand\addmhbibresource[2][]{
+  \cs_if_exist:NF \addbibresource {
+    \TODO error
+  }
+  \stex_in_archive:nn {#1} {
+    \addbibresource{ \stex_file_use:N \c_stex_mathhub_file / ##1 / #2 }
+  }
+}
 \cs_new_protected:Nn \__stex_inputs_up_archive:nn {
   \prop_if_exist:NF \l_stex_current_archive_prop {
     \msg_error:nnn{stex}{error/notinarchive}\libinput
@@ -1769,16 +1795,92 @@
     \msg_error:nnxx{stex}{error/nofile}{\exp_not:N\libinput}{#1.tex}
   }{
     \seq_map_inline:Nn \l__stex_inputs_libinput_files_seq {
-      \stex_input_with_hooks:n{ ##1 }
+      \input{ ##1 }
     }
   }
 }
-\cs_new_protected:Npn \libusepackage #1 {
-  \__stex_inputs_up_archive:nn{#1}{sty}
+\newcommand\libusepackage[2][]{
+  \__stex_inputs_up_archive:nn{#2}{sty}
   \int_compare:nNnTF {\seq_count:N \l__stex_inputs_libinput_files_seq} = 1 {
-    \exp_args:Ne \usepackage{\seq_item:Nn \l__stex_inputs_libinput_files_seq 1 }
+    \str_set:Nx \l__stex_inputs_tmp_str {\seq_item:Nn \l__stex_inputs_libinput_files_seq 1}
+    \exp_args:Nne \use:n {\usepackage[#1]} {
+      \str_range:Nnn\l__stex_inputs_tmp_str 1 {-5}
+    }
   }{
-    \stex_fatal_error:nxx{error/nofile}{\exp_not:N\libusepackage}{#1.sty}
+    \stex_fatal_error:nnn{error/nofile}{\libusepackage}{#1.sty}
+  }
+}
+\str_new:N \l__stex_inputs_gin_repo_str
+\ltx@ifpackageloaded{graphicx}{\use:n}{\AtEndOfPackageFile{graphicx}}{
+  \define@key{Gin}{mhrepos}{
+    \str_set:Nn \l__stex_inputs_gin_repo_str {#1}
+    \def\Gin@mhrepos{\stex_file_use:N \c_stex_mathhub_file / #1 / source /}
+  }
+  \providecommand\mhgraphics[2][]{
+    \def\Gin@mhrepos{
+      \stex_file_use:N \c_stex_mathhub_file / \prop_item:Nn \l_stex_current_archive_prop {id} / source /
+    }
+    \setkeys{Gin}{#1}
+    \includegraphics[#1]{ \Gin@mhrepos #2 }
+  }
+  \providecommand\cmhgraphics[2][]{\begin{center}\mhgraphics[#1]{#2}\end{center}}
+}
+
+\ltx@ifpackageloaded{listings}{\use:n}{\AtEndOfPackageFile{listings}}{
+  \define@key{lst}{mhrepos}{
+    \def\lst@mhrepos{\stex_file_use:N \c_stex_mathhub_file / #1 / source /}
+  }
+  \newcommand\lstinputmhlisting[2][]{%
+    \def\lst@mhrepos{
+      \stex_file_use:N \c_stex_mathhub_file / \prop_item:Nn \l_stex_current_archive_prop {id} / source /
+    }
+    \setkeys{lst}{#1}%
+    \lstinputlisting[#1]{\lst@mhrepos #2}}
+  \newcommand\clstinputmhlisting[2][]{\begin{center}\lstinputmhlisting[#1]{#2}\end{center}}
+}
+
+\ltx@ifpackageloaded{tikzinput}{\use:n}{\AtEndOfPackageFile{tikzinput}}{
+  \define@key{Gin}{mhrepos}{
+    \str_set:Nn \l__stex_inputs_gin_repo_str {#1}
+    \def\Gin@mhrepos{\stex_file_use:N \c_stex_mathhub_file / #1 / source /}
+  }
+  \newcommand\mhtikzinput[2][]{%
+    \str_clear:N \l__stex_inputs_gin_repo_str
+    \def\Gin@mhrepos{
+      \stex_file_use:N \c_stex_mathhub_file / \prop_item:Nn \l_stex_current_archive_prop {id} / source /
+    }
+    \setkeys{Gin}{#1}%
+    \exp_args:No \stex_in_archive:nn \l__stex_inputs_gin_repo_str {
+      \tikzinput[#1]{\Gin@mhrepos #2}
+    }
+  }
+  \newcommand\cmhtikzinput[2][]{\begin{center}\mhtikzinput[#1]{#2}\end{center}}
+}
+\cs_new_protected:Nn \__stex_inputs_usetikzlibrary:nn {
+  \pgfkeys@spdef\pgf@temp{#1}
+  \expandafter\ifx\csname tikz@library@\pgf@temp @loaded\endcsname\relax%
+  \expandafter\global\expandafter\let\csname tikz@library@\pgf@temp @loaded\endcsname=\pgfutil@empty%
+  \expandafter\edef\csname tikz@library@#1@atcode\endcsname{\the\catcode`\@}
+  \expandafter\edef\csname tikz@library@#1@barcode\endcsname{\the\catcode`\|}
+  \expandafter\edef\csname tikz@library@#1@dollarcode\endcsname{\the\catcode`\$}
+  \catcode`\@=11
+  \catcode`\|=12
+  \catcode`\$=3
+  \pgfutil@InputIfFileExists{#2}{}{}
+  \catcode`\@=\csname tikz@library@#1@atcode\endcsname
+  \catcode`\|=\csname tikz@library@#1@barcode\endcsname
+  \catcode`\$=\csname tikz@library@#1@dollarcode\endcsname
+}
+
+\cs_new_protected:Npn \libusetikzlibrary #1 {
+  \cs_if_exist:NF \usetikzlibrary {
+    \TODO error
+  }
+  \__stex_inputs_up_archive:nn{tikzlibrary#1}{code.tex}
+  \int_compare:nNnTF {\seq_count:N \l__stex_inputs_libinput_files_seq} = 1 {
+    \exp_args:Nne \__stex_inputs_usetikzlibrary:nn{#1}{ \seq_item:Nn \l__stex_inputs_libinput_files_seq 1 }
+  }{
+    \stex_fatal_error:nnn{error/nofile}{\libusetikzlibrary}{tikzlibrary#1.code.tex}
   }
 }
 \tl_new:N \g__stex_smsmode_allowed_tl
@@ -2737,11 +2839,14 @@
 \stex_new_stylable_cmd:nnnn {assign} { m m }{
   \stex_get_in_morphism:n{#1}
   \_stex_assign_do:n{#2}
+  \stex_smsmode_do:
 }{}
+\stex_sms_allow_escape:N\assign
 
 \cs_new_protected:Nn \_stex_assign_do:n{
   \stex_debug:nn{assign}{Assigning~\l_stex_get_symbol_name_str~to~\tl_to_str:n{#1}}
   \tl_if_empty:NF \l_stex_get_symbol_def_tl {
+    \exp_args:No \message \l_stex_get_symbol_name_str
     \TODOc error
   }
   \stex_check_term:n{#1}
@@ -2776,7 +2881,9 @@
 \stex_new_stylable_cmd:nnnn {renamedecl} { m O{} m }{
   \stex_get_in_morphism:n{#1}
   \_stex_renamedecl_do:nn{#2}{#3}
+  \stex_smsmode_do:
 }{}
+\stex_sms_allow_escape:N\renamedecl
 
 \cs_new_protected:Nn \_stex_renamedecl_do:nn {
   \stex_debug:nn{renamedecl}{Renaming~\l_stex_get_symbol_name_str~to~[#1]{#2}}
@@ -2813,6 +2920,7 @@
     \tl_set_eq:NN \thismoduleuri \l_stex_current_domain_str
     \stex_style_apply:
   }
+  \stex_smsmode_do:
 }{
   \stex_if_smsmode:F {
     \stex_style_apply:
@@ -2823,6 +2931,31 @@
 \stex_every_module:n {
   \stex_reactivate_macro:N \copymodule
 }
+\stex_sms_allow_env:n{copymodule}
+\stex_new_stylable_env:nnnnnnn {realization}{m}{
+
+  \stex_structural_feature_morphism:nnnnn{}{realization}{}{#1}{,shtml:total=true}
+  \stex_execute_in_module:x{
+    \stex_activate_module:n{\l_stex_current_domain_str}
+  }
+  % TODO check totality
+  \stex_if_smsmode:F {
+    \tl_set:Nn \thiscopyname { #1 }
+    \tl_set_eq:NN \thismoduleuri \l_stex_current_domain_str
+    \stex_style_apply:
+  }
+  \stex_smsmode_do:
+}{
+  \stex_if_smsmode:F {
+    \stex_style_apply:
+  }
+  \stex_structural_feature_morphism_end:
+}{}{}{}
+\stex_deactivate_macro:Nn \realization {module~environments}
+\stex_every_module:n {
+  \stex_reactivate_macro:N \realization
+}
+\stex_sms_allow_env:n{realization}
 \cs_new_protected:Nn \__stex_morphisms_parse_assign:n {
   \str_clear:N \l__stex_morphisms_name_str
   \str_clear:N \l__stex_morphisms_newname_str
@@ -2885,7 +3018,13 @@
     \stex_style_apply:
   }
   \stex_structural_feature_morphism_end:
+  \stex_smsmode_do:
 }{}
+\stex_deactivate_macro:Nn \copymod {module~environments}
+\stex_every_module:n {
+  \stex_reactivate_macro:N \copymod
+}
+\stex_sms_allow_escape:N\copymod
 \cs_new_protected:Npn \STEXInternalSymbolAfterInvokationTL {}
 \cs_new_protected:Npn \STEXInternalAssocArgMarkerI {}
 \cs_new_protected:Npn \STEXInternalAssocArgMarkerII {}
@@ -5564,6 +5703,10 @@
     }
   }
 }
+\cs_new_protected:Npn \usestructure #1 {
+  \stex_get_mathstructure:n{ #1 }
+  \exp_args:No \stex_activate_module:n \l_stex_get_structure_module_str
+}
 
 \stex_keys_define:nnnn{statement}{
   \str_clear:N \l_stex_key_name_str
@@ -5573,11 +5716,13 @@
   name    .str_set:N = \l_stex_key_name_str ,
   for     .clist_set:N = \l_stex_key_for_clist ,
   macro   .str_set:N = \l_stex_key_macroname_str ,
-  %type    .code:n = {}, % TODO remove
-  judgment .code:n = {}
+  start   .str_set:N = \l_stex_key_title_str , % TODO remove
+  judgment .code:n = {},
+  from .code:n= {}, % TODO remove
+  to .code:n={} % TODO remove
 }{id,title,style,symargs}
 
-\cs_new_protected:Nn \__stex_statements_setup: {
+\cs_new_protected:Nn \__stex_statements_setup:n {
   \str_if_empty:NF \l_stex_key_macroname_str {
     \str_if_empty:NT \l_stex_key_name_str {
       \str_set_eq:NN \l_stex_key_name_str \l_stex_key_macroname_str
@@ -5593,6 +5738,16 @@
     \seq_put_right:Nx \l__stex_statements_fors_seq {
       \l_stex_current_module_str ? \l_stex_key_name_str
     }
+    \str_set_eq:NN \l_stex_macroname_str \l_stex_key_macroname_str
+    \stex_symdecl_do:
+    \exp_args:Nnx \use:nn {\stex_module_add_symbol:nnnnnnnN}{
+      {\l_stex_key_macroname_str}{\l_stex_key_name_str}
+      {\int_use:N \l_stex_get_symbol_arity_int}
+      {\l_stex_get_symbol_args_tl}
+      {#1}{}{}\stex_invoke_symbol:
+    }
+    \exp_args:Ne \stex_ref_new_sym_target:n {\l_stex_current_module_str?\l_stex_key_name_str}
+    \stex_if_do_html:T \_stex_symdecl_html:
   }
 }
 
@@ -5612,7 +5767,6 @@
 \cs_new_protected:Nn \stex_new_statement:nnn {
   \stex_new_stylable_env:nnnnnnn {#1}{O{}}{
     \stex_keys_set:nn{statement}{##1}
-    \__stex_statements_setup:
     #3
 
     \stex_if_smsmode:F {
@@ -5635,13 +5789,12 @@
       \end{stex_annotate_env}
     }
   }{}{}{s}
-
   \stex_sms_allow_env:n{s#1}
+
   \tl_if_empty:nF{#2}{
     \exp_after:wN \NewDocumentCommand \cs:w inline#2\cs_end: { O{} m}{
       \group_begin:
         \stex_keys_set:nn{statement}{##1}
-        \__stex_statements_setup:
         #3
 
         \stex_if_smsmode:F{
@@ -5660,18 +5813,6 @@
 }
 
 \cs_new_protected:Nn \__stex_statements_setup_def: {
-  \str_if_empty:NF \l_stex_key_name_str {
-    \str_set_eq:NN \l_stex_macroname_str \l_stex_key_macroname_str
-    \stex_symdecl_do:
-    \exp_args:Nnx \use:nn {\stex_module_add_symbol:nnnnnnnN}{
-      {\l_stex_key_macroname_str}{\l_stex_key_name_str}
-      {\int_use:N \l_stex_get_symbol_arity_int}
-      {\l_stex_get_symbol_args_tl}
-      {DEFINED}{}{}\stex_invoke_symbol:
-    }
-    \exp_args:Ne \stex_ref_new_sym_target:n {\l_stex_current_module_str?\l_stex_key_name_str}
-    \stex_if_do_html:T \_stex_symdecl_html:
-  }
   \seq_map_inline:Nn \l__stex_statements_fors_seq {
     \stex_ref_new_sym_target:n{##1}
   }
@@ -5690,13 +5831,14 @@
 }
 
 \stex_new_statement:nnn{definition}{def}{
+  \__stex_statements_setup:n{DEFINED}
   \__stex_statements_setup_def:
   \stex_reactivate_macro:N \definiens
 }
-\stex_new_statement:nnn{assertion}{ass}{}
-\stex_new_statement:nnn{example}{ex}{}
+\stex_new_statement:nnn{assertion}{ass}{\__stex_statements_setup:n{}}
+\stex_new_statement:nnn{example}{ex}{\__stex_statements_setup:n{}}
 \stex_new_statement:nnn{paragraph}{}{
-  \clist_if_in:NnT \l_stex_key_style_clist {symdoc}{\__stex_statements_setup_def:}
+  \__stex_statements_setup:n{}\clist_if_in:NnT \l_stex_key_style_clist {symdoc}{\__stex_statements_setup_def:}
 }
 
 \cs_new_protected:Nn \__stex_statements_do_defref:nn {
@@ -5783,12 +5925,333 @@
     {#2}{{#1}{#2}{#3}{#4}{defed}{#6}{#7}{#8}}
 }
 
+\stex_keys_define:nnnn{ spf }{
+\tl_clear:N \l_stex_key_for_tl
+\tl_clear:N \l_stex_key_from_tl
+\tl_set_eq:NN \l_stex_key_proofend_tl \__stex_proof_proof_box_tl
+\tl_clear:N \l_stex_key_continues_tl
+\tl_clear:N \l_stex_key_term_tl
+\tl_clear:N \l_stex_key_functions_tl
+\tl_clear:N \l_stex_key_method_tl
+  \bool_set_false:N \l_stex_key_hide_bool
+}{
+  for         .clist_set:N  = \l_stex_key_for_clist ,
+  from        .tl_set:N     = \l_stex_key_from_tl ,
+  proofend    .tl_set:N     = \l_stex_key_proofend_tl,
+  continues   .tl_set:N     = \l_stex_key_continues_tl,
+  functions   .tl_set:N     = \l_stex_key_functions_tl,
+  term        .tl_set:N     = \l_stex_key_term_tl,
+  method      .tl_set:N     = \l_stex_key_method_tl,
+  hide        .bool_set:N   = \l_stex_key_hide_bool
+}{id,style,title}
+
+\bool_set_true:N \l__stex_proof_inc_counter_bool
+\intarray_new:Nn\l__stex_proof_counter_intarray{50}
+\cs_new_protected:Npn \__stex_proof_insert_number: {
+  \int_set:Nn \l_tmpa_int {1}
+  \bool_while_do:nn {
+    \int_compare_p:nNn {
+      \intarray_item:Nn \l__stex_proof_counter_intarray \l_tmpa_int
+    } > 0
+  }{
+    \intarray_item:Nn \l__stex_proof_counter_intarray \l_tmpa_int .
+    \int_incr:N \l_tmpa_int
+  }
+}
+
+\cs_new_protected:Npn \__stex_proof_inc_counter: {
+  \int_set:Nn \l_tmpa_int {1}
+  \bool_while_do:nn {
+    \int_compare_p:nNn {
+      \intarray_item:Nn \l__stex_proof_counter_intarray \l_tmpa_int
+    } > 0
+  }{
+    \int_incr:N \l_tmpa_int
+  }
+  \int_compare:nNnF \l_tmpa_int = 1 {
+    \int_decr:N \l_tmpa_int
+  }
+  \intarray_gset:Nnn \l__stex_proof_counter_intarray \l_tmpa_int {
+    \intarray_item:Nn \l__stex_proof_counter_intarray \l_tmpa_int + 1
+  }
+}
+
+\cs_new_protected:Npn \__stex_proof_add_counter: {
+  \int_set:Nn \l_tmpa_int {1}
+  \bool_while_do:nn {
+    \int_compare_p:nNn {
+      \intarray_item:Nn \l__stex_proof_counter_intarray \l_tmpa_int
+    } > 0
+  }{
+    \int_incr:N \l_tmpa_int
+  }
+  \intarray_gset:Nnn \l__stex_proof_counter_intarray \l_tmpa_int { 1 }
+}
+
+\cs_new_protected:Npn \__stex_proof_remove_counter: {
+  \int_set:Nn \l_tmpa_int {1}
+  \bool_while_do:nn {
+    \int_compare_p:nNn {
+      \intarray_item:Nn \l__stex_proof_counter_intarray \l_tmpa_int
+    } > 0
+  }{
+    \int_incr:N \l_tmpa_int
+  }
+  \int_decr:N \l_tmpa_int
+  \intarray_gset:Nnn \l__stex_proof_counter_intarray \l_tmpa_int { 0 }
+}
+\tl_set:Nn \__stex_proof_proof_box_tl {
+  \ltx@ifpackageloaded{amssymb}{$\square$}{
+    \hbox{\vrule\vbox{\hrule width 6 pt\vskip 6pt\hrule}\vrule}
+  }
+}
+
+\tl_set:Nn \sproofend {
+  \tl_if_empty:NF \l_stex_key_proofend_tl {
+    \hfil\null\nobreak\hfill\l_stex_key_proofend_tl\par\smallskip
+  }
+}
+\stex_new_stylable_cmd:nnnn{spfsketch}{O{} m}{
+  \group_begin:
+  \stex_keys_set:nn{spf}{#1}
+  % TODO
+  #2
+  \group_end:
+}{}{}
+\bool_set_false:N \l__stex_proof_in_spfblock_bool
+
+\cs_new_protected:Nn \__stex_proof_maybe_comment: {
+  \bool_if:NF \l__stex_proof_in_spfblock_bool {
+    \par \setbox \l_tmpa_box \vbox \bgroup \everypar{\__stex_proof_start_comment:}
+  }
+}
+\cs_new_protected:Nn \__stex_proof_maybe_comment_end: {
+  \bool_if:NF \l__stex_proof_in_spfblock_bool { \egroup }
+}
+\cs_new_protected:Nn \__stex_proof_start_comment: {
+  \egroup\csname @ @ par\endcsname\item[]\bgroup\stexcommentfont
+}
+
+\cs_new_protected:Npn \stexcommentfont {
+  \small\itshape
+}
+\cs_new_protected:Nn \__stex_proof_start_env_nolist:nnn {
+  \seq_clear:N \l_tmpa_seq
+  %\clist_map_inline:Nn \l__stex_proof_spf_for_clist {
+  %  \tl_if_empty:nF{ ##1 }{
+  %    \stex_get_symbol:n { ##1 }
+  %    \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq {
+  %      \l_stex_get_symbol_uri_str
+  %    }
+  %  }
+  %}
+  %\exp_args:Nnnx
+  %\begin{stex_annotate_env}{#1}{\seq_use:Nn \l_tmpa_seq {,}}
+  %\str_if_empty:NF \spftype {
+  %  \stex_annotate_invisible:nnn{type}{\spftype}{}
+  %}
+  #3~#2 %{~\stex_annotate:nnn{spftitle}{}{#2}}
+  \str_if_empty:NF \l_stex_key_id_str {
+    \stex_ref_new_doc_target:n \l_stex_key_id_str
+  }
+  %\begin{stex_annotate_env}{spfbody}{\bool_if:NTF \l_stex_key_hide_bool {false}{true}}
+  \bool_if:NT \l_stex_key_hide_bool{
+    \stex_if_html_backend:F{\setbox\l_tmpa_box\vbox\bgroup}
+  }
+}
+\cs_new_protected:Nn \__stex_proof_start_env:nnn {
+  \__stex_proof_start_env_nolist:nnn{#1}{#2}{#3}
+  \begin{list}{}{
+    \setlength\topsep{0pt}
+    \setlength\parsep{0pt}
+    \setlength\rightmargin{0pt}
+
+  }\__stex_proof_maybe_comment:
+}
+\cs_new_protected:Nn \__stex_proof_end_env:n {
+  \stex_if_smsmode:F{
+    \__stex_proof_maybe_comment_end:
+    \end{list}
+    \bool_if:NT \l_stex_key_hide_bool{
+      \stex_if_html_backend:F{\egroup}
+    }
+    %\clist_set:No \l_tmpa_clist \spftype
+    #1
+    %\end{stex_annotate_env}
+    %\end{stex_annotate_env}
+  }
+}
+\NewDocumentEnvironment{sproof}{O{} m}{
+  \intarray_gzero:N \l__stex_proof_counter_intarray
+  \intarray_gset:Nnn \l__stex_proof_counter_intarray 1 1
+  %\stex_reactivate_macro:N \yield
+  %\stex_reactivate_macro:N \eqstep
+  %\stex_reactivate_macro:N \assumption
+  %\stex_reactivate_macro:N \conclude
+  %\stex_reactivate_macro:N \spfstep
+  \stex_keys_set:nn{spf}{#1}
+  \stex_if_smsmode:TF {
+    \str_if_empty:NF \l_stex_key_id_str {
+      \stex_ref_new_doc_target:n \l_stex_key_id_str
+    }
+  }{
+    \__stex_proof_start_env:nnn{sproof}{#2}{
+      % TODO
+    }
+  }
+  \stex_smsmode_do:
+}{\__stex_proof_end_env:n{
+  % TODO
+}}
+
+\NewDocumentEnvironment{sproof*}{O{}}{
+  %\stex_reactivate_macro:N \yield
+  %\stex_reactivate_macro:N \eqstep
+  %\stex_reactivate_macro:N \assumption
+  %\stex_reactivate_macro:N \conclude
+  %\stex_reactivate_macro:N \spfstep
+  \stex_keys_set:nn{spf}{#1}
+  \stex_if_smsmode:TF {
+    \str_if_empty:NF \l_stex_key_id_str {
+      \stex_ref_new_doc_target:n \l_stex_key_id_str
+    }
+  }{
+    \__stex_proof_start_env_nolist:nnn{sproof}{}{
+      % TODO
+    }
+  }
+  \bool_set_true:N \l__stex_proof_in_spfblock_bool
+  \stex_smsmode_do:
+}{
+  \stex_if_smsmode:F{
+    % TODO
+    %\end{stex_annotate_env}
+    %\end{stex_annotate_env}
+  }
+}
+
+\NewDocumentEnvironment{subproof}{s O{} m}{
+  \stex_keys_set:nn{spf}{#2}
+  \stex_if_smsmode:TF {
+    \str_if_empty:NF \l_stex_key_id_str {
+      \stex_ref_new_doc_target:n \l_stex_key_id_str
+    }
+  }{
+    \__stex_proof_start_env:nnn{subproof}{
+      \stex_if_html_backend:T{\csname @ @ par\endcsname}\item[\__stex_proof_insert_number:]\stex_ignore_spaces_and_pars: #3}{}
+  }
+  \__stex_proof_add_counter:
+  \stex_smsmode_do:
+}{
+  \__stex_proof_remove_counter:
+  \__stex_proof_end_env:n{}
+  \bool_if:NT \l__stex_proof_inc_counter_bool {
+    \__stex_proof_inc_counter:
+  }
+  \aftergroup\__stex_proof_maybe_comment:
+}
+\AddToHook{env/subproof/before}{\__stex_proof_maybe_comment_end:}
+
+\cs_new_protected:Nn \__stex_proof_sproof_start: {
+  \par\noindent\titleemph{
+    %\tl_if_empty:NTF \spftype {
+    %  \spf@proof@kw
+    %}{
+    %  \spftype
+    %}
+  }:
+}
+\NewDocumentCommand\spfidea{O{} +m}{
+  \stex_keys_set:nn{spf}{#1}
+  \titleemph{Proof~Idea:
+   % \tl_if_empty:NTF \spftype {Proof~Idea}{
+   %   \spftype
+   % }:
+  }~#2
+  \sproofend
+}
+
+\stex_keys_define:nnnn { spfsteps } {
+\clist_clear:N \l_stex_key_for_clist
+  \str_clear:N \l_stex_key_name_str
+\tl_clear:N \l_stex_key_method_tl
+\tl_clear:N \l_stex_key_term_tl
+}{
+  for         .clist_set:N  = \l_stex_key_for_clist ,
+  method      .tl_set:N     = \l_stex_key_method_tl,
+  term        .tl_set:N     = \l_stex_key_term_tl,
+  name        .str_set_x:N  = \l_stex_key_name_str,
+  type .code:n = {} % todo: type=inline
+}{id,style,title}
+
+\cs_new_protected:Nn \__stex_proof_make_step_macro:Nnnnn {
+  \NewDocumentCommand #1 {s O{} +m} {
+    \__stex_proof_maybe_comment_end:
+
+    \stex_keys_set:nn{spfsteps}{##2}
+    %\stex_annotate:nnn{spfstep}{#2}
+    {
+      \bool_if:NTF \l__stex_proof_in_spfblock_bool {
+        #4
+      }{
+        %\stex_if_html_backend:T{\csname @ @ par\endcsname}
+        \item[\IfBooleanTF ##1 {}{#3}]
+      }
+      \str_if_empty:NF \l_stex_key_name_str {
+        %\stex_debug:nn{spfstep}{Name:\l__stex_proof_spf_name_str}
+        %\stex_annotate_invisible:nnn{spfname}{}{\l__stex_proof_spf_name_str}
+        \stex_suppress_html:n{
+          %\exp_args:NNx\exp_args:Nnx\vardef{v\l__stex_proof_spf_name_str}{\exp_not:N\comp{\l__stex_proof_spf_name_str}}
+        }
+      }
+      %\tl_if_empty:NF \l__stex_proof_spf_term_tl {
+      %  \stex_annotate_invisible:nnn{spfyield}{}{$\l__stex_proof_spf_term_tl$}
+      %}
+      ##3%\ignorespacesandpars ##3
+    }
+    \bool_if:NF \l__stex_proof_in_spfblock_bool { \IfBooleanTF ##1 {}{ #5 } }
+    \__stex_proof_maybe_comment:
+  }
+  %\stex_deactivate_macro:Nn #1 {sproof~environments}
+}
+
+\__stex_proof_make_step_macro:Nnnnn \assumption {assumption} \__stex_proof_insert_number: {} \__stex_proof_inc_counter:
+\__stex_proof_make_step_macro:Nnnnn \conclude {conclusion} {$\Rightarrow$} {} {}
+\__stex_proof_make_step_macro:Nnnnn \spfstep {} \__stex_proof_insert_number: {} \__stex_proof_inc_counter:
+
+\NewDocumentCommand \eqstep {s m}{
+  \__stex_proof_maybe_comment_end:
+  \bool_if:NTF \l__stex_proof_in_spfblock_bool {
+    $=$
+  }{
+    \item[$=$]
+  }
+  $#2$%\stex_annotate:nnn{spfstep}{eq}{ #2 }$
+  \__stex_proof_maybe_comment:
+}
+
+\NewDocumentCommand \yield {+m}{
+  #1%\stex_annotate:nnn{spfyield}{}{ #1 }
+}
+
+\NewDocumentEnvironment{spfblock}{}{
+  \item[]
+  \bool_set_true:N \l__stex_proof_in_spfblock_bool
+}{
+  \aftergroup\__stex_proof_maybe_comment:
+}
+\AddToHook{env/spfblock/before}{\__stex_proof_maybe_comment_end:}
+
+\newcommand\spfjust[1]{
+  #1%\stex_annotate:nnn{justification}{}{#1}
+}
 
 \_stex_persist_read_now:
 
 \group_begin:
   \cs_set:Npn \_stex_persist_module:nN #1 #2 {}
   \cs_set:Npn \stex_check_term:n #1 {}
+  \cs_set:Npn \_stex_sref_do_aux:n #1 { #1 }
   \bool_set_false:N \_stex_html_do_output_bool
   \bool_set_false:N \c_stex_check_terms_bool
   \stex_uri_resolve:Nn \l_stex_current_ns_uri {http://mathhub.info/sTeX/meta}
@@ -5841,12 +6304,53 @@
   % any object
   \symdef{object}{\mathtt{Obj}}
 
+  % TODO DELETE
+
+  \symdef{aseqdots}[args=a,prec=nobrackets]{#1\comp{,\ldots}}{##1\comp,##2}
+  \symdef{aseqfromto}[args=ai,prec=nobrackets]{#1\comp{,\ldots,}#2}{##1\comp,##2}
+  \symdef{aseqfromtovia}[args=aii,prec=nobrackets]{#1\comp{,\ldots,}#2\comp{,\ldots,}#3}{##1\comp,##2}
+
   \stex_close_module:
   \stex_uri_add_module:NNn \l_stex_metatheory_uri \l_stex_current_ns_uri {Metatheory}
   \global \let \l_stex_metatheory_uri \l_stex_metatheory_uri
 \group_end:
 
-\bool_new:N \l_stex_inparray_bool
+\bool_new:N \l_stex_inparray_bool\bool_set_false:N \l_stex_inparray_bool
+\NewDocumentCommand \parray { m m } {
+  %\group_begin:
+  \bool_set_true:N \l_stex_inparray_bool
+  %\begin{array}{#1}
+    #2
+  %\end{array}
+  %\group_end:
+}
+
+\NewDocumentCommand \prmatrix { m } {
+  %\group_begin:
+  \bool_set_true:N \l_stex_inparray_bool
+  %\begin{matrix}
+    #1
+  %\end{matrix}
+  %\group_end:
+}
+
+\def \maybephline {
+  %\bool_if:NT \l_stex_inparray_bool {\hline}
+}
+
+\def \parrayline #1 #2 {
+  #1 #2 %\bool_if:NT \l_stex_inparray_bool {\\}
+}
+
+\def \pmrow #1 { \parrayline{}{ #1 } }
+
+\def \parraylineh #1 #2 {
+  #1 #2 %\bool_if:NT \l_stex_inparray_bool {\\\hline}
+}
+
+\def \parraycell #1 {
+  #1 %\bool_if:NT \l_stex_inparray_bool {&}
+}
 \stex_new_stylable_cmd:nnnn{MMTinclude}{m}{
   \stex_annotate_invisible:nn{shtml:import={#1}}{}
 }{}
