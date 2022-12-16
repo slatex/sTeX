@@ -16,8 +16,8 @@
   debug      .str_set_x:N  = \c_stex_debug_clist ,
   lang       .clist_set:N  = \c_stex_languages_clist ,
   mathhub    .tl_set_x:N   = \mathhub ,
-  usedeps     .bool_set:N   = \c_stex_persist_mode_bool ,
-  %writesms   .bool_set:N   = \c_stex_persist_write_mode_bool ,
+  usesms     .bool_set:N   = \c_stex_persist_mode_bool ,
+  writesms   .bool_set:N   = \c_stex_persist_write_mode_bool ,
   checkterms .bool_set:N   = \c_stex_check_terms_bool ,
   image      .bool_set:N   = \c_tikzinput_image_bool,
   unknown    .code:n       = {}
@@ -542,118 +542,80 @@
   }
 }
 \cs_generate_variant:Nn \__stex_aux_params:n {e}
-\stex_get_env:Nn\__stex_persist_env_str{STEX_USEDEPS}
+\stex_get_env:Nn\__stex_persist_env_str{STEX_USESMS}
 \str_if_empty:NF\__stex_persist_env_str{
   \exp_args:No \str_if_eq:nnF \__stex_persist_env_str{false}{
     \bool_set_true:N \c_stex_persist_mode_bool
   }
 }
-\str_set:Nx \c_stex_mdfive_str {\pdfmdfivesum file{stex.sty}}
-
-\cs_new_protected:Npn \stex_persist_deps:nn {
-  \_stex_persist:Nnn \c__stex_persist_deps_iow
-}
-\cs_generate_variant:Nn \stex_persist_deps:nn {ox}
-
-\cs_new_protected:Npn \stex_persist:n {
-  \stex_if_smsmode:TF{
-    \exp_args:NNe \_stex_persist:Nnn \c__stex_persist_deps_iow
-  }{
-    \tl_if_eq:NNTF \g_stex_current_file \c_stex_main_file {
-      \exp_args:NNe \_stex_persist:Nnn \c__stex_persist_sms_iow
-    }\use_none:nn
+\stex_get_env:Nn\__stex_persist_env_str{STEX_WRITESMS}
+\str_if_empty:NF\__stex_persist_env_str{
+  \exp_args:No \str_if_eq:nnF \__stex_persist_env_str{false}{
+    \bool_set_true:N \c_stex_persist_write_mode_bool
   }
-  {\stex_file_use:N \g_stex_current_file}
 }
-\cs_generate_variant:Nn \stex_persist:n {o,x}
-
-\cs_new_protected:Nn \_stex_persist:Nnn{\stex_if_html_backend:F{
-  %\__stex_persist_prepare:n{#3}
-  \exp_args:NNe \iow_now:Nn #1 {
-    \__stex_persist_check:nnnw {#2}{\pdfmdfivesum file{#2}}
-    {\c_stex_mdfive_str}\exp_not:n{#3}\__stex_persist_check_end:%{\exp_args:No \exp_not:n \l__stex_persist_tl}
-  }
-}}
-
-\cs_new_protected:Nn \__stex_persist_check_end: {}
-\cs_new_protected:Npn \__stex_persist_check:nnnw #1 #2 #3 {
-  \stex_debug:nn{persist}{restoring~from~#1}
-  \file_if_exist:nTF {#1}{
-    \exp_args:Ne \str_if_eq:nnTF{\pdfmdfivesum file{#1}}{#2}{
-      \exp_args:No \str_if_eq:nnTF \c_stex_mdfive_str {#3}{
-        \__stex_persist_use:nnnw
-      }{
-        \stex_debug:nn{persist}{outdated~stex.sty}
-        \__stex_persist_maybe_not:nnn
-      }
-    }{
-      \stex_debug:nn{persist}{md5~mismatch.~Not~used}
-      \__stex_persist_maybe_not:nnn
-    }
-  }{
-    \stex_debug:nn{persist}{file~not~found}
-    \__stex_persist_maybe_not:nnn
-  }{#1}{#2}{#3}
-}
-
-\cs_new_protected:Npn \__stex_persist_use:nnnw #1 #2 #3 {
-  %\tl_if_empty:nF {#4}{
-    %\__stex_persist_prepare:n{#4}
-    \cs_set:Npn \__stex_persist_check_end: {
-      \cs_set_protected:Npn \__stex_persist_check_end: {}
-      \iow_now:Nn \c__stex_persist_deps_iow \__stex_persist_check_end:
-    }
-    \iow_now:Nn \c__stex_persist_deps_iow {
-      \__stex_persist_check:nnnw {#1}{#2}{#3}
-    }
-  %}
-}
-
-\cs_new_protected:Nn \__stex_persist_maybe_not:nnn {
-  \bool_if:NTF \c_stex_persist_mode_bool {
-    \__stex_persist_use:nnnw{#1}{#2}{#3}
-  } \__stex_persist_not:
-}
-\cs_new_protected:Npn \__stex_persist_not: #1 \__stex_persist_check_end: {}
-
-\iow_new:N \c__stex_persist_deps_iow
 \iow_new:N \c__stex_persist_sms_iow
 
-\bool_set_false:N \l_stex_in_persist_bool
-\cs_new:Nn \_stex_persist_read_now: {
-  \seq_if_empty:NT \g_stex_current_file {
-    \seq_gset_eq:NN \g_stex_current_file \c_stex_main_file
-  }
-  \file_if_exist:nTF{\jobname.deps}{
-    \group_begin:
-      \ior_new:N \l__stex_persist_ior
-      \ior_open:Nn \l__stex_persist_ior {\jobname.deps}
-      \iow_open:Nn \c__stex_persist_sms_iow {\jobname.sms}
-      \ior_str_map_inline:Nn \l__stex_persist_ior {
-        \iow_now:Nn \c__stex_persist_sms_iow {##1}
-      }
-      \iow_close:N \c__stex_persist_sms_iow
-      \ior_close:N \l__stex_persist_ior
-    \group_end:
-
-    \iow_open:Nn \c__stex_persist_deps_iow {\jobname.deps}
-
-    \group_begin:
-      \stex_debug:nn{persist}{restoring~from~deps~file}
-      \protected\def\persist:n{\iow_now:Nn \c__stex_persist_deps_iow}
-      \catcode`\ =10\relax
-      \bool_set_true:N\l_stex_in_persist_bool
-      \cs:w @ @ input \cs_end:\jobname.sms\relax
-    \group_end:
-    \iow_open:Nn \c__stex_persist_sms_iow {\jobname.sms}
+\bool_if:NTF \c_stex_persist_write_mode_bool {
+  \stex_if_html_backend:TF{
+    \cs_new:Npn \stex_persist:n #1 {}
+    \cs_new:Npn \stex_persist:e #1 {}
   }{
-    \iow_open:Nn \c__stex_persist_deps_iow {\jobname.deps}
-    \iow_open:Nn \c__stex_persist_sms_iow {\jobname.sms}
+    \cs_new_protected:Nn \stex_persist:n {
+      \iow_now:Nn \c__stex_persist_sms_iow {#1}
+    }
+    \cs_generate_variant:Nn \stex_persist:n {e}
   }
+}{
+  \cs_new:Npn \stex_persist:n #1 {}
+  \cs_new:Npn \stex_persist:e #1 {}
+}
 
-  \AtEndDocument{
-    \iow_close:N \c__stex_persist_deps_iow
-    \iow_close:N \c__stex_persist_sms_iow
+\cs_new_protected:Nn \__stex_persist_load_file:n {
+  \file_if_exist:nT{#1}{
+    \group_begin:
+    \cs_set:Npn \stex_persist:n ##1 {}
+    \cs_set:Npn \stex_persist:e ##1 {}
+      \stex_debug:nn{persist}{restoring~from~sms~file}
+      \catcode`\ =10\relax
+      \cs:w @ @ input \cs_end:#1\relax
+    \group_end:
+  }
+}
+
+\cs_new_protected:Nn \__stex_persist_write_only: {
+  \iow_open:Nn \c__stex_persist_sms_iow {\jobname.sms}
+  \AtEndDocument{ \iow_close:N \c__stex_persist_sms_iow }
+}
+
+\cs_new_protected:Nn \__stex_persist_read_and_write: {
+  \file_if_exist:nTF{\jobname.sms}{
+    \ior_open:Nn \l_tmpa_ior {\jobname.sms}
+    \iow_open:Nn \l_tmpa_iow {\jobname.sms2}
+    \ior_str_map_inline:Nn \l_tmpa_ior {
+      \iow_now:Nn \l_tmpa_iow {##1}
+    }
+    \iow_close:N \l_tmpa_iow
+    \ior_close:N \l_tmpa_ior
+    \__stex_persist_write_only:
+    \ior_open:Nn \l_tmpa_ior {\jobname.sms2}
+    \ior_str_map_inline:Nn \l_tmpa_ior {
+      \iow_now:Nn \c__stex_persist_sms_iow {##1}
+    }
+    \ior_close:N \l_tmpa_ior
+    \__stex_persist_load_file:n{\jobname.sms2}
+  }\__stex_persist_write_only:
+}
+
+\cs_new_protected:Nn \_stex_persist_read_now: {
+  \bool_if:NTF \c_stex_persist_mode_bool {
+    \bool_if:NTF \c_stex_persist_write_mode_bool
+      \__stex_persist_read_and_write:
+      {
+        \__stex_persist_load_file:n{\jobname.sms}
+      }
+  }{
+    \bool_if:NT \c_stex_persist_write_mode_bool \__stex_persist_write_only:
   }
 }
 \cs_new_protected:Nn \stex_file_set:Nn {
@@ -1158,28 +1120,9 @@
   \ior_close:N \c__stex_mathhub_manifest_ior
   \prop_gset_eq:cN { c_stex_mathhub_#1_manifest_prop } \l__stex_mathhub_prop
   \stex_debug:nn{mathhub}{Result:~\prop_to_keyval:N \l__stex_mathhub_prop}
-  \stex_persist_deps:ox \l__stex_mathhub_manifest_str {
-    \__stex_mathhub_restore_manifest:nnn{#1}{
-      \prop_map_tokens:Nn\l__stex_mathhub_prop{}
-    }{\l__stex_mathhub_manifest_str}
-  }
-}
-
-\cs_new_protected:Nn \__stex_mathhub_restore_manifest:nnn {
-  \prop_clear:c{c_stex_mathhub_\tl_to_str:n{#1}_manifest_prop}
-  \cs_set_protected:Npn \__stex_mathhub_restore_manifest: ##1 ##2 ##3 \__stex_mathhub_end: {
-    \exp_args:NNe\use:nn\prop_put:cnn{
-      {c_stex_mathhub_\tl_to_str:n{#1}_manifest_prop}
-      {\tl_to_str:n{##1}}{\tl_to_str:n{##2}}
-    }
-    \tl_if_empty:nF{##3}{
-      \__stex_mathhub_restore_manifest: ##3 \__stex_mathhub_end:
-    }
-  }
-  \__stex_mathhub_restore_manifest: #2 \__stex_mathhub_end:
-  \bool_if:NT \l_stex_in_persist_bool {
-    \persist:n{
-      \__stex_mathhub_restore_manifest:nnn{#1}{#2}{#3}
+  \stex_persist:e {
+    \prop_gset_from_keyval:cn {c_stex_mathhub_#1_manifest_prop}{
+      \prop_to_keyval:N \l__stex_mathhub_prop
     }
   }
 }
@@ -1199,6 +1142,15 @@
       \exp_args:No \stex_set_current_archive:n { \l__stex_mathhub_str }
       \stex_debug:nn{mathhub}{Current~archive:~
         \prop_item:Nn \l_stex_current_archive_prop {id}
+      }
+    }
+    \bool_if:NT \c_stex_persist_write_mode_bool {
+      \tl_put_right:Nx \_stex_persist_read_now: {
+        \stex_persist:n {
+          \prop_gset_eq:Nc \exp_not:N \l_stex_current_archive_prop {
+            c_stex_mathhub_\l__stex_mathhub_str _manifest_prop
+          }
+        }
       }
     }
   }{
@@ -1310,20 +1262,12 @@
 \iow_new:N \c__stex_refs_iow
 \AtBeginDocument{\iow_open:Nn \c__stex_refs_iow {\jobname.sref}}
 \AtEndDocument{\iow_close:N \c__stex_refs_iow}
-\cs_new_protected:Npn \STEXInternalAuxAddDocRef #1 #2 {
-  \__stex_refs_add_doc_ref:xx{\tl_to_str:n{#1}}{\tl_to_str:n{#2}}
-}
-
 \cs_new_protected:Npn \STEXInternalSrefRestoreTarget #1#2#3#4#5 {}
 
 \cs_new_protected:Npn \STEXInternalSetSrefSymURL #1 #2 {
-  \bool_gset_false:c{g_stex_sref_sym_\tl_to_str:n{#1}_ref}
   \str_gset:cn{g_stex_sref_sym_\tl_to_str:n{#1}_target}{#2}
 }
 
-\cs_new_protected:Npn \STEXInternalSetSrefSymLabel #1 {
-  \bool_gset_true:c{g_stex_sref_sym_\tl_to_str:n{#1}_ref}
-}
 \seq_new:N \g__stex_refs_files_seq
 \int_new:N \l__stex_refs_unnamed_counter_int
 
@@ -1334,8 +1278,8 @@
   }{
     \str_set:Nn \l__stex_refs_str {#1}
   }
-  \stex_uri_add_module:NNo \l__stex_refs_uri \l_stex_current_doc_uri \l__stex_refs_str
-  \stex_debug:nn{sref}{New~document~target:~\stex_uri_use:N \l__stex_refs_uri}
+  %\stex_uri_add_module:NNo \l__stex_refs_uri \l_stex_current_doc_uri \l__stex_refs_str
+  %\stex_debug:nn{sref}{New~document~target:~\stex_uri_use:N \l__stex_refs_uri}
   \__stex_refs_add_doc_ref:xo {\stex_uri_use:N \l_stex_current_doc_uri} \l__stex_refs_str
   \stex_if_smsmode:F {
     \iow_now:Nx \c__stex_refs_iow {
@@ -1350,12 +1294,7 @@
         }
       }
     }
-    \exp_args:Nx\label{sref_ \stex_uri_use:N \l__stex_refs_uri}
-    \iow_now:Nx\@auxout{
-      \STEXInternalAuxAddDocRef
-      {\stex_uri_use:N \l_stex_current_doc_uri}
-      {\l__stex_refs_str}
-    }
+    \exp_args:Nx\label{sref@ \stex_uri_use:N \l_stex_current_doc_uri ? \l__stex_refs_str}
   }
 }
 \NewDocumentCommand \sreflabel {m} {\stex_ref_new_doc_target:n {#1}}
@@ -1372,11 +1311,6 @@
   }
 }
 \cs_generate_variant:Nn \__stex_refs_add_doc_ref:nn {xo,xx}
-
-\AtEndDocument{
-  \cs_set:Npn \STEXInternalAuxAddDocRef #1 #2 {}
-}
-
 \stex_keys_define:nnnn{sref / 1}{}{
   % TODO get rid of this
   fallback  .code:n = {},
@@ -1422,7 +1356,7 @@
   \str_set:Nx \l__stex_refs_uri_str {
     \stex_file_use:N \c_stex_mathhub_file /
     \prop_item:Nn #1 {id} /
-      source / \l_stex_key_file_str
+      source / \l_stex_key_file_str .sref
   }
   \stex_file_resolve:No \l__stex_refs_file \l__stex_refs_uri_str
   \stex_uri_from_repo_file:NNNn \l__stex_refs_uri #1
@@ -1442,9 +1376,9 @@
 }
 \cs_new_protected:Nn \__stex_refs_do_autoref:n {
   \cs_if_exist:cTF{autoref}{
-     \exp_args:Nx\autoref{sref_#1}
+     \exp_args:Nx\autoref{sref@#1}
    }{
-     \exp_args:Nx\ref{sref_#1}
+     \exp_args:Nx\ref{sref@#1}
    }
 }
 
@@ -1579,11 +1513,7 @@
   \__stex_refs_do_sref_in:n{#2}
 }
 \cs_new_protected:Nn \stex_ref_new_symbol:n {
-  \bool_if_exist:cTF{g_stex_sref_sym_\tl_to_str:n{#1}_ref}{
-    \bool_if:cF{g_stex_sref_sym_\tl_to_str:n{#1}_ref}{
-      \__stex_refs_new_symbol:n{#1}
-    }
-  }{
+  \cs_if_exist:cF{r@sref@sym@\tl_to_str:n{#1}}{
     \__stex_refs_new_symbol:n{#1}
   }
 }
@@ -1607,13 +1537,7 @@
 }
 
 \cs_new_protected:Nn \stex_ref_new_sym_target:n {
-  \stex_if_smsmode:TF{
-    \stex_ref_new_symbol:n{#1}
-  }{
-    \iow_now:Nn\@auxout{\STEXInternalSetSrefSymLabel{#1}}
-    \STEXInternalSetSrefSymLabel{#1}
-    \exp_args:Ne \label{\tl_to_str:n{sref_sym_ #1}}
-  }
+  \exp_args:Ne \label{\tl_to_str:n{sref@sym@ #1}}
 }
 
 \cs_new_protected:Nn \stex_ref_new_sym_target:nn {
@@ -1621,12 +1545,6 @@
     \stex_ref_new_sym_target:n{#1}
   }{
     \str_gset:cn{g_stex_sref_sym_ #1 _label}{#2}
-  }
-}
-\AddToHook{begindocument/before}{
-  \cs_set_eq:NN \__stex_refs_old_newlabel_cs: \newlabel
-  \cs_set:Npn \newlabel #1 {
-    \exp_args:Ne \__stex_refs_old_newlabel_cs: {\tl_to_str:n{#1}}
   }
 }
 \NewDocumentCommand \srefsym { m m}{
@@ -1646,21 +1564,17 @@
 }
 
 \cs_new_protected:Npn \__stex_refs_sym_aux:nn #1 {
-  \bool_if_exist:cTF{g_stex_sref_sym_#1_ref}{
-    \bool_if:cTF{g_stex_sref_sym_#1_ref}{
-      \exp_args:Ne \__stex_refs_do_internal_link:nn{\tl_to_str:n{sref_sym_#1}}
-    }{
-      \str_if_empty:cTF{g_stex_sref_sym_#1_target}{
-        \exp_args:Ne \__stex_refs_do_internal_link:nn{\tl_to_str:n{sref_sym_#1}}
-      }{
-        \exp_args:Ne \__stex_refs_do_url_link:nn{\use:c{g_stex_sref_sym_#1_target}}
-      }
-    }
+  \cs_if_exist:cTF{r@sref@sym@\tl_to_str:n{#1}}{
+    \exp_args:Ne \__stex_refs_do_internal_link:nn{\tl_to_str:n{sref@sym@#1}}
   }{
     \str_if_exist:cTF{g_stex_sref_sym_#1_label}{
       \exp_args:Ne \__stex_refs_sym_aux:nn{\use:c{g_stex_sref_sym_#1_label}}
     }{
-      \exp_args:Ne \__stex_refs_do_internal_link:nn{\tl_to_str:n{sref_sym_#1}}
+      \str_if_empty:cTF{g_stex_sref_sym_#1_target}{
+        \exp_args:Ne \__stex_refs_do_internal_link:nn{\tl_to_str:n{sref@sym@#1}}
+      }{
+        \exp_args:Ne \__stex_refs_do_url_link:nn{\use:c{g_stex_sref_sym_#1_target}}
+      }
     }
   }
 }
@@ -2151,7 +2065,7 @@
 }
 
 \cs_new:Nn \stex_close_module: {
-  \_stex_persist_module:nN \l_stex_current_module_str \stex_persist:n
+  \bool_if:NT \c_stex_persist_write_mode_bool \__stex_modules_persist_module:
   \stex_debug:nn{module}{
     Closing~module~\l_stex_current_module_str^^J
     Code:~\expandafter\meaning\csname c_stex_module_\l_stex_current_module_str _code\endcsname^^J
@@ -2161,10 +2075,34 @@
   }
 }
 
-\cs_new_protected:Npn \__stex_modules_restore_module:nnnn #1 #2 #3 #4 {
-  \prop_gset_from_keyval:cn{c_stex_module_#1_morphisms_prop}{#2}
+\cs_new_protected:Nn \__stex_modules_persist_module: {
+  \stex_persist:e {
+    \__stex_modules_restore_module:nnnn {\l_stex_current_module_str}{
+      \exp_after:wN \prop_to_keyval:N \cs:w
+        c_stex_module_\l_stex_current_module_str _morphisms_prop
+      \cs_end:
+    }{
+      \exp_after:wN \prop_to_keyval:N \cs:w
+        c_stex_module_\l_stex_current_module_str _symbols_prop
+      \cs_end:
+    }{
+      \exp_after:wN \exp_after:wN \exp_after:wN \exp_not:n
+      \exp_after:wN \exp_after:wN \exp_after:wN
+      { \cs:w c_stex_module_\l_stex_current_module_str _code \cs_end: }
+    }{}
+    \prop_map_function:cN{c_stex_module_\l_stex_current_module_str _notations_prop}
+      \__stex_modules_persist_nots_i:nn
+    \exp_not:N \STEXRestoreNotsEnd {}
+  }
+}
+
+\cs_new_protected:Nn \__stex_modules_restore_module:nnnn {
+  \prop_gset_from_keyval:cn{c_stex_module_\tl_to_str:n{#1}_morphisms_prop}{#2}
   \cs_set:Npn \__stex_modules_tl {#3}
-  \exp_args:Nno \prop_gset_from_keyval:cn{c_stex_module_#1_symbols_prop}\__stex_modules_tl
+  \exp_args:Nno \prop_gset_from_keyval:cn{c_stex_module_\tl_to_str:n{#1}_symbols_prop}\__stex_modules_tl
+  \prop_map_inline:cn{c_stex_module_\tl_to_str:n{#1}_symbols_prop}{
+    \stex_ref_new_symbol:n{#1?##1}
+  }
   \cs_gset:cpn{c_stex_module_\tl_to_str:n{#1}_code}{#4}
   \prop_gclear:c{c_stex_module_\tl_to_str:n{#1} _notations_prop}
   \str_set:Nn \l__stex_modules_restore_mod_str {#1}
@@ -2172,30 +2110,6 @@
     \catcode`_=8\relax
     \catcode`:=12\relax
     \__stex_modules_restore_nots:n
-}
-
-\cs_new_protected:Nn \__stex_modules_restore_end: {
-  \group_end:
-  \bool_if:NT \l_stex_in_persist_bool {
-    \exp_args:No \_stex_persist_module:nN \l__stex_modules_restore_mod_str \persist:n
-  }
-}
-
-\cs_new_protected:Nn \_stex_persist_module:nN {
-  \exp_args:Ne #2 {
-    \__stex_modules_restore_module:nnnn{#1}{
-      \exp_after:wN \prop_to_keyval:N \cs:w c_stex_module_#1_morphisms_prop\cs_end:
-    }{
-      \exp_after:wN \prop_to_keyval:N \cs:w c_stex_module_#1_symbols_prop\cs_end:
-    }{
-      \exp_after:wN \exp_after:wN \exp_after:wN \exp_not:n
-      \exp_after:wN \exp_after:wN \exp_after:wN
-      { \cs:w c_stex_module_#1 _code \cs_end: }
-    }{}
-    \prop_map_function:cN{c_stex_module_#1 _notations_prop}
-      \__stex_modules_persist_nots_i:nn
-    \exp_not:N \STEXRestoreNotsEnd {}
-  }
 }
 
 \cs_new:Nn \__stex_modules_persist_nots_i:nn {
@@ -2210,7 +2124,7 @@
 
 \cs_new_protected:Nn \__stex_modules_restore_nots_i:n {
   \tl_if_eq:nnTF{#1}{\STEXRestoreNotsEnd}{
-    \__stex_modules_restore_end:
+    \group_end:
   }{
     \__stex_modules_restore_nots_ii:nnnnn {#1}
   }
@@ -5746,7 +5660,6 @@
       {\l_stex_get_symbol_args_tl}
       {#1}{}{}\stex_invoke_symbol:
     }
-    \exp_args:Ne \stex_ref_new_sym_target:n {\l_stex_current_module_str?\l_stex_key_name_str}
     \stex_if_do_html:T \_stex_symdecl_html:
   }
 }
@@ -5777,11 +5690,8 @@
       \str_set_eq:NN \thisname \l_stex_key_name_str
       \clist_set_eq:NN \thisfor \l_stex_key_for_str
       \stex_style_apply:
-      \str_if_empty:NF \l_stex_key_id_str {
-        \exp_args:No \stex_ref_new_doc_target:n \l_stex_key_id_str
-      }
     }
-
+    \_stex_do_id:
     \stex_smsmode_do:
   }{
     \stex_if_smsmode:F {
@@ -5796,11 +5706,8 @@
       \group_begin:
         \stex_keys_set:nn{statement}{##1}
         #3
-
+        \_stex_do_id:
         \stex_if_smsmode:F{
-          \str_if_empty:NF \l_stex_key_id_str {
-            \exp_args:No \stex_ref_new_doc_target:n \l_stex_key_id_str
-          }
           \exp_args:Ne \stex_annotate:nn{\__stex_statements_html_keyvals:n{#1}}{
             \_stex_annotate_force_break:n{##2}
           }
@@ -5813,8 +5720,10 @@
 }
 
 \cs_new_protected:Nn \__stex_statements_setup_def: {
-  \seq_map_inline:Nn \l__stex_statements_fors_seq {
-    \stex_ref_new_sym_target:n{##1}
+  \stex_if_smsmode:F{
+    \seq_map_inline:Nn \l__stex_statements_fors_seq {
+      \stex_ref_new_sym_target:n{##1}
+    }
   }
   \str_clear:N \l__stex_statements_uri_str
   \str_if_empty:NTF \l_stex_key_name_str {
@@ -6051,9 +5960,7 @@
   %  \stex_annotate_invisible:nnn{type}{\spftype}{}
   %}
   #3~#2 %{~\stex_annotate:nnn{spftitle}{}{#2}}
-  \str_if_empty:NF \l_stex_key_id_str {
-    \exp_args:No \stex_ref_new_doc_target:n \l_stex_key_id_str
-  }
+  \_stex_do_id:
   %\begin{stex_annotate_env}{spfbody}{\bool_if:NTF \l_stex_key_hide_bool {false}{true}}
   \bool_if:NT \l_stex_key_hide_bool{
     \stex_if_html_backend:F{\setbox\l_tmpa_box\vbox\bgroup}
@@ -6090,15 +5997,12 @@
   %\stex_reactivate_macro:N \conclude
   %\stex_reactivate_macro:N \spfstep
   \stex_keys_set:nn{spf}{#1}
-  \stex_if_smsmode:TF {
-    \str_if_empty:NF \l_stex_key_id_str {
-      \exp_args:No \stex_ref_new_doc_target:n \l_stex_key_id_str
-    }
-  }{
+  \stex_if_smsmode:F {
     \__stex_proof_start_env:nnn{sproof}{#2}{
       % TODO
     }
   }
+  \_stex_do_id:
   \stex_smsmode_do:
 }{\__stex_proof_end_env:n{
   % TODO
@@ -6111,15 +6015,12 @@
   %\stex_reactivate_macro:N \conclude
   %\stex_reactivate_macro:N \spfstep
   \stex_keys_set:nn{spf}{#1}
-  \stex_if_smsmode:TF {
-    \str_if_empty:NF \l_stex_key_id_str {
-      \exp_args:No \stex_ref_new_doc_target:n \l_stex_key_id_str
-    }
-  }{
+  \stex_if_smsmode:F {
     \__stex_proof_start_env_nolist:nnn{sproof}{}{
       % TODO
     }
   }
+  \_stex_do_id:
   \bool_set_true:N \l__stex_proof_in_spfblock_bool
   \stex_smsmode_do:
 }{
@@ -6132,14 +6033,11 @@
 
 \NewDocumentEnvironment{subproof}{s O{} m}{
   \stex_keys_set:nn{spf}{#2}
-  \stex_if_smsmode:TF {
-    \str_if_empty:NF \l_stex_key_id_str {
-      \exp_args:No \stex_ref_new_doc_target:n \l_stex_key_id_str
-    }
-  }{
+  \stex_if_smsmode:F {
     \__stex_proof_start_env:nnn{subproof}{
       \stex_if_html_backend:T{\csname @ @ par\endcsname}\item[\__stex_proof_insert_number:]\stex_ignore_spaces_and_pars: #3}{}
   }
+  \_stex_do_id:
   \__stex_proof_add_counter:
   \stex_smsmode_do:
 }{
@@ -6245,11 +6143,8 @@
 \newcommand\spfjust[1]{
   #1%\stex_annotate:nnn{justification}{}{#1}
 }
-
-\_stex_persist_read_now:
-
 \group_begin:
-  \cs_set:Npn \_stex_persist_module:nN #1 #2 {}
+  \cs_set:Npn \__stex_modules_persist_module: {}
   \cs_set:Npn \stex_check_term:n #1 {}
   \cs_set:Npn \_stex_sref_do_aux:n #1 { #1 }
   \bool_set_false:N \_stex_html_do_output_bool
@@ -6383,6 +6278,10 @@
 \NewDocumentEnvironment { mmtinterface } { O{} m m } {
   \TODO
 }{}
+\seq_if_empty:NT \g_stex_current_file {
+  \seq_gset_eq:NN \g_stex_current_file \c_stex_main_file
+}
+\_stex_persist_read_now:
 \_stex_every_file:
 \endinput
 %%
