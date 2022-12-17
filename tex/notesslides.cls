@@ -13,8 +13,8 @@
 
 \keys_define:nn{notesslides / cls}{
   class   .str_set_x:N = \c__notesslides_class_str,
-  notes   .bool_set:N  = \c__notesslides_notes_bool ,
-  slides  .code:n      = { \bool_set_false:N \c__notesslides_notes_bool },
+  notes   .bool_set:N  = \c_notesslides_notes_bool ,
+  slides  .code:n      = { \bool_set_false:N \c_notesslides_notes_bool },
   %docopt  .str_set_x:N = \c__notesslides_docopt_str,
   unknown .code:n      = {
     \PassOptionsToClass{\CurrentOption}{beamer}
@@ -27,10 +27,10 @@
 
 \RequirePackage{stex}
 \stex_if_html_backend:T {
-  \bool_set_true:N\c__notesslides_notes_bool
+  \bool_set_true:N\c_notesslides_notes_bool
 }
 
-\bool_if:NTF \c__notesslides_notes_bool {
+\bool_if:NTF \c_notesslides_notes_bool {
   \PassOptionsToPackage{notes=true}{notesslides}
   \message{notesslides.cls:~Formatting~document~in~notes~mode}
 }{
@@ -38,7 +38,7 @@
   \message{notesslides.cls:~Formatting~document~in~slides~mode}
 }
 
-\bool_if:NTF \c__notesslides_notes_bool {
+\bool_if:NTF \c_notesslides_notes_bool {
   \LoadClass{\c__notesslides_class_str}
 }{
   \LoadClass[10pt,notheorems,xcolor={dvipsnames,svgnames}]{beamer}
