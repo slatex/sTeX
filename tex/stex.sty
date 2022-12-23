@@ -468,6 +468,7 @@
     \use:c{__stex_aux_style_#1_start:}
   }{
     \clist_get:NN \l_stex_key_style_clist \thisstyle
+    \stex_debug:nn{styling}{dominant~style:~\thisstyle}
     \tl_if_exist:cTF{__stex_aux_style_#1_\thisstyle _start:}{
       \use:c{__stex_aux_style_#1_\thisstyle _start:}
     }{
@@ -1206,6 +1207,8 @@
 }
 \int_new:N \l_stex_docheader_sect
 
+\tl_set:Nn \currentsectionlevel {document}
+
 \cs_new_protected:Nn \__stex_doc_do_level:nn {
   \stexdoctitle{#2}
   \tl_if_empty:NTF \l_stex_key_short_tl {
@@ -1260,7 +1263,27 @@
 
 \NewDocumentEnvironment{blindfragment}{}{
   \__stex_doc_skip_section:
-}{
+}{}
+
+\cs_new_protected:Nn \__stex_doc_skip_fragment:n {
+  \stepcounter{#1}
+}
+
+\cs_new_protected:Npn \skipfragment {
+  \int_case:nnF \l_stex_docheader_sect {
+    {0}{\cs_if_exist:NTF \part {\__stex_doc_skip_fragment:n{part}}{
+      \int_incr:N \l_stex_docheader_sect
+      \skipfragment
+    }}
+    {1}{\cs_if_exist:NTF \chapter {\__stex_doc_skip_fragment:n{chapter}}{
+      \int_incr:N \l_stex_docheader_sect
+      \skipfragment
+    }}
+    {2}{\__stex_doc_skip_fragment:n{section}}
+    {3}{\__stex_doc_skip_fragment:n{subsection}}
+    {4}{\__stex_doc_skip_fragment:n{subsubsection}}
+    {5}{\__stex_doc_skip_fragment:n{paragraph}}
+  }{\__stex_doc_skip_fragment:n{subparagraph}}
 }
 \cs_new_protected:Npn \setsectionlevel #1 {
   \str_case:nnF{#1}{
@@ -5079,7 +5102,6 @@
     {defed}{typed}
   }{#4}\stex_invoke_outer_field:
 }
-\iffalse$\fi
 
 \cs_new:Nn \__stex_structures_shift_argls:nn {
   \int_eval:n{#1+1}#2
@@ -5604,6 +5626,14 @@
   from .code:n= {}, % TODO remove
   to .code:n={} % TODO remove
 }{id,title,style,symargs}
+\cs_new_protected:Npn \_stex_do_for_list: {
+  \seq_clear:N \l_stex_fors_seq
+  \clist_map_inline:Nn \l_stex_key_for_clist {
+    \exp_args:Ne\stex_get_symbol:n{\tl_to_str:n{##1}}
+    \seq_put_right:Nx \l_stex_fors_seq
+      {\l_stex_get_symbol_mod_str ? \l_stex_get_symbol_name_str}
+  }
+}
 
 \cs_new_protected:Nn \__stex_statements_setup:n {
   \str_if_empty:NF \l_stex_key_macroname_str {
@@ -5611,14 +5641,9 @@
       \str_set_eq:NN \l_stex_key_name_str \l_stex_key_macroname_str
     }
   }
-  \seq_clear:N \l__stex_statements_fors_seq
-  \clist_map_inline:Nn \l_stex_key_for_clist {
-    \exp_args:Ne\stex_get_symbol:n{\tl_to_str:n{##1}}
-    \seq_put_right:Nx \l__stex_statements_fors_seq
-      {\l_stex_get_symbol_mod_str ? \l_stex_get_symbol_name_str}
-  }
+  \_stex_do_for_list:
   \str_if_empty:NF \l_stex_key_name_str {
-    \seq_put_right:Nx \l__stex_statements_fors_seq {
+    \seq_put_right:Nx \l_stex_fors_seq {
       \l_stex_current_module_str ? \l_stex_key_name_str
     }
     \str_set_eq:NN \l_stex_macroname_str \l_stex_key_macroname_str
@@ -5635,8 +5660,8 @@
 
 \cs_new:Nn \__stex_statements_html_keyvals:n {
   shtml:#1={},
-  \seq_if_empty:NF \l__stex_statements_fors_seq {,
-    shtml:fors={\seq_use:Nn \l__stex_statements_fors_seq ,}
+  \seq_if_empty:NF \l_stex_fors_seq {,
+    shtml:fors={\seq_use:Nn \l_stex_fors_seq ,}
   }
   \str_if_empty:NF \l_stex_key_id_str {,
     shtml:id={\l_stex_key_id_str}
@@ -5650,7 +5675,7 @@
   \stex_new_stylable_env:nnnnnnn {#1}{O{}}{
     \stex_keys_set:nn{statement}{##1}
     \clist_map_inline:Nn \l_stex_key_types_clist {
-      \clist_put_left:Nn \l_stex_key_style_clist {##1}
+      \clist_put_left:Nn \l_stex_key_style_clist {####1}
     }
     #3
 
@@ -5696,14 +5721,14 @@
 
 \cs_new_protected:Nn \__stex_statements_setup_def: {
   \stex_if_smsmode:F{
-    \seq_map_inline:Nn \l__stex_statements_fors_seq {
+    \seq_map_inline:Nn \l_stex_fors_seq {
       \stex_ref_new_sym_target:n{##1}
     }
   }
   \str_clear:N \l__stex_statements_uri_str
   \str_if_empty:NTF \l_stex_key_name_str {
-    \int_compare:nNnT {\seq_count:N \l__stex_statements_fors_seq} = 1 {
-      \str_set:Nx \l__stex_statements_uri_str {\seq_item:Nn \l__stex_statements_fors_seq 1}
+    \int_compare:nNnT {\seq_count:N \l_stex_fors_seq} = 1 {
+      \str_set:Nx \l__stex_statements_uri_str {\seq_item:Nn \l_stex_fors_seq 1}
     }
   }{
     \str_set:Nx \l__stex_statements_uri_str {\l_stex_current_module_str ? \l_stex_key_name_str}
@@ -5884,6 +5909,24 @@
   \int_decr:N \l_tmpa_int
   \intarray_gset:Nnn \l__stex_proof_counter_intarray \l_tmpa_int { 0 }
 }
+\stex_new_stylable_cmd:nnnn{spfsketch}{O{} m}{\par
+  \group_begin:
+  \stex_keys_set:nn{spf}{#1}
+  \_stex_do_for_list:
+  \exp_args:Ne \stex_annotate:nn{
+    shtml:proofsketch={
+      \seq_if_empty:NF \l_stex_fors_seq {
+        \seq_use:Nn \l_stex_fors_seq ,
+      }
+    }
+  }{
+    \stex_style_apply:
+    #2
+  }
+  \group_end:
+}{
+  \noindent\emph{Proof~sketch:}~
+}
 \tl_set:Nn \__stex_proof_proof_box_tl {
   \ltx@ifpackageloaded{amssymb}{$\square$}{
     \hbox{\vrule\vbox{\hrule width 6 pt\vskip 6pt\hrule}\vrule}
@@ -5895,14 +5938,45 @@
     \hfil\null\nobreak\hfill\l_stex_key_proofend_tl\par\smallskip
   }
 }
-\stex_new_stylable_cmd:nnnn{spfsketch}{O{} m}{
-  \group_begin:
-  \stex_keys_set:nn{spf}{#1}
-  % TODO
-  #2
-  \group_end:
-}{}{}
+\cs_new_protected:Npn \stexcommentfont {
+  \small\itshape
+}
 \bool_set_false:N \l__stex_proof_in_spfblock_bool
+\stex_new_stylable_env:nnnnnnn{proof}{s O{} m}{\par
+  \intarray_gzero:N \l__stex_proof_counter_intarray
+  \intarray_gset:Nnn \l__stex_proof_counter_intarray 1 1
+  \stex_keys_set:nn{spf}{#2}
+  \_stex_do_for_list:
+  \stex_style_apply:
+
+  \_stex_do_id:
+  %\exp_args:Ne \stex_annotate:nn{
+  %  shtml:proofsketch={
+  %    \seq_if_empty:NF \l_stex_fors_seq {
+  %      \seq_use:Nn \l_stex_fors_seq ,
+  %    }
+  %  }
+  %}{
+  %  \stex_style_apply:
+  %  #2
+  %}
+  #3
+  \IfBooleanTF #1 {}{
+    \bool_set_true:N\l__stex_proof_in_spfblock_bool\begin{itemize}\item[]
+    \group_begin:\stexcommentfont
+  }
+}{
+  \stex_style_apply:
+}{
+  \emph{Proof:}~
+}{
+  \sproofend
+}{s}
+\AddToHook{env/sproof/end}{
+  \bool_if:NT\l__stex_proof_in_spfblock_bool {
+    \group_end:\end{itemize}
+  }
+}
 
 \cs_new_protected:Nn \__stex_proof_maybe_comment: {
   \bool_if:NF \l__stex_proof_in_spfblock_bool {
@@ -5916,9 +5990,7 @@
   \egroup\csname @ @ par\endcsname\item[]\bgroup\stexcommentfont
 }
 
-\cs_new_protected:Npn \stexcommentfont {
-  \small\itshape
-}
+\iffalse
 \cs_new_protected:Nn \__stex_proof_start_env_nolist:nnn {
   \seq_clear:N \l_tmpa_seq
   %\clist_map_inline:Nn \l__stex_proof_spf_for_clist {
@@ -6034,15 +6106,7 @@
     %}
   }:
 }
-\NewDocumentCommand\spfidea{O{} +m}{
-  \stex_keys_set:nn{spf}{#1}
-  \titleemph{Proof~Idea:
-   % \tl_if_empty:NTF \spftype {Proof~Idea}{
-   %   \spftype
-   % }:
-  }~#2
-  \sproofend
-}
+\fi
 
 \stex_keys_define:nnnn { spfsteps } {
 \clist_clear:N \l_stex_key_for_clist
@@ -6059,31 +6123,20 @@
 
 \cs_new_protected:Nn \__stex_proof_make_step_macro:Nnnnn {
   \NewDocumentCommand #1 {s O{} +m} {
-    \__stex_proof_maybe_comment_end:
-
+    \bool_if:NT \l__stex_proof_in_spfblock_bool \group_end:
     \stex_keys_set:nn{spfsteps}{##2}
-    %\stex_annotate:nnn{spfstep}{#2}
-    {
-      \bool_if:NTF \l__stex_proof_in_spfblock_bool {
-        #4
+
+    \bool_if:NTF \l__stex_proof_in_spfblock_bool {
+      \IfBooleanTF ##1 {
+        ##3
       }{
-        %\stex_if_html_backend:T{\csname @ @ par\endcsname}
-        \item[\IfBooleanTF ##1 {}{#3}]
+        \begin{itemize}\item[#3] ##3 \end{itemize}
+        #5
       }
-      \str_if_empty:NF \l_stex_key_name_str {
-        %\stex_debug:nn{spfstep}{Name:\l__stex_proof_spf_name_str}
-        %\stex_annotate_invisible:nnn{spfname}{}{\l__stex_proof_spf_name_str}
-        \stex_suppress_html:n{
-          %\exp_args:NNx\exp_args:Nnx\vardef{v\l__stex_proof_spf_name_str}{\exp_not:N\comp{\l__stex_proof_spf_name_str}}
-        }
-      }
-      %\tl_if_empty:NF \l__stex_proof_spf_term_tl {
-      %  \stex_annotate_invisible:nnn{spfyield}{}{$\l__stex_proof_spf_term_tl$}
-      %}
-      ##3%\ignorespacesandpars ##3
+      \group_begin:\stexcommentfont
+    }{
+      ##3
     }
-    \bool_if:NF \l__stex_proof_in_spfblock_bool { \IfBooleanTF ##1 {}{ #5 } }
-    \__stex_proof_maybe_comment:
   }
   %\stex_deactivate_macro:Nn #1 {sproof~environments}
 }
@@ -6181,6 +6234,7 @@
   \stex_uri_add_module:NNn \l_stex_metatheory_uri \l_stex_current_ns_uri {Metatheory}
   \global \let \l_stex_metatheory_uri \l_stex_metatheory_uri
 \group_end:
+\cs_new_protected:Npn \MSC #1 {}
 
 \bool_new:N \l_stex_inparray_bool\bool_set_false:N \l_stex_inparray_bool
 \NewDocumentCommand \parray { m m } {

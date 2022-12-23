@@ -8,13 +8,12 @@
 %% 
 \ProvidesExplPackage{problem}{2022/09/14}{3.2.0}{Semantic Markup for Problems}
 \RequirePackage{l3keys2e}
-\RequirePackage{amssymb}% for \Box
 
 \keys_define:nn { problem / pkg }{
   notes     .default:n    = { true },
-  notes     .bool_set:N   = \c__problems_notes_bool,
-  gnotes    .default:n    = { true },
-  gnotes    .bool_set:N   = \c__problems_gnotes_bool,
+  notes     .bool_set:N   = \c_notesslides_notes_bool,
+  %gnotes    .default:n    = { true },
+  %gnotes    .bool_set:N   = \c__problems_gnotes_bool,
   hints     .default:n    = { true },
   hints     .bool_set:N   = \c__problems_hints_bool,
   solutions .default:n    = { true },
@@ -23,10 +22,10 @@
   pts       .bool_set:N   = \c__problems_pts_bool,
   min       .default:n    = { true },
   min       .bool_set:N   = \c__problems_min_bool,
-  boxed     .default:n    = { true },
-  boxed     .bool_set:N   = \c__problems_boxed_bool,
-  test     .default:n    = { true },
-  test     .bool_set:N   = \c__problems_test_bool,
+  %boxed     .default:n    = { true },
+  %boxed     .bool_set:N   = \c__problems_boxed_bool,
+  %test     .default:n    = { true },
+  %test     .bool_set:N   = \c__problems_test_bool,
   unknown     .code:n       = {
     \PassOptionsToPackage{\CurrentOption}{stex}
   }
@@ -40,20 +39,10 @@
   \solutionsfalse
 }
 \RequirePackage{stex}
-\RequirePackage{comment}
-\bool_if:NT \c__problems_boxed_bool { \RequirePackage{mdframed} }
-\def\prob@problem@kw{Problem}
-\def\prob@solution@kw{Solution}
-\def\prob@hint@kw{Hint}
-\def\prob@note@kw{Note}
-\def\prob@gnote@kw{Grading}
-\def\prob@pt@kw{pt}
-\def\prob@min@kw{min}
-\def\prob@correct@kw{Correct}
-\def\prob@wrong@kw{Wrong}
 \AddToHook{begindocument}{
+  \ExplSyntaxOn
+  \input{problem-english.ldf}
   \ltx@ifpackageloaded{babel}{
-      \makeatletter
       \clist_set:Nx \l_tmpa_clist {\bbl@loaded}
       \exp_args:NNx \clist_if_in:NnT \l_tmpa_clist {\detokenize{ngerman}}{
         \input{problem-ngerman.ldf}
@@ -67,38 +56,191 @@
       \exp_args:NNx \clist_if_in:NnT \l_tmpa_clist {\detokenize{russian}}{
         \input{problem-russian.ldf}
       }
-      \makeatother
   }{}
+  \ExplSyntaxOff
 }
-\keys_define:nn{ problem / problem }{
-  id      .str_set_x:N  = \l__problems_prob_id_str,
-  pts     .tl_set:N     = \l__problems_prob_pts_tl,
-  min     .tl_set:N     = \l__problems_prob_min_tl,
-  title   .tl_set:N     = \l__problems_prob_title_tl,
-  type    .tl_set:N     = \l__problems_prob_type_tl,
-  imports .tl_set:N     = \l__problems_prob_imports_tl,
-  name    .str_set_x:N  = \l__problems_prob_name_str,
-  refnum  .int_set:N    = \l__problems_prob_refnum_int,
-  creators  .tl_set:N    = \l__problems_prob_creators_str
-}
-\cs_new_protected:Nn \__problems_prob_args:n {
-  \str_clear:N \l__problems_prob_id_str
-  \str_clear:N \l__problems_prob_name_str
-  \tl_clear:N \l__problems_prob_pts_tl
-  \tl_clear:N \l__problems_prob_min_tl
-  \tl_clear:N \l__problems_prob_title_tl
-  \tl_clear:N \l__problems_prob_type_tl
-  \tl_clear:N \l__problems_prob_imports_tl
-  \int_zero_new:N \l__problems_prob_refnum_int
-  \keys_set:nn { problem / problem }{ #1 }
-  \int_compare:nNnT \l__problems_prob_refnum_int = 0 {
-    \let\l__problems_prob_refnum_int\undefined
-  }
-}
+\stex_keys_define:nnnn{ problem }{
+  \tl_clear:N \l_stex_key_pts_tl
+  \tl_clear:N \l_stex_key_min_tl
+  \str_clear:N \l_stex_key_name_str
+}{
+  pts     .tl_set:N     = \l_stex_key_pts_tl,
+  min     .tl_set:N     = \l_stex_key_min_tl,
+  name    .str_set:N    = \l_stex_key_name_str,
+  %imports .tl_set:N     = \l__problems_prob_imports_tl,
+  %refnum  .int_set:N    = \l__problems_prob_refnum_int,
+}{id,title,style}
 \newcounter{sproblem}[section]
 \newcommand\numberproblemsin[1]{\@addtoreset{sproblem}{#1}}
-\def\theplainsproblem{\arabic{sproblem}}
-\def\thesproblem{\thesection.\theplainsproblem}
+\stex_new_stylable_env:nnnnnnn {problem} {O{}}{
+  \cs_if_exist:NTF \l_problem_inputproblem_keys_tl {
+    \exp_args:Nno \stex_keys_set:nn{problem}{
+      \l_problem_inputproblem_keys_tl,#1
+    }
+  }{
+    \stex_keys_set:nn{problem}{#1}
+  }
+  \str_if_empty:NT \l_stex_key_name_str {
+    \stex_file_split_off_ext:NN \l__problems_path_seq \g_stex_current_file
+    \stex_file_split_off_lang:NN \l__problems_path_seq \l__problems_path_seq
+    \seq_get_right:NN \l__problems_path_seq \l_stex_key_name_str
+  }
+
+  \exp_args:No \stex_module_setup:n \l_stex_key_name_str
+
+  \stex_if_do_html:T {
+    \exp_args:Nne \begin{stex_annotate_env} {
+      shtml:problem={\l_stex_current_module_str},
+      shtml:language={ \l_stex_current_language_str},
+      shtml:signature={\l_stex_key_sig_str}
+      \tl_if_empty:NF \l_stex_metatheory_uri {,
+        shtml:metatheory={\stex_uri_use:N \l_stex_metatheory_uri}
+      }
+    }
+    \stex_annotate_invisible:n{}
+    \tl_if_empty:NF \l_stex_key_title_tl {
+      \exp_args:No \stexdoctitle \l_stex_key_title_tl
+    }
+  }
+  \stex_if_smsmode:F {
+    \str_set_eq:NN \thismoduleuri \l_stex_current_module_str
+    \tl_set_eq:NN \thismodulename \l_stex_key_name_str
+    \stex_style_apply:
+  }
+  \stex_reactivate_macro:N \solution
+  \stex_reactivate_macro:N \hint
+  \stex_reactivate_macro:N \mcb
+  \stex_reactivate_macro:N \gnote
+  \stex_reactivate_macro:N \fillinsol
+  \stex_smsmode_do:
+}{
+  \stex_close_module:
+  \stex_if_smsmode:F \stex_style_apply:
+  \stex_if_do_html:T{ \end{stex_annotate_env} }
+}{}{}{s}
+\stex_sms_allow_env:n{sproblem}
+\int_new:N \g_problem_id_counter
+
+\cs_new_protected:Nn \__problems_solution_start:n {
+  \str_set:Nn \l_stex_key_id_str {#1}
+  \str_if_empty:NT \l_stex_key_id_str {
+    \int_gincr:N \g_problem_id_counter
+    \str_set:Nx \l_stex_key_id_str {
+      SOLUTION_\int_use:N \g_problem_id_counter
+    }
+  }
+  \stex_if_do_html:T{
+    \begin{stex_annotate_env}{
+      shtml:solution=\l_stex_key_id_str
+    }
+  }
+  \par\smallskip\hrule\smallskip
+  \noindent\textbf{Solution:~}
+}
+
+\NewDocumentEnvironment{ solution }{ O{} }{
+  \stex_if_do_html:TF{
+    \__problems_solution_start:n{#1}
+  }{
+    \ifsolutions
+      \__problems_solution_start:n{#1}
+    \else
+      \setbox\l_tmpa_box\vbox\bgroup
+    \fi
+  }
+}{
+  \stex_if_do_html:TF{
+    \par\smallskip\hrule
+    \end{stex_annotate_env}
+  }{
+    \ifsolutions
+      \par\smallskip\hrule
+      \stex_if_do_html:T{
+        \end{stex_annotate_env}
+      }
+    \else
+      \egroup
+    \fi
+  }
+}
+
+\stex_deactivate_macro:Nn \solution {sproblem~environments}
+\cs_new_protected:Npn \startsolutions{
+  \global\solutionstrue
+}
+\cs_new_protected:Npn \stopsolutions{
+  \global\solutionsfalse
+}
+\newenvironment{mcb}{\par
+  \stex_if_do_html:T{
+    \begin{stex_annotate_env}{shtml:multiple-choice-block={}}
+  }
+  \stex_deactivate_macro:Nn \mcb {sproblem~environments}
+  \stex_deactivate_macro:Nn \solution {sproblem~environments}
+  \stex_reactivate_macro:N \mcc
+  \begin{enumerate}
+}{
+  \end{enumerate}
+  \stex_if_do_html:T{
+    \end{stex_annotate_env}
+  }
+}
+\stex_deactivate_macro:Nn \mcb {sproblem~environments}
+\cs_new_protected:Nn \__problems_do_yes_param:Nn {
+  \exp_args:Nx \str_if_eq:nnTF { \str_lowercase:n{ #2 } }{ yes }{
+    \bool_set_true:N #1
+  }{
+    \bool_set_false:N #1
+  }
+}
+\stex_keys_define:nnnn{mcc}{
+  \tl_clear:N \l_stex_key_feedback_tl
+  \bool_set_false:N \l_stex_key_T_bool
+  \tl_clear:N \l_stex_key_Ttext_tl
+  \tl_clear:N \l_stex_key_Ftext_tl
+}{
+  feedback  .tl_set:N     = \l_stex_key_feedback_tl ,
+  T         .default:n    = { false } ,
+  T         .bool_set:N   = \l_stex_key_T_bool ,
+  F         .default:n    = { false } ,
+  F         .code:n       = {\bool_set_false:N \l_stex_key_T_bool} ,
+  Ttext     .tl_set:N     = \l_stex_key_Ttext_tl ,
+  Ftext     .tl_set:N     = \l_stex_key_Ftext_tl ,
+}{id}
+
+\tl_set:Nn \problem_mcc_box_tl {
+  \ltx@ifpackageloaded{amssymb}{$\square$}{
+    \hbox{\vrule\vbox{\hrule width 6 pt\vskip 6pt\hrule}\vrule}
+  }
+}
+\newcommand\mcc[2][]{
+  \stex_keys_set:nn{mcc}{#1}\par
+  \tl_set:Nn \l_tmpb_tl {~--~
+    \bool_if:NTF \l_stex_key_T_bool {
+      \tl_if_empty:NTF \l_stex_key_Ttext_tl \problem_kw_correct \l_stex_key_Ttext_tl
+    }{
+      \tl_if_empty:NTF \l_stex_key_Ftext_tl \problem_kw_wrong \l_stex_key_Ftext_tl
+    }
+    \tl_if_empty:NF \l_stex_key_feedback_tl {
+      \\\emph{\l_stex_key_feedback_tl}
+    }
+  }
+  \tl_set:Nn \l_tmpa_tl {
+    \item[\problem_mcc_box_tl]{}~ #2
+    \stex_if_do_html:TF{
+      \stex_annotate:nn{shtml:mcc-solution={}}{\l_tmpb_tl}
+    }{
+      \ifsolutions\l_tmpb_tl\fi
+    }
+  }
+  \stex_if_do_html:TF{
+    \stex_annotate:nn{shtml:mcc={
+      \bool_if:NTF \l_stex_key_T_bool {true}{false}
+    }}{\l_tmpa_tl}
+  }{\l_tmpa_tl}
+}
+\stex_deactivate_macro:Nn \mcc {mcb~environments}
+\iffalse
 \newcommand\prob@label[1]{\thesection.#1}
 \newcommand\prob@number{
   \int_if_exist:NTF \l__problems_inclprob_refnum_int {
@@ -127,119 +269,6 @@
   {\prob@problem@kw}\ \prob@number\prob@title{~}{~(}{)\strut}
   %\sref@label@id{\prob@problem@kw~\prob@number}{}
 }
-\newenvironment{sproblem}[1][]{
-  \__problems_prob_args:n{#1}%\sref@target%
-  \@in@omtexttrue% we are in a statement (for inline definitions)
-  \refstepcounter{sproblem}\record@problem
-  \def\current@section@level{\prob@problem@kw}
-
-  \str_if_empty:NT \l__problems_prob_name_str {
-    \seq_get_right:NN \g_stex_currentfile_seq \l_tmpa_str
-    \seq_set_split:NnV \l_tmpa_seq . \l_tmpa_str
-    \seq_get_left:NN \l_tmpa_seq \l__problems_prob_name_str
-  }
-
-  \stex_if_do_html:T{
-    \tl_if_empty:NF \l__problems_prob_title_tl {
-      \exp_args:No \stex_document_title:n \l__problems_prob_title_tl
-    }
-  }
-
-  \exp_args:Nno\stex_module_setup:nn{type=problem}\l__problems_prob_name_str
-
-  \stex_reactivate_macro:N \STEXexport
-  \stex_reactivate_macro:N \importmodule
-  \stex_reactivate_macro:N \symdecl
-  \stex_reactivate_macro:N \notation
-  \stex_reactivate_macro:N \symdef
-
-  \stex_if_do_html:T{
-    \begin{stex_annotate_env} {problem} {
-      \l_stex_module_ns_str ? \l_stex_module_name_str
-    }
-
-    \stex_annotate_invisible:nnn{header}{} {
-      \stex_annotate:nnn{language}{ \l_stex_module_lang_str }{}
-      \stex_annotate:nnn{signature}{ \l_stex_module_sig_str }{}
-      \str_if_eq:VnF \l_stex_module_meta_str {NONE} {
-        \stex_annotate:nnn{metatheory}{ \l_stex_module_meta_str }{}
-      }
-    }
-  }
-
-  \stex_csl_to_imports:No \importmodule \l__problems_prob_imports_tl
-
-  \tl_if_exist:NTF \l__problems_inclprob_type_tl {
-    \tl_set_eq:NN \sproblemtype \l__problems_inclprob_type_tl
-  }{
-    \tl_set_eq:NN \sproblemtype \l__problems_prob_type_tl
-  }
-  \str_if_exist:NTF \l__problems_inclprob_id_str {
-    \str_set_eq:NN \sproblemid \l__problems_inclprob_id_str
-  }{
-    \str_set_eq:NN \sproblemid \l__problems_prob_id_str
-  }
-
-  \stex_if_smsmode:F {
-    \clist_set:No \l_tmpa_clist \sproblemtype
-    \tl_clear:N \l_tmpa_tl
-    \clist_map_inline:Nn \l_tmpa_clist {
-      \tl_if_exist:cT {__problems_sproblem_##1_start:}{
-        \tl_set:Nn \l_tmpa_tl {\use:c{__problems_sproblem_##1_start:}}
-      }
-    }
-    \tl_if_empty:NTF \l_tmpa_tl {
-      \__problems_sproblem_start:
-    }{
-      \l_tmpa_tl
-    }
-  }
-  \stex_ref_new_doc_target:n \sproblemid
-  \stex_if_smsmode:TF \stex_smsmode_do: \ignorespacesandpars
-}{
-  \__stex_modules_end_module:
-  \stex_if_smsmode:F{
-    \clist_set:No \l_tmpa_clist \sproblemtype
-    \tl_clear:N \l_tmpa_tl
-    \clist_map_inline:Nn \l_tmpa_clist {
-      \tl_if_exist:cT {__problems_sproblem_##1_end:}{
-        \tl_set:Nn \l_tmpa_tl {\use:c{__problems_sproblem_##1_end:}}
-      }
-    }
-    \tl_if_empty:NTF \l_tmpa_tl {
-      \__problems_sproblem_end:
-    }{
-      \l_tmpa_tl
-    }
-  }
-  \stex_if_do_html:T{
-    \end{stex_annotate_env}
-  }
-
-  \smallskip
-}
-
-\stex_sms_allow_env:n{sproblem}
-
-\cs_new_protected:Nn \__problems_sproblem_start: {
-  \par\noindent\textbf\prob@heading\show@pts\show@min\\\ignorespacesandpars
-}
-\cs_new_protected:Nn \__problems_sproblem_end: {\par\smallskip}
-
-\newcommand\stexpatchproblem[3][] {
-    \str_set:Nx \l_tmpa_str{ #1 }
-    \str_if_empty:NTF \l_tmpa_str {
-      \tl_set:Nn \__problems_sproblem_start: { #2 }
-      \tl_set:Nn \__problems_sproblem_end: { #3 }
-    }{
-      \exp_after:wN \tl_set:Nn \csname __problems_sproblem_#1_start:\endcsname{ #2 }
-      \exp_after:wN \tl_set:Nn \csname __problems_sproblem_#1_end:\endcsname{ #3 }
-    }
-}
-
-\bool_if:NT \c__problems_boxed_bool {
-  \surroundwithmdframed{problem}
-}
 \def\record@problem{
   \protected@write\@auxout{}
   {
@@ -261,57 +290,8 @@
   }
 }
 \def\@problem#1#2#3{}
-\keys_define:nn { problem / solution }{
-  id            .str_set_x:N  = \l__problems_solution_id_str ,
-  for           .str_set_x:N  = \l__problems_solution_for_str ,
-  type          .str_set_x:N  = \l__problems_solution_type_str ,
-  title         .tl_set:N     = \l__problems_solution_title_tl
-}
-\cs_new_protected:Nn \__problems_solution_args:n {
-  \str_clear:N \l__problems_solution_id_str
-  \str_clear:N \l__problems_solution_type_str
-  \str_clear:N \l__problems_solution_for_str
-  \tl_clear:N \l__problems_solution_title_tl
-  \keys_set:nn { problem / solution }{ #1 }
-}
-\box_new:N \l__problems_solution_box
-\newenvironment{solution}[1][]{
-  \__problems_solution_args:n{#1}
-  \stex_html_backend:TF{
-    \stex_if_do_html:T{
-      \begin{stex_annotate_env}{solution}{}
-        \str_if_empty:NF \l__problems_solution_type_str {
-          \par\noindent
-          \stex_annotate_invisible:nnn{typestrings}{\sexampletype}{}
-        }
-        \noindent\textbf{Solution\tl_if_empty:NF\l__problems_solution_title_tl{~(\l__problems_solution_title_tl)}: }~
-    }
-  }{
-    \setbox\l__problems_solution_box\vbox\bgroup
-      \par\smallskip\hrule\smallskip
-      \noindent\textbf{Solution\tl_if_empty:NF\l__problems_solution_title_tl{~(\l__problems_solution_title_tl)}: }~
-  }
-}{
-  \stex_html_backend:TF{
-    \stex_if_do_html:T{
-      \end{stex_annotate_env}
-    }
-  }{
-    \smallskip\hrule
-    \egroup
-    \bool_if:NT \c__problems_solutions_bool {
-      \strut\par\noindent
-      \box\l__problems_solution_box
-    }
-  }
-}
 
-\newcommand\startsolutions{
-  \bool_set_true:N \c__problems_solutions_bool
-  \solutionstrue
-}
-\newcommand\stopsolutions{\bool_set_false:N \c__problems_solutions_bool \solutionsfalse}%\excludecomment{solution}}
-\bool_if:NTF \c__problems_notes_bool {
+\bool_if:NTF \c_notesslides_notes_bool {
   \newenvironment{exnote}[1][]{
     \par\smallskip\hrule\smallskip
     \noindent\textbf{\prob@note@kw :~ }\small
@@ -321,7 +301,7 @@
 }{
   \excludecomment{exnote}
 }
-\bool_if:NTF \c__problems_notes_bool {
+\bool_if:NTF \c_notesslides_notes_bool {
   \newenvironment{hint}[1][]{
     \par\smallskip\hrule\smallskip
     \noindent\textbf{\prob@hint@kw :~ }\small
@@ -338,7 +318,7 @@
   \excludecomment{hint}
   \excludecomment{exhint}
 }
-\bool_if:NTF \c__problems_notes_bool {
+\bool_if:NTF \c_notesslides_notes_bool {
   \newenvironment{gnote}[1][]{
     \par\smallskip\hrule\smallskip
     \noindent\textbf{\prob@gnote@kw :~ }\small
@@ -348,56 +328,7 @@
 }{
   \excludecomment{gnote}
 }
-\newenvironment{mcb}{
-  \begin{enumerate}
-}{
-  \end{enumerate}
-}
-\cs_new_protected:Nn \__problems_do_yes_param:Nn {
-  \exp_args:Nx \str_if_eq:nnTF { \str_lowercase:n{ #2 } }{ yes }{
-    \bool_set_true:N #1
-  }{
-    \bool_set_false:N #1
-  }
-}
-\keys_define:nn { problem / mcc }{
-  id        .str_set_x:N  = \l__problems_mcc_id_str ,
-  feedback  .tl_set:N     = \l__problems_mcc_feedback_tl ,
-  T         .default:n    = { false } ,
-  T         .bool_set:N   = \l__problems_mcc_t_bool ,
-  F         .default:n    = { false } ,
-  F         .bool_set:N   = \l__problems_mcc_f_bool ,
-  Ttext     .tl_set:N     = \l__problems_mcc_Ttext_tl ,
-  Ftext     .tl_set:N     = \l__problems_mcc_Ftext_tl
-}
-\cs_new_protected:Nn \l__problems_mcc_args:n {
-  \str_clear:N \l__problems_mcc_id_str
-  \tl_clear:N \l__problems_mcc_feedback_tl
-  \bool_set_false:N \l__problems_mcc_t_bool
-  \bool_set_false:N \l__problems_mcc_f_bool
-  \tl_clear:N \l__problems_mcc_Ttext_tl
-  \tl_clear:N \l__problems_mcc_Ftext_tl
-  \str_clear:N \l__problems_mcc_id_str
-  \keys_set:nn { problem / mcc }{ #1 }
-}
-\def\mccTrueText{\textbf{\prob@correct@kw!~}}
-\def\mccFalseText{\textbf{\prob@wrong@kw!~}}
-\newcommand\mcc[2][]{
-  \l__problems_mcc_args:n{ #1 }
-  \item[$\Box$] #2
-  \bool_if:NT \c__problems_solutions_bool{
-    \\
-    \bool_if:NT \l__problems_mcc_t_bool {
-      \tl_if_empty:NTF\l__problems_mcc_Ttext_tl\mccTrueText\l__problems_mcc_Ttext_tl
-    }
-    \bool_if:NT \l__problems_mcc_f_bool {
-      \tl_if_empty:NTF\l__problems_mcc_Ttext_tl\mccFalseText\l__problems_mcc_Ftext_tl
-    }
-    \tl_if_empty:NF \l__problems_mcc_feedback_tl {
-      \emph{\l__problems_mcc_feedback_tl}
-    }
-  }
-} %solutions
+
 \newcommand\fillinsol[2][]{%
   \def\@test{#1}
   \quad%
@@ -539,6 +470,7 @@
 \newcommand\testsmallspace{\testspace{1cm}}
 \newcommand\testmedspace{\testspace{2cm}}
 \newcommand\testbigspace{\testspace{3cm}}
+\fi
 \endinput
 %%
 %% End of file `problem.sty'.

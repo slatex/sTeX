@@ -120,6 +120,31 @@
   \notesfalse
 }
 %    \end{macrocode}
+%
+% \begin{macro}{\prematurestop}
+%   We initialize |\afterprematurestop|, and provide 
+%   |\prematurestop@endsfragment| which looks up |\sfragment@level| and recursively ends
+%   enough |{sfragment}|s. 
+%    \begin{macrocode}
+\def \c_@@_document_str{document} 
+\newcommand\afterprematurestop{}
+\def\prematurestop@endsfragment{
+  \unless\ifx\@currenvir\c_@@_document_str
+    \expandafter\expandafter\expandafter\end\expandafter\expandafter\expandafter{\expandafter\@currenvir\expandafter}
+    \expandafter\prematurestop@endsfragment
+  \fi
+}
+\providecommand\prematurestop{
+  \stex_html_backend:F{
+  \message{Stopping~sTeX~processing~prematurely}
+  \prematurestop@endsfragment
+  \afterprematurestop
+  \end{document}
+  }
+}
+%    \end{macrocode}
+% \end{macro}
+%
 % \end{sfragment}
 % \begin{sfragment}[id=sec:impl:noteslides]{Notes and Slides}
 % For the notes case, we also provide the |\usetheme| macro that would otherwise
@@ -285,6 +310,55 @@
 \newcommand\pause{}
 %    \end{macrocode}
 % \end{macro}
+%
+% We redefine the \env{columns} and \env{column} environments:
+%
+%    \begin{macrocode}
+\renewenvironment{columns}[1][]{
+  \par\noindent
+  \begin{minipage}
+  \slidewidth\centering\leavevmode
+  \stex_if_html_backend:T{
+    \cs_if_exist:NT \rustex_if:T {
+      \rustex_if:T {
+        \rustex_direct_HTML:n{<table><tr>}
+      }
+    }
+  }
+}{
+  \stex_if_html_backend:T{
+    \cs_if_exist:NT \rustex_if:T {
+      \rustex_if:T {
+        \rustex_direct_HTML:n{</tr></table>}
+      }
+    }
+  }
+  \end{minipage}\par\noindent
+}
+\newsavebox\columnbox
+\renewenvironment<>{column}[2][]{
+  \begin{lrbox}{\columnbox}
+    \stex_if_html_backend:T{
+      \cs_if_exist:NT \rustex_if:T {
+        \rustex_if:T {
+          \rustex_direct_HTML:n{<td>}
+        }
+      }
+    }
+    \begin{minipage}{#2}
+}{
+  \end{minipage}
+  \stex_if_html_backend:T{
+    \cs_if_exist:NT \rustex_if:T {
+      \rustex_if:T {
+        \rustex_direct_HTML:n{</td>}
+      }
+    }
+  }
+  \end{lrbox}\usebox\columnbox
+}
+%    \end{macrocode}
+%
 %
 %    \begin{macrocode}
 \fi
