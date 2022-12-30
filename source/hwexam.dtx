@@ -1,0 +1,322 @@
+% \iffalse meta-comment
+% An Infrastructure for marking up Assignments
+% Copyright (c) 2019 Michael Kohlhase, all rights reserved
+%               this file is released under the
+%               LaTeX Project Public License (LPPL)
+% The original of this file is in the public repository at 
+% http://github.com/sLaTeX/sTeX/
+% \fi
+% 
+% \iffalse
+%
+%<*driver>
+\def\stexdocpath{../doc}
+\input{\stexdocpath/stex-docheader}
+\stextoptitle{The \texttt{hwexam} Package}{hwexam}
+\docmodule
+%</driver>
+% \fi
+%
+% \begin{stexmanual}
+%    \begin{sfragment}{HWExam Manual}
+%       Foo documentation
+%    \end{sfragment}
+% \end{stexmanual}
+%
+% \begin{documentation}
+%    \begin{sfragment}{HWExam Documentation}
+%       Foo documentation
+%    \end{sfragment}
+% \end{documentation}
+%
+%\begin{implementation}
+% 
+% \section{Implementation: The hwexam Package} 
+%
+% \subsection{Package Options}
+%
+% The first step is to declare (a few) package options that handle whether certain
+% information is printed or not. Some come with their own conditionals that are set by the
+% options, the rest is just passed on to the |problems| package.
+%
+%    \begin{macrocode}
+%<*package>
+\ProvidesExplPackage{hwexam}{2022/09/14}{3.2.0}{homework assignments and exams}
+\RequirePackage{l3keys2e}
+
+\keys_define:nn {hwexam / pkg}{
+	multiple  .default:n 		= { false },
+	multiple	.bool_set:N 	= \c_hwexam_multiple_bool,
+	unknown   .code:n 			= {
+		\PassOptionsToPackage{\CurrentOption}{problem}
+	}
+}
+\ProcessKeysOptions{ hwexam /pkg }
+\RequirePackage{problem}
+%    \end{macrocode}
+%
+% \begin{macro}{\hwexam_kw_*}
+%   For multilinguality, we define internal macros for keywords that can be specialized in
+%   |*.ldf| files.
+%    \begin{macrocode}
+\AddToHook{begindocument}{
+	\ExplSyntaxOn\makeatletter
+	\input{hwexam-english.ldf}
+	\ltx@ifpackageloaded{babel}{
+			\clist_set:Nx \l_tmpa_clist {\bbl@loaded}
+			\exp_args:NNx \clist_if_in:NnT \l_tmpa_clist {\detokenize{ngerman}}{
+				\input{hwexam-ngerman.ldf}
+			}
+			\exp_args:NNx \clist_if_in:NnT \l_tmpa_clist {\detokenize{finnish}}{
+				\input{hwexam-finnish.ldf}
+			}
+			\exp_args:NNx \clist_if_in:NnT \l_tmpa_clist {\detokenize{french}}{
+				\input{hwexam-french.ldf}
+			}
+			\exp_args:NNx \clist_if_in:NnT \l_tmpa_clist {\detokenize{russian}}{
+				\input{hwexam-russian.ldf}
+			}
+	}{}
+	\makeatother\ExplSyntaxOff
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsection{Assignments}
+%
+% Then we set up a counter for problems and make the problem counter inherited from
+% |problem.sty| depend on it. Furthermore, we specialize the |\prob@label| macro to take
+% the assignment counter into account.
+%
+% \begin{environment}{assignment}
+%    \begin{macrocode}
+\stex_keys_define:nnnn{ assignment }{
+  \tl_clear:N \l_stex_key_number_tl 
+	\tl_clear:N \l_stex_key_given_tl 
+	\tl_clear:N \l_stex_key_due_tl
+}{
+  number  .tl_set:N     = \l_stex_key_number_tl,
+  given   .tl_set:N     = \l_stex_key_given_tl,
+  due     .tl_set:N     = \l_stex_key_due_tl,
+	unknown .code:n = {}
+}{id,title,style}
+
+\newcounter{assignment}
+\stex_new_stylable_env:nnnnnnn {assignment}{O{}}{
+  \cs_if_exist:NTF \l_hwexam_includeassignment_keys_tl {
+    \tl_put_left:Nn \l_hwexam_includeassignment_keys_tl {#1,}
+    \exp_args:Nno \stex_keys_set:nn{assignment}{
+      \l_hwexam_includeassignment_keys_tl
+    }
+  }{
+    \stex_keys_set:nn{assignment}{#1}
+  }
+	\tl_if_empty:NF \l_stex_key_number_tl {
+		\global\setcounter{assignment}{\int_eval:n{\l_stex_key_number_tl-1}}
+	}
+	\global\refstepcounter{assignment}
+	\setcounter{sproblem}{0}
+	\def\thesproblem{\theassignment.\arabic{sproblem}}
+	\stex_style_apply:
+}{
+	\stex_style_apply:
+}{
+	\par\begin{center}
+	\textbf{\Large\hwexam@kw@assignment~\theassignment
+		\tl_if_empty:NF \l_stex_key_title_tl {
+			{~}--~\l_stex_key_title_tl
+		}
+	}\par\smallskip
+	\textbf{
+		\tl_if_empty:NF \l_stex_key_given_tl {
+			\hwexam@kw@given:~\l_stex_key_given_tl\quad
+		}
+		\tl_if_empty:NF \l_stex_key_due_tl {
+			\hwexam@kw@due:~\l_stex_key_due_tl\quad
+		}
+	}
+	\end{center}
+	\par\bigskip
+}{
+	\par\pagebreak
+}{}
+%    \end{macrocode}
+% \end{environment}
+%
+% \begin{macro}{\includeassignment}
+%    \begin{macrocode}
+\NewDocumentCommand\includeassignment{O{} m}{
+	\group_begin:
+	\tl_set:Nn \l_hwexam_includeassignment_keys_tl {#1}
+	\stex_keys_set:nn{includeproblem}{#1}
+	\exp_args:Nno \use:nn{\inputref[}\l_stex_key_mhrepos_str]{#2}
+	\group_end:
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% Restoring information about problems:
+%
+%    \begin{macrocode}
+\prop_new:N \c_@@_problems_prop
+\tl_set:Nn \c_@@_total_mins_tl {0}
+\tl_set:Nn \c_@@_total_pts_tl {0}
+\int_new:N \c_@@_total_problems_int
+\cs_set_protected:Npn \problem@restore #1 #2 #3 {
+	\int_gincr:N \c_@@_total_problems_int
+	\prop_gput:Nnn \c_@@_problems_prop {#1}{{#2}{#3}}
+	\tl_gset:Nx \c_@@_total_pts_tl { \int_eval:n { \c_@@_total_pts_tl + #2 }}
+	\tl_gset:Nx \c_@@_total_mins_tl { \int_eval:n { \c_@@_total_mins_tl + #2 }}
+}
+%    \end{macrocode}
+%
+% \begin{macro}{\correction@table}
+%   This macro generates the correction table
+%    \begin{macrocode}
+\newcommand\correction@table{
+	\int_compare:nNnT \c_@@_total_problems_int = 0 {
+		\int_incr:N \c_@@_total_problems_int
+		\prop_put:Nnn \c_@@_problems_prop {~}{{~}{~}}
+	}
+	\tl_clear:N \l_tmpa_tl
+	\tl_clear:N \l_tmpb_tl
+	\tl_clear:N \l_tmpc_tl
+	\prop_map_inline:Nn \c_@@_problems_prop {
+		\tl_put_right:Nn \l_tmpa_tl { ##1 & }
+		\tl_put_right:Nx \l_tmpb_tl { \use_i:nn ##2 & }
+		\tl_put_right:Nn \l_tmpc_tl { & }
+	}
+	\resizebox{\textwidth}{!}{%
+\exp_args:Nne \begin{tabular}{|l|*{\int_use:N \c_@@_total_problems_int}{c|}c||l|}\hline
+&\exp_args:Ne \multicolumn{\int_eval:n{ \c_@@_total_problems_int + 1}}{c||}
+{\footnotesize\hwexam@kw@forgrading} &\\\hline
+\hwexam@kw@probs & \l_tmpa_tl \hwexam@kw@sum & \hwexam@kw@grade\\\hline
+\hwexam@kw@pts & \l_tmpb_tl \c_@@_total_pts_tl & \\\hline
+\hwexam@kw@reached & \l_tmpc_tl & \\[.7cm]\hline
+\end{tabular}}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\testheading}
+%    \begin{macrocode}
+\def\hwexamheader{\input{hwexam-default.header}}
+
+\def\hwexamminutes{
+	\tl_if_empty:NTF \hwexam@duration {
+		{\hwexam@min}~\hwexam@minutes@kw
+	}{
+		\hwexam@duration
+	}
+}
+
+\stex_keys_define:nnnn{ hwexam / testheading }{
+	\tl_clear:N \hwexam@min
+	\tl_clear:N \hwexam@duration
+	\tl_clear:N \hwexam@reqpts
+	\tl_clear:N \hwexam@tools
+}{
+	min 		.tl_set:N 	= \hwexam@min,
+	duration	.tl_set:N 	= \hwexam@duration,
+	reqpts		.tl_set:N 	= \hwexam@reqpts,
+	tools		.tl_set:N 	= \hwexam@tools 
+}{}
+
+\newenvironment{testheading}[1][]{
+	\stex_keys_set:nn { hwexam / testheading}{#1}
+
+	\tl_set_eq:NN \hwexam@totalpts \c_@@_total_pts_tl
+	\tl_set_eq:NN \hwexam@totalmin \c_@@_total_mins_tl
+	\tl_set:Nx \hwexam@checktime {\int_eval:n { \hwexam@min - \hwexam@totalmin }}
+
+	\newif\if@bonuspoints
+	\tl_if_empty:NTF \hwexam@reqpts {
+		\@bonuspointsfalse
+	}{
+		\tl_set:Nx \hwexam@bonuspts {
+			\int_eval:n{\hwexam@totalpts - \hwexam@reqpts}
+		}
+		\@bonuspointstrue
+	}
+
+	\makeatletter\hwexamheader\makeatother
+}{
+	\newpage
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\testemptypage}
+%    \begin{macrocode}
+\newcommand\testemptypage[1][]{%
+	\bool_if:NT \c__problems_test_bool {\ \vfill\begin{center}\hwexam@kw@testemptypage\end{center}\eject}
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\testspace}
+%    \begin{macrocode}
+\newcommand\testspace[1]{\bool_if:NT \c__problems_test_bool {\vspace*{#1}}}
+%    \end{macrocode}
+% \end{macro}
+% 
+% \begin{macro}{\testnewpage}
+%    \begin{macrocode}
+\newcommand\testnewpage{\bool_if:NT \c__problems_test_bool {\newpage}}
+%    \end{macrocode}
+% \end{macro}
+%
+%
+%    \begin{macrocode}
+%</package>
+%    \end{macrocode}
+% 
+% \subsection{Leftovers}
+%
+% at some point, we may want to reactivate the logos font, then we use
+% \begin{verbatim}
+% here we define the logos that characterize the assignment
+% \font\bierfont=../assignments/bierglas
+% \font\denkerfont=../assignments/denker
+% \font\uhrfont=../assignments/uhr
+% \font\warnschildfont=../assignments/achtung
+%
+% \newcommand\bierglas{{\bierfont\char65}}
+% \newcommand\denker{{\denkerfont\char65}}
+% \newcommand\uhr{{\uhrfont\char65}}
+% \newcommand\warnschild{{\warnschildfont\char 65}}
+% \newcommand\hardA{\warnschild}
+% \newcommand\longA{\uhr}
+% \newcommand\thinkA{\denker}
+% \newcommand\discussA{\bierglas}
+% \end{verbatim}
+% \end{implementation}
+\endinput
+% \iffalse
+
+%%% Local Variables: 
+%%% mode: doctex
+%%% TeX-master: t
+%%% End: 
+% \fi
+%  LocalWords:  texttt scsys sc latexml fileversion filedate maketitle setcounter newpage
+%  LocalWords:  tocdepth tableofcontents pts showmeta showmeta showignores omdoc extrefs
+%  LocalWords:  testspace testnewpage testemptypage testheading testheading reqpts reqpts
+%  LocalWords:  exfig makeatletter makeatother vspace hrule vspace vspace noindent textsf
+%  LocalWords:  includeassignment includeassignment HorIacJuc cscpnrr11 importmodule baz
+%  LocalWords:  includemhassignment includemhassignment importmhmodule foobar ldots sref
+%  LocalWords:  mhcurrentrepos mh-variants mh-variant compactenum printbibliography Cwd
+%  LocalWords:  langle rangle langle rangle ltxml.cls ltxml.sty respetively metakeys qw
+%  LocalWords:  cwd stex graphicx amssymb amstext amsmath newif iftest testfalse testtrue
+%  LocalWords:  ifsolutions solutionsfalse ifmultiple multiplefalse multipletrue keyval
+%  LocalWords:  ltxml assig srefaddidkey addmetakey ifx assignment@titleblock stepcounter
+%  LocalWords:  document@hwexamtype importmodules metasetkeys inclassig@title inclassig
+%  LocalWords:  inclassig@title inclassig@type inclassig@type inclassig@number xspace kv
+%  LocalWords:  inclassig@number inclassig@due inclassig@due inclassig@given ignorespaces
+%  LocalWords:  inclassig@given newenvironment currentsectionlevel OptionalKeyVals kvi
+%  LocalWords:  omgroup vals hwexamtype ednote textbackslash newcommand inputassignment
+%  LocalWords:  unlist quizheading tas hspace hfill textbf newcount vfill addtocounter
+%  LocalWords:  theassignment@totalmin theassignment@totalpts assignment@probs xdef hline
+%  LocalWords:  assignment@totalpts assignment@totalmin correction@probs correction@probs
+%  LocalWords:  newcounter theassignment@probs footnotesize mh@currentrepos endinput
+%  LocalWords:  inclassig@mhrepos inclassig@mhrepos doctex inputmhassignment
+%  LocalWords:  GPL structuresharing STR iffalse cls NeedsTeXFormat hwexam hwexam.dtx sc 

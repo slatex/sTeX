@@ -1784,6 +1784,51 @@
     \int_set:Nn \l_stex_docheader_sect 6
   }
 }
+
+\AtBeginDocument{
+  \cs_if_exist:NTF\frontmatter{
+    \let\_@@_orig_frontmatter\frontmatter
+    \let\frontmatter\relax
+  }{
+    \tl_set:Nn\_@@_orig_frontmatter{
+      \clearpage
+      %\@mainmatterfalse
+      \pagenumbering{roman}
+    }
+  }
+  \cs_if_exist:NTF\backmatter{
+    \let\_@@_orig_backmatter\backmatter
+    \let\backmatter\relax
+  }{
+    \tl_set:Nn\_@@_orig_backmatter{
+      \clearpage
+      %\@mainmatterfalse
+      \pagenumbering{roman}
+    }
+  }
+  \newenvironment{frontmatter}{
+    \_@@_orig_frontmatter
+  }{
+    \cs_if_exist:NTF\mainmatter{
+      \mainmatter
+    }{
+      \clearpage
+      %\@mainmattertrue
+      \pagenumbering{arabic}
+    }
+  }
+  \newenvironment{backmatter}{
+    \_@@_orig_backmatter
+  }{
+    \cs_if_exist:NTF\mainmatter{
+      \mainmatter
+    }{
+      \clearpage
+      %\@mainmattertrue
+      \pagenumbering{arabic}
+    }
+  }
+}
 %    \end{macrocode}
 % \end{macro}
 % \end{sfragment}
@@ -4532,7 +4577,7 @@
     \str_set:Nn \l_stex_current_symbol_str {test}
     \cs_set:Npn \comp ##1 {##1}
     \stex_debug:nn{check_terms}{Checking~notation...}
-    \exp_args:Nne \use:nn{\l_stex_notation_macrocode_cs}{
+    \exp_args:Nne \use:nn{\l_stex_notation_macrocode_cs{}}{
       \_stex_notation_make_args:
     }
   }
@@ -4556,7 +4601,9 @@
     $
       \str_set:Nx \l_stex_current_symbol_str {#1}
       \stex_annotate:nn{shtml:notationcomp={}}{
-        \exp_args:Nne \use:nn \l_stex_notation_macrocode_cs{
+        \exp_args:Nne \use:nn {
+          \l_stex_notation_macrocode_cs {}
+        }{
           \_stex_map_args:N \_@@_make_arg_html:nn
         }
       }
@@ -4670,7 +4717,7 @@
   \str_set_eq:NN\thisnotationvariant\l_stex_key_variant_str
   \def\thisnotation{
     $\let\l_stex_current_symbol_str\thisvarname
-      \def\comp{\_varcomp}\exp_args:Nne \use:nn{\l_stex_notation_macrocode_cs}{
+      \def\comp{\_varcomp}\exp_args:Nne \use:nn{\l_stex_notation_macrocode_cs{}}{
       \_stex_notation_make_args:
     }$
   }
@@ -4726,9 +4773,22 @@
 %    \end{macrocode}
 % \end{macro}
 %
+% \begin{macro}{\stex_do_default_notation_op:}
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_do_default_notation: {
+  \tl_set:Nn \l_stex_default_notation {\TODODefaultNotation}
+}
+
+\cs_new_protected:Nn \stex_do_default_notation_op: {
+  \tl_set:Nn \l_stex_default_notation {\TODODefaultNotation}
+}
+%    \end{macrocode}
+% \end{macro}
+%
 % \begin{macro}{\STEXInternalNotation}
 %    \begin{macrocode}
 % 1: variant 2: operator precedence 3: intent 4: arguments 5: code 6: next
+
 \cs_new_protected:Npn \STEXInternalNotation #1 #2 #3 #4 #5 #6 {
   \_@@_process_notation:nnnnnn{#1}{#2}{#3}{#4}{#5}{
     \l_@@_code_tl
@@ -4923,7 +4983,7 @@
   \str_set_eq:NN\thisnotationvariant\l_stex_key_variant_str
   \def\thisnotation{
     $\let\l_stex_current_symbol_str\thisvarname
-      \def\comp{\_varcomp}\exp_args:Nne \use:nn{\l_stex_notation_macrocode_cs}{
+      \def\comp{\_varcomp}\exp_args:Nne \use:nn{\l_stex_notation_macrocode_cs{}}{
       \_stex_notation_make_args:
     }$
   }
@@ -5135,7 +5195,7 @@
   \str_set_eq:NN\thisnotationvariant\l_stex_key_variant_str
   \def\thisnotation{
     $\let\l_stex_current_symbol_str\thisvarname
-      \def\comp{\_varcomp}\exp_args:Nne \use:nn{\l_stex_notation_macrocode_cs}{
+      \def\comp{\_varcomp}\exp_args:Nne \use:nn{\l_stex_notation_macrocode_cs{}}{
       \_@@_make_args:
     }$
   }
@@ -5271,7 +5331,8 @@
   \cs_if_exist:cTF {l_stex_notation_\l_stex_current_symbol_str _#1_cs}{
     \cs_set_eq:Nc \l_@@_cs {l_stex_notation_\l_stex_current_symbol_str _#1_cs}
   }{
-    \msg_error:nnxx{stex}{error/nonotation}{\l_stex_current_symbol_str}{#1}
+    \stex_do_default_notation:
+    \cs_set_eq:NN \l_@@_cs \l_stex_default_notation
   }
 }
 
@@ -5494,7 +5555,15 @@
       {\cs:w l_stex_notation_\l_stex_current_symbol_str _#1_cs \cs_end: {}}
     }
   }{
-    \msg_error:nnxx{stex}{error/nonotation}{\l_stex_current_symbol_str}{#1}
+    \stex_do_default_notation:
+    \tl_if_empty:NTF \l_stex_current_return_tl {
+      \l_stex_default_notation{\group_end:}
+    }{
+      \exp_after:wN
+      \@@_invoke_return_maybe:n
+      \exp_after:wN
+      {\l_stex_default_notation {}}
+    }
   }
 }
 
@@ -5511,7 +5580,12 @@
       \tl_clear:N \l_stex_current_return_tl
       \_stex_invoke_notation:w [#1]
     }{
-      \msg_error:nnxx{stex}{error/noop}{\l_stex_current_symbol_str}{#1}
+      \stex_do_default_notation_op:    
+      \_stex_maybe_brackets:nn{\neginfprec}{
+        \_stex_term_oms_or_omv:nnn{#1}{}
+        {\l_stex_default_notation}
+      }
+      \group_end:
     }
   }
 }
@@ -5816,7 +5890,8 @@
   \cs_if_exist:cTF{l_stex_notation_#1__cs}{
     \cs_set_eq:Nc \l_@@_cs {l_stex_notation_#1__cs}
   }{
-    \msg_error:nnnn{stex}{error/nonotation}{#1}{}
+    \stex_do_default_notation:
+    \cs_set_eq:NN \l_@@_cs \l_stex_default_notation
   }
   \clist_map_inline:nn{#2}{
     \tl_if_eq:nnTF{##1}{\ellipses}{
@@ -6032,7 +6107,7 @@
 % \begin{macro}{\dobrackets}
 %    \begin{macrocode}
 \int_new:N \l_stex_notation_downprec
-\int_set_eq:NN \l_stex_notation_downprec \infprec
+\int_set:Nn \l_stex_notation_downprec \infprec
 \tl_set:Nn \l_@@_left_bracket_str (
 \tl_set:Nn \l_@@_right_bracket_str )
 \bool_new:N \l_@@_brackets_done_bool
@@ -6044,7 +6119,6 @@
   } {
     \int_compare:nNnTF { #1 } > \l_stex_notation_downprec {
       \bool_if:NTF \l_stex_inparray_bool { #2 }{
-        \stex_debug:nn{dobrackets}{ #1 > \l_stex_notation_downprec;~\tl_to_str:n{#2}}
         \dobrackets { #2 }
       }
     }{ #2 }
@@ -6058,13 +6132,18 @@
   %    { \exp_after:wN \left\l_@@_left_bracket_str #1 } 
   %    { \exp_not:N\right\l_@@_right_bracket_str }
   %  \else
-  \stex_pseudogroup_with:nn{\l_@@_brackets_done_bool\l_stex_notation_downprec}{ 
+  \group_begin:
+  %\stex_pseudogroup_with:nn{\l_@@_brackets_done_bool\l_stex_notation_downprec}{ 
     \bool_set_true:N \l_@@_brackets_done_bool
     \int_set:Nn \l_stex_notation_downprec \infprec
-    \mathopen{\comp\l_@@_left_bracket_str} 
+    \mathopen{\cs_if_exist:NT\l_stex_current_symbol_str\comp
+      \l_@@_left_bracket_str
+    } 
     #1
+  \group_end:%}
+  \mathclose{\cs_if_exist:NT\l_stex_current_symbol_str\comp
+    \l_@@_right_bracket_str
   }
-  \mathclose{\comp\l_@@_right_bracket_str}
   %\fi}
 }
 %    \end{macrocode}
@@ -7130,6 +7209,7 @@
     {#2}{{#1}{#2}{#3}{#4}{defed}{#6}{#7}{#8}}
 }
 
+\NewDocumentCommand \conclusion {m} { #1 } % TODO
 %    \end{macrocode}
 % \end{macro}
 %
@@ -7284,7 +7364,7 @@
 \stex_new_stylable_env:nnnnnnn{proof}{s O{} m}{\par
   \intarray_gzero:N \l_@@_counter_intarray
   \intarray_gset:Nnn \l_@@_counter_intarray 1 1
-  \stex_keys_set:nn{spf}{#2}
+  \stex_keys_set:nn{spfsteps}{#2}
   \_stex_do_for_list:
   \stex_style_apply:
 
@@ -7314,6 +7394,71 @@
 \AddToHook{env/sproof/end}{
   \bool_if:NT\l_@@_in_spfblock_bool {
     \group_end:\end{itemize}
+  }
+}
+%    \end{macrocode}
+% \end{environment}
+%
+% \begin{environment}{subproof}
+%    \begin{macrocode}
+\stex_new_stylable_env:nnnnnnn{subproof}{s O{} m}{\par
+  %\intarray_gzero:N \l_@@_counter_intarray
+  %\intarray_gset:Nnn \l_@@_counter_intarray 1 1
+  \stex_keys_set:nn{spf}{#2}
+  \_stex_do_for_list:
+
+
+  %\exp_args:Ne \stex_annotate:nn{
+  %  shtml:proofsketch={
+  %    \seq_if_empty:NF \l_stex_fors_seq {
+  %      \seq_use:Nn \l_stex_fors_seq ,
+  %    }
+  %  }
+  %}{
+  %  \stex_style_apply:
+  %  #2
+  %}
+  \IfBooleanTF #1 {
+    \stex_style_apply:
+    \_stex_do_id:
+    \bool_set_false:N \l_@@_in_spfblock_bool
+    #3
+  }{
+    \bool_if:NTF \l_@@_in_spfblock_bool {
+      \begin{itemize}\item[\_@@_insert_number:] 
+        #3
+        \_@@_add_counter: %\\
+        \stex_style_apply:
+        \_stex_do_id:
+        \group_begin:\stexcommentfont
+    }{
+      #3
+      \stex_style_apply:
+      \_stex_do_id:
+    }
+  }
+}{
+  \stex_style_apply:
+  \bool_if:NT \l_@@_in_spfblock_bool \_@@_inc_counter:
+  \aftergroup \_@@_inblock_restore: 
+}{
+  %\emph{Proof:}~
+}{
+  %\sproofend
+}{}
+\AddToHook{env/subproof/before}{
+  \bool_if:NT \l_@@_in_spfblock_bool \group_end:
+}
+\AddToHook{env/subproof/end}{
+  \bool_if:NT\l_@@_in_spfblock_bool {
+    \group_end:\_@@_remove_counter:
+    \end{itemize}
+  }
+}
+
+\cs_new_protected:Nn \_@@_inblock_restore: {
+  \bool_if:NT\l_@@_in_spfblock_bool {
+    \group_begin:\stexcommentfont
   }
 }
 %    \end{macrocode}
@@ -7503,14 +7648,18 @@
 \_@@_make_step_macro:Nnnnn \spfstep {} \_@@_insert_number: {} \_@@_inc_counter:
 
 \NewDocumentCommand \eqstep {s m}{
-  \_@@_maybe_comment_end:
   \bool_if:NTF \l_@@_in_spfblock_bool {
-    $=$
+    \group_end:
+    \IfBooleanTF #1 {
+      $= #2$
+    }{
+        \begin{itemize}\item[$=$] $#2$ \end{itemize}
+    }
+    \group_begin:\stexcommentfont
   }{
-    \item[$=$]
+    $= #2$
   }
-  $#2$%\stex_annotate:nnn{spfstep}{eq}{ #2 }$
-  \_@@_maybe_comment:
+  %\stex_annotate:nnn{spfstep}{eq}{ #2 }$
 }
 %\stex_deactivate_macro:Nn \eqstep {sproof~environments}
 

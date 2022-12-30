@@ -46,9 +46,9 @@
 
 \keys_define:nn { problem / pkg }{
   notes     .default:n    = { true },
-  notes     .bool_set:N   = \c_notesslides_notes_bool,
-  %gnotes    .default:n    = { true },
-  %gnotes    .bool_set:N   = \c_@@_gnotes_bool,
+  notes     .bool_set:N   = \c_@@_notes_bool,
+  gnotes    .default:n    = { true },
+  gnotes    .bool_set:N   = \c_@@_gnotes_bool,
   hints     .default:n    = { true },
   hints     .bool_set:N   = \c_@@_hints_bool,
   solutions .default:n    = { true },
@@ -59,8 +59,8 @@
   min       .bool_set:N   = \c_@@_min_bool,
   %boxed     .default:n    = { true },
   %boxed     .bool_set:N   = \c_@@_boxed_bool,
-  %test     .default:n    = { true },
-  %test     .bool_set:N   = \c_@@_test_bool,
+  test     .default:n    = { true },
+  test     .bool_set:N   = \c_@@_test_bool,
   unknown     .code:n       = {
     \PassOptionsToPackage{\CurrentOption}{stex}
   }
@@ -76,12 +76,12 @@
 \RequirePackage{stex}
 %    \end{macrocode}
 %
-% \begin{macro}{\problem_kw_*}
+% \begin{macro}{\problem@kw@*}
 %   For multilinguality, we define internal macros for keywords that can be specialized in
 %   |*.ldf| files.
 %    \begin{macrocode}
 \AddToHook{begindocument}{
-  \ExplSyntaxOn
+  \ExplSyntaxOn\makeatletter
   \input{problem-english.ldf}
   \ltx@ifpackageloaded{babel}{
       \clist_set:Nx \l_tmpa_clist {\bbl@loaded}
@@ -98,7 +98,7 @@
         \input{problem-russian.ldf}
       }
   }{}
-  \ExplSyntaxOff
+  \makeatother\ExplSyntaxOff
 }
 %    \end{macrocode}
 % \end{macro}
@@ -110,13 +110,15 @@
 %
 %    \begin{macrocode}
 \stex_keys_define:nnnn{ problem }{
-  \tl_clear:N \l_stex_key_pts_tl
-  \tl_clear:N \l_stex_key_min_tl
+  \tl_set:Nn \l_stex_key_pts_tl 0
+  \tl_set:Nn \l_stex_key_min_tl 0
   \str_clear:N \l_stex_key_name_str
+  \str_clear:N \l_stex_key_mhrepos_str
 }{
   pts     .tl_set:N     = \l_stex_key_pts_tl,
   min     .tl_set:N     = \l_stex_key_min_tl,
   name    .str_set:N    = \l_stex_key_name_str,
+  mhrepos .str_set:N    = \l_stex_key_mhrepos_str
   %imports .tl_set:N     = \l_@@_prob_imports_tl,
   %refnum  .int_set:N    = \l_@@_prob_refnum_int,
 }{id,title,style}
@@ -126,7 +128,10 @@
 % \begin{macro}{\numberproblemsin}
 %    \begin{macrocode}
 \newcounter{sproblem}[section]
-\newcommand\numberproblemsin[1]{\@addtoreset{sproblem}{#1}}
+\newcommand\numberproblemsin[1]{
+  \@addtoreset{sproblem}{#1}
+  \def\thesproblem{\arabic{#1}.\arabic{sproblem}}
+}
 %\def\theplainsproblem{\arabic{sproblem}}
 %\def\thesproblem{\thesection.\theplainsproblem}
 %    \end{macrocode}
@@ -134,17 +139,20 @@
 %
 % \begin{environment}{sproblem}
 %    \begin{macrocode}
+\newcounter{pts}
+\newcounter{min}
 \stex_new_stylable_env:nnnnnnn {problem} {O{}}{
   \cs_if_exist:NTF \l_problem_inputproblem_keys_tl {
+    \tl_put_left:Nn \l_problem_inputproblem_keys_tl {#1,}
     \exp_args:Nno \stex_keys_set:nn{problem}{
-      \l_problem_inputproblem_keys_tl,#1
+      \l_problem_inputproblem_keys_tl
     }
   }{
     \stex_keys_set:nn{problem}{#1}
   }
+  \refstepcounter{sproblem}
   \str_if_empty:NT \l_stex_key_name_str {
-    \stex_file_split_off_ext:NN \l_@@_path_seq \g_stex_current_file
-    \stex_file_split_off_lang:NN \l_@@_path_seq \l_@@_path_seq
+    \stex_file_split_off_lang:NN \l_@@_path_seq \g_stex_current_file
     \seq_get_right:NN \l_@@_path_seq \l_stex_key_name_str
   }
 
@@ -167,28 +175,80 @@
   \stex_if_smsmode:F {
     \str_set_eq:NN \thismoduleuri \l_stex_current_module_str
     \tl_set_eq:NN \thismodulename \l_stex_key_name_str
+    \tl_set_eq:NN \thistitle \l_stex_key_title_tl
     \stex_style_apply:
+    \addtocounter{pts}{\l_stex_key_pts_tl}
+    \addtocounter{min}{\l_stex_key_min_tl}
+    \_@@_record_problem:
   }
   \stex_reactivate_macro:N \solution
-  \stex_reactivate_macro:N \hint
   \stex_reactivate_macro:N \mcb
-  \stex_reactivate_macro:N \gnote
   \stex_reactivate_macro:N \fillinsol
   \stex_smsmode_do:
 }{
   \stex_close_module:
   \stex_if_smsmode:F \stex_style_apply:
   \stex_if_do_html:T{ \end{stex_annotate_env} }
-}{}{}{s}
+}{
+  \par\noindent\problemheader
+  \bool_if:NT \c_@@_pts_bool {
+    \marginpar{\l_stex_key_pts_tl{}~\problem@kw@points\smallskip}
+  }
+  \bool_if:NT \c_@@_min_bool {
+    \marginpar{\l_stex_key_min_tl{}~\problem@kw@minutes\smallskip}
+  }
+  \\
+  \stex_ignore_spaces_and_pars:
+}{
+  \par\bigskip
+  \bool_if:NT \c_@@_test_bool \pagebreak
+}{s}
 \stex_sms_allow_env:n{sproblem}
+
+\tl_set:Nn \problemheader {
+  \textbf{\problem@kw@problem{~}\thesproblem
+    \tl_if_empty:NF \thistitle {
+      {~}(\thistitle)
+    }
+  }
+}
+
+\cs_new_protected:Nn \_@@_record_problem: {
+  \exp_args:NNe \iow_now:Nn \@auxout {
+    \problem@restore {\thesproblem}{\l_stex_key_pts_tl}{\l_stex_key_min_tl}
+  }
+}
+
+\cs_new_protected:Npn \problem@restore #1 #2 #3 {} 
 %    \end{macrocode}
 % \end{environment}
+%
+% \begin{macro}{\includeproblem}
+%    \begin{macrocode}
+\stex_keys_define:nnnn{ includeproblem }{
+  \str_clear:N \l_stex_key_mhrepos_str
+}{
+  mhrepos .str_set:N    = \l_stex_key_mhrepos_str,
+  unknown .code:n = {}
+}{}
+
+\NewDocumentCommand\includeproblem{O{} m}{
+  \group_begin:
+  \tl_set:Nn \l_problem_inputproblem_keys_tl {#1}
+  \stex_keys_set:nn{includeproblem}{#1}
+  \exp_args:Nno \use:nn{\inputref[}\l_stex_key_mhrepos_str]{#2}
+  \group_end:
+}
+
+%    \end{macrocode}
+% \end{macro}
 %
 % \begin{environment}{solution}
 %    \begin{macrocode}
 \int_new:N \g_problem_id_counter
 
 \cs_new_protected:Nn \_@@_solution_start:n {
+  \str_set:Nn \l_stex_key_title_tl {#1}
   \str_set:Nn \l_stex_key_id_str {#1}
   \str_if_empty:NT \l_stex_key_id_str {
     \int_gincr:N \g_problem_id_counter
@@ -201,11 +261,10 @@
       shtml:solution=\l_stex_key_id_str
     }
   }
-  \par\smallskip\hrule\smallskip
-  \noindent\textbf{Solution:~}
+  \stex_style_apply:
 }
 
-\NewDocumentEnvironment{ solution }{ O{} }{
+\stex_new_stylable_env:nnnnnnn { solution }{ O{} }{
   \stex_if_do_html:TF{
     \_@@_solution_start:n{#1}
   }{
@@ -217,11 +276,11 @@
   }
 }{
   \stex_if_do_html:TF{
-    \par\smallskip\hrule
+    \stex_style_apply:
     \end{stex_annotate_env}
   }{
     \ifsolutions
-      \par\smallskip\hrule
+      \stex_style_apply:
       \stex_if_do_html:T{
         \end{stex_annotate_env}
       }
@@ -229,7 +288,14 @@
       \egroup
     \fi
   }
-}
+}{
+  \par\smallskip\hrule\smallskip
+  \noindent\emph{Solution\str_if_empty:NF \l_stex_key_title_tl{
+    {~}\l_stex_key_title_tl
+  } :~}
+}{
+  \par\smallskip\hrule
+}{}
 
 \stex_deactivate_macro:Nn \solution {sproblem~environments}
 %    \end{macrocode}
@@ -245,6 +311,182 @@
 }
 %    \end{macrocode}
 % \end{macro}
+%
+% \begin{environment}{hint}
+%    \begin{macrocode}
+\cs_new_protected:Nn \_@@_hint_start:n {
+  \str_set:Nn \l_stex_key_title_tl {#1}
+  \str_set:Nn \l_stex_key_id_str {#1}
+  \str_if_empty:NT \l_stex_key_id_str {
+    \int_gincr:N \g_problem_id_counter
+    \str_set:Nx \l_stex_key_id_str {
+      HINT_\int_use:N \g_problem_id_counter
+    }
+  }
+  \stex_if_do_html:T{
+    \begin{stex_annotate_env}{
+      shtml:problemhint=\l_stex_key_id_str
+    }
+  }
+  \stex_style_apply:
+}
+
+\stex_new_stylable_env:nnnnnnn { hint }{ O{} }{
+  \stex_if_do_html:TF{
+    \_@@_hint_start:n{#1}
+  }{
+    \bool_if:NTF \c_@@_hints_bool {
+      \_@@_hint_start:n{#1}
+    }{
+      \setbox\l_tmpa_box\vbox\bgroup
+    }
+  }
+}{
+  \stex_if_do_html:TF{
+    \stex_style_apply:
+    \end{stex_annotate_env}
+  }{
+    \bool_if:NTF \c_@@_hints_bool {
+      \stex_style_apply:
+      \stex_if_do_html:T{
+        \end{stex_annotate_env}
+      }
+    }{
+      \egroup
+    }
+  }
+}{
+  \par\smallskip\hrule\smallskip
+  \noindent\emph{Hint\str_if_empty:NF \l_stex_key_title_tl{
+    {~}\l_stex_key_title_tl
+  } :~}
+}{
+  \par\smallskip\hrule
+}{}
+%    \end{macrocode}
+% \end{environment}
+%
+% \begin{environment}{exnote}
+%    \begin{macrocode}
+\cs_new_protected:Nn \_@@_exnote_start:n {
+  \str_set:Nn \l_stex_key_title_tl {#1}
+  \str_set:Nn \l_stex_key_id_str {#1}
+  \str_if_empty:NT \l_stex_key_id_str {
+    \int_gincr:N \g_problem_id_counter
+    \str_set:Nx \l_stex_key_id_str {
+      EXNOTE_\int_use:N \g_problem_id_counter
+    }
+  }
+  \stex_if_do_html:T{
+    \begin{stex_annotate_env}{
+      shtml:problemnote=\l_stex_key_id_str
+    }
+  }
+  \stex_style_apply:
+}
+
+\stex_new_stylable_env:nnnnnnn { exnote }{ O{} }{
+  \stex_if_do_html:TF{
+    \_@@_exnote_start:n{#1}
+  }{
+    \bool_if:NTF \c_@@_notes_bool {
+      \_@@_exnote_start:n{#1}
+    }{
+      \setbox\l_tmpa_box\vbox\bgroup
+    }
+  }
+}{
+  \stex_if_do_html:TF{
+    \stex_style_apply:
+    \end{stex_annotate_env}
+  }{
+    \bool_if:NTF \c_@@_notes_bool {
+      \stex_style_apply:
+      \stex_if_do_html:T{
+        \end{stex_annotate_env}
+      }
+    }{
+      \egroup
+    }
+  }
+}{
+  \par\smallskip\hrule\smallskip
+  \noindent\emph{Note\str_if_empty:NF \l_stex_key_title_tl{
+    {~}\l_stex_key_title_tl
+  } :~}
+}{
+  \par\smallskip\hrule
+}{}
+%    \end{macrocode}
+% \end{environment}
+%% \begin{environment}{gnote}
+%    \begin{macrocode}
+\cs_new_protected:Nn \_@@_gnote_start:n {
+  \str_set:Nn \l_stex_key_title_tl {#1}
+  \str_set:Nn \l_stex_key_id_str {#1}
+  \str_if_empty:NT \l_stex_key_id_str {
+    \int_gincr:N \g_problem_id_counter
+    \str_set:Nx \l_stex_key_id_str {
+      GNOTE_\int_use:N \g_problem_id_counter
+    }
+  }
+  \stex_if_do_html:T{
+    \begin{stex_annotate_env}{
+      shtml:problemgnote=\l_stex_key_id_str
+    }
+  }
+  \stex_style_apply:
+}
+
+\stex_new_stylable_env:nnnnnnn { gnote }{ O{} }{
+  \stex_if_do_html:TF{
+    \_@@_gnote_start:n{#1}
+  }{
+    \bool_if:NTF \c_@@_gnotes_bool {
+      \_@@_gnote_start:n{#1}
+    }{
+      \setbox\l_tmpa_box\vbox\bgroup
+    }
+  }
+}{
+  \stex_if_do_html:TF{
+    \stex_style_apply:
+    \end{stex_annotate_env}
+  }{
+    \bool_if:NTF \c_@@_gnotes_bool {
+      \stex_style_apply:
+      \stex_if_do_html:T{
+        \end{stex_annotate_env}
+      }
+    }{
+      \egroup
+    }
+  }
+}{
+  \par\smallskip\hrule\smallskip
+  \noindent\emph{Grading\str_if_empty:NF \l_stex_key_title_tl{
+    {~}\l_stex_key_title_tl
+  } :~}
+}{
+  \par\smallskip\hrule
+}{}
+%    \end{macrocode}
+% \end{environment}
+%
+% The margin pars are reader-visible, so we need to translate
+% 
+%    \begin{macrocode}
+\def\pts#1{
+  \bool_if:NT \c_@@_pts_bool {
+    \marginpar{#1~\problem@kw@points}
+  }
+}
+\def\min#1{
+  \bool_if:NT \c_@@_min_bool {
+    \marginpar{#1~\problem@kw@minutes}
+  }
+}
+%    \end{macrocode}
 %
 % \begin{environment}{mcb}
 %
@@ -304,9 +546,9 @@
   \stex_keys_set:nn{mcc}{#1}\par
   \tl_set:Nn \l_tmpb_tl {~--~
     \bool_if:NTF \l_stex_key_T_bool {
-      \tl_if_empty:NTF \l_stex_key_Ttext_tl \problem_kw_correct \l_stex_key_Ttext_tl
+      \tl_if_empty:NTF \l_stex_key_Ttext_tl \problem@kw@correct \l_stex_key_Ttext_tl
     }{
-      \tl_if_empty:NTF \l_stex_key_Ftext_tl \problem_kw_wrong \l_stex_key_Ftext_tl
+      \tl_if_empty:NTF \l_stex_key_Ftext_tl \problem@kw@wrong \l_stex_key_Ftext_tl
     }
     \tl_if_empty:NF \l_stex_key_feedback_tl {
       \\\emph{\l_stex_key_feedback_tl}
@@ -333,408 +575,12 @@
 % \end{environment}
 %
 %
-%
-%
-%
-%
-%
-%
-%
-%
-%
-%
-%
-%
-%
-%
-%
-%
-%
-%
-%
-%
-%
-% 
-% \begin{macro}{\prob@label}
-%   We provide the macro |\prob@label| to redefine later to get context involved. 
 %    \begin{macrocode}
-\iffalse
-\newcommand\prob@label[1]{\thesection.#1} 
-%    \end{macrocode}
-% \end{macro}
-% 
-% \begin{macro}{\prob@number}
-%   We consolidate the problem number into a reusable internal macro
-%    \begin{macrocode}
-\newcommand\prob@number{
-  \int_if_exist:NTF \l_@@_inclprob_refnum_int {
-    \prob@label{\int_use:N \l_@@_inclprob_refnum_int }
-  }{
-    \int_if_exist:NTF \l_@@_prob_refnum_int {
-      \prob@label{\int_use:N \l_@@_prob_refnum_int }
-    }{
-        \prob@label\theplainsproblem
-    }
-  }
-}
-\def\sproblemautorefname{\prob@problem@kw}
-%    \end{macrocode}
-% \end{macro}
-% 
-% \begin{macro}{\prob@title}
-%   We consolidate the problem title into a reusable internal macro as well. |\prob@title|
-%   takes three arguments the first is the fallback when no title is given at all, the
-%   second and third go around the title, if one is given.
-%    \begin{macrocode}
-\newcommand\prob@title[3]{%
-  \tl_if_exist:NTF \l_@@_inclprob_title_tl {
-    #2 \l_@@_inclprob_title_tl #3
-  }{
-    \tl_if_empty:NTF \l_@@_prob_title_tl {
-      #1
-    }{
-      #2 \l_@@_prob_title_tl #3
-    }
-  }
-}
-%    \end{macrocode}
-% \end{macro}
-% 
-% With these the problem header is a one-liner
-%
-% \begin{macro}{\prob@heading}
-%   We consolidate the problem header line into a separate internal macro that can be
-%   reused in various settings. 
-%    \begin{macrocode}
-\def\prob@heading{
-  {\prob@problem@kw}\ \prob@number\prob@title{~}{~(}{)\strut}
-  %\sref@label@id{\prob@problem@kw~\prob@number}{}
-}
-%    \end{macrocode}
-% \end{macro}
-% 
-% With this in place, we can now define the |problem| environment. It comes in two shapes,
-% depending on whether we are in boxed mode or not. In both cases we increment the problem
-% number and output the points and minutes (depending) on whether the respective options
-% are set.
-% 
-% \begin{macro}{\record@problem}
-%   This macro records information about the problems in the |*.aux| file. 
-%    \begin{macrocode}
-\def\record@problem{
-  \protected@write\@auxout{}
-  {
-    \string\@problem{\prob@number}
-    {
-      \tl_if_exist:NTF \l_@@_inclprob_pts_tl {
-        \l_@@_inclprob_pts_tl
-      }{
-        \l_@@_prob_pts_tl
-      }
-    }%
-    {
-      \tl_if_exist:NTF \l_@@_inclprob_min_tl {
-        \l_@@_inclprob_min_tl
-      }{
-        \l_@@_prob_min_tl
-      }
-    }
-  }
-}
-%    \end{macrocode}
-% \end{macro}
-%
-% \begin{macro}{\@problem}
-%   This macro acts on a problem's record in the |*.aux| file. It does not have any
-%   functionality here, but can be redefined elsewhere (e.g. in the |assignment|
-%   package). 
-%    \begin{macrocode}
-\def\@problem#1#2#3{}
-%    \end{macrocode}
-% \end{macro}
-% 
-% The \DescribeEnv{solution}|solution| environment is similar to the |problem|
-% environment, only that it is independent of the boxed mode. It also has it's own keys
-% that we need to define first.
-% 
-%    \begin{macrocode}
-
-%    \end{macrocode}
-%
-% for the |\startsolutions| macro we use the |\specialcomment| macro from the |comment|
-% package. Note that we use the |\@startsolution| macro in the start codes, that parses
-% the optional argument. 
-%
-%
-% \begin{environment}{exnote}
-%    \begin{macrocode}
-\bool_if:NTF \c_notesslides_notes_bool {
-  \newenvironment{exnote}[1][]{
-    \par\smallskip\hrule\smallskip
-    \noindent\textbf{\prob@note@kw :~ }\small
-  }{
-    \smallskip\hrule
-  }
-}{
-  \excludecomment{exnote}
-}
-%    \end{macrocode}
-% \end{environment}
-% 
-% \begin{environment}{hint}
-%    \begin{macrocode}
-\bool_if:NTF \c_notesslides_notes_bool {
-  \newenvironment{hint}[1][]{
-    \par\smallskip\hrule\smallskip
-    \noindent\textbf{\prob@hint@kw :~ }\small
-  }{
-    \smallskip\hrule
-  }
-  \newenvironment{exhint}[1][]{
-    \par\smallskip\hrule\smallskip
-    \noindent\textbf{\prob@hint@kw :~ }\small
-  }{
-    \smallskip\hrule
-  }
-}{
-  \excludecomment{hint}
-  \excludecomment{exhint}
-}
-%    \end{macrocode}
-% \end{environment}
-% 
-% \begin{environment}{gnote}
-%    \begin{macrocode}
-\bool_if:NTF \c_notesslides_notes_bool {
-  \newenvironment{gnote}[1][]{
-    \par\smallskip\hrule\smallskip
-    \noindent\textbf{\prob@gnote@kw :~ }\small
-  }{
-    \smallskip\hrule
-  }
-}{
-  \excludecomment{gnote}
-}
-%    \end{macrocode}
-% \end{environment}
-%
-% \subsection{Markup for Added Value Services}\label{sec:impl:avs}
-% 
-% \subsubsection{Multiple Choice Blocks}\label{sec:impl:mcq}
-%
-
-%
-% \subsubsection{Filling in Concrete Solutions}
-% 
-% \begin{macro}{\includeproblem}
-%   This is embarrasingly simple, but can grow over time. 
-%    \begin{macrocode}
-\newcommand\fillinsol[2][]{%
-  \def\@test{#1}
-  \quad%
-  \ifsolutions\textcolor{red}{\fbox{#2}}\else%
-  \fbox{\ifx\@test\@empty\phantom{\huge{#2}}\else\hspace{#1}\fi}%
-  \fi}
-%    \end{macrocode}
-% \end{macro}
-%
-% \subsection{Including Problems}\label{sec:impl:includeproblem}
-%
-% \begin{macro}{\includeproblem}
-%   The |\includeproblem| command is essentially a glorified |\input| statement, it sets
-%   some internal macros first that overwrite the local points. Importantly, it resets the
-%   |inclprob| keys after the input. 
-%    \begin{macrocode}
-
-\keys_define:nn{ problem / inclproblem }{
-  id      .str_set_x:N  = \l_@@_inclprob_id_str,
-  pts     .tl_set:N     = \l_@@_inclprob_pts_tl,
-  min     .tl_set:N     = \l_@@_inclprob_min_tl,
-  title   .tl_set:N     = \l_@@_inclprob_title_tl,
-  refnum  .int_set:N    = \l_@@_inclprob_refnum_int,
-  type    .tl_set:N     = \l_@@_inclprob_type_tl,
-  mhrepos .str_set_x:N  = \l_@@_inclprob_mhrepos_str
-}
-\cs_new_protected:Nn \_@@_inclprob_args:n {
-  \str_clear:N \l_@@_prob_id_str
-  \tl_clear:N \l_@@_inclprob_pts_tl
-  \tl_clear:N \l_@@_inclprob_min_tl
-  \tl_clear:N \l_@@_inclprob_title_tl
-  \tl_clear:N \l_@@_inclprob_type_tl
-  \int_zero_new:N \l_@@_inclprob_refnum_int
-  \str_clear:N \l_@@_inclprob_mhrepos_str
-  \keys_set:nn { problem / inclproblem }{ #1 }
-  \tl_if_empty:NT \l_@@_inclprob_pts_tl {
-    \let\l_@@_inclprob_pts_tl\undefined
-  }
-  \tl_if_empty:NT \l_@@_inclprob_min_tl {
-    \let\l_@@_inclprob_min_tl\undefined
-  }
-  \tl_if_empty:NT \l_@@_inclprob_title_tl {
-    \let\l_@@_inclprob_title_tl\undefined
-  }
-  \tl_if_empty:NT \l_@@_inclprob_type_tl {
-    \let\l_@@_inclprob_type_tl\undefined
-  }
-  \int_compare:nNnT \l_@@_inclprob_refnum_int = 0 {
-    \let\l_@@_inclprob_refnum_int\undefined
-  }
-}
-
-\cs_new_protected:Nn \_@@_inclprob_clear: {
-  \let\l_@@_inclprob_id_str\undefined
-  \let\l_@@_inclprob_pts_tl\undefined
-  \let\l_@@_inclprob_min_tl\undefined
-  \let\l_@@_inclprob_title_tl\undefined
-  \let\l_@@_inclprob_type_tl\undefined
-  \let\l_@@_inclprob_refnum_int\undefined
-  \let\l_@@_inclprob_mhrepos_str\undefined
-}
-\_@@_inclprob_clear:
-
-\newcommand\includeproblem[2][]{
-  \_@@_inclprob_args:n{ #1 }
-  \exp_args:No \stex_in_repository:nn\l_@@_inclprob_mhrepos_str{
-    \stex_html_backend:TF {
-      \str_clear:N \l_tmpa_str
-      \prop_get:NnNF \l_stex_current_repository_prop { narr } \l_tmpa_str {
-        \prop_get:NnNF \l_stex_current_repository_prop { ns } \l_tmpa_str {}
-      }
-      \stex_annotate_invisible:nnn{includeproblem}{
-        \l_tmpa_str / #2
-      }{}
-    }{
-      \begingroup
-        \inputreftrue
-        \tl_if_empty:nTF{ ##1 }{
-          \input{#2}
-        }{
-          \input{ \c_stex_mathhub_str / ##1 / source / #2 }
-        }
-      \endgroup
-    }
-  }
-  \_@@_inclprob_clear:
-}
-%    \end{macrocode}
-% \end{macro}
-%
-% \subsection{Reporting Metadata}
-%
-% For messages it is OK to have them in English as the whole documentation is, and we can
-% therefore assume authors can deal with it. 
-%
-%    \begin{macrocode}
-\AddToHook{enddocument}{
-  \bool_if:NT \c_@@_pts_bool {
-    \message{Total:~\arabic{pts}~points}
-  }
-  \bool_if:NT \c_@@_min_bool {
-    \message{Total:~\arabic{min}~minutes}
-  }
-}
-%    \end{macrocode}
-%
-% The margin pars are reader-visible, so we need to translate
-% 
-%    \begin{macrocode}
-\def\pts#1{
-  \bool_if:NT \c_@@_pts_bool {
-    \marginpar{#1~\prob@pt@kw}
-  }
-}
-\def\min#1{
-  \bool_if:NT \c_@@_min_bool {
-    \marginpar{#1~\prob@min@kw}
-  }
-}
-%    \end{macrocode}
-%
-% \begin{macro}{\show@pts}
-%   The |\show@pts| shows the points: if no points are given from the outside and also no
-%   points are given locally do nothing, else show and add. If there are outside points
-%   then we show them in the margin.
-%    \begin{macrocode}
-\newcounter{pts}
-\def\show@pts{
-  \tl_if_exist:NTF \l_@@_inclprob_pts_tl {
-    \bool_if:NT \c_@@_pts_bool {
-      \marginpar{\l_@@_inclprob_pts_tl\ \prob@pt@kw\smallskip}
-      \addtocounter{pts}{\l_@@_inclprob_pts_tl}
-    }
-  }{
-    \tl_if_exist:NT \l_@@_prob_pts_tl {
-      \bool_if:NT \c_@@_pts_bool {
-        \tl_if_empty:NT\l_@@_prob_pts_tl{
-          \tl_set:Nn \l_@@_prob_pts_tl {0}
-        }
-        \marginpar{\l_@@_prob_pts_tl\ \prob@pt@kw\smallskip}
-        \addtocounter{pts}{\l_@@_prob_pts_tl}
-      }
-    }
-  }
-}
-%    \end{macrocode}
-% \end{macro}
-% and now the same for the minutes
-% \begin{macro}{\show@min}
-%    \begin{macrocode}
-\newcounter{min}
-\def\show@min{
-  \tl_if_exist:NTF \l_@@_inclprob_min_tl {
-    \bool_if:NT \c_@@_min_bool {
-      \marginpar{\l_@@_inclprob_pts_tl\ min}
-      \addtocounter{min}{\l_@@_inclprob_min_tl}
-    }
-  }{
-    \tl_if_exist:NT \l_@@_prob_min_tl {
-      \bool_if:NT \c_@@_min_bool {
-        \tl_if_empty:NT\l_@@_prob_min_tl{
-          \tl_set:Nn \l_@@_prob_min_tl {0}
-        }
-        \marginpar{\l_@@_prob_min_tl\ min}
-        \addtocounter{min}{\l_@@_prob_min_tl}
-      }
-    }
-  }
-}
 %</package>
 %    \end{macrocode}
-% \end{macro}
-%
-% \subsection{Testing and Spacing}
-%
-% \begin{macro}{\testspace}
-%    \begin{macrocode}
-\newcommand\testspace[1]{\bool_if:NT \c_@@_boxed_bool {\vspace*{#1}}}
-%    \end{macrocode}
-% \end{macro}
 % 
-% \begin{macro}{\testnewpage}
-%    \begin{macrocode}
-\newcommand\testnewpage{\bool_if:NT \c_@@_boxed_bool  {\newpage}}
-%    \end{macrocode}
-% \end{macro}
-% 
-% \begin{macro}{\testemptypage}
-%    \begin{macrocode}
-\newcommand\testemptypage[1][]{%
-  \bool_if:NT \c_@@_boxed_bool {\ \vfill\begin{center}\hwexam@testemptypage@kw\end{center}\eject}
-}
-%    \end{macrocode}
-% \end{macro}
-% 
-% \begin{macro}{\test*space}
-%    \begin{macrocode}
-\newcommand\testsmallspace{\testspace{1cm}}
-\newcommand\testmedspace{\testspace{2cm}}
-\newcommand\testbigspace{\testspace{3cm}}
-%    \end{macrocode}
-% \end{macro}
-%
 % \end{implementation}
 % ^^A \ifinfulldoc\else\printbibliography\fi
-\fi
 \endinput
 %%% Local Variables: 
 %%% mode: doctex

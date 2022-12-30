@@ -1,0 +1,179 @@
+%%
+%% This is file `hwexam.sty',
+%% generated with the docstrip utility.
+%%
+%% The original source files were:
+%%
+%% hwexam.dtx  (with options: `package')
+%% 
+\ProvidesExplPackage{hwexam}{2022/09/14}{3.2.0}{homework assignments and exams}
+\RequirePackage{l3keys2e}
+
+\keys_define:nn {hwexam / pkg}{
+multiple  .default:n  = { false },
+multiple .bool_set:N  = \c_hwexam_multiple_bool,
+unknown   .code:n  = {
+\PassOptionsToPackage{\CurrentOption}{problem}
+}
+}
+\ProcessKeysOptions{ hwexam /pkg }
+\RequirePackage{problem}
+\AddToHook{begindocument}{
+\ExplSyntaxOn\makeatletter
+\input{hwexam-english.ldf}
+\ltx@ifpackageloaded{babel}{
+\clist_set:Nx \l_tmpa_clist {\bbl@loaded}
+\exp_args:NNx \clist_if_in:NnT \l_tmpa_clist {\detokenize{ngerman}}{
+\input{hwexam-ngerman.ldf}
+}
+\exp_args:NNx \clist_if_in:NnT \l_tmpa_clist {\detokenize{finnish}}{
+\input{hwexam-finnish.ldf}
+}
+\exp_args:NNx \clist_if_in:NnT \l_tmpa_clist {\detokenize{french}}{
+\input{hwexam-french.ldf}
+}
+\exp_args:NNx \clist_if_in:NnT \l_tmpa_clist {\detokenize{russian}}{
+\input{hwexam-russian.ldf}
+}
+}{}
+\makeatother\ExplSyntaxOff
+}
+\stex_keys_define:nnnn{ assignment }{
+  \tl_clear:N \l_stex_key_number_tl
+\tl_clear:N \l_stex_key_given_tl
+\tl_clear:N \l_stex_key_due_tl
+}{
+  number  .tl_set:N     = \l_stex_key_number_tl,
+  given   .tl_set:N     = \l_stex_key_given_tl,
+  due     .tl_set:N     = \l_stex_key_due_tl,
+unknown .code:n = {}
+}{id,title,style}
+
+\newcounter{assignment}
+\stex_new_stylable_env:nnnnnnn {assignment}{O{}}{
+  \cs_if_exist:NTF \l_hwexam_includeassignment_keys_tl {
+    \tl_put_left:Nn \l_hwexam_includeassignment_keys_tl {#1,}
+    \exp_args:Nno \stex_keys_set:nn{assignment}{
+      \l_hwexam_includeassignment_keys_tl
+    }
+  }{
+    \stex_keys_set:nn{assignment}{#1}
+  }
+\tl_if_empty:NF \l_stex_key_number_tl {
+\global\setcounter{assignment}{\int_eval:n{\l_stex_key_number_tl-1}}
+}
+\global\refstepcounter{assignment}
+\setcounter{sproblem}{0}
+\def\thesproblem{\theassignment.\arabic{sproblem}}
+\stex_style_apply:
+}{
+\stex_style_apply:
+}{
+\par\begin{center}
+\textbf{\Large\hwexam@kw@assignment~\theassignment
+\tl_if_empty:NF \l_stex_key_title_tl {
+{~}--~\l_stex_key_title_tl
+}
+}\par\smallskip
+\textbf{
+\tl_if_empty:NF \l_stex_key_given_tl {
+\hwexam@kw@given:~\l_stex_key_given_tl\quad
+}
+\tl_if_empty:NF \l_stex_key_due_tl {
+\hwexam@kw@due:~\l_stex_key_due_tl\quad
+}
+}
+\end{center}
+\par\bigskip
+}{
+\par\pagebreak
+}{}
+\NewDocumentCommand\includeassignment{O{} m}{
+\group_begin:
+\tl_set:Nn \l_hwexam_includeassignment_keys_tl {#1}
+\stex_keys_set:nn{includeproblem}{#1}
+\exp_args:Nno \use:nn{\inputref[}\l_stex_key_mhrepos_str]{#2}
+\group_end:
+}
+\prop_new:N \c__problems_problems_prop
+\tl_set:Nn \c__problems_total_mins_tl {0}
+\tl_set:Nn \c__problems_total_pts_tl {0}
+\int_new:N \c__problems_total_problems_int
+\cs_set_protected:Npn \problem@restore #1 #2 #3 {
+\int_gincr:N \c__problems_total_problems_int
+\prop_gput:Nnn \c__problems_problems_prop {#1}{{#2}{#3}}
+\tl_gset:Nx \c__problems_total_pts_tl { \int_eval:n { \c__problems_total_pts_tl + #2 }}
+\tl_gset:Nx \c__problems_total_mins_tl { \int_eval:n { \c__problems_total_mins_tl + #2 }}
+}
+\newcommand\correction@table{
+\int_compare:nNnT \c__problems_total_problems_int = 0 {
+\int_incr:N \c__problems_total_problems_int
+\prop_put:Nnn \c__problems_problems_prop {~}{{~}{~}}
+}
+\tl_clear:N \l_tmpa_tl
+\tl_clear:N \l_tmpb_tl
+\tl_clear:N \l_tmpc_tl
+\prop_map_inline:Nn \c__problems_problems_prop {
+\tl_put_right:Nn \l_tmpa_tl { ##1 & }
+\tl_put_right:Nx \l_tmpb_tl { \use_i:nn ##2 & }
+\tl_put_right:Nn \l_tmpc_tl { & }
+}
+\resizebox{\textwidth}{!}{%
+\exp_args:Nne \begin{tabular}{|l|*{\int_use:N \c__problems_total_problems_int}{c|}c||l|}\hline
+&\exp_args:Ne \multicolumn{\int_eval:n{ \c__problems_total_problems_int + 1}}{c||}
+{\footnotesize\hwexam@kw@forgrading} &\\\hline
+\hwexam@kw@probs & \l_tmpa_tl \hwexam@kw@sum & \hwexam@kw@grade\\\hline
+\hwexam@kw@pts & \l_tmpb_tl \c__problems_total_pts_tl & \\\hline
+\hwexam@kw@reached & \l_tmpc_tl & \\[.7cm]\hline
+\end{tabular}}}
+\def\hwexamheader{\input{hwexam-default.header}}
+
+\def\hwexamminutes{
+\tl_if_empty:NTF \hwexam@duration {
+{\hwexam@min}~\hwexam@minutes@kw
+}{
+\hwexam@duration
+}
+}
+
+\stex_keys_define:nnnn{ hwexam / testheading }{
+\tl_clear:N \hwexam@min
+\tl_clear:N \hwexam@duration
+\tl_clear:N \hwexam@reqpts
+\tl_clear:N \hwexam@tools
+}{
+min  .tl_set:N  = \hwexam@min,
+duration .tl_set:N  = \hwexam@duration,
+reqpts .tl_set:N  = \hwexam@reqpts,
+tools .tl_set:N  = \hwexam@tools
+}{}
+
+\newenvironment{testheading}[1][]{
+\stex_keys_set:nn { hwexam / testheading}{#1}
+
+\tl_set_eq:NN \hwexam@totalpts \c__problems_total_pts_tl
+\tl_set_eq:NN \hwexam@totalmin \c__problems_total_mins_tl
+\tl_set:Nx \hwexam@checktime {\int_eval:n { \hwexam@min - \hwexam@totalmin }}
+
+\newif\if@bonuspoints
+\tl_if_empty:NTF \hwexam@reqpts {
+\@bonuspointsfalse
+}{
+\tl_set:Nx \hwexam@bonuspts {
+\int_eval:n{\hwexam@totalpts - \hwexam@reqpts}
+}
+\@bonuspointstrue
+}
+
+\makeatletter\hwexamheader\makeatother
+}{
+\newpage
+}
+\newcommand\testemptypage[1][]{%
+\bool_if:NT \c__problems_test_bool {\ \vfill\begin{center}\hwexam@kw@testemptypage\end{center}\eject}
+}
+\newcommand\testspace[1]{\bool_if:NT \c__problems_test_bool {\vspace*{#1}}}
+\newcommand\testnewpage{\bool_if:NT \c__problems_test_bool {\newpage}}
+\endinput
+%%
+%% End of file `hwexam.sty'.
