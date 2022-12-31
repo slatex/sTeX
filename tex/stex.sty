@@ -3926,7 +3926,63 @@
 \cs_new_protected:Npn \argmap #1 #2 #3 {
   \stex_debug:nn{HERE~argmap}{\tl_to_str:n{#1}^^J\tl_to_str:n{#2}^^J\tl_to_str:n{#3}}
   \__stex_notations_check_aB_arg:n{#1}
-  \TODO
+  \stex_pseudogroup_with:nn{
+    \_stex_term_do_aB_clist:
+    \__stex_notations_map_cs:
+  }{
+    \cs_set:Npn \__stex_notations_map_cs: ##1 { #2 }
+    \stex_debug:nn{HERE}{\meaning\__stex_notations_map_cs:}
+    \tl_set:Nn \_stex_term_do_aB_clist: {
+      \seq_clear:N \l_tmpa_seq
+      \seq_map_inline:Nn \l_stex_aB_args_seq {
+        \seq_put_right:Nx \l_tmpa_seq {
+          \tl_if_eq:nnTF {##1}{\ellipses}{
+            \exp_not:N\ellipses
+          }{
+            \exp_after:wN \exp_not:n \exp_after:wN { \__stex_notations_map_cs: {##1} }
+          }
+        }
+      }
+      \seq_set_eq:NN \l_stex_aB_args_seq \l_tmpa_seq
+      \stex_debug:nn{HERE~2}{\meaning\l_stex_aB_args_seq}
+      \seq_use:Nn \l_stex_aB_args_seq {#3}
+    }
+    #1
+  }
+}
+\cs_new_protected:Npn \argarraymap #1 #2 #3 {
+  \stex_debug:nn{HERE~arraymap}{\tl_to_str:n{#1}^^J\tl_to_str:n{#2}^^J\tl_to_str:n{#3}}
+  \__stex_notations_check_aB_arg:n{#1}
+  \stex_pseudogroup_with:nn{
+    \_stex_term_do_aB_clist:
+    \__stex_notations_map_cs:
+  }{
+    \cs_set:Npn \__stex_notations_map_cs: ##1 { #3 }
+    \stex_debug:nn{HERE}{\meaning\__stex_notations_map_cs:}
+    \tl_set:Nn \_stex_term_do_aB_clist: {
+      \tl_clear:N \l_tmpa_tl
+      \int_set:Nn \l_tmpa_int {\str_count:n{#2}}
+      \int_zero:N \l_tmpb_int
+      \seq_map_inline:Nn \l_stex_aB_args_seq {
+        \int_incr:N \l_tmpb_int
+        \tl_put_right:Nx \l_tmpa_tl {
+          \exp_after:wN \exp_not:n \exp_after:wN { \__stex_notations_map_cs: {##1} }
+        }
+        \int_compare:nNnTF \l_tmpa_int = \l_tmpb_int {
+          \int_zero:N \l_tmpb_int
+          \tl_put_right:Nn \l_tmpa_tl { \\ }
+        }{
+          \tl_put_right:Nn \l_tmpa_tl { & }
+        }
+      }
+      \seq_set_eq:NN \l_stex_aB_args_seq \l_tmpa_seq
+      \stex_debug:nn{HERE~2}{\meaning\l_stex_aB_args_seq}
+      \begin{array}{#2}
+          \l_tmpa_tl
+      \end{array}
+    }
+    #1
+  }
 }
 \cs_new_protected:Npn \argmapidx #1 #2 #3 {
   \stex_debug:nn{HERE~argmapidx}{\tl_to_str:n{#1}^^J\tl_to_str:n{#2}^^J\tl_to_str:n{#3}}
@@ -4645,11 +4701,12 @@
     \_stex_annotate_force_break:n{ #3 }
   }
 }
-\tl_set:Nn \_stex_term_do_aB_clist: {
+\tl_set:Nn \__stex_expr_do_aB_clist: {
   \seq_use:Nn \l_stex_aB_args_seq {
     \mathpunct{\comp{,}}
   }
 }
+\tl_set_eq:NN \_stex_term_do_aB_clist: \__stex_expr_do_aB_clist:
 
 \int_new:N \l__stex_expr_count_int
 \cs_new_protected:Nn \_stex_term_arg_aB:nnnnn {
@@ -4687,7 +4744,12 @@
 
 \cs_new_protected:Nn \__stex_expr_aB_simple_arg:nnnnn{
   \seq_put_right:Nx \l_stex_aB_args_seq {
-    \_stex_term_arg:nnnnn{#2\int_use:N\l__stex_expr_count_int}{#3}{#4}{#5}{\exp_not:n{#1}}
+    \_stex_term_arg:nnnnn{#2\int_use:N\l__stex_expr_count_int}{#3}{#4}{#5}{
+      \exp_not:n{
+        \tl_set_eq:NN \_stex_term_do_aB_clist: \__stex_expr_do_aB_clist:
+        #1
+      }
+    }
   }
 }
 
@@ -4755,8 +4817,11 @@
     }{
       \seq_put_right:Nx \l_stex_aB_args_seq {
         \group_begin:
-          \def\exp_not:N\comp{\_varcomp}
-          \str_set:Nn \exp_not:N \l_stex_current_symbol_str{#1}
+        \exp_not:n {
+          \tl_set_eq:NN \_stex_term_do_aB_clist: \__stex_expr_do_aB_clist:
+          \def\comp{\_varcomp}
+          \str_set:Nn \l_stex_current_symbol_str{#1}
+        }
           \exp_after:wN \exp_not:n \exp_after:wN {
             \l__stex_expr_cs \group_end: ##1
           }
@@ -6380,6 +6445,7 @@
 \cs_new_protected:Npn \MSC #1 {}
 
 \bool_new:N \l_stex_inparray_bool\bool_set_false:N \l_stex_inparray_bool
+\iffalse
 \NewDocumentCommand \parray { m m } {
   %\group_begin:
   \bool_set_true:N \l_stex_inparray_bool
@@ -6415,6 +6481,7 @@
 \def \parraycell #1 {
   #1 %\bool_if:NT \l_stex_inparray_bool {&}
 }
+\fi
 \stex_new_stylable_cmd:nnnn{MMTinclude}{m}{
   \stex_annotate_invisible:nn{shtml:import={#1}}{}
 }{}
