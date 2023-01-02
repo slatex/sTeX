@@ -13,7 +13,7 @@
   notes           .bool_set:N   = \c_notesslides_notes_bool ,
   slides          .code:n       = { \bool_set_false:N \c_notesslides_notes_bool },
   sectocframes    .bool_set:N   = \c_notesslides_sectocframes_bool ,
-  topsect         .str_set:Nx   = \c_notesslides_topsect_str,
+  topsect         .str_set_x:N  = \c_notesslides_topsect_str,
   unknown         .code:n       = {
     \PassOptionsToPackage{\CurrentOption}{stex}
     \PassOptionsToPackage{\CurrentOption}{tikzinput}
@@ -33,6 +33,28 @@
   \RequirePackage{mdframed}
 }{
   \notesfalse
+
+  \cs_new_protected:Nn \__notesslides_do_sectocframes: {
+    \cs_set_protected:Nn \_sfragment_do_level:nn {
+      \stepcounter{##1}
+      \addcontentsline{toc}{##1}{\protect\numberline{\use:c{the##1}}##2}
+      \pdfbookmark[\int_use:N \l_stex_docheader_sect]{
+        \use:c{the##1}\ ##2
+      }{
+        ##1.\use:c{the##1}
+      }
+      \tl_set:cx{@ @ label}{\use:c{##1titlename}~\use:c{the##1}}
+      \begin{frame}[noframenumbering]
+        \vfill\Large\centering
+        \notesslidestitleemph{
+          \use:c{@ @ label}\quad ##2
+        }
+      \end{frame}
+      \int_incr:N \l_stex_docheader_sect
+      \tl_set:Nn \currentsectionlevel{##1}
+    }
+  }
+
   \AtBeginDocument{
     \str_if_empty:NF \c_notesslides_topsect_str {
       \exp_args:No \setsectionlevel \c_notesslides_topsect_str
@@ -46,6 +68,7 @@
       }
     }
   }
+
   \bool_if:NT \c_notesslides_sectocframes_bool {
     \__notesslides_do_sectocframes:
   }
@@ -62,28 +85,6 @@
   \cs_if_exist:NF \part {
     \newcounter{part}
     \cs_set_protected:Nn \part {INVALID}
-  }
-}
-
-\cs_new_protected:Nn \__notesslides_do_sectocframes: {
-  \cs_set_eq:NN \__notesslides_old_sfragment:nn \_sfragment_do_level:nn
-  \cs_set_protected:Nn \_sfragment_do_level:nn {
-    \stepcounter{#1}
-    \addcontentsline{toc}{#1}{\protect\numberline{\use:c{the#1}}#2}
-    \pdfbookmark[\int_use:N \l_stex_docheader_sect]{
-      \use:c{the#1}\ #2
-    }{
-      #1.\use:c{the#1}
-    }
-    \tl_set:cx{@ @ label}{\use:c{#1titlename}~\use:c{the#1}}
-    \begin{frame}[noframenumbering]
-      \vfill\Large\centering
-      \notesslidestitleemph{
-        \use:c{@ @ label}\quad #2
-      }
-    \end{frame}
-    \int_incr:N \l_stex_docheader_sect
-    \tl_set:Nn \currentsectionlevel{#1}
   }
 }
 \def \c__notesslides_document_str{document}
