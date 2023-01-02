@@ -33,7 +33,7 @@
 \newif\ifnotes
 \bool_if:NTF \c_notesslides_notes_bool {
   \notestrue
-  \RequirePackage[noamsthm]{beamerarticle}
+  \RequirePackage[noamsthm,hyperref]{beamerarticle}
   \RequirePackage{mdframed}
 }{
   \notesfalse
@@ -41,24 +41,40 @@
   \cs_new_protected:Nn \__notesslides_do_sectocframes: {
     \cs_set_protected:Nn \__notesslides_do_label:n {
       \str_case:nnF{##1}{
-        {part}    {\tl_set:cx{@ @ label}{\parttitlename~\thepart}}
-        {chapter} {\tl_set:cx{@ @ label}{\chaptertitlename~\thechapter}}
-        {section} {\tl_set:cx{@ @ label}{\sectiontitlename~\thechapter.\thesection}}
-        {subsection} {\tl_set:cx{@ @ label}{\subsectiontitlename~\thechapter.\thesection.\thesubsection}}
-        {subsubsection} {\tl_set:cx{@ @ label}{\subsubsectiontitlename~\thechapter.\thesection.\thesubsection.\thesubsubsection}}
+        {part}    {
+          \tl_set:Nx\l__notesslides_num{\thepart}
+          \tl_set:cx{@ @ label}{\parttitlename~\l__notesslides_num}
+        }
+        {chapter} {
+          \tl_set:Nx\l__notesslides_num{\thechapter}
+          \tl_set:cx{@ @ label}{\chaptertitlename~\l__notesslides_num}
+        }
+        {section} {
+          \tl_set:Nx\l__notesslides_num{\cs_if_exist:NT\thechapter{\thechapter.}\thesection}
+          \tl_set:cx{@ @ label}{\sectiontitlename~\l__notesslides_num}
+        }
+        {subsection} {
+          \tl_set:Nx\l__notesslides_num{\cs_if_exist:NT\thechapter{\thechapter.}\thesection.\thesubsection}
+          \tl_set:cx{@ @ label}{\subsectiontitlename~\l__notesslides_num}
+        }
+        {subsubsection} {
+          \tl_set:Nx\l__notesslides_num{\cs_if_exist:NT\thechapter{\thechapter.}\thesection.\thesubsection.\thesubsubsection}
+          \tl_set:cx{@ @ label}{\subsubsectiontitlename~\l__notesslides_num}
+        }
+        {paragraph} {
+          \tl_set:Nx\l__notesslides_num{\cs_if_exist:NT\thechapter{\thechapter.}\thesection.\thesubsection.\thesubsubsection.\theparagraph}
+          \tl_set:cx{@ @ label}{\paragraphtitlename~\l__notesslides_num}
+        }
       }{
-        \tl_set:cx{@ @ label}{\paragraphtitlename~\thechapter.\thesection.\thesubsection.\thesubsubsection.\theparagraph}
+        \tl_set:Nx\l__notesslides_num{\cs_if_exist:NT\thechapter{\thechapter.}\thesection.\thesubsection.\thesubsubsection.\theparagraph.\thesubparagraph}
+        \tl_set:cx{@ @ label}{\subparagraphtitlename~\l__notesslides_num}
       }
     }
     \cs_set_protected:Nn \_sfragment_do_level:nn {
       \stepcounter{##1}
       \addcontentsline{toc}{##1}{\protect\numberline{\use:c{the##1}}##2}
-      \pdfbookmark[\int_use:N \l_stex_docheader_sect]{
-        \use:c{the##1}\ ##2
-      }{
-        ##1.\use:c{the##1}
-      }
       \__notesslides_do_label:n{##1}
+      \pdfbookmark[\int_use:N \l_stex_docheader_sect]{\l__notesslides_num\ ##2}{##1.\l__notesslides_num}
       \begin{frame}[noframenumbering]
         \vfill\centering
         \sectiontitleemph{
