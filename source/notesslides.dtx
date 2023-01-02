@@ -98,7 +98,8 @@
 \keys_define:nn{notesslides / pkg}{
   notes           .bool_set:N   = \c_notesslides_notes_bool ,
   slides          .code:n       = { \bool_set_false:N \c_notesslides_notes_bool },
-  sectocframes    .bool_set:N   = \c_@@_sectocframes_bool ,
+  sectocframes    .bool_set:N   = \c_notesslides_sectocframes_bool ,
+  topsect         .str_set:Nx   = \c_notesslides_topsect_str,
   unknown         .code:n       = {
     \PassOptionsToPackage{\CurrentOption}{stex}
     \PassOptionsToPackage{\CurrentOption}{tikzinput}
@@ -118,6 +119,58 @@
   \RequirePackage{mdframed}
 }{
   \notesfalse
+  \AtBeginDocument{
+    \str_if_empty:NF \c_notesslides_topsect_str {
+      \exp_args:No \setsectionlevel \c_notesslides_topsect_str
+      \str_if_eq:NnTF \c_notesslides_topsect_str {chapter} {
+        \_@@_define_chapter:
+      }{
+        \str_if_eq:NnT \c_notesslides_topsect_str {part} {
+          \_@@_define_chapter:
+          \_@@_define_part:
+        }
+      }
+    }
+  }
+  \bool_if:NT \c_notesslides_sectocframes_bool {
+    \_@@_do_sectocframes:
+  }
+}
+
+\cs_new_protected:Nn \_@@_define_chapter: {
+  \cs_if_exist:NF \chapter {
+    \newcounter{chapter}\counterwithin*{section}{chapter}
+    \cs_set_protected:Nn \chapter {INVALID}
+  }
+}
+
+\cs_new_protected:Nn \_@@_define_part: {
+  \cs_if_exist:NF \part {
+    \newcounter{part}
+    \cs_set_protected:Nn \part {INVALID}
+  }
+}
+
+\cs_new_protected:Nn \_@@_do_sectocframes: {
+  \cs_set_eq:NN \_@@_old_sfragment:nn \_sfragment_do_level:nn
+  \cs_set_protected:Nn \_sfragment_do_level:nn {
+    \stepcounter{#1}
+    \addcontentsline{toc}{#1}{\protect\numberline{\use:c{the#1}}#2}
+    \pdfbookmark[\int_use:N \l_stex_docheader_sect]{
+      \use:c{the#1}\ #2
+    }{
+      #1.\use:c{the#1}
+    }
+    \tl_set:cx{@ @ label}{\use:c{#1titlename}~\use:c{the#1}}
+    \begin{frame}[noframenumbering]
+      \vfill\Large\centering
+      \notesslidestitleemph{
+        \use:c{@ @ label}\quad #2
+      }
+    \end{frame}
+    \int_incr:N \l_stex_docheader_sect
+    \tl_set:Nn \currentsectionlevel{#1}
+  }
 }
 %    \end{macrocode}
 %
