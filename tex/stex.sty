@@ -4246,7 +4246,7 @@
     {\int_use:N \l_stex_get_symbol_arity_int}
     {\l_stex_get_symbol_args_tl}
     {\exp_args:No \exp_not:n \l_stex_key_def_tl}
-    {\int_use:N \l_stex_get_symbol_arity_int {\exp_args:No \exp_not:n \l__stex_seqs_range_clist}}
+    {\exp_args:No \exp_not:n \l__stex_seqs_range_clist}
     {\exp_args:No \exp_not:n \l_stex_key_return_tl}
     \stex_invoke_sequence:
   }
@@ -4259,7 +4259,7 @@
       {\int_use:N \l_stex_get_symbol_arity_int}
       {\l_stex_get_symbol_args_tl}
       {\exp_args:No \exp_not:n \l_stex_key_def_tl}
-      {\int_use:N \l_stex_get_symbol_arity_int {\exp_args:No \exp_not:n \l__stex_seqs_range_clist}}
+      {\exp_args:No \exp_not:n \l__stex_seqs_range_clist}
       {\exp_args:No \exp_not:n \l_stex_key_return_tl}
       \stex_invoke_sequence:
   }
@@ -4313,16 +4313,9 @@
     \egroup}
 }
 \cs_new_protected:Nn \stex_invoke_sequence: {
-  \exp_after:wN \__stex_seqs_setup_r:nn \l_stex_current_type_tl
   \peek_charcode_remove:NTF ! {
     \peek_charcode:NTF [ \__stex_seqs_do_op:w { \__stex_seqs_do_op:w [] }
   }\__stex_seqs_do_first:
-}
-
-\int_new:N \l__stex_seqs_seq_arity_int
-\cs_new_protected:Nn \__stex_seqs_setup_r:nn{
-  \int_set:Nn \l__stex_seqs_seq_arity_int {#1}
-  \clist_set:Nn \l__stex_seqs_range_clist {#2}
 }
 
 \cs_new_protected:Npn \__stex_seqs_do_op:w [#1] {
@@ -4333,7 +4326,7 @@
 \cs_new_protected:Npn \__stex_seqs_doop_range:w [#1] {
   \bool_set_true:N \l_stex_allow_semantic_bool
   \clist_clear:N \l__stex_seqs_clist
-  \clist_map_function:NN \l__stex_seqs_range_clist \__stex_seqs_doop_arg:n
+  \clist_map_function:NN \l_stex_current_type_tl \__stex_seqs_doop_arg:n
     \stex_annotate:nn{
       shtml:term=OMV,
       shtml:head={\l_stex_current_symbol_str},
@@ -4371,9 +4364,9 @@
 \cs_new_protected:Nn \__stex_seqs_do_first: {
   \exp_args:Nnx \use:nn{
   \cs_generate_from_arg_count:NNnn \l__stex_seqs_cs \cs_set:Npn
-  \l__stex_seqs_seq_arity_int} {{
+  \l_stex_current_arity_str} {{
     \tl_set:Nn \exp_not:N \l__stex_seqs_first_args_tl {
-      \int_step_function:nN \l__stex_seqs_seq_arity_int \__stex_seqs_do_first_arg:n
+      \int_step_function:nN \l_stex_current_arity_str \__stex_seqs_do_first_arg:n
     }
     \exp_not:N \__stex_seqs_do_first_next:
   }}
@@ -4762,7 +4755,7 @@
 }
 
 \cs_new:Npn \__stex_expr_gobble:nnnnnnnn #1 #2 #3 #4 #5 #6 #7 #8 #9 \__stex_expr_end: {
-  {#2} #6
+  {#2} #3 {#6}
 }
 
 \cs_new_protected:Nn \__stex_expr_aB_simple_arg:nnnnn{
@@ -4799,7 +4792,7 @@
 \cs_new_protected:Nn \__stex_expr_assoc_seq:nnnnnnn {
   \group_begin:
     \seq_clear:N \l_stex_aB_args_seq
-    \__stex_expr_assoc_make_seq:nn{#1}{#3}
+    \__stex_expr_assoc_make_seq:nnn{#1}{#3}{#2}
   \exp_args:NNe \use:nn \group_end: {
     \seq_put_right:Nn \exp_not:N \l_stex_aB_args_seq {
       \_stex_is_sequentialized:n{
@@ -4827,7 +4820,7 @@
   }
 }
 
-\cs_new_protected:Nn \__stex_expr_assoc_make_seq:nn {
+\cs_new_protected:Nn \__stex_expr_assoc_make_seq:nnn {
   \cs_if_exist:cTF{l_stex_notation_#1__cs}{
     \cs_set_eq:Nc \l__stex_expr_cs {l_stex_notation_#1__cs}
   }{
@@ -4838,6 +4831,11 @@
     \tl_if_eq:nnTF{##1}{\ellipses}{
       \seq_put_right:Nn \l_stex_aB_args_seq { ##1 }
     }{
+      \int_compare:nNnTF {#3} = 1 {
+        \tl_set:Nn \l__stex_expr_iarg_tl { {##1} }
+      }{
+        \tl_set:Nn \l__stex_expr_iarg_tl { ##1 }
+      }
       \seq_put_right:Nx \l_stex_aB_args_seq {
         \group_begin:
         \exp_not:n {
@@ -4845,9 +4843,10 @@
           \def\comp{\_varcomp}
           \str_set:Nn \l_stex_current_symbol_str{#1}
         }
-          \exp_after:wN \exp_not:n \exp_after:wN {
-            \l__stex_expr_cs \group_end: ##1
-          }
+        \exp_after:wN \exp_after:wN \exp_after:wN \exp_not:n
+        \exp_after:wN \exp_after:wN \exp_after:wN {
+          \exp_after:wN \l__stex_expr_cs \exp_after:wN \group_end: \l__stex_expr_iarg_tl
+        }
       }
     }
   }
@@ -4899,7 +4898,7 @@
 }
 
 \cs_new_protected:Nn \__stex_expr_varseq_in_map:nnnnnnnn {
-  \exp_args:Nno \use:n {\__stex_expr_assoc_make_seq:nn {#2}} {\use_ii:nn #6}
+  \__stex_expr_assoc_make_seq:nnn{#2}{#6}{#3}
 }
 \stex_if_html_backend:TF {
   % 1: variant 2: intent 3: code
@@ -5592,6 +5591,10 @@
     \l__stex_structures_this_tl
     \group_end:
   }
+}
+
+\cs_new_protected:Npn \_customthiscomp #1 #2 {
+  \l__stex_structures_thiscomp_cs{#1{#2}}
 }
 
 \cs_new_protected:Npn \__stex_structures_set_thiscomp: {
@@ -6330,8 +6333,10 @@
   \notation{bind}[forall]{\comp\forall #1.\;#2}
   \notation{bind}[Pi]{\mathop{\comp\prod}\c_math_subscript_token{#1}#2}
 
-  \symdecl*{integer literal}
-  \notation{integer literal}{\mathbb Z}
+  \symdef{implicit~bind}[args=Bi,assoc=pre]{\underbrace{#2}\c_math_subscript_token{#1}}
+
+  \symdecl*{integer~literal}
+  \notation{integer~literal}{\mathbb Z}
 
   % propositions
   \symdef{prop}[name=proposition]{\mathtt{Prop}}
