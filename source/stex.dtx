@@ -6643,6 +6643,7 @@
 % Invoking structures:
 %    \begin{macrocode}
 \cs_new_protected:Nn \stex_invoke_structure: {
+  \tl_set:Nn \l_@@_set_comp_tl {\_@@_set_thiscomp:}
   \_@@_invoke_top:n {}
 }
 
@@ -6668,14 +6669,25 @@
 }
 
 \cs_new_protected:Npn \_@@_merge:nw #1 [ #2 ] {
-  \tl_if_empty:nTF{#1}{
-    \_@@_invoke_top:n{#2}
+  \exp_args:Ne \stex_str_if_starts_with:nnTF {\tl_to_str:n{#2}}{comp=}{
+    \_@@_set_customcomp: #2 \_@@_end:
+    \_@@_invoke_top:n{#1}
   }{
-    \tl_if_empty:nTF{#2}{
-      \_@@_invoke_top:n{#1}
+    \tl_if_empty:nTF{#1}{
+      \_@@_invoke_top:n{#2}
     }{
-      \_@@_invoke_top:n{#1,#2}
+      \tl_if_empty:nTF{#2}{
+        \_@@_invoke_top:n{#1}
+      }{
+        \_@@_invoke_top:n{#1,#2}
+      }
     }
+  }
+}
+
+\cs_new_protected:Npn \_@@_set_customcomp: comp= #1 \_@@_end: {
+  \tl_set:Nn \l_@@_set_comp_tl {
+    \_@@_set_custom_comp:n{#1}
   }
 }
 %    \end{macrocode}
@@ -6738,9 +6750,6 @@
       }
     }
   }
-  %\tl_put_right:Nx \l_stex_current_redo_tl {
-  %  \exp_args:No \exp_not:n \l_@@_current_type_tl
-  %}
 }
 
 \cs_new:Nn \_@@_make_mod:n {
@@ -6840,8 +6849,8 @@
   \seq_if_in:NnTF \l_@@_assigned_seq {#1}{
     \clist_put_right:Nn \l_@@_clist {#2!}
   }{
-    \clist_put_right:Nn \l_@@_clist {
-      \_stex_next_symbol:n { \_@@_set_thiscomp: }
+    \exp_args:NNe \clist_put_right:Nn \l_@@_clist {
+      \_stex_next_symbol:n { \exp_args:No \exp_not:n \l_@@_set_comp_tl }
       \exp_not:n{#2!}
     }
   }
@@ -6856,13 +6865,28 @@
   }
 }
 
-\cs_new_protected:Npn \_customthiscomp #1 #2 {
-  \l_@@_thiscomp_cs{#1{#2}}
-}
-
-\cs_new_protected:Npn \_@@_set_thiscomp: {
+\cs_new_protected:Nn \_@@_set_thiscomp: {
   \exp_args:Ne \tl_if_eq:NNF {\tl_head:N \comp} \_thiscomp {
     \edef\comp {\_thiscomp{\comp}}
+  }
+}
+
+\cs_new_protected:Nn \_@@_set_custom_comp:n {
+  \exp_args:Ne \tl_if_eq:NNF {\tl_head:N \comp} \_customthiscomp {
+    \cs_set_protected:Npx \_customthiscomp ##1 {
+      \group_begin:
+        \bool_set_true:N \l_stex_allow_semantic_bool
+        \exp_not:n{
+          \cs_set:Npn \l_@@_comp_cs ##1  {
+            #1
+          }
+          \tl_set_eq:NN \this \l_@@_this_tl
+          \def\comp
+        }{\comp}
+        \exp_not:N\l_@@_comp_cs{\comp{##1}}
+      \group_end:
+    }
+    \def\comp {\_customthiscomp}
   }
 }
 
@@ -6898,7 +6922,6 @@
       \tl_clear:N \l_@@_this_tl
     }
   }{
-    \stex_debug:nn{here}{letting~this~=~\tl_to_str:n{#1}}
     \tl_set:Nn \l_@@_this_tl {#1}
   }
 }
@@ -6911,7 +6934,7 @@
         \tl_set:Nn \exp_not:N \l_@@_this_tl {
           \exp_args:No \exp_not:n \l_@@_this_tl
         }
-        \_@@_set_thiscomp:
+        \exp_args:No \exp_not:n \l_@@_set_comp_tl
       }
     }
     \exp_args:NNx \use:nn \group_end: {

@@ -5390,6 +5390,7 @@
 }
 
 \cs_new_protected:Nn \stex_invoke_structure: {
+  \tl_set:Nn \l__stex_structures_set_comp_tl {\__stex_structures_set_thiscomp:}
   \__stex_structures_invoke_top:n {}
 }
 
@@ -5415,14 +5416,25 @@
 }
 
 \cs_new_protected:Npn \__stex_structures_merge:nw #1 [ #2 ] {
-  \tl_if_empty:nTF{#1}{
-    \__stex_structures_invoke_top:n{#2}
+  \exp_args:Ne \stex_str_if_starts_with:nnTF {\tl_to_str:n{#2}}{comp=}{
+    \__stex_structures_set_customcomp: #2 \__stex_structures_end:
+    \__stex_structures_invoke_top:n{#1}
   }{
-    \tl_if_empty:nTF{#2}{
-      \__stex_structures_invoke_top:n{#1}
+    \tl_if_empty:nTF{#1}{
+      \__stex_structures_invoke_top:n{#2}
     }{
-      \__stex_structures_invoke_top:n{#1,#2}
+      \tl_if_empty:nTF{#2}{
+        \__stex_structures_invoke_top:n{#1}
+      }{
+        \__stex_structures_invoke_top:n{#1,#2}
+      }
     }
+  }
+}
+
+\cs_new_protected:Npn \__stex_structures_set_customcomp: comp= #1 \__stex_structures_end: {
+  \tl_set:Nn \l__stex_structures_set_comp_tl {
+    \__stex_structures_set_custom_comp:n{#1}
   }
 }
 \cs_new_protected:Nn \__stex_structures_invokation_type:n {
@@ -5482,9 +5494,6 @@
       }
     }
   }
-  %\tl_put_right:Nx \l_stex_current_redo_tl {
-  %  \exp_args:No \exp_not:n \l__stex_structures_current_type_tl
-  %}
 }
 
 \cs_new:Nn \__stex_structures_make_mod:n {
@@ -5577,8 +5586,8 @@
   \seq_if_in:NnTF \l__stex_structures_assigned_seq {#1}{
     \clist_put_right:Nn \l__stex_structures_clist {#2!}
   }{
-    \clist_put_right:Nn \l__stex_structures_clist {
-      \_stex_next_symbol:n { \__stex_structures_set_thiscomp: }
+    \exp_args:NNe \clist_put_right:Nn \l__stex_structures_clist {
+      \_stex_next_symbol:n { \exp_args:No \exp_not:n \l__stex_structures_set_comp_tl }
       \exp_not:n{#2!}
     }
   }
@@ -5593,13 +5602,28 @@
   }
 }
 
-\cs_new_protected:Npn \_customthiscomp #1 #2 {
-  \l__stex_structures_thiscomp_cs{#1{#2}}
-}
-
-\cs_new_protected:Npn \__stex_structures_set_thiscomp: {
+\cs_new_protected:Nn \__stex_structures_set_thiscomp: {
   \exp_args:Ne \tl_if_eq:NNF {\tl_head:N \comp} \_thiscomp {
     \edef\comp {\_thiscomp{\comp}}
+  }
+}
+
+\cs_new_protected:Nn \__stex_structures_set_custom_comp:n {
+  \exp_args:Ne \tl_if_eq:NNF {\tl_head:N \comp} \_customthiscomp {
+    \cs_set_protected:Npx \_customthiscomp ##1 {
+      \group_begin:
+        \bool_set_true:N \l_stex_allow_semantic_bool
+        \exp_not:n{
+          \cs_set:Npn \l__stex_structures_comp_cs ##1  {
+            #1
+          }
+          \tl_set_eq:NN \this \l__stex_structures_this_tl
+          \def\comp
+        }{\comp}
+        \exp_not:N\l__stex_structures_comp_cs{\comp{##1}}
+      \group_end:
+    }
+    \def\comp {\_customthiscomp}
   }
 }
 
@@ -5632,7 +5656,6 @@
       \tl_clear:N \l__stex_structures_this_tl
     }
   }{
-    \stex_debug:nn{here}{letting~this~=~\tl_to_str:n{#1}}
     \tl_set:Nn \l__stex_structures_this_tl {#1}
   }
 }
@@ -5645,7 +5668,7 @@
         \tl_set:Nn \exp_not:N \l__stex_structures_this_tl {
           \exp_args:No \exp_not:n \l__stex_structures_this_tl
         }
-        \__stex_structures_set_thiscomp:
+        \exp_args:No \exp_not:n \l__stex_structures_set_comp_tl
       }
     }
     \exp_args:NNx \use:nn \group_end: {
