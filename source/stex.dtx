@@ -5747,8 +5747,8 @@
 }
 
 \cs_new_protected:Npn \_@@_add_prop_arg:nnw #1 #2 #3\_stex_args_end: {
-  \prop_put:Nnn \l_@@_customs_prop {#1#2} {}
-  \seq_put_right:Nn \l_@@_customs_seq {#1#2}
+  \prop_put:Nnn \l_@@_customs_prop {#1} {}
+  \seq_put_right:Nn \l_@@_customs_seq {#2}
   \tl_if_empty:nF{#3}{\_@@_add_prop_arg:nnw #3 \_stex_args_end:}
 }
 
@@ -5759,66 +5759,84 @@
   }
 }
 
-\NewDocumentCommand \_@@_arg:n {O{} m} {
-  \group_begin:
-    \bool_set_true:N \l_stex_allow_semantic_bool
-    \tl_if_empty:nTF{#1}{
-      \int_incr:N \l_@@_arg_counter_int
-      \exp_args:NNe \prop_if_in:NnTF \l_@@_customs_prop {
-        \seq_item:Nn \l_@@_customs_seq \l_@@_arg_counter_int
-      }{
-        \exp_args:Ne \str_if_eq:nnT {
-          \exp_args:NNe \prop_item:Nn \l_@@_customs_prop {
-            \seq_item:Nn \l_@@_customs_seq \l_@@_arg_counter_int
-          }
-        }{X}{
-          \TODO skip
-        }
-      }{
-        \TODO error
-      } % TODO check names!
-      \cs_set:Npn \_@@_check:nnn ##1 ##2 ##3 {
-        \int_compare:nNnT{##1}=\l_@@_arg_counter_int {
-          \prop_map_break:n{\_@@_arg_do:nnnNn {##1##2}{##1}{##2}}
-        }
-      }
-    }{
-      \cs_set:Npn \_@@_check:nnn ##1 ##2 ##3 {
-        \exp_args:No \str_if_eq:nnTF{\c_dollar_str ##1} {#1}{##3}{
-          \str_if_eq:nnT{#1}{##1}{
-            \prop_map_break:n{\_@@_arg_do:nnnNn {##1##2}{##1}{##2}}
-          }
-        }
-      }
+\NewDocumentCommand \_@@_arg:n {s O{} m} {
+  \IfBooleanTF #1 {
+    \stex_annotate_invisible:n{
+      \_@@_arg_inner:nn{#2}{#3}
     }
-    \prop_map_function:NN \l_@@_customs_prop \_@@_arg_check:nn
-    \_@@_arg_error: {#2}
-  \group_end:
+  }{
+    \_@@_arg_inner:nn{#2}{#3}
+  }
 }
 
-\cs_new:Nn \_@@_arg_check:nn {
-  \_@@_check:nnn #1 {#2}
-}
-
-\cs_new_protected:Nn \_@@_arg_error: {
-  \TODO error
-}
-
-\cs_new_protected:Nn \_@@_arg_do:nnnNn {
-  \exp_args:Ne \str_if_eq:nnT{
-    \prop_item:Nn \l_@@_customs_prop {#1}
-  }{X}{
-    \str_if_eq:nnTF{#3}{i}{
-      \TODO error
+\cs_new_protected:Nn \_@@_arg_inner:nn {
+  \tl_if_empty:nTF{#1}{
+    \int_incr:N \l_@@_arg_counter_int
+    \exp_args:Ne \_@@_check:nTF{ \int_use:N \l_@@_arg_counter_int }{
+      \_@@_arg_do:oon \l_tmpa_tl \l_tmpb_tl
     }{
-      \str_if_eq:nnT{#3}{b}{
+      \_@@_arg_inner:nn{}
+    }{ #2 }
+  }{
+    \_@@_check:nTF {#1}{
+      \_@@_arg_do:oon \l_tmpa_tl \l_tmpb_tl { #2 }
+    }{
+      \exp_args:No \str_case:nnTF \l_tmpb_tl {
+        {a}{
+          \exp_args:NNne \prop_put:Nnn \l_@@_customs_prop {#1}{
+            \l_tmpa_tl X
+          }
+          \tl_set:Nx \l_tmpa_tl { #1 \int_eval:n {\tl_count:N \l_tmpa_tl + 1} }
+        }
+        {B}{
+          \exp_args:NNne \prop_put:Nnn \l_@@_customs_prop {#1}{
+            \l_tmpa_tl X
+          }
+          \tl_set:Nx \l_tmpa_tl { #1 \int_eval:n {\tl_count:N \l_tmpa_tl + 1} }
+        }
+      }{
+        \_@@_arg_do:oon \l_tmpa_tl \l_tmpb_tl { #2 }
+      }{
         \TODO error
       }
     }
   }
-  \prop_put:Nnn \l_@@_customs_prop {#1}{X}
-  \_stex_term_arg:nnn{#3}{#2}{#5}
 }
+
+\prg_new_conditional:Nnn \_@@_check:n {TF} {
+  \exp_args:NNe \prop_get:NnNTF \l_@@_customs_prop {#1} \l_tmpa_tl {
+    \tl_set:Nx \l_tmpb_tl {\seq_item:Nn \l_@@_customs_seq {#1} }
+    \tl_if_empty:NTF \l_tmpa_tl {
+      \exp_args:NNe \prop_put:Nnn \l_@@_customs_prop 
+        { #1 }{X}
+      \exp_args:No \str_case:nnF \l_tmpb_tl {
+        {a}{
+          \tl_set:Nx \l_tmpa_tl{ #1 1 }
+        }
+        {B}{
+          \tl_set:Nx \l_tmpa_tl{ #1 1 }
+        }
+      }{
+        \tl_set:Nx \l_tmpa_tl{ #1 }
+      }
+      \prg_return_true:
+    }{
+      \prg_return_false:
+    }
+  }{
+    \TODO error
+    \prg_return_false:
+  }
+}
+
+% #1 argnum #2 argmode #3 code
+\cs_new_protected:Nn \_@@_arg_do:nnn {
+  \group_begin:
+    \bool_set_true:N \l_stex_allow_semantic_bool
+    \_stex_term_arg:nnn {#2}{#1}{#3}
+  \group_end:
+}
+\cs_generate_variant:Nn \_@@_arg_do:nnn {oon}
 %    \end{macrocode}
 % \end{macro}
 %
@@ -7691,6 +7709,7 @@
   \notation{of~type}[colon]{#1 \mathbin{\comp{:}} #2}
 
   \symdef{apply}[args=ia]{#1\mathopen{\comp(} #2 \mathclose{\comp)}}
+  \notation{apply}[lambda]{#1\; \argsep{#2}{\;}}
   \notation{apply}[infixop]{\argsep{#2}{\mathbin{#1}}}
   \notation{apply}[infixrel]{\argsep{#2}{\mathrel{#1}}}
   
