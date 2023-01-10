@@ -4056,7 +4056,7 @@
     }$
   }
   \stex_style_apply:
-  \group_end:
+  \group_end:\ignorespaces
 }{}
 
 \cs_new_protected:Nn \__stex_vars_add: {
@@ -4244,7 +4244,7 @@
     }$
   }
   \stex_style_apply:
-  \group_end:
+  \group_end:\ignorespaces
 }{}
 
 \cs_new_protected:Nn \__stex_seqs_add: {
@@ -4617,25 +4617,39 @@
 
 \int_new:N \l__stex_expr_arg_counter_int
 \cs_new_protected:Nn \__stex_expr_invoke_custom:n {
-  \stex_debug:nn{expressions}{custom~notation}
-  \prop_clear:N \l__stex_expr_customs_prop
-  \seq_clear:N \l__stex_expr_customs_seq
-  \int_zero:N \l__stex_expr_arg_counter_int
-  \tl_if_empty:NF \l_stex_current_args_tl {
-    \exp_after:wN \__stex_expr_add_prop_arg:nnw \l_stex_current_args_tl \_stex_args_end:
-    \cs_set_eq:NN \arg \__stex_expr_arg:n
+  \stex_debug:nn{custom}{custom~notation~for~\l_stex_current_symbol_str}
+  \stex_pseudogroup:nn{
+    \prop_gclear:N \l__stex_expr_customs_prop
+    \seq_gclear:N \l__stex_expr_customs_seq
+    \int_gzero:N \l__stex_expr_arg_counter_int
+    \tl_if_empty:NF \l_stex_current_args_tl {
+      \exp_after:wN \__stex_expr_add_prop_arg:nnw \l_stex_current_args_tl \_stex_args_end:
+      \cs_set_eq:NN \arg \__stex_expr_arg:n
+    }
+    \tl_set_eq:NN \l_stex_get_symbol_args_tl \l_stex_current_args_tl
+    \cs_set_eq:NN \__stex_expr_do_ab_next:nnn \_stex_term_oma:nnn
+    \_stex_map_args:N \__stex_expr_check_b:nn
+    \__stex_expr_do_ab_next:nnn{}{}{#1}
+  }{
+    \prop_if_exist:NT \l__stex_expr_customs_prop {
+      \prop_gset_from_keyval:Nn \exp_not:N \l__stex_expr_customs_prop {
+        \prop_to_keyval:N \l__stex_expr_customs_prop
+      }
+    }
+    \int_gset:Nn \l__stex_expr_arg_counter_int { \int_use:N \l__stex_expr_arg_counter_int}
+    \seq_if_exist:NT \l__stex_expr_customs_seq {
+      \seq_gset_split:Nnn \exp_not:N \l__stex_expr_customs_seq , {
+        \seq_use:Nn \l__stex_expr_customs_seq ,
+      }
+    }
   }
-  \tl_set_eq:NN \l_stex_get_symbol_args_tl \l_stex_current_args_tl
-  \cs_set_eq:NN \__stex_expr_do_ab_next:nnn \_stex_term_oma:nnn
-  \_stex_map_args:N \__stex_expr_check_b:nn
-  \__stex_expr_do_ab_next:nnn{}{}{#1}
   % TODO check that all arguments are present
   \group_end:
 }
 
 \cs_new_protected:Npn \__stex_expr_add_prop_arg:nnw #1 #2 #3\_stex_args_end: {
-  \prop_put:Nnn \l__stex_expr_customs_prop {#1} {}
-  \seq_put_right:Nn \l__stex_expr_customs_seq {#2}
+  \prop_gput:Nnn \l__stex_expr_customs_prop {#1} {}
+  \seq_gput_right:Nn \l__stex_expr_customs_seq {#2}
   \tl_if_empty:nF{#3}{\__stex_expr_add_prop_arg:nnw #3 \_stex_args_end:}
 }
 
@@ -4658,7 +4672,7 @@
 
 \cs_new_protected:Nn \__stex_expr_arg_inner:nn {
   \tl_if_empty:nTF{#1}{
-    \int_incr:N \l__stex_expr_arg_counter_int
+    \int_gincr:N \l__stex_expr_arg_counter_int
     \exp_args:Ne \__stex_expr_check:nTF{ \int_use:N \l__stex_expr_arg_counter_int }{
       \__stex_expr_arg_do:oon \l_tmpa_tl \l_tmpb_tl
     }{
@@ -4670,13 +4684,13 @@
     }{
       \exp_args:No \str_case:nnTF \l_tmpb_tl {
         {a}{
-          \exp_args:NNne \prop_put:Nnn \l__stex_expr_customs_prop {#1}{
+          \exp_args:NNnx \prop_gput:Nnn \l__stex_expr_customs_prop {#1}{
             \l_tmpa_tl X
           }
           \tl_set:Nx \l_tmpa_tl { #1 \int_eval:n {\tl_count:N \l_tmpa_tl + 1} }
         }
         {B}{
-          \exp_args:NNne \prop_put:Nnn \l__stex_expr_customs_prop {#1}{
+          \exp_args:NNnx \prop_gput:Nnn \l__stex_expr_customs_prop {#1}{
             \l_tmpa_tl X
           }
           \tl_set:Nx \l_tmpa_tl { #1 \int_eval:n {\tl_count:N \l_tmpa_tl + 1} }
@@ -4691,10 +4705,11 @@
 }
 
 \prg_new_conditional:Nnn \__stex_expr_check:n {TF} {
+  \stex_debug:nn{custom}{Checking~argument~#1~for~\l_stex_current_symbol_str^^J\meaning\l__stex_expr_customs_prop}
   \exp_args:NNe \prop_get:NnNTF \l__stex_expr_customs_prop {#1} \l_tmpa_tl {
     \tl_set:Nx \l_tmpb_tl {\seq_item:Nn \l__stex_expr_customs_seq {#1} }
     \tl_if_empty:NTF \l_tmpa_tl {
-      \exp_args:NNe \prop_put:Nnn \l__stex_expr_customs_prop
+      \exp_args:NNe \prop_gput:Nnn \l__stex_expr_customs_prop
         { #1 }{X}
       \exp_args:No \str_case:nnF \l_tmpb_tl {
         {a}{
@@ -4706,8 +4721,10 @@
       }{
         \tl_set:Nx \l_tmpa_tl{ #1 }
       }
+      \stex_debug:nn{custom}{valid^^J~\meaning\l__stex_expr_customs_prop}
       \prg_return_true:
     }{
+      \stex_debug:nn{custom}{invalid}
       \prg_return_false:
     }
   }{
@@ -4717,6 +4734,7 @@
 }
 
 \cs_new_protected:Nn \__stex_expr_arg_do:nnn {
+  \stex_debug:nn{custom}{Doing~argument~#1~of~mode~#2:~\tl_to_str:n{#3}}
   \group_begin:
     \bool_set_true:N \l_stex_allow_semantic_bool
     \_stex_term_arg:nnn {#2}{#1}{#3}

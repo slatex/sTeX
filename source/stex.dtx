@@ -5081,7 +5081,7 @@
     }$
   }
   \stex_style_apply:
-  \group_end:
+  \group_end:\ignorespaces
 }{}
 
 \cs_new_protected:Nn \_@@_add: {
@@ -5296,7 +5296,7 @@
     }$
   }
   \stex_style_apply:
-  \group_end:
+  \group_end:\ignorespaces
 }{}
 
 \cs_new_protected:Nn \_@@_add: { 
@@ -5742,25 +5742,39 @@
 
 \int_new:N \l_@@_arg_counter_int
 \cs_new_protected:Nn \@@_invoke_custom:n {
-  \stex_debug:nn{expressions}{custom~notation}
-  \prop_clear:N \l_@@_customs_prop
-  \seq_clear:N \l_@@_customs_seq
-  \int_zero:N \l_@@_arg_counter_int
-  \tl_if_empty:NF \l_stex_current_args_tl {
-    \exp_after:wN \_@@_add_prop_arg:nnw \l_stex_current_args_tl \_stex_args_end:
-    \cs_set_eq:NN \arg \_@@_arg:n
+  \stex_debug:nn{custom}{custom~notation~for~\l_stex_current_symbol_str}
+  \stex_pseudogroup:nn{
+    \prop_gclear:N \l_@@_customs_prop
+    \seq_gclear:N \l_@@_customs_seq
+    \int_gzero:N \l_@@_arg_counter_int
+    \tl_if_empty:NF \l_stex_current_args_tl {
+      \exp_after:wN \_@@_add_prop_arg:nnw \l_stex_current_args_tl \_stex_args_end:
+      \cs_set_eq:NN \arg \_@@_arg:n
+    }
+    \tl_set_eq:NN \l_stex_get_symbol_args_tl \l_stex_current_args_tl
+    \cs_set_eq:NN \_@@_do_ab_next:nnn \_stex_term_oma:nnn
+    \_stex_map_args:N \_@@_check_b:nn
+    \_@@_do_ab_next:nnn{}{}{#1}
+  }{
+    \prop_if_exist:NT \l_@@_customs_prop {
+      \prop_gset_from_keyval:Nn \exp_not:N \l_@@_customs_prop {
+        \prop_to_keyval:N \l_@@_customs_prop
+      }
+    }
+    \int_gset:Nn \l_@@_arg_counter_int { \int_use:N \l_@@_arg_counter_int}
+    \seq_if_exist:NT \l_@@_customs_seq {
+      \seq_gset_split:Nnn \exp_not:N \l_@@_customs_seq , {
+        \seq_use:Nn \l_@@_customs_seq ,
+      }
+    }
   }
-  \tl_set_eq:NN \l_stex_get_symbol_args_tl \l_stex_current_args_tl
-  \cs_set_eq:NN \_@@_do_ab_next:nnn \_stex_term_oma:nnn
-  \_stex_map_args:N \_@@_check_b:nn
-  \_@@_do_ab_next:nnn{}{}{#1}
   % TODO check that all arguments are present
   \group_end:
 }
 
 \cs_new_protected:Npn \_@@_add_prop_arg:nnw #1 #2 #3\_stex_args_end: {
-  \prop_put:Nnn \l_@@_customs_prop {#1} {}
-  \seq_put_right:Nn \l_@@_customs_seq {#2}
+  \prop_gput:Nnn \l_@@_customs_prop {#1} {}
+  \seq_gput_right:Nn \l_@@_customs_seq {#2}
   \tl_if_empty:nF{#3}{\_@@_add_prop_arg:nnw #3 \_stex_args_end:}
 }
 
@@ -5783,7 +5797,7 @@
 
 \cs_new_protected:Nn \_@@_arg_inner:nn {
   \tl_if_empty:nTF{#1}{
-    \int_incr:N \l_@@_arg_counter_int
+    \int_gincr:N \l_@@_arg_counter_int
     \exp_args:Ne \_@@_check:nTF{ \int_use:N \l_@@_arg_counter_int }{
       \_@@_arg_do:oon \l_tmpa_tl \l_tmpb_tl
     }{
@@ -5795,13 +5809,13 @@
     }{
       \exp_args:No \str_case:nnTF \l_tmpb_tl {
         {a}{
-          \exp_args:NNne \prop_put:Nnn \l_@@_customs_prop {#1}{
+          \exp_args:NNnx \prop_gput:Nnn \l_@@_customs_prop {#1}{
             \l_tmpa_tl X
           }
           \tl_set:Nx \l_tmpa_tl { #1 \int_eval:n {\tl_count:N \l_tmpa_tl + 1} }
         }
         {B}{
-          \exp_args:NNne \prop_put:Nnn \l_@@_customs_prop {#1}{
+          \exp_args:NNnx \prop_gput:Nnn \l_@@_customs_prop {#1}{
             \l_tmpa_tl X
           }
           \tl_set:Nx \l_tmpa_tl { #1 \int_eval:n {\tl_count:N \l_tmpa_tl + 1} }
@@ -5816,10 +5830,11 @@
 }
 
 \prg_new_conditional:Nnn \_@@_check:n {TF} {
+  \stex_debug:nn{custom}{Checking~argument~#1~for~\l_stex_current_symbol_str^^J\meaning\l_@@_customs_prop}
   \exp_args:NNe \prop_get:NnNTF \l_@@_customs_prop {#1} \l_tmpa_tl {
     \tl_set:Nx \l_tmpb_tl {\seq_item:Nn \l_@@_customs_seq {#1} }
     \tl_if_empty:NTF \l_tmpa_tl {
-      \exp_args:NNe \prop_put:Nnn \l_@@_customs_prop 
+      \exp_args:NNe \prop_gput:Nnn \l_@@_customs_prop 
         { #1 }{X}
       \exp_args:No \str_case:nnF \l_tmpb_tl {
         {a}{
@@ -5831,8 +5846,10 @@
       }{
         \tl_set:Nx \l_tmpa_tl{ #1 }
       }
+      \stex_debug:nn{custom}{valid^^J~\meaning\l_@@_customs_prop}
       \prg_return_true:
     }{
+      \stex_debug:nn{custom}{invalid}
       \prg_return_false:
     }
   }{
@@ -5843,6 +5860,7 @@
 
 % #1 argnum #2 argmode #3 code
 \cs_new_protected:Nn \_@@_arg_do:nnn {
+  \stex_debug:nn{custom}{Doing~argument~#1~of~mode~#2:~\tl_to_str:n{#3}}
   \group_begin:
     \bool_set_true:N \l_stex_allow_semantic_bool
     \_stex_term_arg:nnn {#2}{#1}{#3}
