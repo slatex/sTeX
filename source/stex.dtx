@@ -62,7 +62,7 @@
 % Package options:
 %
 %    \begin{macrocode}
-\keys_define:nn { stex } {
+\keys_define:nn { stex / package } {
   debug      .str_set_x:N  = \c_stex_debug_clist ,
   lang       .clist_set:N  = \c_stex_languages_clist ,
   mathhub    .tl_set_x:N   = \mathhub ,
@@ -73,7 +73,7 @@
   unknown    .code:n       = {}
 }
 \exp_args:NNo \clist_set:Nn \c_stex_debug_clist \c_stex_debug_clist
-\ProcessKeysOptions { stex }
+\ProcessKeysOptions { stex / package }
 %    \end{macrocode}
 %
 % Error messages:
@@ -569,9 +569,11 @@
     }
   }
   \tl_set_eq:Nc \l_@@_tl {_@@_keys_#1_def_tl}
-  %\exp_args:Nnx \stex_debug:nn{keys}{
-  %  Setting~keys~for~#1:^^J
-  %  \meaning \l_@@_tl
+  %\tl_put_left:Nn \l_@@_tl {
+  %  unknown .code:n = {
+  %    \stex_debug:nn{error}{key:>>##1<<}
+  %    \TODO
+  %  },
   %}
   \exp_args:Nno \keys_define:nn {stex / #1} {\l_@@_tl}
 }
@@ -5037,10 +5039,16 @@
 % \begin{macro}{\vardef}
 %    \begin{macrocode}
 \tl_new:N \l_stex_variables_prop
+\bool_new:N \l_@@_bind_bool
 \cs_new_protected:Nn \_stex_variable:nnnnnnnN {}
+\stex_keys_define:nnnn{vardef}{
+  \bool_set_false:N \l_@@_bind_bool
+}{
+  bind  .bool_set:N  = \l_@@_bind_bool
+}{symdef}
 
 \stex_new_stylable_cmd:nnnn {vardef} { m O{} m} {
-  \stex_keys_set:nn{symdef}{#2}
+  \stex_keys_set:nn{vardef}{#2}
   \str_set:Nx \l_stex_macroname_str { #1 }
   \str_if_empty:NT \l_stex_key_name_str {
     \str_set:Nx \l_stex_key_name_str { #1 }
@@ -5119,6 +5127,9 @@
       }
       \str_if_empty:NF \l_stex_key_reorder_str {,
         shtml:reorderargs={\l_stex_key_reorder_str}
+      }
+      \bool_if:NT \l_@@_bind_bool {,
+        shtml:bind={}
       }
     }{\hbox\bgroup
       \_stex_annotate_force_break:n{
@@ -7341,7 +7352,9 @@
     }
   }
 
-  \stex_annotate:nn{ shtml:definiens=\l_@@_uri_str}{ #2 }
+  \stex_annotate:nn{ shtml:definiens=\l_@@_uri_str}{ 
+    #2 %\_stex_annotate_force_break:n{ #2 }
+  }
   \group_end:
 }
 \stex_deactivate_macro:Nn \definiens {definition~environments}

@@ -12,7 +12,7 @@
 \RequirePackage{standalone}
 
 \message{^^J*~This~is~sTeX~version~3.3.0~*^^J}
-\keys_define:nn { stex } {
+\keys_define:nn { stex / package } {
   debug      .str_set_x:N  = \c_stex_debug_clist ,
   lang       .clist_set:N  = \c_stex_languages_clist ,
   mathhub    .tl_set_x:N   = \mathhub ,
@@ -23,7 +23,7 @@
   unknown    .code:n       = {}
 }
 \exp_args:NNo \clist_set:Nn \c_stex_debug_clist \c_stex_debug_clist
-\ProcessKeysOptions { stex }
+\ProcessKeysOptions { stex / package }
 \input{stex-en.ldf}
 \cs_set_eq:NN \stex_undefined: \undefined
 \cs_new_protected:Nn \stex_kpsewhich:Nn {\group_begin:
@@ -346,9 +346,11 @@
     }
   }
   \tl_set_eq:Nc \l__stex_aux_tl {__stex_aux_keys_#1_def_tl}
-  %\exp_args:Nnx \stex_debug:nn{keys}{
-  %  Setting~keys~for~#1:^^J
-  %  \meaning \l__stex_aux_tl
+  %\tl_put_left:Nn \l__stex_aux_tl {
+  %  unknown .code:n = {
+  %    \stex_debug:nn{error}{key:>>##1<<}
+  %    \TODO
+  %  },
   %}
   \exp_args:Nno \keys_define:nn {stex / #1} {\l__stex_aux_tl}
 }
@@ -4012,10 +4014,16 @@
 }
 
 \tl_new:N \l_stex_variables_prop
+\bool_new:N \l__stex_vars_bind_bool
 \cs_new_protected:Nn \_stex_variable:nnnnnnnN {}
+\stex_keys_define:nnnn{vardef}{
+  \bool_set_false:N \l__stex_vars_bind_bool
+}{
+  bind  .bool_set:N  = \l__stex_vars_bind_bool
+}{symdef}
 
 \stex_new_stylable_cmd:nnnn {vardef} { m O{} m} {
-  \stex_keys_set:nn{symdef}{#2}
+  \stex_keys_set:nn{vardef}{#2}
   \str_set:Nx \l_stex_macroname_str { #1 }
   \str_if_empty:NT \l_stex_key_name_str {
     \str_set:Nx \l_stex_key_name_str { #1 }
@@ -4094,6 +4102,9 @@
       }
       \str_if_empty:NF \l_stex_key_reorder_str {,
         shtml:reorderargs={\l_stex_key_reorder_str}
+      }
+      \bool_if:NT \l__stex_vars_bind_bool {,
+        shtml:bind={}
       }
     }{\hbox\bgroup
       \_stex_annotate_force_break:n{
@@ -6035,7 +6046,9 @@
     }
   }
 
-  \stex_annotate:nn{ shtml:definiens=\l__stex_statements_uri_str}{ #2 }
+  \stex_annotate:nn{ shtml:definiens=\l__stex_statements_uri_str}{
+    #2 %\_stex_annotate_force_break:n{ #2 }
+  }
   \group_end:
 }
 \stex_deactivate_macro:Nn \definiens {definition~environments}
