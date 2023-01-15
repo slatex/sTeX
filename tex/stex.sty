@@ -315,6 +315,17 @@
 }{
   \cs_new_protected:Nn \_stex_annotate_force_break:n { #1 }
 }
+\stex_if_html_backend:TF {
+  \cs_new_protected:Npn \mmlintent #1 #2 {
+    \stex_annotate:nn{mml:intent={#1}}{#2}
+  }
+  \cs_new_protected:Npn \mmlarg #1 #2 {
+    \stex_annotate:nn{mml:arg={#1}}{#2}
+  }
+}{
+  \cs_new_protected:Npn \mmlintent #1 #2 { #2 }
+  \cs_new_protected:Npn \mmlarg #1 #2 { #2 }
+}
 
 \cs_new_protected:Nn \stex_deactivate_macro:Nn {
   \tl_set_eq:cN{\tl_to_str:n{#1}~-~orig}#1
@@ -346,12 +357,6 @@
     }
   }
   \tl_set_eq:Nc \l__stex_aux_tl {__stex_aux_keys_#1_def_tl}
-  %\tl_put_left:Nn \l__stex_aux_tl {
-  %  unknown .code:n = {
-  %    \stex_debug:nn{error}{key:>>##1<<}
-  %    \TODO
-  %  },
-  %}
   \exp_args:Nno \keys_define:nn {stex / #1} {\l__stex_aux_tl}
 }
 \cs_new_nopar:Nn \stex_keys_set:nn {
@@ -1756,9 +1761,6 @@
   \exp_args:NNx \exp_args:Nnx \__stex_inputs_inputref:nn{ \tl_to_str:n{#1} }{ \tl_to_str:n{#2} }
 }
 \newcommand\addmhbibresource[2][]{
-  \cs_if_exist:NF \addbibresource {
-    \TODO error
-  }
   \stex_in_archive:nn {#1} {
     \addbibresource{ \stex_file_use:N \c_stex_mathhub_file / ##1 / #2 }
   }
@@ -1874,7 +1876,7 @@
 
 \cs_new_protected:Npn \libusetikzlibrary #1 {
   \cs_if_exist:NF \usetikzlibrary {
-    \TODO error
+    \msg_error:nnx{stex}{error/notikz}{\tl_to_str:n{\libusetikzlibrary}}
   }
   \__stex_inputs_up_archive:nn{tikzlibrary#1}{code.tex}
   \int_compare:nNnTF {\seq_count:N \l__stex_inputs_libinput_files_seq} = 1 {
@@ -2626,13 +2628,14 @@
   \stex_reactivate_macro:N \renamedecl
 }
 \cs_new_protected:Nn \stex_get_in_morphism:n {
-  \stex_debug:nn{Here}{>>#1<<}
   \str_clear:N \l_stex_get_symbol_name_str
   \prop_map_inline:Nn \l_stex_morphism_symbols_prop {
-    \__stex_features_get_check:nnnn{#1}##1##2
+    \exp_args:Nx\__stex_features_get_check:nnnn{\tl_to_str:n{#1}}##1##2
   }
   \str_if_empty:NT \l_stex_get_symbol_name_str {
-    \TODOb error
+    \msg_error:nnxx{stex}{error/unknownsymbolin}{#1}{
+      morphism~\l_stex_feature_name_str
+    }
   }
 }
 
@@ -2753,12 +2756,12 @@
   \stex_file_resolve:Nx \l__stex_importmodule_seq { \tl_if_empty:nF{ #1 }{ #1 / } #2 }
   \str_set:Nx \l__stex_importmodule_str {\stex_file_use:N \l__stex_importmodule_seq}
   \stex_debug:nn{imports}{Looking~for~\l_stex_import_uri_str?#3...}
-  \__stex_importmodule_check_file:nn{ .tex }{
-    \__stex_importmodule_check_file:nn{. \l_stex_current_language_str .tex}{
-      \__stex_importmodule_check_file:nn{.en.tex}{
-        \__stex_importmodule_check_file:nn{/#3.tex}{
-          \__stex_importmodule_check_file:nn{/#3.\l_stex_current_language_str .tex}{
-            \__stex_importmodule_check_file:nn{/#3.en.tex}{
+  \__stex_importmodule_check_file:nn{ /#3.tex }{
+    \__stex_importmodule_check_file:nn{/#3.\l_stex_current_language_str .tex}{
+      \__stex_importmodule_check_file:nn{/#3.en.tex}{
+        \__stex_importmodule_check_file:nn{.tex}{
+          \__stex_importmodule_check_file:nn{.\l_stex_current_language_str .tex}{
+            \__stex_importmodule_check_file:nn{.en.tex}{
               \msg_error:nnx{stex}{error/unknownmodule}{\l_stex_import_uri_str?#3}
             }
           }
@@ -2844,8 +2847,9 @@
 \cs_new_protected:Nn \_stex_assign_do:n{
   \stex_debug:nn{assign}{Assigning~\l_stex_get_symbol_name_str~to~\tl_to_str:n{#1}}
   \tl_if_empty:NF \l_stex_get_symbol_def_tl {
-    \exp_args:No \message \l_stex_get_symbol_name_str
-    \TODOc error
+    \msg_error:nnxx{stex}{error/symbolalreadydefined}{\l_stex_get_symbol_name_str}{
+      morphism~\l_stex_feature_name_str
+    }
   }
   \stex_check_term:n{#1}
   \stex_debug:nn{HERE!}{
@@ -2930,6 +2934,28 @@
   \stex_reactivate_macro:N \copymodule
 }
 \stex_sms_allow_env:n{copymodule}
+
+\stex_new_stylable_env:nnnnnnn {interpretmodule}{m O{} m}{
+
+  \stex_structural_feature_morphism:nnnnn{#1}{morphism}{#2}{#3}{,shtml:total=true}
+  % TODO check totality
+  \stex_if_smsmode:F {
+    \tl_set:Nn \thiscopyname { #1 }
+    \tl_set_eq:NN \thismoduleuri \l_stex_current_domain_str
+    \stex_style_apply:
+  }
+  \stex_smsmode_do:
+}{
+  \stex_if_smsmode:F {
+    \stex_style_apply:
+  }
+  \stex_structural_feature_morphism_end:
+}{}{}{}
+\stex_deactivate_macro:Nn \interpretmodule {module~environments}
+\stex_every_module:n {
+  \stex_reactivate_macro:N \interpretmodule
+}
+\stex_sms_allow_env:n{interpretmodule}
 \stex_new_stylable_env:nnnnnnn {realization}{m}{
 
   \stex_structural_feature_morphism:nnnnn{}{realization}{}{#1}{,shtml:total=true}
@@ -2980,16 +3006,12 @@
 }
 
 \cs_new_protected:Nn \__stex_morphisms_do_parsed_assign: {
-  \str_if_empty:NTF \l__stex_morphisms_name_str {
-    \TODO error
-  }{
-    \exp_args:No \stex_get_in_morphism:n \l__stex_morphisms_name_str
-    \str_if_empty:NF \l__stex_morphisms_newname_str {
-      \exp_after:wN \__stex_morphisms_do_parsed_newname: \l__stex_morphisms_newname_str \__stex_morphisms_end:
-    }
-    \tl_if_empty:NF \l__stex_morphisms_ass_tl {
-      \exp_args:No \_stex_assign_do:n \l__stex_morphisms_ass_tl
-    }
+  \exp_args:No \stex_get_in_morphism:n \l__stex_morphisms_name_str
+  \str_if_empty:NF \l__stex_morphisms_newname_str {
+    \exp_after:wN \__stex_morphisms_do_parsed_newname: \l__stex_morphisms_newname_str \__stex_morphisms_end:
+  }
+  \tl_if_empty:NF \l__stex_morphisms_ass_tl {
+    \exp_args:No \_stex_assign_do:n \l__stex_morphisms_ass_tl
   }
 }
 
@@ -3137,7 +3159,7 @@
 }
 
 \cs_new:Nn \_stex_return_args:nn {
-  {i\c_math_subscript_token{#1}}
+  {\svar{ARGUMENT_#1}}
 }
 
 \cs_new_protected:Nn \_stex_symdecl_html: {
@@ -3157,7 +3179,7 @@
       shtml:reorderargs={\l_stex_key_reorder_str}
     }
   }{\hbox\bgroup\_stex_annotate_force_break:n{
-      %\bool_set_true:N \stex_in_invisible_html_bool
+      \bool_set_true:N \stex_in_invisible_html_bool
       \tl_if_empty:NF \l_stex_key_type_tl {
         $\stex_annotate:nn{shtml:type={}}{\l_stex_key_type_tl}$
       }
@@ -3275,6 +3297,7 @@
 }{style,deprecate}
 
 \stex_new_stylable_cmd:nnnn {textsymdecl} {m O{} m} {
+  \stex_keys_set:nn{symdef}{}
   \stex_keys_set:nn{textsymdecl}{#2}
   \str_set:Nx \l_stex_macroname_str { #1 }
   \str_if_empty:NTF \l_stex_key_name_str {
@@ -3283,17 +3306,9 @@
     \str_set:Nx \l_stex_key_name_str {\l_stex_key_name_str-sym}
   }
   \stex_symdecl_top:n{#1}
-  \stex_execute_in_module:n{
-    \cs_set_nopar:cpn{#1name}{
-      \ifvmode\hbox_unpack:N\c_empty_box\fi
-      \ifmmode\hbox{#3}\else#3\fi\xspace
-    }
-    \cs_set_nopar:cpn{#1}{
-      \ifmmode\symref{#1-sym}{\hbox{#3}}\else
-      \ifvmode\hbox_unpack:N\c_empty_box\fi
-      \symref{#1-sym}{#3}\expandafter\xspace
-      \fi
-    }
+  \stex_execute_in_module:x{
+    \__stex_symdecl_set_textsymdecl_macro:nnn{#1}{\l_stex_current_module_str?\l_stex_key_name_str}
+    \exp_not:n{{#3}}
   }
 
   \stex_if_smsmode:F{
@@ -3309,6 +3324,26 @@
 \stex_deactivate_macro:Nn \textsymdecl {module~environments}
 \stex_every_module:n {\stex_reactivate_macro:N \textsymdecl}
 \stex_sms_allow_escape:N \textsymdecl
+
+  \cs_new_protected:Nn \__stex_symdecl_set_textsymdecl_macro:nnn {
+    \cs_set_nopar:cpn{#1name}{
+      \mode_if_vertical:T{\hbox_unpack:N\c_empty_box}
+      \mode_if_math:TF{
+        \hbox{#3}
+      }{
+        #3
+      }\xspace
+    }
+    \cs_set_nopar:cpn{#1}{
+      \mode_if_vertical:T{\hbox_unpack:N\c_empty_box}
+      \mode_if_math:TF{
+        \symref{#2}{\hbox{#3}}
+      }{
+        \symref{#2}{#3}
+      }\xspace
+
+    }
+  }
 \cs_new_protected:Nn \stex_get_symbol:n {
   \str_clear:N \l_stex_get_symbol_mod_str
   \str_clear:N \l_stex_get_symbol_name_str
@@ -3723,7 +3758,9 @@
       \l_stex_get_symbol_mod_str?\l_stex_get_symbol_name_str
     }
   }{
-    \TODO error
+    \msg_error:nnxx{stex}{unknownnotation}{#2}{
+      \l_stex_get_symbol_mod_str?\l_stex_get_symbol_name_str
+    }
   }
 }
 
@@ -3931,15 +3968,15 @@
     }
   }
 }
-\cs_new_protected:Nn \__stex_notations_check_aB_arg:n {
-  \exp_args:Ne \cs_if_eq:NNF {\tl_head:n{#1}}
+\cs_new_protected:Nn \__stex_notations_check_aB_arg:Nn {
+  \exp_args:Ne \cs_if_eq:NNF {\tl_head:n{#2}}
     \_stex_term_arg_aB:nnnnn {
-    \TODOError
+    \msg_error:nnx{stex}{error/assocarg}{\tl_to_str:n{#1}}
   }
 }
 
 \cs_new_protected:Npn \argsep #1 #2 {
-  \__stex_notations_check_aB_arg:n{#1}
+  \__stex_notations_check_aB_arg:Nn\argsep{#1}
   \stex_pseudogroup_with:nn{\_stex_term_do_aB_clist:}{
     \tl_set:Nn \_stex_term_do_aB_clist: {
       \seq_use:Nn \l_stex_aB_args_seq {#2}
@@ -3948,7 +3985,7 @@
   }
 }
 \cs_new_protected:Npn \argmap #1 #2 #3 {
-  \__stex_notations_check_aB_arg:n{#1}
+  \__stex_notations_check_aB_arg:Nn\argmap{#1}
   \stex_pseudogroup_with:nn{
     \_stex_term_do_aB_clist:
     \__stex_notations_map_cs:
@@ -3972,7 +4009,7 @@
   }
 }
 \cs_new_protected:Npn \argarraymap #1 #2 #3 #4 {
-  \__stex_notations_check_aB_arg:n{#1}
+  \__stex_notations_check_aB_arg:Nn\argarraymap{#1}
   \stex_pseudogroup_with:nn{
     \_stex_term_do_aB_clist:
     \__stex_notations_map_cs:
@@ -4095,7 +4132,7 @@
       }
     }{\hbox\bgroup
       \_stex_annotate_force_break:n{
-        %\bool_set_true:N \stex_in_invisible_html_bool
+        \bool_set_true:N \stex_in_invisible_html_bool
         \tl_if_empty:NF \l_stex_key_type_tl {
           \stex_annotate:nn{shtml:type={}}{$\l_stex_key_type_tl$}
         }
@@ -4341,8 +4378,14 @@
     }
   }{
     \clist_put_right:Nn \l__stex_seqs_clist {
-      \group_begin:
-        \l__stex_seqs_cs \group_end: #1
+      \exp_args:No \str_if_eq:nnTF \l_stex_current_arity_str {1}{
+        \group_begin:
+          \l__stex_seqs_cs \group_end: {#1}
+
+      }{
+        \group_begin:
+          \l__stex_seqs_cs \group_end: #1
+      }
     }
   }
 }
@@ -4624,6 +4667,7 @@
 \cs_new_protected:Nn \__stex_expr_invoke_custom:n {
   \stex_debug:nn{custom}{custom~notation~for~\l_stex_current_symbol_str}
   \stex_pseudogroup:nn{
+    \bool_set_true:N \l_stex_allow_semantic_bool
     \prop_gclear:N \l__stex_expr_customs_prop
     \seq_gclear:N \l__stex_expr_customs_seq
     \int_gzero:N \l__stex_expr_arg_counter_int
@@ -4703,14 +4747,13 @@
       }{
         \__stex_expr_arg_do:oon \l_tmpa_tl \l_tmpb_tl { #2 }
       }{
-        \TODO error
+        \msg_error:nnxx{stex}{error/invalidarg}{#1}{\l_stex_current_symbol_str}
       }
     }
   }
 }
 
 \prg_new_conditional:Nnn \__stex_expr_check:n {TF} {
-  \stex_debug:nn{custom}{Checking~argument~#1~for~\l_stex_current_symbol_str^^J\meaning\l__stex_expr_customs_prop}
   \exp_args:NNe \prop_get:NnNTF \l__stex_expr_customs_prop {#1} \l_tmpa_tl {
     \tl_set:Nx \l_tmpb_tl {\seq_item:Nn \l__stex_expr_customs_seq {#1} }
     \tl_if_empty:NTF \l_tmpa_tl {
@@ -4726,14 +4769,12 @@
       }{
         \tl_set:Nx \l_tmpa_tl{ #1 }
       }
-      \stex_debug:nn{custom}{valid^^J~\meaning\l__stex_expr_customs_prop}
       \prg_return_true:
     }{
-      \stex_debug:nn{custom}{invalid}
       \prg_return_false:
     }
   }{
-    \TODO error
+    \msg_error:nnxx{stex}{error/invalidarg}{#1}{\l_stex_current_symbol_str}
     \prg_return_false:
   }
 }
@@ -4983,7 +5024,7 @@
   \cs_new_protected:Nn \__stex_expr_do_headterm:nn {
     \bool_if:NTF \stex_in_invisible_html_bool {
       {\bool_set_true:N \l_stex_allow_semantic_bool
-        \l_stex_current_term_tl
+        \ensuremath{\l_stex_current_term_tl}
       }
     }{
       \stex_annotate:nn{
@@ -4994,7 +5035,7 @@
         \_stex_annotate_force_break:n{
           \stex_annotate_invisible:nn{shtml:headterm={}}{
             {\bool_set_true:N \l_stex_allow_semantic_bool
-              \l_stex_current_term_tl
+              \ensuremath{\l_stex_current_term_tl}
             }
           }
         }
@@ -5080,9 +5121,9 @@
     #2
   } {
     \int_compare:nNnTF { #1 } > \l_stex_notation_downprec {
-      \bool_if:NTF \l_stex_inparray_bool { #2 }{
+      %\bool_if:NTF \l_stex_inparray_bool { #2 }{
         \dobrackets { #2 }
-      }
+      %}
     }{ #2 }
   }
 }
@@ -5221,7 +5262,7 @@
     \let\compemph@uri#2
     #3{}{}{\comp{#1}}
   }{
-    \msg_error:nnnx{stex}{error/notallowed}{#1}{\l_stex_current_symbol_str}
+    \msg_error:nnxx{stex}{error/notallowed}{#1}{\l_stex_current_symbol_str}
   }
   \group_end:
 }
@@ -5362,7 +5403,7 @@
 \cs_new_protected:Nn \stex_get_mathstructure:n {
   \_stex_get_mathstructure:n{#1}
   \str_if_empty:NT \l_stex_get_structure_module_str {
-    \TODOg Error
+    \msg_error:nnn{stex}{error/unknownstructure}{#1}
   }
 }
 \cs_new_protected:Nn \_stex_get_mathstructure:n {
@@ -5447,7 +5488,7 @@
 
 \cs_new_protected:Nn \__stex_structures_check_def:nnnnnnnn {
   \tl_if_empty:nT{#5}{
-    \TODOh error
+    \msg_error:nnnn{stex}{error/needsdefiniens}{#1}{extstructure*}
   }
 }
 
@@ -5814,7 +5855,7 @@
       \prop_item:Nn \l__stex_structures_prop {#1}
     }
   }{
-    \TODOi #1 error1
+    \msg_error:nnn{stex}{error/unknownfield}{#1}
   }
 }
 
@@ -5841,7 +5882,7 @@
     \exp_args:Nne \use:nn {\__stex_structures_make_prop_assign_replace:nnnn {#1}{#2}}
     {\prop_item:Nn \l__stex_structures_prop {#1}}
   }{
-    \TODOj Error
+    \msg_error:nnn{stex}{error/unknownfieldass}{#1}
   }
 }
 \cs_new_protected:Nn \__stex_structures_make_prop_assign_replace:nnnn {
@@ -5946,11 +5987,11 @@
   name    .str_set:N = \l_stex_key_name_str ,
   for     .clist_set:N = \l_stex_key_for_clist ,
   macro   .str_set:N = \l_stex_key_macroname_str ,
-  start   .str_set:N = \l_stex_key_title_str , % TODO remove
+  % start   .str_set:N = \l_stex_key_title_str , % TODO remove
   type    .clist_set:N = \l_stex_key_types_clist ,
   judgment .code:n = {},
-  from .code:n= {}, % TODO remove
-  to .code:n={} % TODO remove
+  % from .code:n= {}, % TODO remove
+  % to .code:n={} % TODO remove
 }{id,title,style,symargs}
 \cs_new_protected:Npn \_stex_do_for_list: {
   \seq_clear:N \l_stex_fors_seq
@@ -6077,7 +6118,7 @@
   \stex_reactivate_macro:N \definiens
 }
 \stex_new_statement:nnn{assertion}{ass}{
-  \__stex_statements_setup:n{PROPOSITION}
+  \__stex_statements_setup:n{}
   \stex_if_smsmode:F{
     \seq_map_inline:Nn \l_stex_fors_seq {
       \stex_ref_new_sym_target:n{##1}
@@ -6108,7 +6149,7 @@
     \def\comp{\_defcomp}
     \stex_annotate:nn{shtml:definiendum=\l_stex_current_symbol_str}{\comp{#2}}
   }{
-    \msg_error:nnnx{stex}{error/notallowed}{#1}{\l_stex_current_symbol_str}
+    \msg_error:nnxx{stex}{error/notallowed}{#1}{\l_stex_current_symbol_str}
   }
   \group_end:
 }
@@ -6149,7 +6190,7 @@
       {\l_stex_get_symbol_mod_str ? \l_stex_get_symbol_name_str}
   }
   \str_if_empty:NT \l__stex_statements_uri_str {
-    \TODOa error
+    \msg_error:nn{stex}{error/definiensfor}
   }
   \stex_debug:nn{definiens}{Checking~\l__stex_statements_uri_str}
 
@@ -6196,7 +6237,7 @@
       {\l_stex_get_symbol_mod_str ? \l_stex_get_symbol_name_str}
   }
   \str_if_empty:NT \l__stex_statements_uri_str {
-    \TODOa error
+    \msg_error:nn{stex}{error/conclusionfor}
   }
   \stex_annotate:nn{ shtml:conclusion=\l__stex_statements_uri_str}{
     #2 %\_stex_annotate_force_break:n{ #2 }
@@ -6571,45 +6612,6 @@
   \global \let \l_stex_metatheory_uri \l_stex_metatheory_uri
 \group_end:
 \cs_new_protected:Npn \MSC #1 {}
-
-\bool_new:N \l_stex_inparray_bool\bool_set_false:N \l_stex_inparray_bool
-\iffalse
-\NewDocumentCommand \parray { m m } {
-  %\group_begin:
-  \bool_set_true:N \l_stex_inparray_bool
-  %\begin{array}{#1}
-    #2
-  %\end{array}
-  %\group_end:
-}
-
-\NewDocumentCommand \prmatrix { m } {
-  %\group_begin:
-  \bool_set_true:N \l_stex_inparray_bool
-  %\begin{matrix}
-    #1
-  %\end{matrix}
-  %\group_end:
-}
-
-\def \maybephline {
-  %\bool_if:NT \l_stex_inparray_bool {\hline}
-}
-
-\def \parrayline #1 #2 {
-  #1 #2 %\bool_if:NT \l_stex_inparray_bool {\\}
-}
-
-\def \pmrow #1 { \parrayline{}{ #1 } }
-
-\def \parraylineh #1 #2 {
-  #1 #2 %\bool_if:NT \l_stex_inparray_bool {\\\hline}
-}
-
-\def \parraycell #1 {
-  #1 %\bool_if:NT \l_stex_inparray_bool {&}
-}
-\fi
 \stex_new_stylable_cmd:nnnn{MMTinclude}{m}{
   \stex_annotate_invisible:nn{shtml:import={#1}}{}
 }{}
