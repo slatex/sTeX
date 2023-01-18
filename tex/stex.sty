@@ -1409,6 +1409,27 @@
   post      .code:n = {}
 }{archive file}
 \stex_keys_define:nnnn{sref / 2}{}{}{archive file, title}
+
+\str_new:N \l__stex_refs_default_archive_str
+\str_new:N \l__stex_refs_default_file_str
+\tl_new:N \l__stex_refs_default_title_tl
+
+\cs_set_protected:Nn \__stex_refs_set_keys_b:n {
+  \tl_if_empty:nTF{#1}{
+    \str_set_eq:NN \l_stex_key_archive_str \l__stex_refs_default_archive_str
+    \str_set_eq:NN \l_stex_key_file_str \l__stex_refs_default_file_str
+    \str_set_eq:NN \l_stex_key_title_tl \l__stex_refs_default_title_tl
+  }{
+    \stex_keys_set:nn{ sref / 2 }{ #1 }
+  }
+}
+
+\newcommand\srefsetin[3][]{
+  \str_set:Nx \l__stex_refs_default_archive_str {#1}
+  \str_set:Nx \l__stex_refs_default_file_str {#2}
+  \tl_set:Nn \l__stex_refs_default_title_tl {#3}
+}
+
 \cs_new_protected:Nn \__stex_refs_find_uri:n {
   \str_clear:N \l__stex_refs_uri_str
   \stex_debug:nn{sref}{
@@ -1480,7 +1501,7 @@
       \__stex_refs_do_autoref:n{#1}
     }{
       \stex_debug:nn{sref}{srefin~on~#1}
-      \stex_keys_set:nn { sref / 2 }{ #2 }
+      \__stex_refs_set_keys_b:n{ #2 }
       \__stex_refs_do_sref_in:n{#1}
     }
   }{
@@ -1495,7 +1516,7 @@
           \__stex_refs_do_autoref:n{\l__stex_refs_uri_str?#1}
         }{
           \stex_debug:nn{sref}{in~non-empty;~srefin~on~\l__stex_refs_uri_str?#1}
-          \stex_keys_set:nn { sref / 2 }{ #2 }
+          \__stex_refs_set_keys_b:n{ #2 }
           \__stex_refs_do_sref_in:n{#1}
         }
       }
@@ -1506,7 +1527,7 @@
         \__stex_refs_do_autoref:n{\l__stex_refs_uri_str?#1}
       }{
         \stex_debug:nn{sref}{in~non-empty;~srefin~on~\l__stex_refs_uri_str?#1}
-        \stex_keys_set:nn { sref / 2 }{ #2 }
+        \__stex_refs_set_keys_b:n{ #2 }
         \__stex_refs_do_sref_in:n{#1}
       }
     }
@@ -1597,7 +1618,7 @@
 \NewDocumentCommand \extref { O{} m m}{
   \stex_keys_set:nn { sref / 1 }{ #1 }
   \__stex_refs_find_uri:n { #2 }
-  \stex_keys_set:nn { sref / 2 }{ #3 }
+  \__stex_refs_set_keys_b:n{ #3 }
   \str_if_empty:NT \l_stex_key_file_str {
     \msg_error:nn{stex}{error/extrefmissing}
   }
@@ -3159,7 +3180,7 @@
 }
 
 \cs_new:Nn \_stex_return_args:nn {
-  {\svar{ARGUMENT_#1}}
+  {\svar{ARGUMENT_#1}\_stex_eat_exclamation_point:}
 }
 
 \cs_new_protected:Nn \_stex_symdecl_html: {
@@ -4555,7 +4576,7 @@
   \stex_debug:nn{expressions}{using~notation~#1~for~\l_stex_current_symbol_str}
   \cs_if_exist:cTF{l_stex_notation_\l_stex_current_symbol_str _#1_cs}{
     \tl_if_empty:NTF \l_stex_current_return_tl {
-      \use:c{l_stex_notation_\l_stex_current_symbol_str _#1_cs}{\group_end:\peek_charcode_remove:NT!{}}
+      \use:c{l_stex_notation_\l_stex_current_symbol_str _#1_cs}{\group_end:\_stex_eat_exclamation_point:}
     }{
       \exp_after:wN\exp_after:wN\exp_after:wN
       \__stex_expr_invoke_return_maybe:n
@@ -4565,7 +4586,7 @@
   }{
     \stex_do_default_notation:
     \tl_if_empty:NTF \l_stex_current_return_tl {
-      \l_stex_default_notation{\group_end:\peek_charcode_remove:NT!{}}
+      \l_stex_default_notation{\group_end:\_stex_eat_exclamation_point:}
     }{
       \exp_after:wN
       \__stex_expr_invoke_return_maybe:n
@@ -4992,6 +5013,12 @@
 \cs_new_protected:Nn \__stex_expr_varseq_in_map:nnnnnnnn {
   \__stex_expr_assoc_make_seq:nnn{#2}{#6}{#3}
 }
+\cs_new_protected:Nn \_stex_eat_exclamation_point: {
+  \peek_charcode_remove:NT ! {
+    \_stex_eat_exclamation_point:
+  }
+}
+
 \bool_new:N \stex_in_invisible_html_bool
 \bool_set_false:N \stex_in_invisible_html_bool
 \stex_if_html_backend:TF {
