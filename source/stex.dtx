@@ -1705,16 +1705,29 @@
 
 \tl_set:Nn \currentsectionlevel {document}
 
-\cs_new_protected:Nn \_sfragment_do_level:nn {
-  \stexdoctitle{#2}
-  \tl_if_empty:NTF \l_stex_key_short_tl {
-    \use:c{#1}
-  }{
-    \use:c{#1}[\l_stex_key_short_tl]
-  }{#2}
-  \int_incr:N \l_stex_docheader_sect
-  \tl_set:Nn \currentsectionlevel{#1}
+\stex_if_html_backend:TF {
+  \cs_new_protected:Nn \_sfragment_do_level:nn {
+    \stexdoctitle{#2}
+    \begin{stex_annotate_env}{shtml:section={\int_use:N \l_stex_docheader_sect}}
+      \stex_annotate:nn{shtml:sectiontitle={}}{#2}
+  }
+  \cs_new_protected:Nn \_sfragment_end: {
+    \end{stex_annotate_env}
+  }
+}{
+  \cs_new_protected:Nn \_sfragment_do_level:nn {
+    \stexdoctitle{#2}
+    \tl_if_empty:NTF \l_stex_key_short_tl {
+      \use:c{#1}
+    }{
+      \use:c{#1}[\l_stex_key_short_tl]
+    }{#2}
+    \int_incr:N \l_stex_docheader_sect
+    \tl_set:Nn \currentsectionlevel{#1}
+  }
+  \cs_new_protected:Nn \_sfragment_end: {}
 }
+
 
 \cs_new_protected:Npn \_@@_do_section:n {
   \int_case:nnF \l_stex_docheader_sect {
@@ -1733,8 +1746,27 @@
   }{\_sfragment_do_level:nn{subparagraph}}
 }
 
+\stex_keys_define:nnnn{ sfragment }{
+  \tl_clear:N \l_stex_key_short_tl
+}{
+  short   .tl_set:N   = \l_stex_key_short_tl
+}{id}
 
-\cs_new_protected:Nn \_@@_skip_section: {
+\NewDocumentEnvironment{sfragment}{ O{} m}{
+  \stex_keys_set:nn{sfragment}{#1}
+  \_@@_do_section:n{#2}
+  \_stex_do_id:
+}{
+  \_sfragment_end:
+}
+
+%\int_incr:N \l_stex_docheader_sect
+\NewDocumentEnvironment{blindfragment}{}{
+  \_@@_skip_section:
+}{}
+
+
+\cs_new_protected:Nn \_@@_skip_section_i: {
   \int_case:nn \l_stex_docheader_sect {
     {0}{\cs_if_exist:NF \part {
       \int_incr:N \l_stex_docheader_sect \_@@_skip_section:
@@ -1746,22 +1778,14 @@
   \int_incr:N \l_stex_docheader_sect
 }
 
-\stex_keys_define:nnnn{ sfragment }{
-  \tl_clear:N \l_stex_key_short_tl
+\stex_if_html_backend:TF {
+  \cs_new_protected:Nn \_@@_skip_section: {
+    \_@@_skip_section_i:
+    \begin{stex_annotate_env}{shtml:skipsection={}}
+  }
 }{
-  short   .tl_set:N   = \l_stex_key_short_tl
-}{id}
-
-\NewDocumentEnvironment{sfragment}{ O{} m}{
-  \stex_keys_set:nn{sfragment}{#1}
-  \_@@_do_section:n{#2}
-  \_stex_do_id:
-}{}
-
-%\int_incr:N \l_stex_docheader_sect
-\NewDocumentEnvironment{blindfragment}{}{
-  \_@@_skip_section:
-}{}
+  \cs_set_eq:NN \_@@_skip_section: \_@@_skip_section_i:
+}
 
 
 \cs_new_protected:Nn \_@@_skip_fragment:n {
@@ -2092,24 +2116,29 @@
     \stex_file_resolve:No \l_@@_file \l_@@_file_str
     \str_set:Nx \l_@@_file_str {\stex_file_use:N \l_@@_file }
     \stex_debug:nn{sref}{File: \l_@@_file_str }
-
-    \exp_args:No \IfFileExists \l_@@_file_str {
-      \tl_clear:N \l_@@_return_tl
-      \str_set:Nn \l_@@_id_str {#1}
-      \let\STEXInternalSrefRestoreTarget\_@@_restore_target:nnnnn
-      \use:c{@ @ input}{\l_@@_file_str}
-      \exp_args:No \tl_if_empty:nTF \l_@@_return_tl {
-        \exp_args:Nnno \msg_warning:nnnn{stex}{warning/smslabelmissing}\l_@@_file_str{#1}
+    \exp_args:NNNx \exp_args:No \str_if_eq:nnTF \l_@@_file_str {\stex_file_use:N\c_stex_pwd_file / \jobname.sref}{
+      \_@@_do_autoref:n{
+        \str_if_empty:NF\l_@@_uri_str{\l_@@_uri_str?}#1
+      }
+    }{
+      \exp_args:No \IfFileExists \l_@@_file_str {
+        \tl_clear:N \l_@@_return_tl
+        \str_set:Nn \l_@@_id_str {#1}
+        \let\STEXInternalSrefRestoreTarget\_@@_restore_target:nnnnn
+        \use:c{@ @ input}{\l_@@_file_str}
+        \exp_args:No \tl_if_empty:nTF \l_@@_return_tl {
+          \exp_args:Nnno \msg_warning:nnnn{stex}{warning/smslabelmissing}\l_@@_file_str{#1}
+          \_@@_do_autoref:n{
+            \str_if_empty:NF\l_@@_uri_str{\l_@@_uri_str?}#1
+          }
+        }{
+          \l_@@_return_tl
+        }
+      }{
+        \exp_args:Nnno \msg_warning:nnn{stex}{warning/smsmissing}\l_@@_file_str
         \_@@_do_autoref:n{
           \str_if_empty:NF\l_@@_uri_str{\l_@@_uri_str?}#1
         }
-      }{
-        \l_@@_return_tl
-      }
-    }{
-      \exp_args:Nnno \msg_warning:nnn{stex}{warning/smsmissing}\l_@@_file_str
-      \_@@_do_autoref:n{
-        \str_if_empty:NF\l_@@_uri_str{\l_@@_uri_str?}#1
       }
     }
   \group_end:
@@ -7389,12 +7418,15 @@
       \tl_set_eq:NN \thistitle \l_stex_key_title_tl
       \str_set_eq:NN \thisname \l_stex_key_name_str
       \clist_set_eq:NN \thisfor \l_stex_key_for_str
-      \stex_style_apply:
+      \stex_if_html_backend:F \stex_style_apply:
     }
     \_stex_do_id:
     \stex_smsmode_do:
   }{
     \stex_if_smsmode:F {
+      \stex_if_html_backend:TF {
+        \stex_annotate:nn{shtml:statementtitle={}}{\l_stex_key_title_tl}
+      }
       \stex_style_apply:
       \end{stex_annotate_env}
     }
