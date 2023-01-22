@@ -614,19 +614,19 @@
 
 \cs_new_protected:Nn \__stex_persist_read_and_write: {
   \file_if_exist:nTF{\jobname.sms}{
-    \ior_open:Nn \l_tmpa_ior {\jobname.sms}
-    \iow_open:Nn \l_tmpa_iow {\jobname.sms2}
-    \ior_str_map_inline:Nn \l_tmpa_ior {
-      \iow_now:Nn \l_tmpa_iow {##1}
+    \ior_open:Nn \g_tmpa_ior {\jobname.sms}
+    \iow_open:Nn \g_tmpa_iow {\jobname.sms2}
+    \ior_str_map_inline:Nn \g_tmpa_ior {
+      \iow_now:Nn \g_tmpa_iow {##1}
     }
-    \iow_close:N \l_tmpa_iow
-    \ior_close:N \l_tmpa_ior
+    \iow_close:N \g_tmpa_iow
+    \ior_close:N \g_tmpa_ior
     \__stex_persist_write_only:
-    \ior_open:Nn \l_tmpa_ior {\jobname.sms2}
-    \ior_str_map_inline:Nn \l_tmpa_ior {
+    \ior_open:Nn \g_tmpa_ior {\jobname.sms2}
+    \ior_str_map_inline:Nn \g_tmpa_ior {
       \iow_now:Nn \c__stex_persist_sms_iow {##1}
     }
-    \ior_close:N \l_tmpa_ior
+    \ior_close:N \g_tmpa_ior
     \__stex_persist_load_file:n{\jobname.sms2}
   }\__stex_persist_write_only:
 }
@@ -1155,7 +1155,7 @@
     }
   }
 }
-\bool_if:NF \c_stex_persist_mode_bool {
+\cs_new_protected:Nn \_stex_main_archive: {
   \stex_if_file_starts_with:NNTF \c_stex_pwd_file \c_stex_mathhub_file {
     \__stex_mathhub_find_manifest:x { \stex_file_use:N \c_stex_pwd_file }
     \str_if_empty:NTF \l__stex_mathhub_manifest_str {
@@ -1172,12 +1172,18 @@
       \stex_debug:nn{mathhub}{Current~archive:~
         \prop_item:Nn \l_stex_current_archive_prop {id}
       }
-    }
-    \bool_if:NT \c_stex_persist_write_mode_bool {
-      \tl_put_right:Nx \_stex_persist_read_now: {
-        \stex_persist:n {
-          \prop_gset_eq:Nc \exp_not:N \l_stex_current_archive_prop {
-            c_stex_mathhub_\l__stex_mathhub_str _manifest_prop
+      \bool_if:NT \c_stex_persist_write_mode_bool {
+        \tl_put_right:Nx \_stex_persist_read_now: {
+          \stex_persist:n {
+            \prop_gset_from_keyval:cn {c_stex_mathhub_\l__stex_mathhub_str _manifest_prop}{
+              \prop_to_keyval:N \c_stex_main_archive_prop
+            }
+            \prop_gset_eq:Nc \exp_not:N \l_stex_current_archive_prop {
+              c_stex_mathhub_\l__stex_mathhub_str _manifest_prop
+            }
+            \prop_gset_eq:Nc \exp_not:N \c_stex_main_archive_prop {
+              c_stex_mathhub_\l__stex_mathhub_str _manifest_prop
+            }
           }
         }
       }
@@ -1186,6 +1192,8 @@
     \stex_debug:nn{mathhub}{Not~currently~in~the~MathHub~directory}
   }
 }
+
+  \_stex_main_archive:
 \tl_new:N \g__stex_doc_title_tl
 \cs_new_protected:Npn \stexdoctitle #1 {
   \tl_gset:Nn \g__stex_doc_title_tl { #1 }
@@ -2650,13 +2658,19 @@
 }
 \cs_new:Npn \__stex_features_split_qm:w #1 ? #2 ? #3 { #3 }
 \cs_new_protected:Nn \__stex_features_do_elaboration: {
+  \stex_debug:nn{morpisms}{
+    Elaborating:^^J\prop_to_keyval:N \l_stex_morphism_symbols_prop
+    ^^J
+    Renamings:^^J
+    \prop_to_keyval:N \l_stex_morphism_renames_prop
+  }
   \prop_map_inline:Nn \l_stex_morphism_symbols_prop {
     \__stex_features_elab_check: ##1 ##2
   }
   \exp_args:No\stex_iterate_notations:nn\l_stex_current_domain_str{
     \prop_get:NnNTF \l_stex_morphism_renames_prop {##1}\l__stex_features_tmp {
       \exp_args:Ne \stex_module_add_notation:nnnnn
-      {\l_stex_current_module_str ? \l__stex_features_tmp}
+      {\l_stex_current_module_str ? \exp_after:wN \use_ii:nn \l__stex_features_tmp}
     }{
       \exp_args:Ne \stex_module_add_notation:nnnnn
       {\l_stex_current_module_str ? \l_stex_feature_name_str
@@ -3915,8 +3929,14 @@
 \stex_sms_allow_escape:N \symdef
 \cs_new_protected:Nn \stex_do_default_notation: {
   \stex_do_default_notation_op:
-  \tl_if_empty:NF \l_stex_current_args_tl {
+  \tl_if_empty:NTF \l_stex_current_args_tl {
+    \tl_clear:N \l__stex_notations_args_tl
+  }{
     \__stex_notations_make_name:
+    \tl_set_eq:NN \l_stex_get_symbol_args_tl \l_stex_current_args_tl
+    \tl_set:Nx \l__stex_notations_args_tl {
+      \_stex_map_args:N \__stex_notations_augment_arg:nn
+    }
     \tl_put_right:Nn \l_stex_default_notation {\comp(}
     \seq_clear:N \l_tmpa_seq
     \int_step_inline:nn \l_stex_current_arity_str {
@@ -3927,9 +3947,13 @@
     }
     \tl_put_right:Nn \l_stex_default_notation {\comp)}
   }
-  \tl_set:Nx \l_stex_default_notation {\STEXInternalNotation{}{0}{}{\l_stex_current_args_tl}{
+  \tl_set:Nx \l_stex_default_notation {\STEXInternalNotation{}{0}{}{\l__stex_notations_args_tl}{
     \exp_args:No \exp_not:n \l_stex_default_notation
   }}
+}
+
+\cs_new:Nn \__stex_notations_augment_arg:nn {
+  #1#2{0}{}
 }
 
 \cs_new_protected:Nn \__stex_notations_make_name: {
@@ -5381,7 +5405,7 @@
   \_do_comp:nNn {definiendum}\defemph@uri
 }
 
-\cs_new_protected:Npn \comp {}
+\cs_set_protected:Npn \comp {}
 
 \cs_new_protected:Npn \compemph@uri #1 #2 {
     \compemph{ #1 }
@@ -6039,18 +6063,30 @@
         \cs_if_exist:cF{l_stex_notation_##1 _##2_cs}{
           \tl_set:cn{l_stex_notation_##1 _##2_cs}{##4}
         }
+        \cs_if_exist:cF{l_stex_notation_##1 __cs}{
+          \tl_set:cn{l_stex_notation_##1 __cs}{##4}
+        }
       }
       \cs_if_exist:cF{l_stex_notation_##1 _##2_cs}{
         \tl_set:cn{l_stex_notation_##1 _##2_cs}{##4}
+      }
+      \cs_if_exist:cF{l_stex_notation_##1 __cs}{
+        \tl_set:cn{l_stex_notation_##1 __cs}{##4}
       }
       \tl_if_empty:nF{##5}{
         \tl_put_right:Nn \l__stex_structures_redo_tl {
           \cs_if_exist:cF{l_stex_notation_##1 _op_##2_cs}{
             \tl_set:cn{l_stex_notation_##1 _op_##2_cs}{##5}
           }
+          \cs_if_exist:cF{l_stex_notation_##1 _op__cs}{
+            \tl_set:cn{l_stex_notation_##1 _op__cs}{##5}
+          }
         }
         \cs_if_exist:cF{l_stex_notation_##1 _op_##2_cs}{
           \tl_set:cn{l_stex_notation_##1 _op_##2_cs}{##5}
+        }
+        \cs_if_exist:cF{l_stex_notation_##1 _op__cs}{
+          \tl_set:cn{l_stex_notation_##1 _op__cs}{##5}
         }
       }
     }
