@@ -7838,25 +7838,50 @@
   \end{list}
 }
 
+\cs_new_protected:Nn \_@@_html: {
+  \stex_annotate_invisible:n{\hbox{
+    \tl_if_empty:NF \l_stex_key_term_tl {
+      $\stex_annotate:nn{shtml:proofterm={}}{\l_stex_key_term_tl}$
+    }
+    \tl_if_empty:NF \l_stex_key_method_tl {
+      $\stex_annotate:nn{shtml:proofmethod={}}{\l_stex_key_method_tl}$
+    }
+  }}
+}
+
+\cs_new_protected:Nn \_@@_html_env:n {
+  \exp_args:Nne \begin{stex_annotate_env}{
+    shtml:#1={
+      \seq_if_empty:NF \l_stex_fors_seq {
+        \seq_use:Nn \l_stex_fors_seq ,
+      }
+    }
+    \bool_if:NT \l_stex_key_hide_bool {,
+      shtml:proofhide=true
+    }
+  }
+  \_@@_html:
+}
+
 \bool_set_false:N \l_@@_in_spfblock_bool
 \stex_new_stylable_env:nnnnnnn{proof}{s O{} m}{\par
   \intarray_gzero:N \l_@@_counter_intarray
   \intarray_gset:Nnn \l_@@_counter_intarray 1 1
   \stex_keys_set:nn{spfsteps}{#2}
   \_stex_do_for_list:
+  \stex_if_do_html:T {
+    \_@@_html_env:n{proof}
+  }
   \stex_style_apply:
-
   \_stex_do_id:
-  %\exp_args:Ne \stex_annotate:nn{
-  %  shtml:proofsketch={
-  %    \seq_if_empty:NF \l_stex_fors_seq {
-  %      \seq_use:Nn \l_stex_fors_seq ,
-  %    }
-  %  }
-  %}{
-  %  \stex_style_apply:
-  %  #2
-  %}
+  \stex_reactivate_macro:N \subproof
+  \stex_reactivate_macro:N \spfstep
+  \stex_reactivate_macro:N \conclude
+  \stex_reactivate_macro:N \assumption
+  \stex_reactivate_macro:N \eqstep
+  \stex_reactivate_macro:N \yield
+  \stex_reactivate_macro:N \spfblock
+  \stex_reactivate_macro:N \spfjust
   #3
   \IfBooleanTF #1 {}{
     \bool_set_true:N\l_@@_in_spfblock_bool\_@@_start_list:n{}
@@ -7864,6 +7889,7 @@
   }
 }{
   \stex_style_apply:
+  \stex_if_do_html:T{\end{stex_annotate_env}}
 }{
   \emph{Proof:}~
 }{
@@ -7882,6 +7908,9 @@
 \stex_new_stylable_env:nnnnnnn{subproof}{s O{} m}{\par
   \stex_keys_set:nn{spf}{#2}
   \_stex_do_for_list:
+  \stex_if_do_html:T {
+    \_@@_html_env:n{subproof}
+  }
 
   \IfBooleanTF #1 {
     \stex_style_apply:
@@ -7905,6 +7934,7 @@
 }{
   \stex_style_apply:
   \bool_if:NT \l_@@_in_spfblock_bool \_@@_inc_counter:
+  \stex_if_do_html:T{\end{stex_annotate_env}}
   \aftergroup \_@@_inblock_restore: 
 }{}{}{}
 \AddToHook{env/subproof/before}{
@@ -7916,6 +7946,7 @@
     \_@@_end_list:
   }
 }
+\stex_deactivate_macro:Nn \subproof {sproof~environments}
 
 \cs_new_protected:Nn \_@@_inblock_restore: {
   \bool_if:NT\l_@@_in_spfblock_bool {
@@ -7924,24 +7955,6 @@
 }
 %    \end{macrocode}
 % \end{environment}
-%
-% \begin{macro}{\_@@_maybe_comment:,\_@@_maybe_comment_end:,\_@@_start_comment:}
-%    \begin{macrocode}
-
-\cs_new_protected:Nn \_@@_maybe_comment: {
-  \bool_if:NF \l_@@_in_spfblock_bool {
-    \par \setbox \l_tmpa_box \vbox \bgroup \everypar{\_@@_start_comment:}
-  }
-}
-\cs_new_protected:Nn \_@@_maybe_comment_end: {
-  \bool_if:NF \l_@@_in_spfblock_bool { \egroup }
-}
-\cs_new_protected:Nn \_@@_start_comment: {
-  \egroup\csname @ @ par\endcsname\item[]\bgroup\stexcommentfont
-}
-
-%    \end{macrocode}
-% \end{macro}
 %
 % \begin{macro}{\spfstep,\conclude,\assumption,\have,\eqstep}
 %    \begin{macrocode}
@@ -7959,6 +7972,24 @@
   type .code:n = {} % todo: type=inline
 }{id,style,title}
 
+\cs_new_protected:Nn \_@@_step_html:nn {
+  \stex_if_do_html:TF{
+    \exp_args:Ne \stex_annotate:nn{
+      shtml:spf#1={
+        \seq_if_empty:NF \l_stex_fors_seq {
+          \seq_use:Nn \l_stex_fors_seq ,
+        }
+      }
+      \str_if_empty:NF \l_stex_key_name_str {,
+        shtml:stepname={\l_stex_key_name_str}
+      }
+    }{
+      \_@@_html:
+      #2
+    }
+  }{ #2 }
+}
+
 \cs_new_protected:Nn \_@@_make_step_macro:Nnnnn {
   \NewDocumentCommand #1 {s O{} +m} {
     \bool_if:NT \l_@@_in_spfblock_bool \group_end:
@@ -7966,57 +7997,58 @@
 
     \bool_if:NTF \l_@@_in_spfblock_bool { 
       \IfBooleanTF ##1 {
-        ##3
+        \_@@_step_html:nn{#2}{##3}
       }{
-      \_@@_start_list:n{#3} ##3 \_@@_end_list:
+        \_@@_step_html:nn{#2}{\_@@_start_list:n{#3} ##3 \_@@_end_list:}
         #5
       }
       \group_begin:\stexcommentfont
     }{
-      ##3
+      \_@@_step_html:nn{#2}{##3}
     }
   }
-  %\stex_deactivate_macro:Nn #1 {sproof~environments}
+  \stex_deactivate_macro:Nn #1 {sproof~environments}
 }
 
 \_@@_make_step_macro:Nnnnn \assumption {assumption} \_@@_insert_number: {} \_@@_inc_counter:
 \_@@_make_step_macro:Nnnnn \conclude {conclusion} {$\Rightarrow$} {} {}
-\_@@_make_step_macro:Nnnnn \spfstep {} \_@@_insert_number: {} \_@@_inc_counter:
+\_@@_make_step_macro:Nnnnn \spfstep {step} \_@@_insert_number: {} \_@@_inc_counter:
 
 \NewDocumentCommand \eqstep {s m}{
   \bool_if:NTF \l_@@_in_spfblock_bool {
     \group_end:
     \IfBooleanTF #1 {
-      $= #2$
+      \_@@_step_html:nn{eqstep}{$= #2$}
     }{
-      \_@@_start_list:n{$=$} $#2$ \_@@_end_list:
+      \_@@_step_html:nn{eqstep}{\_@@_start_list:n{$=$} $#2$ \_@@_end_list:}
     }
     \group_begin:\stexcommentfont
   }{
-    $= #2$
+    \_@@_step_html:nn{eqstep}{$= #2$}
   }
-  %\stex_annotate:nnn{spfstep}{eq}{ #2 }$
 }
-%\stex_deactivate_macro:Nn \eqstep {sproof~environments}
+\stex_deactivate_macro:Nn \eqstep {sproof~environments}
 
 \NewDocumentCommand \yield {+m}{
-  #1%\stex_annotate:nnn{spfyield}{}{ #1 }
+  \stex_annotate:nn{spfyield={}}{ #1 }
 }
-%\stex_deactivate_macro:Nn \yield {sproof~environments}
+\stex_deactivate_macro:Nn \yield {sproof~environments}
 
 \NewDocumentEnvironment{spfblock}{}{
   \bool_set_false:N \l_@@_in_spfblock_bool
 }{
   \aftergroup\_@@_inblock_restore:
 }
+\stex_deactivate_macro:Nn \spfblock {sproof~environments}
 \AddToHook{env/spfblock/before}{
   \bool_if:NT \l_@@_in_spfblock_bool \group_end:
 }
 
 
 \newcommand\spfjust[1]{
-  #1%\stex_annotate:nnn{justification}{}{#1}
+  \stex_annotate:nn{spfjust={}}{ #1 }
 }
+\stex_deactivate_macro:Nn \spfjust {sproof~environments}
 %    \end{macrocode}
 % \end{macro}
 %
