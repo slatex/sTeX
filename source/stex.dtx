@@ -2663,6 +2663,7 @@
   \seq_gclear:N \l_@@_sigmodules_seq
   \tl_clear:N \g_stex_sms_import_code
   \group_begin:
+    \let \l_stex_metatheory_uri \c_stex_default_metatheory
     \cs_set:Npn \stex_check_term:n ##1 {}
     \seq_clear:N \l_stex_all_modules_seq
     \str_clear:N \l_stex_current_module_str
@@ -2678,7 +2679,7 @@
       }
       \_@@_start_smsmode:n{#1}
     }
-    \g_stex_sms_import_code
+    \_@@_in_smsmode:n \g_stex_sms_import_code
     \_@@_in_smsmode:n {
       \let \_@@_do_aux_curr:N \_@@_do_aux_normal:N
       \_@@_start_smsmode:n{#1}
@@ -3019,9 +3020,9 @@
       \l_stex_import_archive_str
       \l_stex_import_path_str
       \l_stex_import_name_str
-    \stex_debug:nn{Found:~\l_stex_import_ns_str}
+    \stex_debug:nn{metatheory}{Found:~\l_stex_import_ns_str}
     \exp_args:Nne \use:nn {
-      \group_end: \str_set:Nn \l_stex_metatheory_str
+      \group_end: \stex_uri_resolve:Nn \l_stex_metatheory_uri
     }{{\l_stex_import_ns_str}}
 }
 
@@ -3029,7 +3030,7 @@
   \_@@_set_metatheory:nn { #1 }{ #2 }
   \stex_smsmode_do:
 }
-\stex_sms_allow_escape:N \stexmetatheory
+\stex_sms_allow_escape:N \setmetatheory
 %    \end{macrocode}
 % \end{macro}
 %
@@ -3676,7 +3677,6 @@
 % \begin{macro}{\stex_import_require_module:nnn,\stex_import_require_module:ooo}
 %    \begin{macrocode}
 \cs_new_protected:Npn \stex_import_require_module:nnn #1 {
-  \stex_debug:nn{importmodule}{Requiring~>#1<}
   \tl_if_empty:nTF { #1 } {
     \str_clear:N \l_@@_archive_str
     \str_set:Nn \l_stex_import_uri_str {file:}
@@ -3695,7 +3695,7 @@
   \tl_if_empty:nF {#2}{
     \str_set:Nx \l_stex_import_uri_str {\l_stex_import_uri_str / #2}
   }
-  \stex_debug:nn{importmodule}{~>#1<^^J>#2<^^J>#3<^^J>\l_stex_import_uri_str<}
+  \stex_debug:nn{importmodule}{~>#1<^^J>#2<^^J>#3<^^J>\l_stex_import_uri_str<^^JCurrent~file:\stex_file_use:N \g_stex_current_file}
   \stex_if_module_exists:nF {\l_stex_import_uri_str?#3} {
     \_@@_get_from_file:nnn{#1}{#2}{#3}
   }
@@ -3703,6 +3703,7 @@
 }
 
 \cs_new_protected:Nn \_@@_get_module:nnn {
+  \stex_debug:nn{importmodule}{Requiring~>[#1]#2?#3<}
   \_@@_get_module_uri:nnn{#1}{#2}{#3}
   \stex_activate_module:o \l_stex_import_ns_str
 }
@@ -3724,7 +3725,15 @@
       }
     }
   }
-  \_@@_load_file:n{#3}
+  \stex_if_smsmode:TF{
+    \exp_args:NNo \exp_args:Nnx \str_if_eq:nnTF{\l_@@_str}{\stex_file_use:N \g_stex_current_file}{
+      \stex_debug:nn{imports}{Skipping~current~file}
+    }{
+      \_@@_load_file:n{#3}
+    }
+  }{
+    \_@@_load_file:n{#3}
+  }
 }
 
 \cs_new_protected:Nn \_@@_load_file:n {
@@ -3740,7 +3749,7 @@
 }
 
 \cs_new_protected:Npn \_@@_check_file:nn #1 {
-  \stex_debug:nn{imports}{Checking~\l_@@_str #1}
+  \stex_debug:nn{imports}{Checking~ \l_@@_str #1}
   \IfFileExists{ \l_@@_str #1 }{
     \stex_debug:nn{imports}{Success}
     \str_set:Nx \l_@@_str { \l_@@_str #1 }
@@ -5118,10 +5127,10 @@
     \tl_set:Nn \_stex_term_do_aB_clist: {
       \seq_clear:N \l_tmpa_seq
       \seq_map_inline:Nn \l_stex_aB_args_seq {
-        \seq_put_right:Nx \l_tmpa_seq {
-          \tl_if_eq:nnTF {##1}{\ellipses}{
-            \exp_not:N\ellipses
-          }{
+        \tl_if_eq:nnTF{##1}{\ellipses}{
+          \seq_put_right:Nn \l_tmpa_seq \ellipses
+        }{
+          \seq_put_right:Nx \l_tmpa_seq {
             \exp_after:wN \exp_not:n \exp_after:wN { \_@@_map_cs: {##1} }
           }
         }
@@ -7564,6 +7573,11 @@
   }
   \stex_reactivate_macro:N \varbind
   \stex_reactivate_macro:N \conclusion
+  \stex_reactivate_macro:N \premise
+  \stex_reactivate_macro:N \definiendum
+  \stex_reactivate_macro:N \defnotation
+  \stex_reactivate_macro:N \definame
+  \stex_reactivate_macro:N \Definame
 }
 \stex_new_statement:nnn{example}{ex}{\_@@_setup:n{}}
 \stex_new_statement:nnn{paragraph}{}{
@@ -7689,6 +7703,11 @@
   \group_end:
 }
 \stex_deactivate_macro:Nn \conclusion {assertion~environments}
+
+\NewDocumentCommand \premise {m} {
+  \stex_annotate:nn{shtml:premise={}}{#1}
+}
+\stex_deactivate_macro:Nn \premise {assertion~environments}
 %    \end{macrocode}
 % \end{macro}
 %
@@ -7876,10 +7895,10 @@
 }
 
 \bool_set_false:N \l_@@_in_spfblock_bool
-\stex_new_stylable_env:nnnnnnn{proof}{s O{} m}{\par
+\cs_new_protected:Nn \_@@_begin_proof:nn {\par
   \intarray_gzero:N \l_@@_counter_intarray
   \intarray_gset:Nnn \l_@@_counter_intarray 1 1
-  \stex_keys_set:nn{spfsteps}{#2}
+  \stex_keys_set:nn{spfsteps}{#1}
   \_stex_do_for_list:
   \stex_if_do_html:T {
     \_@@_html_env:n{proof}
@@ -7894,11 +7913,12 @@
   \stex_reactivate_macro:N \yield
   \stex_reactivate_macro:N \spfblock
   \stex_reactivate_macro:N \spfjust
-  #3
-  \IfBooleanTF #1 {}{
-    \bool_set_true:N\l_@@_in_spfblock_bool\_@@_start_list:n{}
-    \group_begin:\stexcommentfont
-  }
+  #2
+}
+\stex_new_stylable_env:nnnnnnn{proof}{O{} m}{
+  \_@@_begin_proof:nn{#1}{#2}
+  \bool_set_true:N\l_@@_in_spfblock_bool\_@@_start_list:n{}
+  \group_begin:\stexcommentfont
 }{
   \stex_style_apply:
   \stex_if_do_html:T{\end{stex_annotate_env}}
@@ -7912,6 +7932,18 @@
     \group_end:\_@@_end_list:
   }
 }
+
+\stex_new_stylable_env:nnnnnnn{proof*}{O{}}{
+  \_@@_begin_proof:nn{#1}{}
+  \bool_set_false:N\l_@@_in_spfblock_bool
+}{
+  \stex_style_apply:
+  \stex_if_do_html:T{\end{stex_annotate_env}}
+}{
+  \emph{Proof:}~
+}{
+  \sproofend
+}{s}
 %    \end{macrocode}
 % \end{environment}
 %
@@ -8006,6 +8038,10 @@
   \NewDocumentCommand #1 {s O{} +m} {
     \bool_if:NT \l_@@_in_spfblock_bool \group_end:
     \stex_keys_set:nn{spfsteps}{##2}
+    \str_if_empty:NF \l_stex_key_name_str {
+      \stex_debug:nn{Here:}{Variable~\l_stex_key_name_str}
+      \exp_args:NNx\exp_args:Nnx\vardef{v\l_stex_key_name_str}{\l_stex_key_name_str}
+    }
 
     \bool_if:NTF \l_@@_in_spfblock_bool { 
       \IfBooleanTF ##1 {
@@ -8156,6 +8192,7 @@
   \stex_close_module:
   \stex_uri_add_module:NNn \l_stex_metatheory_uri \l_stex_current_ns_uri {Metatheory}
   \global \let \l_stex_metatheory_uri \l_stex_metatheory_uri
+  \global \let \c_stex_default_metatheory \l_stex_metatheory_uri
 \group_end:
 %    \end{macrocode}
 %
@@ -8210,12 +8247,12 @@
 %
 % \begin{environment}{mmtinterface}
 %    \begin{macrocode}
-\NewDocumentEnvironment { mmtinterface } { m m } {
-  \_stex_module_setup_top_nosig:n { #2 }
+\NewDocumentEnvironment { mmtinterface } {  O{} m m } {
+  \_stex_module_setup_top_nosig:n { #3 }
   \str_set_eq:NN \l_@@_mmt_module_str \l_stex_current_module_str
   \str_clear:N \l_stex_current_module_str
-  \tl_clear:N \l_stex_metatheory_uri
-  \stex_module_setup:n{ #1 }
+  \stex_keys_set:nn { smodule }{ #1 }
+  \stex_module_setup:n{ #2 }
   \str_set_eq:NN \l_@@_stex_module_str \l_stex_current_module_str
   \stex_debug:nn{mmt}{Interface~\l_@@_stex_module_str^^Jfor~\l_@@_mmt_module_str}
 
@@ -8224,6 +8261,9 @@
       shtml:theory={\l_stex_current_module_str},
       shtml:language={ \l_stex_current_language_str},
       shtml:signature={}
+      \tl_if_empty:NF \l_stex_metatheory_uri {,
+        shtml:metatheory={\stex_uri_use:N \l_stex_metatheory_uri}
+      }
     }
     \stex_annotate_invisible:n{}
   }
