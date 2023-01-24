@@ -1735,7 +1735,7 @@
     \tl_if_empty:NTF \l_stex_key_short_tl {
       \use:c{#1}
     }{
-      \use:c{#1}[\l_stex_key_short_tl]
+      \exp_args:Nnx \use:nn{\use:c{#1}}{[\exp_args:No \exp_not:n \l_stex_key_short_tl]}
     }{#2}
     \int_incr:N \l_stex_docheader_sect
     \tl_set:Nn \currentsectionlevel{#1}
@@ -2492,7 +2492,7 @@
 %    \begin{macrocode}
 \str_new:N \l_@@_gin_repo_str
 \ltx@ifpackageloaded{graphicx}{\use:n}{\AtEndOfPackageFile{graphicx}}{
-  \define@key{Gin}{mhrepos}{
+  \define@key{Gin}{archive}{
     \str_set:Nn \l_@@_gin_repo_str {#1}
     \def\Gin@mhrepos{\stex_file_use:N \c_stex_mathhub_file / #1 / source /}
   }
@@ -2507,7 +2507,7 @@
 }
 
 \ltx@ifpackageloaded{listings}{\use:n}{\AtEndOfPackageFile{listings}}{
-  \define@key{lst}{mhrepos}{
+  \define@key{lst}{archive}{
     \def\lst@mhrepos{\stex_file_use:N \c_stex_mathhub_file / #1 / source /}
   }
   \newcommand\lstinputmhlisting[2][]{%
@@ -2520,7 +2520,7 @@
 }
 
 \ltx@ifpackageloaded{tikzinput}{\use:n}{\AtEndOfPackageFile{tikzinput}}{  
-  \define@key{Gin}{mhrepos}{
+  \define@key{Gin}{archive}{
     \str_set:Nn \l_@@_gin_repo_str {#1}
     \def\Gin@mhrepos{\stex_file_use:N \c_stex_mathhub_file / #1 / source /}
   }
@@ -2827,7 +2827,7 @@
   \_@@_get_uri_str:n{#1}
   \stex_debug:nn{module}{Module~URI:~\l_@@_ns_str?#1}
   \str_if_empty:NTF \l_stex_key_sig_str
-  \_@@_setup_top_nosig:n \_@@_setup_top_sig:n {#1}
+  \_stex_module_setup_top_nosig:n \_@@_setup_top_sig:n {\l_@@_ns_str?#1}
   \stex_metagroup_new:o \l_stex_current_module_str
   \g_stex_every_module_tl
   \stex_execute_in_module:x {
@@ -2836,21 +2836,21 @@
   \_@@_load_meta:
 }
 
-\cs_new_protected:Nn \_@@_setup_top_nosig:n {  
-  \stex_if_module_exists:nTF{\l_@@_ns_str?#1}{
+\cs_new_protected:Nn \_stex_module_setup_top_nosig:n {  
+  \stex_if_module_exists:nTF{#1}{
     \stex_debug:nn{modules}{(already exists)}
   }{
-    \tl_gclear:c{c_stex_module_ \l_@@_ns_str ? #1 _code}
-    \prop_gclear:c{c_stex_module_ \l_@@_ns_str ? #1 _morphisms_prop }
-    \prop_gclear:c{c_stex_module_ \l_@@_ns_str ? #1 _symbols_prop }
-    \prop_gclear:c{c_stex_module_ \l_@@_ns_str ? #1 _notations_prop }
+    \tl_gclear:c{c_stex_module_ #1 _code}
+    \prop_gclear:c{c_stex_module_ #1 _morphisms_prop }
+    \prop_gclear:c{c_stex_module_ #1 _symbols_prop }
+    \prop_gclear:c{c_stex_module_ #1 _notations_prop }
   }
-  \str_set:Nx \l_stex_current_module_str {\l_@@_ns_str?#1}
+  \str_set:Nx \l_stex_current_module_str {#1}
   \seq_put_right:No \l_stex_all_modules_seq \l_stex_current_module_str
 }
 
 \cs_new_protected:Nn \_@@_setup_top_sig:n {
-  \stex_if_module_exists:nTF{\l_@@_ns_str?#1}{
+  \stex_if_module_exists:nTF{#1}{
     \stex_debug:nn{modules}{(already exists)}
   }{
     \stex_debug:nn{modules}{(needs loading)}
@@ -2858,10 +2858,10 @@
   }    
   %\stex_if_smsmode:F { % WHY?
     \stex_activate_module:x {
-      \l_@@_ns_str ? #1
+      #1
     }
   %}
-  \str_set:Nx\l_stex_current_module_str{\l_@@_ns_str?#1}
+  \str_set:Nx\l_stex_current_module_str{#1}
 }
 
 \cs_new_protected:Nn \_@@_load_sig: {
@@ -2896,8 +2896,7 @@
 }
 
 \cs_new_protected:Npn \_@@_split_module:n #1?#2 \_@@_end: #3 {
-  \str_set:Nn \l_@@_ns_str {#1}
-  \_@@_setup_top_nosig:n { #2 / #3}
+  \_stex_module_setup_top_nosig:n { #1 ? #2 / #3}
 }
 
 \bool_new:N \l_stex_in_meta_bool
@@ -3009,11 +3008,18 @@
 %    \begin{macrocode}
 \cs_new_protected:Nn \_@@_set_metatheory:nn {
   \group_begin:
+    \stex_debug:nn{metatheory}{Setting~metatheory~[#1]#2}
     \stex_import_module_uri:nn { #1 } { #2 }
+    \stex_debug:nn{metatheory}{Here:^^J
+      \l_stex_import_archive_str^^J
+      \l_stex_import_path_str^^J
+      \l_stex_import_name_str^^J
+    }
     \stex_import_require_module:ooo
       \l_stex_import_archive_str
       \l_stex_import_path_str
       \l_stex_import_name_str
+    \stex_debug:nn{Found:~\l_stex_import_ns_str}
     \exp_args:Nne \use:nn {
       \group_end: \str_set:Nn \l_stex_metatheory_str
     }{{\l_stex_import_ns_str}}
@@ -3239,6 +3245,10 @@
 %   \end{arguments}
 %    \begin{macrocode}
 \cs_new_protected:Nn \stex_module_add_notation:nnnnn {
+  \stex_debug:nn{notations}{Adding~notation:^^J
+    #1~\c_hash_str#2~#3^^J
+    to~\l_stex_current_module_str
+  }
   \prop_gput:cnn{c_stex_module_\l_stex_current_module_str _notations_prop}
   {#1!#2}{{#1}{#2}{#3}{#4}{#5}}
   \stex_execute_in_module:n {
@@ -3672,6 +3682,7 @@
     \str_set:Nn \l_stex_import_uri_str {file:}
     \_@@_get_module:nnn {}
   }{
+    \stex_require_archive:n { #1 }
     \str_set:Nx \l_@@_archive_str {#1}
     \str_set:Nx \l_stex_import_uri_str { \prop_item:cn{ c_stex_mathhub_ #1 _manifest_prop}{ ns } }
     \str_set:Nx \l_@@_str { \stex_file_use:N \c_stex_mathhub_file / #1 / source }
@@ -3763,6 +3774,7 @@
   }
   \stex_if_smsmode:F{
     \group_begin:
+    \tl_set:Nn \thisarchive {#1}
     \tl_set_eq:NN \thismoduleuri \l_stex_import_ns_str
     \tl_set_eq:NN \thismodulename \l_stex_import_name_str
     \tl_clear:N \thisstyle
@@ -8198,11 +8210,85 @@
 %
 % \begin{environment}{mmtinterface}
 %    \begin{macrocode}
-\NewDocumentEnvironment { mmtinterface } { O{} m m } {
-  \TODO
-}{}
+\NewDocumentEnvironment { mmtinterface } { m m } {
+  \_stex_module_setup_top_nosig:n { #2 }
+  \str_set_eq:NN \l_@@_mmt_module_str \l_stex_current_module_str
+  \str_clear:N \l_stex_current_module_str
+  \tl_clear:N \l_stex_metatheory_uri
+  \stex_module_setup:n{ #1 }
+  \str_set_eq:NN \l_@@_stex_module_str \l_stex_current_module_str
+  \stex_debug:nn{mmt}{Interface~\l_@@_stex_module_str^^Jfor~\l_@@_mmt_module_str}
+
+  \stex_if_do_html:T {
+    \exp_args:Nne \begin{stex_annotate_env} {
+      shtml:theory={\l_stex_current_module_str},
+      shtml:language={ \l_stex_current_language_str},
+      shtml:signature={}
+    }
+    \stex_annotate_invisible:n{}
+  }
+  \stex_module_add_code:x{
+    \stex_activate_module:n{ \l_@@_mmt_module_str }
+  }
+  \stex_module_add_morphism:nonn
+    {}{\l_@@_mmt_module_str}{import}{}
+  \stex_reactivate_macro:N \mmtdef
+  \stex_smsmode_do:
+}{
+    \str_set_eq:NN \l_stex_current_module_str \l_@@_mmt_module_str
+    \stex_close_module:
+    \str_set_eq:NN \l_stex_current_module_str \l_@@_stex_module_str
+    \stex_close_module:
+    \stex_if_do_html:T { \end{stex_annotate_env} }
+}
+\stex_sms_allow_env:n{mmtinterface}
 %    \end{macrocode}
 % \end{environment}
+%
+% \begin{macro}{\mmtdef}
+%    \begin{macrocode}
+\NewDocumentCommand \mmtdef {m O{} m} {
+  \stex_keys_set:nn{symdef}{#2}
+  \str_set:Nx \l_stex_macroname_str { #1 }
+  \str_if_empty:NT \l_stex_key_name_str {
+    \str_set:Nx \l_stex_key_name_str { #1 }
+  }
+  \stex_symdecl_do:
+
+  \str_set_eq:NN \l_stex_current_module_str \l_@@_mmt_module_str
+  \cs_set_eq:NN \l_@@_old_metagroup_cd \stex_metagroup_do_in:nn
+  \cs_set_protected:Npn \stex_metagroup_do_in:nn ##1 ##2 {##2}
+  \exp_args:Nnx \use:nn {\stex_module_add_symbol:nnnnnnnN}{
+    {\l_stex_macroname_str}
+    {\l_stex_key_name_str}
+    {\int_use:N \l_stex_get_symbol_arity_int}
+    {\l_stex_get_symbol_args_tl}
+    {}
+    {}
+    {}
+    \stex_invoke_symbol:
+  }
+  \cs_set_eq:NN \stex_metagroup_do_in:nn \l_@@_old_metagroup_cd
+  \str_set_eq:NN \l_stex_current_module_str \l_@@_stex_module_str
+
+  \str_set_eq:NN \l_stex_get_symbol_mod_str \l_@@_mmt_module_str
+  \str_set_eq:NN \l_stex_get_symbol_name_str \l_stex_key_name_str
+  \stex_notation_parse:n{#3}
+  \stex_debug:nn{here}{1}
+  \_stex_notation_check:
+  \stex_debug:nn{here}{2}
+  \_stex_notation_add:
+  \stex_debug:nn{here}{3}
+  \stex_if_do_html:T{
+    \_stex_notation_do_html:n{\l_stex_get_symbol_mod_str ? \l_stex_get_symbol_name_str}
+  }
+  \stex_debug:nn{here}{4}
+  \stex_smsmode_do:
+}
+\stex_deactivate_macro:Nn \mmtdef {mmtinterface~environments}
+\stex_sms_allow_escape:N \mmtdef
+%    \end{macrocode}
+% \end{macro}
 %
 %
 %    \begin{macrocode}
