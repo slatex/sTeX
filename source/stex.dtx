@@ -3391,6 +3391,24 @@
 %    \end{macrocode}
 % \end{macro}
 %
+% \begin{macro}{\stex_iterate_morphisms:nn}
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_iterate_morphisms:nn {
+  \cs_set:Npn \_@@_morphism_cs:nnnn ##1 ##2 ##3 ##4 { #2 }
+  \prop_map_inline:cn{c_stex_module_#1_morphisms_prop}{
+    \_@@_morphism_cs:nnnn ##2
+    % TODO
+    % ##1: name or [mpath]
+    % ##2 = {####1}{####2}{####3}{####4}
+    % ####1 = name
+    % ####2 = mpath
+    % ####3 = type
+    % ####4 = {origname}{newname}*
+  }
+}
+%    \end{macrocode}
+% \end{macro}
+%
 % \end{sfragment}
 %
 % \begin{sfragment}{Structural Features}
@@ -3888,8 +3906,64 @@
 }
 
 \stex_new_stylable_cmd:nnnn {assignMorphism} { m m }{
-  \TODO
+  \str_clear:N \l_@@_morphism_dom_str
+  \stex_iterate_morphisms:nn\l_stex_current_domain_str{
+    \stex_debug:nn{assignMorphism}{
+      Checking:~#1~vs:^^J##1^^J##2^^J##3^^J##4
+    }
+    \str_if_eq:nnTF{#1}{##1}{
+      \_@@_do_morph_assign:nnn{##1}{##2}{##4}
+    }{
+      \stex_str_if_ends_with:nnT{##2}{#1}{
+        \_@@_do_morph_assign:nnn{##1}{##2}{##4}
+      }
+    }
+  }
+  \str_if_empty:NT \l_@@_morphism_dom_str {
+    \msg_error:nnn{stex}{error/nomorphism}{#1}
+  }
+  \bool_set_false:N \l_tmpa_bool
+  \stex_iterate_morphisms:nn \l_stex_current_module_str {
+    \str_if_eq:nnTF{#2}{##1}{
+      \prop_map_break:n{
+        \stex_annotate_invisible:nn{
+          shtml:assignMorphismFrom={\l_@@_morphism_dom_str}
+          ahtml:assignMorphismTo={\l_stex_current_module_str?##1}
+        }{}
+        \bool_set_true:N \l_tmpa_bool
+      }
+    }{
+      \stex_str_if_ends_with:nnT{##2}{#2}{
+        \prop_map_break:n{
+          \stex_annotate_invisible:nn{
+            shtml:assignMorphismFrom={\l_@@_morphism_dom_str}
+            ahtml:assignMorphismTo={\l_stex_current_module_str?##1}
+          }{}
+          \bool_set_true:N \l_tmpa_bool
+        }
+      }
+    }
+  }
+  \bool_if:NF \l_tmpa_bool {
+    \msg_error:nnn{stex}{error/nomorphism}{#2}
+  }
 }{}
+\cs_new_protected:Nn \_@@_do_morph_assign:nnn {
+  \prop_map_break:n{
+    \str_set:Nn \l_@@_morphism_dom_str { \l_stex_current_domain_str ? #1 }
+    \stex_debug:nn{assignMorphism}{match!}
+    \stex_debug:nn{assignMorphism}{
+      \prop_to_keyval:N \l_stex_morphism_symbols_prop
+    }
+    \stex_iterate_symbols:nn{#2}{
+      \stex_debug:nn{assignMorphism}{removing~##1?##3}
+      % TODO: non-trivial assignments
+      \prop_remove:Nn \l_stex_morphism_symbols_prop {
+        [##1]/[##3]
+      }
+    }
+  }
+}
 
 \stex_deactivate_macro:Nn \assign {morphism~environments}
 \stex_deactivate_macro:Nn \renamedecl {morphism~environments}
@@ -7711,8 +7785,9 @@
 }
 \stex_deactivate_macro:Nn \conclusion {assertion~environments}
 
-\NewDocumentCommand \premise {m} {
-  \stex_annotate:nn{shtml:premise={}}{#1}
+\NewDocumentCommand \premise {O{} m} {
+  % TODO? #1
+  \stex_annotate:nn{shtml:premise={}}{#2}
 }
 \stex_deactivate_macro:Nn \premise {assertion~environments}
 %    \end{macrocode}
