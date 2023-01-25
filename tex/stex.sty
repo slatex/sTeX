@@ -1902,11 +1902,10 @@
 \str_new:N \l__stex_inputs_gin_repo_str
 \ltx@ifpackageloaded{graphicx}{\use:n}{\AtEndOfPackageFile{graphicx}}{
   \define@key{Gin}{archive}{
-    \str_set:Nn \l__stex_inputs_gin_repo_str {#1}
-    \def\Gin@mhrepos{\stex_file_use:N \c_stex_mathhub_file / #1 / source /}
+    \tl_set:Nx\Gin@mhrepos{\stex_file_use:N \c_stex_mathhub_file / #1 / source /}
   }
   \providecommand\mhgraphics[2][]{
-    \def\Gin@mhrepos{
+    \tl_set:Nx\Gin@mhrepos{
       \stex_file_use:N \c_stex_mathhub_file / \prop_item:Nn \l_stex_current_archive_prop {id} / source /
     }
     \setkeys{Gin}{#1}
@@ -3070,15 +3069,15 @@
   \stex_reactivate_macro:N \interpretmodule
 }
 \stex_sms_allow_env:n{interpretmodule}
-\stex_new_stylable_env:nnnnnnn {realization}{m}{
+\stex_new_stylable_env:nnnnnnn {realization}{O{} m}{
 
-  \stex_structural_feature_morphism:nnnnn{}{realization}{}{#1}{,shtml:total=true}
+  \stex_structural_feature_morphism:nnnnn{}{realization}{#1}{#2}{,shtml:total=true}
   \stex_execute_in_module:x{
     \stex_activate_module:n{\l_stex_current_domain_str}
   }
   % TODO check totality
   \stex_if_smsmode:F {
-    \tl_set:Nn \thiscopyname { #1 }
+    \tl_set:Nn \thiscopyname { #2 }
     \tl_set_eq:NN \thismoduleuri \l_stex_current_domain_str
     \stex_style_apply:
   }
@@ -3459,6 +3458,13 @@
     }
   }
 \cs_new_protected:Nn \stex_get_symbol:n {
+  \_stex_get_symbol:n{ #1 }
+  \str_if_empty:NT \l_stex_get_symbol_name_str {
+    \msg_error:nnn{stex}{error/unknownsymbol}{#1}
+  }
+}
+
+\cs_new_protected:Nn \_stex_get_symbol:n {
   \str_clear:N \l_stex_get_symbol_mod_str
   \str_clear:N \l_stex_get_symbol_name_str
   \cs_if_exist:cTF { #1 }{
@@ -3475,9 +3481,6 @@
     }
   }{
     \__stex_symdecl_get_symbol_from_string:n { #1 }
-  }
-  \str_if_empty:NT \l_stex_get_symbol_name_str {
-    \msg_error:nnn{stex}{error/unknownsymbol}{#1}
   }
 }
 
@@ -5543,9 +5546,11 @@
 }
 \cs_new_protected:Nn \_stex_get_mathstructure:n {
   \str_clear:N \l_stex_get_structure_module_str
-  \stex_get_symbol:n{#1}
-  \exp_args:No \tl_if_eq:NNT \l_stex_get_symbol_invoke_cs \stex_invoke_structure: {
-    \str_set_eq:NN \l_stex_get_structure_module_str \l_stex_get_symbol_type_tl
+  \_stex_get_symbol:n{#1}
+  \str_if_empty:NF \l_stex_get_symbol_name_str {
+    \exp_args:No \tl_if_eq:NNT \l_stex_get_symbol_invoke_cs \stex_invoke_structure: {
+      \str_set_eq:NN \l_stex_get_structure_module_str \l_stex_get_symbol_type_tl
+    }
   }
 }
 \stex_new_stylable_env:nnnnnnn {extstructure}{m O{} m}{
