@@ -1286,7 +1286,11 @@
 
 \NewDocumentEnvironment{blindfragment}{}{
   \__stex_doc_skip_section:
-}{}
+}{
+  \stex_if_html_backend:T{
+    \end{stex_annotate_env}
+  }
+}
 
 \cs_new_protected:Nn \__stex_doc_skip_section_i: {
   \int_case:nn \l_stex_docheader_sect {
@@ -2588,16 +2592,44 @@
   }
 }
 \cs_new_protected:Nn \stex_iterate_morphisms:nn {
-  \cs_set:Npn \__stex_iterate_morphism_cs:nnnn ##1 ##2 ##3 ##4 { #2 }
-  \prop_map_inline:cn{c_stex_module_#1_morphisms_prop}{
-    \__stex_iterate_morphism_cs:nnnn ##2
-    % TODO
-    % ##1: name or [mpath]
-    % ##2 = {####1}{####2}{####3}{####4}
-    % ####1 = name
-    % ####2 = mpath
-    % ####3 = type
-    % ####4 = {origname}{newname}*
+  \seq_clear:N \l__stex_iterate_mods_seq
+  \bool_set_true:N \l__stex_iterate_continue_bool
+  \cs_set:Npn \__stex_iterate_morphism_cs:nnnn ##1 ##2 ##3 ##4 ##5 {
+    #2
+    \bool_if:NT \l__stex_iterate_continue_bool {
+      \str_if_eq:nnTF{##1}{[##2]}{
+        \tl_put_right:Nn \l__stex_iterate_todo_tl {
+          \__stex_iterate_iterate_morphism:nn{##5}{##2}
+        }
+      }{
+        \tl_put_right:Nn \l__stex_iterate_todo_tl {
+          \__stex_iterate_iterate_morphism:nn{##5 / ##1}{##2}
+        }
+      }
+    }
+  }
+  \cs_set:Npn \stex_iterate_break:n ##1 {
+    \bool_set_false:N \l__stex_iterate_continue_bool
+    \prop_map_break:n{##1}
+  }
+  \__stex_iterate_iterate_morphism:nn{}{#1}
+}
+
+\cs_new_protected:Nn \__stex_iterate_iterate_morphism:nn {
+  \tl_clear:N \l__stex_iterate_todo_tl
+  \seq_if_in:NnF \l__stex_iterate_mods_seq {#1 #2}{
+    \seq_put_right:Nn \l__stex_iterate_mods_seq {#1 #2}
+    \prop_map_inline:cn{c_stex_module_#2_morphisms_prop}{
+      \__stex_iterate_morphism_cs:nnnn ##2 {#1}
+      % TODO
+      % ##1: name or [mpath]
+      % ##2 = {####1}{####2}{####3}{####4}
+      % ####1 = name
+      % ####2 = mpath
+      % ####3 = type
+      % ####4 = {origname}{newname}*
+    }
+    \bool_if:NT \l__stex_iterate_continue_bool \l__stex_iterate_todo_tl
   }
 }
 \cs_new_protected:Nn \stex_structural_feature_module:nn {
@@ -3051,8 +3083,12 @@
   }
   \bool_set_false:N \l_tmpa_bool
   \stex_iterate_morphisms:nn \l_stex_current_module_str {
+    \stex_debug:nn{assignMorphism}{
+      Checking:~#2~vs:^^J##1^^J##2^^J##3^^J##4
+    }
     \str_if_eq:nnTF{#2}{##1}{
-      \prop_map_break:n{
+      \stex_debug:nn{assignMorphism}{match!}
+      \stex_iterate_break:n{
         \stex_annotate_invisible:nn{
           shtml:assignMorphismFrom={\l__stex_morphisms_morphism_dom_str}
           ahtml:assignMorphismTo={\l_stex_current_module_str?##1}
@@ -3061,7 +3097,8 @@
       }
     }{
       \stex_str_if_ends_with:nnT{##2}{#2}{
-        \prop_map_break:n{
+        \stex_debug:nn{assignMorphism}{match!}
+        \stex_iterate_break:n{
           \stex_annotate_invisible:nn{
             shtml:assignMorphismFrom={\l__stex_morphisms_morphism_dom_str},
             shtml:assignMorphismTo={\l_stex_current_module_str?##1}
@@ -3076,12 +3113,9 @@
   }
 }{}
 \cs_new_protected:Nn \__stex_morphisms_do_morph_assign:nnn {
-  \prop_map_break:n{
+  \stex_iterate_break:n{
     \str_set:Nn \l__stex_morphisms_morphism_dom_str { \l_stex_current_domain_str ? #1 }
     \stex_debug:nn{assignMorphism}{match!}
-    \stex_debug:nn{assignMorphism}{
-      \prop_to_keyval:N \l_stex_morphism_symbols_prop
-    }
     \stex_iterate_symbols:nn{#2}{
       \stex_debug:nn{assignMorphism}{removing~##1?##3}
       % TODO: non-trivial assignments
