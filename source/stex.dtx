@@ -2656,12 +2656,6 @@
 
 \cs_new_protected:Nn \_@@_start_smsmode:n {
   \everyeof{\q_@@_break\exp_not:N}
-  % this speeds up rustex in sms mode
-  \let \g_@@_allowed_tl \g_@@_allowed_tl
-  \let \g_@@_allowed_escape_tl \g_@@_allowed_escape_tl
-  \let \g_@@_allowedenvs_seq \g_@@_allowedenvs_seq
-  \let \g_@@_allowed_import_env_seq \g_@@_allowed_import_env_seq
-  \catcode`a=\catcode`a
   \let\stex_smsmode_do:\_@@_smsmode_do:
   \exp_after:wN \exp_after:wN \exp_after:wN
   \stex_smsmode_do:
@@ -3499,21 +3493,26 @@
       \l_stex_import_name_str
     \str_set_eq:NN \l_stex_current_domain_str \l_stex_import_ns_str
   }
+  \tl_if_empty:nTF{#1}{
+    \str_set:Nx \l_tmpa_str {[\l_stex_current_domain_str]}
+  }{
+    \str_set:Nn \l_tmpa_str {#1}
+  }
 
   \stex_if_do_html:TF {
     \begin{stex_annotate_env} {
-      shtml:feature-#2={\l_stex_current_module_str?#1},
+      shtml:feature-#2={\l_stex_current_module_str?\l_tmpa_str},
       shtml:domain={\l_stex_current_domain_str}
       #5
     }
     \stex_annotate_invisible:n{}
   }\group_begin:
   \str_set:Nn \l_@@_feature_str {#2}
-  \str_set:Nn \l_stex_feature_name_str {#1}
+  \str_set_eq:NN \l_stex_feature_name_str \l_tmpa_str
   \_@@_setup:
   \_@@_reactivate:
   \stex_activate_module:o \l_stex_current_domain_str
-  \stex_metagroup_new:o {\l_stex_current_module_str / #1}
+  \exp_args:Ne \stex_metagroup_new:n {\l_stex_current_module_str / \l_stex_feature_name_str}
 }
 \cs_new_protected:Nn \stex_structural_feature_morphism_end: {
   \str_gset_eq:NN \l_stex_feature_name_str \l_stex_feature_name_str
@@ -4062,7 +4061,7 @@
 %    \begin{macrocode}
 \stex_new_stylable_env:nnnnnnn {realization}{O{} m}{
 
-  \stex_structural_feature_morphism:nnnnn{}{realization}{#1}{#2}{,shtml:total=true}
+  \stex_structural_feature_morphism:nnnnn{}{morphism}{#1}{#2}{,shtml:total=true}
   \stex_execute_in_module:x{
     \stex_activate_module:n{\l_stex_current_domain_str}
   }
@@ -7635,7 +7634,7 @@
       \clist_set_eq:NN \thisfor \l_stex_key_for_str
       \stex_if_html_backend:TF {
         \noindent
-        \exp_args:Nno \stex_annotate:nn{shtml:statementtitle={}}\l_stex_key_title_tl
+        \stex_annotate:nn{shtml:statementtitle={}}{\_stex_annotate_force_break:n\l_stex_key_title_tl}
       }
       \stex_style_apply:
     }
@@ -8000,7 +7999,7 @@
       $\stex_annotate:nn{shtml:proofterm={}}{\l_stex_key_term_tl}$
     }
     \tl_if_empty:NF \l_stex_key_method_tl {
-      $\stex_annotate:nn{shtml:proofmethod={}}{\l_stex_key_method_tl}$
+      \stex_annotate:nn{shtml:proofmethod={}}{\l_stex_key_method_tl}
     }
   }}
 }
@@ -8038,7 +8037,10 @@
   \stex_reactivate_macro:N \yield
   \stex_reactivate_macro:N \spfblock
   \stex_reactivate_macro:N \spfjust
-  #2
+  \stex_annotate:nn{shtml:prooftitle={}}{#2}
+  \stex_if_do_html:T{
+    \begin{stex_annotate_env}{shtml:proofbody={}}
+  }
 }
 \stex_new_stylable_env:nnnnnnn{proof}{O{} m}{
   \_@@_begin_proof:nn{#1}{#2}
@@ -8046,7 +8048,7 @@
   \group_begin:\stexcommentfont
 }{
   \stex_style_apply:
-  \stex_if_do_html:T{\end{stex_annotate_env}}
+  \stex_if_do_html:T{\end{stex_annotate_env}\end{stex_annotate_env}}
 }{
   \emph{Proof:}~
 }{
@@ -8085,24 +8087,29 @@
     \stex_style_apply:
     \_stex_do_id:
     \bool_set_false:N \l_@@_in_spfblock_bool
-    #3
+    \stex_annotate:nn{shtml:prooftitle={}}{#3}
   }{
     \bool_if:NTF \l_@@_in_spfblock_bool {
       \_@@_start_list:n\_@@_insert_number:
-        #3
+        \stex_annotate:nn{shtml:prooftitle={}}{#3}
         \_@@_add_counter:
         \stex_style_apply:
         \_stex_do_id:
-        \group_begin:\stexcommentfont
     }{
-      #3
+      \stex_annotate:nn{shtml:prooftitle={}}{#3}
       \stex_style_apply:
       \_stex_do_id:
     }
   }
+  \stex_if_do_html:T{
+    \begin{stex_annotate_env}{shtml:proofbody={}}
+  }
+  \bool_if:NT \l_@@_in_spfblock_bool {\group_begin:\stexcommentfont}
 }{
   \stex_style_apply:
   \bool_if:NT \l_@@_in_spfblock_bool \_@@_inc_counter:
+  \stex_if_do_html:T{\end{stex_annotate_env}}
+  \bool_if:NT\l_@@_in_spfblock_bool \_@@_end_list:
   \stex_if_do_html:T{\end{stex_annotate_env}}
   \aftergroup \_@@_inblock_restore: 
 }{}{}{}
@@ -8112,7 +8119,7 @@
 \AddToHook{env/subproof/end}{
   \bool_if:NT\l_@@_in_spfblock_bool {
     \group_end:\_@@_remove_counter:
-    \_@@_end_list:
+    %\_@@_end_list:
   }
 }
 \stex_deactivate_macro:Nn \subproof {sproof~environments}
@@ -8203,7 +8210,7 @@
 \stex_deactivate_macro:Nn \eqstep {sproof~environments}
 
 \NewDocumentCommand \yield {+m}{
-  \stex_annotate:nn{spfyield={}}{ #1 }
+  \stex_annotate:nn{shtml:proofterm={}}{ #1 }
 }
 \stex_deactivate_macro:Nn \yield {sproof~environments}
 
