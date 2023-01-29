@@ -2655,6 +2655,7 @@
     \end{stex_annotate_env}
   }\group_end:
 }
+\bool_new:N \l__stex_features_implicit_bool
 \cs_new_protected:Nn \stex_structural_feature_morphism:nnnnn {
   \str_clear:N \l_stex_current_domain_str
   \tl_if_empty:nT{#3}{
@@ -2670,8 +2671,10 @@
     \str_set_eq:NN \l_stex_current_domain_str \l_stex_import_ns_str
   }
   \tl_if_empty:nTF{#1}{
+    \bool_set_true:N \l__stex_features_implicit_bool
     \str_set:Nx \l_tmpa_str {[\l_stex_current_domain_str]}
   }{
+    \bool_set_false:N \l__stex_features_implicit_bool
     \str_set:Nn \l_tmpa_str {#1}
   }
 
@@ -2708,6 +2711,10 @@
   \seq_clear:N \l_stex_morphism_morphisms_seq
   \__stex_features_do_decls:
   \exp_args:No \__stex_features_do_morphisms:n \l_stex_current_domain_str
+}
+
+\cs_new_protected:Nn \__stex_features_rename_all: {
+
 }
 
 \cs_new_protected:Nn \__stex_features_do_decls: {
@@ -2754,7 +2761,11 @@
   \prop_get:NnNTF \l_stex_morphism_renames_prop {#1?#2} \l__stex_features_tmp {
     \exp_after:wN \stex_module_add_symbol:nnnnnnnN \l__stex_features_tmp
   }{
-    \exp_args:Nno \stex_module_add_symbol:nnnnnnnN {}{\l_stex_feature_name_str / #2}
+    \bool_if:NTF \l__stex_features_implicit_bool {
+      \exp_args:Nno \stex_module_add_symbol:nnnnnnnN {#3}{\l_stex_feature_name_str / #2}
+    }{
+      \exp_args:Nno \stex_module_add_symbol:nnnnnnnN {}{\l_stex_feature_name_str / #2}
+    }
   }
 }
 
@@ -3626,9 +3637,11 @@
 }
 
 \cs_new_protected:Nn \__stex_symdecl_sym_from_str_i:nnnn {
-  \bool_lazy_or:nnTF
+  \bool_lazy_any:nTF{
     {\str_if_eq_p:nn{#2}{#3}}
-    {\str_if_eq_p:nn{#2}{#4}}{
+    {\str_if_eq_p:nn{#2}{#4}}
+    {\stex_str_if_ends_with_p:nn{#4}{/#2}}
+    }{
       \__stex_symdecl_sym_i_finish:nnnnnnnN{#1}{#4}
     }{
       \__stex_symdecl_sym_i_gobble:nnnnnn
@@ -3664,9 +3677,11 @@
   \stex_debug:nn{symbols}{Getting~#1~anywhere...}
   \stex_iterate_symbols:n{
     %\stex_debug:nn{symbols}{>#1==##2~|~#1==##3<...}
-    \bool_lazy_or:nnT
+    \bool_lazy_any:nT{
       {\str_if_eq_p:nn{#1}{##2}}
-      {\str_if_eq_p:nn{#1}{##3}}{
+      {\str_if_eq_p:nn{#1}{##3}}
+      {\stex_str_if_ends_with_p:nn{##3}{/#1}}
+      }{
         \stex_iterate_break:n{
           \str_set:Nn \l_stex_get_symbol_mod_str {##1}
           \str_set:Nn \l_stex_get_symbol_name_str {##3}
@@ -4902,7 +4917,9 @@
 
 \cs_new_protected:Nn \__stex_expr_invoke_op_custom:n {
   \stex_debug:nn{expressions}{custom~op}
-  \TODO
+  \bool_set_true:N \l_stex_allow_semantic_bool
+  \_stex_term_oms_or_omv:nnn{}{}{\maincomp{#1}}
+  \group_end:
 }
 
 \int_new:N \l__stex_expr_arg_counter_int
