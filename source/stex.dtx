@@ -1723,8 +1723,9 @@
 \stex_if_html_backend:TF {
   \cs_new_protected:Nn \_sfragment_do_level:nn {
     \stexdoctitle{#2}
+    \par
     \begin{stex_annotate_env}{shtml:section={\int_use:N \l_stex_docheader_sect}}
-      \stex_annotate:nn{shtml:sectiontitle={}}{#2}
+      \noindent\stex_annotate:nn{shtml:sectiontitle={}}{#2}\par
   }
   \cs_new_protected:Nn \_sfragment_end: {
     \end{stex_annotate_env}
@@ -1746,11 +1747,11 @@
 
 \cs_new_protected:Npn \_@@_do_section:n {
   \int_case:nnF \l_stex_docheader_sect {
-    {0}{\cs_if_exist:NTF \parttitlename {\_sfragment_do_level:nn{part}}{
+    {0}{\cs_if_exist:NTF \thepart {\_sfragment_do_level:nn{part}}{
       \int_incr:N \l_stex_docheader_sect
       \_@@_do_section:n 
     }}
-    {1}{\cs_if_exist:NTF \chaptertitlename {\_sfragment_do_level:nn{chapter}}{
+    {1}{\cs_if_exist:NTF \thechapter {\_sfragment_do_level:nn{chapter}}{
       \int_incr:N \l_stex_docheader_sect
       \_@@_do_section:n
     }}
@@ -1780,6 +1781,7 @@
   \_@@_skip_section:
 }{
   \stex_if_html_backend:T{
+    \stex_annotate_invisible:n{~}
     \end{stex_annotate_env}
   }
 }
@@ -1787,11 +1789,11 @@
 
 \cs_new_protected:Nn \_@@_skip_section_i: {
   \int_case:nn \l_stex_docheader_sect {
-    {0}{\cs_if_exist:NF \part {
-      \int_incr:N \l_stex_docheader_sect \_@@_skip_section:
+    {0}{\cs_if_exist:NF \thepart {
+      \int_incr:N \l_stex_docheader_sect \_@@_skip_section_i:
     }}
-    {1}{\cs_if_exist:NF \chapter {
-      \int_incr:N \l_stex_docheader_sect \_@@_skip_section:
+    {1}{\cs_if_exist:NF \thechapter {
+      \int_incr:N \l_stex_docheader_sect \_@@_skip_section_i:
     }}
   }
   \int_incr:N \l_stex_docheader_sect
@@ -1800,7 +1802,8 @@
 \stex_if_html_backend:TF {
   \cs_new_protected:Nn \_@@_skip_section: {
     \_@@_skip_section_i:
-    \begin{stex_annotate_env}{shtml:skipsection={}}
+    \begin{stex_annotate_env}{shtml:skipsection={\int_use:N \l_stex_docheader_sect}}
+    \stex_annotate_invisible:n{~}
   }
 }{
   \cs_set_eq:NN \_@@_skip_section: \_@@_skip_section_i:
@@ -1850,13 +1853,13 @@
 \stex_if_html_backend:T{
   \cs_new_protected:Nn \_@@_check_topsect: {
     \int_case:nnF \l_stex_docheader_sect {
-      {0}{\cs_if_exist:NTF \parttitlename {
+      {0}{\cs_if_exist:NTF \thepart {
         \stex_annotate_invisible:nn{shtml:sectionlevel=0}{}
       }{
         \int_incr:N \l_stex_docheader_sect
         \_@@_check_topsect:
       }}
-      {1}{\cs_if_exist:NTF \chaptertitlename {
+      {1}{\cs_if_exist:NTF \thechapter {
         \stex_annotate_invisible:nn{shtml:sectionlevel=1}{}
       }{
         \int_incr:N \l_stex_docheader_sect
@@ -2478,13 +2481,28 @@
   }{}
 }
 
-\cs_new_protected:Npn \libinput #1 {
-  \_@@_up_archive:nn{#1}{tex}
-  \seq_if_empty:NTF \l_@@_libinput_files_seq {
-    \msg_error:nnxx{stex}{error/nofile}{\exp_not:N\libinput}{#1.tex}
+\cs_new_protected:Nn \_@@_in_archive:nnnn {
+  \stex_in_archive:nn{#1}{
+    \str_set:Nx \l_@@_path_str { \stex_file_use:N \c_stex_mathhub_file / #1 / lib / #2 }
+    \IfFileExists { \l_@@_path_str }{ #3 }{ #4 }
+  }
+}
+
+\newcommand \libinput [2][] {
+  \tl_if_empty:nTF{#1}{
+    \_@@_up_archive:nn{#2}{tex}
+    \seq_if_empty:NTF \l_@@_libinput_files_seq {
+      \msg_error:nnxx{stex}{error/nofile}{\exp_not:N\libinput}{#2.tex}
+    }{
+      \seq_map_inline:Nn \l_@@_libinput_files_seq {
+        \input{ ##1 }
+      }
+    }
   }{
-    \seq_map_inline:Nn \l_@@_libinput_files_seq {
-      \input{ ##1 }
+    \_@@_in_archive:nnnn{#1}{#2.tex}{
+      \exp_args:No \input \l_@@_path_str
+    }{
+      \msg_error:nnxx{stex}{error/nofile}{\exp_not:N\libinput}{\l_@@_path_str}
     }
   }
 }
