@@ -4340,7 +4340,6 @@
   \_@@_add_decl:
   \stex_if_do_html:T {
     \_stex_symdecl_html:
-    \_stex_symdecl_rules:
   }
 }
 
@@ -4373,6 +4372,9 @@
     \str_if_empty:NF \l_stex_key_assoc_str {,
       shtml:assoctype={\l_stex_key_assoc_str}
     }
+    \str_if_empty:NF \l_stex_key_reorder_str {,
+      shtml:reorderargs={\l_stex_key_reorder_str}
+    }
     \str_if_empty:NF \l_stex_key_role_str {,
       shtml:role={\l_stex_key_role_str}
     }
@@ -4401,40 +4403,6 @@
         }}
       }
   }\egroup}
-}
-
-\cs_new_protected:Nn \_stex_symdecl_rules: {
-  \str_if_empty:NF \l_stex_key_reorder_str {
-    \MMTrule{rules.stex.mmt.kwarc.info?Reorder}{
-      \exp_args:Ne \symuse{\l_stex_current_module_str ? \l_stex_key_name_str}!
-      ,
-      \stex_annotate:nn{shtml:omstr=\l_stex_key_reorder_str}{}
-    }
-  }
-  \str_if_empty:NF \l_stex_key_assoc_str {
-    \str_case:Vn \l_stex_key_assoc_str {
-      {pre}{
-        \MMTrule{rules.stex.mmt.kwarc.info?PreRule}{
-          \exp_args:Ne \symuse{\l_stex_current_module_str ? \l_stex_key_name_str}!
-        }
-      }
-      {conj}{
-        \MMTrule{rules.stex.mmt.kwarc.info?ConjRule}{
-          \exp_args:Ne \symuse{\l_stex_current_module_str ? \l_stex_key_name_str}!
-        }
-      }
-      {binr}{
-        \MMTrule{rules.stex.mmt.kwarc.info?BinRRule}{
-          \exp_args:Ne \symuse{\l_stex_current_module_str ? \l_stex_key_name_str}!
-        }
-      }
-      {bin}{
-        \MMTrule{rules.stex.mmt.kwarc.info?BinRRule}{
-          \exp_args:Ne \symuse{\l_stex_current_module_str ? \l_stex_key_name_str}!
-        }
-      }
-    }
-  }
 }
 %    \end{macrocode}
 % \end{macro}
@@ -7456,6 +7424,9 @@
     \exp_args:Nne \use:n {\exp_after:wN \use_i:nn \use:n}
     {\prop_item:Nn \l_@@_prop {#1}}
   }
+  \str_if_empty:NT \l_@@_field_name_str {
+    \str_set:Nn \l_@@_field_name_str {#1}
+  }
 }
 
 \cs_new_protected:Nn \_@@_invoke_field:n {
@@ -7931,7 +7902,10 @@
 \stex_deactivate_macro:Nn \conclusion {assertion~environments}
 
 \NewDocumentCommand \premise {O{} m} {
-  % TODO? #1
+  \tl_if_empty:nF {#1} {
+    \stex_debug:nn{Here:}{Variable~#1}
+    \exp_args:NNx\exp_args:Nnx\vardef{v#1}{#1}
+  }
   \stex_annotate:nn{shtml:premise={}}{#2}
 }
 \stex_deactivate_macro:Nn \premise {assertion~environments}
@@ -8299,18 +8273,18 @@
 \cs_new_protected:Nn \_@@_make_step_macro:Nnnnn {
   \NewDocumentCommand #1 {s O{} +m} {
     \bool_if:NT \l_@@_in_spfblock_bool \group_end:
-    \begin{spfstepenv}
     \stex_keys_set:nn{spfsteps}{##2}
-    \str_if_empty:NF \l_stex_key_id_str {
-      \_@@_number_as_string:N \@currentlabel
-      \str_set:Nx \@currentHref{spfstep.\@currentlabel}
-      \_stex_do_id:
-    }
-    % \_@@_number_as_string:N FOO
     \str_if_empty:NF \l_stex_key_name_str {
       \stex_debug:nn{Here:}{Variable~\l_stex_key_name_str}
       \exp_args:NNx\exp_args:Nnx\vardef{v\l_stex_key_name_str}{\l_stex_key_name_str}
     }
+
+    \begin{spfstepenv}
+      \str_if_empty:NF \l_stex_key_id_str {
+        \_@@_number_as_string:N \@currentlabel
+        \str_set:Nx \@currentHref{spfstep.\@currentlabel}
+        \_stex_do_id:
+      }
 
     \bool_if:NTF \l_@@_in_spfblock_bool { 
       \IfBooleanTF ##1 {
@@ -8580,9 +8554,6 @@
     {}
     {}
     \stex_invoke_symbol:
-  }
-  \stex_if_do_html:T{
-    \_stex_symdecl_rules:
   }
   \cs_set_eq:NN \stex_metagroup_do_in:nn \l_@@_old_metagroup_cd
   \str_set_eq:NN \l_stex_current_module_str \l_@@_stex_module_str
