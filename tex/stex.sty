@@ -1453,7 +1453,7 @@
         }
       }
     }
-    \exp_args:Nx\label{sref@ \stex_uri_use:N \l_stex_current_doc_uri ? \l__stex_refs_str}
+    \exp_args:Nx \label {sref@ \stex_uri_use:N \l_stex_current_doc_uri ? \l__stex_refs_str}
   }
 }
 \NewDocumentCommand \sreflabel {m} {\stex_ref_new_doc_target:n {#1}}
@@ -6655,6 +6655,18 @@
     \int_incr:N \l_tmpa_int
   }
 }
+\cs_new_protected:Nn \__stex_proof_number_as_string:N {
+  \str_clear:N #1
+  \int_set:Nn \l_tmpa_int {1}
+  \bool_while_do:nn {
+    \int_compare_p:nNn {
+      \intarray_item:Nn \l__stex_proof_counter_intarray \l_tmpa_int
+    } > 0
+  }{
+    \str_put_right:Nx #1 {\intarray_item:Nn \l__stex_proof_counter_intarray \l_tmpa_int .}
+    \int_incr:N \l_tmpa_int
+  }
+}
 
 \cs_new_protected:Npn \__stex_proof_inc_counter: {
   \int_set:Nn \l_tmpa_int {1}
@@ -6697,10 +6709,12 @@
   \int_decr:N \l_tmpa_int
   \intarray_gset:Nnn \l__stex_proof_counter_intarray \l_tmpa_int { 0 }
 }
+\newenvironment{spfsketchenv}{}{}
 \stex_new_stylable_cmd:nnnn{spfsketch}{O{} m}{\par
-  \group_begin:
+  \begin{spfsketchenv}
   \stex_keys_set:nn{spf}{#1}
   \_stex_do_for_list:
+  \_stex_do_id:
   \exp_args:Ne \stex_annotate:nn{
     shtml:proofsketch={
       \seq_if_empty:NF \l_stex_fors_seq {
@@ -6711,9 +6725,9 @@
     \stex_style_apply:
     #2
   }
-  \group_end:
+  \end{spfsketchenv}
 }{
-  \noindent\emph{Proof~sketch:}~
+  \noindent\emph{\spfsketchenvautorefname :}~
 }
 \tl_set:Nn \__stex_proof_proof_box_tl {
   \ltx@ifpackageloaded{amssymb}{$\square$}{
@@ -6797,7 +6811,7 @@
   \stex_style_apply:
   \stex_if_do_html:T{\end{stex_annotate_env}\end{stex_annotate_env}}
 }{
-  \emph{Proof:}~
+  \emph{\sproofautorefname :}~
 }{
   \sproofend
 }{s}
@@ -6818,6 +6832,7 @@
 }{
   \sproofend
 }{s}
+\str_set_eq:NN \subproofautorefname \spfstepautorefname
 \stex_new_stylable_env:nnnnnnn{subproof}{s O{} m}{\par
   \stex_keys_set:nn{spf}{#2}
   \_stex_do_for_list:
@@ -6827,16 +6842,24 @@
 
   \IfBooleanTF #1 {
     \stex_style_apply:
-    \_stex_do_id:
+    \str_if_empty:NF \l_stex_key_id_str {
+      \__stex_proof_number_as_string:N \@currentlabel
+      \str_set:Nx \@currentHref{subproof.\@currentlabel}
+      \_stex_do_id:
+    }
     \bool_set_false:N \l__stex_proof_in_spfblock_bool
     \stex_annotate:nn{shtml:prooftitle={}}{#3}
   }{
     \bool_if:NTF \l__stex_proof_in_spfblock_bool {
+      \str_if_empty:NF \l_stex_key_id_str {
+        \__stex_proof_number_as_string:N \@currentlabel
+        \str_set:Nx \@currentHref{subproof.\@currentlabel}
+        \_stex_do_id:
+      }
       \__stex_proof_start_list:n\__stex_proof_insert_number:
         \stex_annotate:nn{shtml:prooftitle={}}{#3}
         \__stex_proof_add_counter:
         \stex_style_apply:
-        \_stex_do_id:
     }{
       \stex_annotate:nn{shtml:prooftitle={}}{#3}
       \stex_style_apply:
@@ -6885,6 +6908,10 @@
   type .code:n = {} % todo: type=inline
 }{id,style,title}
 
+\newenvironment{spfstepenv}{
+  \str_set_eq:NN \spfstepenvautorefname \spfstepautorefname
+}{}
+
 \cs_new_protected:Nn \__stex_proof_step_html:nn {
   \stex_if_do_html:TF{
     \exp_args:Ne \stex_annotate:nn{
@@ -6906,7 +6933,14 @@
 \cs_new_protected:Nn \__stex_proof_make_step_macro:Nnnnn {
   \NewDocumentCommand #1 {s O{} +m} {
     \bool_if:NT \l__stex_proof_in_spfblock_bool \group_end:
+    \begin{spfstepenv}
     \stex_keys_set:nn{spfsteps}{##2}
+    \str_if_empty:NF \l_stex_key_id_str {
+      \__stex_proof_number_as_string:N \@currentlabel
+      \str_set:Nx \@currentHref{spfstep.\@currentlabel}
+      \_stex_do_id:
+    }
+    % \__stex_proof_number_as_string:N FOO
     \str_if_empty:NF \l_stex_key_name_str {
       \stex_debug:nn{Here:}{Variable~\l_stex_key_name_str}
       \exp_args:NNx\exp_args:Nnx\vardef{v\l_stex_key_name_str}{\l_stex_key_name_str}
@@ -6919,9 +6953,11 @@
         \__stex_proof_step_html:nn{#2}{\__stex_proof_start_list:n{#3} ##3 \__stex_proof_end_list:}
         #5
       }
+      \end{spfstepenv}
       \group_begin:\stexcommentfont
     }{
       \__stex_proof_step_html:nn{#2}{##3}
+      \end{spfstepenv}
     }
   }
   \stex_deactivate_macro:Nn #1 {sproof~environments}
