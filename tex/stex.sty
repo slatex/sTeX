@@ -37,9 +37,9 @@
 \sys_if_platform_windows:TF{
   \cs_new_protected:Nn \stex_get_env:Nn {\group_begin:
     \escapechar=-1\catcode`\\=12
-    \stex_kpsewhich:Nn-1{-expand-var~\c_percent_str#2\c_percent_str}
+    \exp_args:NNe \stex_kpsewhich:Nn #1 {-expand-var~\c_percent_str#2\c_percent_str}
     \exp_args:NNx\use:nn\group_end:{
-      \str_set:Nn\exp_not:N#1{#1}
+      \str_set:Nn \exp_not:N #1 { #1 }
     }
   }
 }{
@@ -665,7 +665,7 @@
 }
 \cs_generate_variant:Nn \stex_file_set:Nn {No, Nx}
 \sys_if_platform_windows:TF{
-  \cs_new_protected:Npn \__stex_path_win_take:nnw #1#2#3 \__stex_path_: {
+  \cs_new_protected:Npn \__stex_path_win_take:w #1#2#3 \__stex_path_: {
     \str_set:Nn \l__stex_path_win_drive {#1#2}
     \str_set:Nn \l__stex_path_str{#3}
   }
@@ -673,12 +673,13 @@
     \str_set:Nn \l__stex_path_str {#2}
     \str_clear:N \l__stex_path_win_drive
     \exp_args:NNo \str_replace_all:Nnn \l__stex_path_str \c_backslash_str /
-    \exp_args:Nx \tl_if_eq:nnT {\str_item:Nn \l__stex_path_str 2} : {
+    \exp_args:Nx \str_if_eq:nnT {\str_item:Nn \l__stex_path_str 2} : {
       \exp_after:wN \__stex_path_win_take:w \l__stex_path_str \__stex_path_:
     }
     \stex_file_set:No #1 \l__stex_path_str
     \__stex_path_canonicalize:N #1
     \str_if_empty:NF \l__stex_path_win_drive {
+      \seq_pop_left:NN #1 \l__stex_path_str
       \seq_put_left:No #1 \l__stex_path_win_drive
     }
     %\stex_debug:nn{files}{Set~\tl_to_str:n{#1}~to~\stex_file_use:N #1}
@@ -726,8 +727,8 @@
   \prg_new_conditional:Nnn \stex_if_file_absolute:N {p, T, F, TF} {
     \seq_if_empty:NTF #1 \prg_return_false: {
       \tl_set:Nx \l__stex_path_maybewin_str {\seq_item:Nn #1 1}
-      \exp_args:No \tl_if_empty:nTF \l__stex_path_maybewin \prg_return_true: {
-        \exp_args:Nx \tl_if_eq:nnTF {\str_item:Nn \l__stex_path_maybewin 2} :
+      \exp_args:No \tl_if_empty:nTF \l__stex_path_maybewin_str \prg_return_true: {
+        \exp_args:Nx \str_if_eq:nnTF {\str_item:Nn \l__stex_path_maybewin_str 2} :
           \prg_return_true: \prg_return_false:
       }
     }
@@ -962,15 +963,16 @@
 \seq_gclear_new:N\g__stex_path_stack
 \seq_gclear_new:N\g_stex_current_file
 \cs_new_protected:Nn \stex_filestack_push:n {
-  \exp_args:Nx \tl_if_eq:nnTF {\str_head:n{#1}} / {
-    \str_set:Nn \l__stex_path_str {#1}
+  \stex_str_if_ends_with:nnTF {#1}{.tex}{
+    \stex_file_resolve:No \g_stex_current_file {#1}
   }{
-    \str_set:Nx \l__stex_path_str {\stex_file_use:N \c_stex_pwd_file / #1}
+    \stex_file_resolve:No \g_stex_current_file {#1.tex}
   }
-  \exp_args:No \stex_str_if_ends_with:nnF \l__stex_path_str {.tex}{
-    \str_set:Nx \l__stex_path_str {\l__stex_path_str.tex}
+  \stex_if_file_absolute:NF \g_stex_current_file {
+    \stex_file_resolve:Nx \g_stex_current_file {
+      \stex_file_use:N \c_stex_pwd_file / \stex_file_use:N \g_stex_current_file
+    }
   }
-  \stex_file_resolve:No \g_stex_current_file \l__stex_path_str
   \seq_gset_eq:NN \g_stex_current_file \g_stex_current_file
   \exp_args:NNx \seq_gpush:Nn \g__stex_path_stack {\stex_file_use:N \g_stex_current_file}
   \_stex_every_file:
