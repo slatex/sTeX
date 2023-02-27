@@ -4603,9 +4603,11 @@
 \stex_keys_define:nnnn{textsymdecl}{
   \str_clear:N \l_stex_key_name_str
   \tl_clear:N \l_stex_key_type_tl
+  \tl_clear:N \l_stex_key_def_tl
 }{
   name      .str_set:N  = \l_stex_key_name_str ,
-  type      .tl_set:N     = \l_stex_key_type_tl
+  type      .tl_set:N     = \l_stex_key_type_tl ,
+  def       .tl_set:N     = \l_stex_key_def_tl
 }{style,deprecate}
 
 \stex_new_stylable_cmd:nnnn {textsymdecl} {m O{} m} {
@@ -4619,6 +4621,18 @@
   %}
   \str_set:Nn \l_stex_key_role_str {textsymdecl}
   \stex_symdecl_top:n{#1}
+  \int_set:Nn \l_stex_get_symbol_arity_int 0
+  \tl_clear:N \l_stex_key_op_tl
+  \str_clear:N \l_stex_key_intent_str
+  \str_clear:N \l_stex_key_prec_str
+  \str_set_eq:NN \l_stex_get_symbol_mod_str \l_stex_current_module_str
+  \str_set_eq:NN \l_stex_get_symbol_name_str \l_stex_key_name_str
+  \stex_notation_parse:n{\hbox{#3}}
+  \_stex_notation_add:
+  \stex_if_do_html:T {
+    \def\comp{\_comp}
+    \_stex_notation_do_html:n{\l_stex_get_symbol_mod_str ? \l_stex_get_symbol_name_str}
+  }
   \stex_execute_in_module:x{
     \_@@_set_textsymdecl_macro:nnn{#1}{\l_stex_current_module_str?\l_stex_key_name_str}
     \exp_not:n{{#3}}
@@ -4896,12 +4910,32 @@
   }
   \seq_clear:N \l_@@_precs_seq
   \tl_clear:N \l_stex_notation_args_tl
-  \int_compare:nNnTF \l_stex_get_symbol_arity_int = 0
-    \_@@_const_precs: {
-      \_@@_fun_precs:
-      \str_set:Nn \l_@@_missing_str {#1}
-      \tl_clear:N \l_@@_missing_tl
-      \_stex_map_args:N \_@@_add_missing_args:nn
+  \int_compare:nNnTF \l_stex_get_symbol_arity_int = 0 {
+    \_@@_const_precs: 
+    \tl_if_empty:NT \l_stex_key_op_tl {
+      \tl_set:Nn \l_stex_key_op_tl { \maincomp{#1} }
+    }
+  }{
+    \_@@_fun_precs:
+    \str_set:Nn \l_@@_missing_str {#1}
+    \tl_clear:N \l_@@_missing_tl
+    \_stex_map_args:N \_@@_add_missing_args:nn
+    \tl_if_empty:NT \l_stex_key_op_tl {
+      \hbox_set:Nn \l_tmpa_box {
+        \str_set:Nn \l_stex_current_symbol_str {}
+        \cs_set:Npn \l_tmpa_cs ##1 ##2 ##3 ##4 ##5 ##6 ##7 ##8 ##9 { #1 }
+        \cs_set:Npn \maincomp ##1 {
+          \tl_gset:Nn \l_stex_key_op_tl { \maincomp{##1} }
+          ##1
+        }
+        \cs_set:Npn \argsep ##1 ##2 {##1 ##2}
+        \cs_set:Npn \argmap ##1 ##2 ##3 {##1 ##3}
+        \cs_set:Npn \argarraymap ##1 ##2 ##3 ##4 {
+          ##1 ##2
+        }
+        \stex_suppress_html:n{$\l_tmpa_cs abcdefghj$}
+      }
+    }
   }
   \exp_args:NNe
   \tl_set:Nn \l_stex_notation_macrocode_cs {
