@@ -1975,13 +1975,18 @@
 \seq_new:N \g_@@_files_seq
 \int_new:N \l_@@_unnamed_counter_int
 
-\cs_new_protected:Nn \stex_ref_new_doc_target:n {
+\cs_new_protected:Nn \_stex_ref_new_id:n {
   \str_if_empty:nTF {#1}{
     \int_gincr:N \l_@@_unnamed_counter_int
     \str_set:Nx \l_@@_str {REF\int_use:N \l_@@_unnamed_counter_int}
   }{
     \str_set:Nn \l_@@_str {#1}
   }
+  \str_set:Nx \l_stex_ref_url_str {\stex_uri_use:N \l_stex_current_doc_uri ? \l_@@_str}
+}
+
+\cs_new_protected:Nn \stex_ref_new_doc_target:n {
+  \_stex_ref_new_id:n{#1}
   %\stex_uri_add_module:NNo \l_@@_uri \l_stex_current_doc_uri \l_@@_str
   %\stex_debug:nn{sref}{New~document~target:~\stex_uri_use:N \l_@@_uri}
   \_@@_add_doc_ref:xo {\stex_uri_use:N \l_stex_current_doc_uri} \l_@@_str
@@ -1998,7 +2003,7 @@
         }
       }
     }
-    \exp_args:Nx \label {sref@ \stex_uri_use:N \l_stex_current_doc_uri ? \l_@@_str}
+    \exp_args:Nx \label {\l_stex_ref_url_str}
   }
 }
 \NewDocumentCommand \sreflabel {m} {\stex_ref_new_doc_target:n {#1}}
@@ -7788,6 +7793,7 @@
   }
   \_stex_do_for_list:
   \str_if_empty:NF \l_stex_key_name_str {
+    \_@@_force_id:
     \seq_put_right:Nx \l_stex_fors_seq {
       \l_stex_current_module_str ? \l_stex_key_name_str
     }
@@ -7823,7 +7829,7 @@
     shtml:fors={\seq_use:Nn \l_stex_fors_seq ,}
   }
   \str_if_empty:NF \l_stex_key_id_str {,
-    shtml:id={\l_stex_key_id_str}
+    shtml:id={\l_stex_ref_url_str}
   }
   \clist_if_empty:NF \l_stex_key_style_clist {,
     shtml:styles={\l_stex_key_style_clist}
@@ -7895,7 +7901,15 @@
   \stex_reactivate_macro:N \varbind
 }
 
+\cs_new_protected:Nn \_@@_force_id: {
+  \str_if_empty:NT \l_stex_key_id_str {
+    \_stex_ref_new_id:n{}
+    \str_set_eq:NN \l_stex_key_id_str \l__stex_refs_str
+  }
+}
+
 \stex_new_statement:nnn{definition}{def}{
+  \_@@_force_id:
   \_@@_setup:n{DEFINED}
   \_@@_setup_def:
   \stex_reactivate_macro:N \definiens
@@ -7917,7 +7931,13 @@
 }
 \stex_new_statement:nnn{example}{ex}{\_@@_setup:n{}}
 \stex_new_statement:nnn{paragraph}{}{
-  \_@@_setup:n{}\clist_if_in:NnT \l_stex_key_style_clist {symdoc}{\_@@_setup_def:}
+  \clist_if_in:NnTF \l_stex_key_style_clist {symdoc}{
+    \_@@_force_id:
+    \_@@_setup:n{}
+    \_@@_setup_def:
+  }{
+    \_@@_setup:n{}
+  }
 }
 %    \end{macrocode}
 % \end{macro}

@@ -1454,13 +1454,18 @@
 \seq_new:N \g__stex_refs_files_seq
 \int_new:N \l__stex_refs_unnamed_counter_int
 
-\cs_new_protected:Nn \stex_ref_new_doc_target:n {
+\cs_new_protected:Nn \_stex_ref_new_id:n {
   \str_if_empty:nTF {#1}{
     \int_gincr:N \l__stex_refs_unnamed_counter_int
     \str_set:Nx \l__stex_refs_str {REF\int_use:N \l__stex_refs_unnamed_counter_int}
   }{
     \str_set:Nn \l__stex_refs_str {#1}
   }
+  \str_set:Nx \l_stex_ref_url_str {\stex_uri_use:N \l_stex_current_doc_uri ? \l__stex_refs_str}
+}
+
+\cs_new_protected:Nn \stex_ref_new_doc_target:n {
+  \_stex_ref_new_id:n{#1}
   %\stex_uri_add_module:NNo \l__stex_refs_uri \l_stex_current_doc_uri \l__stex_refs_str
   %\stex_debug:nn{sref}{New~document~target:~\stex_uri_use:N \l__stex_refs_uri}
   \__stex_refs_add_doc_ref:xo {\stex_uri_use:N \l_stex_current_doc_uri} \l__stex_refs_str
@@ -1477,7 +1482,7 @@
         }
       }
     }
-    \exp_args:Nx \label {sref@ \stex_uri_use:N \l_stex_current_doc_uri ? \l__stex_refs_str}
+    \exp_args:Nx \label {\l_stex_ref_url_str}
   }
 }
 \NewDocumentCommand \sreflabel {m} {\stex_ref_new_doc_target:n {#1}}
@@ -6468,6 +6473,7 @@
   }
   \_stex_do_for_list:
   \str_if_empty:NF \l_stex_key_name_str {
+    \__stex_statements_force_id:
     \seq_put_right:Nx \l_stex_fors_seq {
       \l_stex_current_module_str ? \l_stex_key_name_str
     }
@@ -6503,7 +6509,7 @@
     shtml:fors={\seq_use:Nn \l_stex_fors_seq ,}
   }
   \str_if_empty:NF \l_stex_key_id_str {,
-    shtml:id={\l_stex_key_id_str}
+    shtml:id={\l_stex_ref_url_str}
   }
   \clist_if_empty:NF \l_stex_key_style_clist {,
     shtml:styles={\l_stex_key_style_clist}
@@ -6575,7 +6581,15 @@
   \stex_reactivate_macro:N \varbind
 }
 
+\cs_new_protected:Nn \__stex_statements_force_id: {
+  \str_if_empty:NT \l_stex_key_id_str {
+    \_stex_ref_new_id:n{}
+    \str_set_eq:NN \l_stex_key_id_str \l__stex_refs_str
+  }
+}
+
 \stex_new_statement:nnn{definition}{def}{
+  \__stex_statements_force_id:
   \__stex_statements_setup:n{DEFINED}
   \__stex_statements_setup_def:
   \stex_reactivate_macro:N \definiens
@@ -6597,7 +6611,13 @@
 }
 \stex_new_statement:nnn{example}{ex}{\__stex_statements_setup:n{}}
 \stex_new_statement:nnn{paragraph}{}{
-  \__stex_statements_setup:n{}\clist_if_in:NnT \l_stex_key_style_clist {symdoc}{\__stex_statements_setup_def:}
+  \clist_if_in:NnTF \l_stex_key_style_clist {symdoc}{
+    \__stex_statements_force_id:
+    \__stex_statements_setup:n{}
+    \__stex_statements_setup_def:
+  }{
+    \__stex_statements_setup:n{}
+  }
 }
 
 \cs_new_protected:Nn \__stex_statements_do_defref:nn {
