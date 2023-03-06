@@ -96,6 +96,65 @@
   }
 }
 
+\ExplSyntaxOn
+
+\lstnewenvironment{stexcode}[1][]{
+  \_lststex_parse_args:n{#1}
+  \exp_args:No \lstset\l_lststex_return_tl
+}{}
+
+\newcommand\stexcodeinline[1][]{
+  \_lststex_parse_args:n{#1}
+  \exp_args:Nno \use:nn{\lstinline[} \l_lststex_return_tl ]
+}
+
+\keys_define:nn{ lststex }{
+  symbols  .code:n = {
+    \clist_map_inline:nn{#1}{
+      \clist_put_right:Nn \l_lststex_symbols_clist {##1}
+      \clist_put_right:Nn \l_lststex_symbols_clist {\\##1}
+    }
+  },
+  variables  .code:n = {
+    \clist_map_inline:nn{#1}{
+      \clist_put_right:Nn \l_lststex_variables_clist {##1}
+      \clist_put_right:Nn \l_lststex_variables_clist {\\##1}
+    }
+  },
+  unknown   .code:n = {
+    \tl_if_empty:nTF{#1}{
+      \exp_args:NNo \clist_put_right:Nn \l_lststex_pass_on_args_clist \l_keys_key_str
+    }{
+      \exp_args:NNx \clist_put_right:Nn \l_lststex_pass_on_args_clist {
+        \l_keys_key_str = \exp_not:n{#1}
+      }
+    }
+  }
+}
+
+\cs_new_protected:Nn \_lststex_parse_args:n {
+  \clist_clear:N \l_lststex_pass_on_args_clist
+  \clist_put_right:Nn \l_lststex_pass_on_args_clist {language=sTeX}
+  \clist_clear:N \l_lststex_symbols_clist
+  \clist_clear:N \l_lststex_variables_clist
+  \keys_set:nn { lststex }{ #1 }
+  \tl_set:Nx \l_lststex_return_tl {
+    \exp_args:No \exp_not:n \l_lststex_pass_on_args_clist
+    \clist_if_empty:NF \l_lststex_symbols_clist {
+      ,classoffset=1,morekeywords={
+        \exp_args:No \exp_not:n \l_lststex_symbols_clist
+      }
+    }
+    \clist_if_empty:NF \l_lststex_variables_clist {
+      ,classoffset=9,morekeywords={
+        \exp_args:No \exp_not:n \l_lststex_variables_clist
+      }
+    }
+  }
+}
+
+\ExplSyntaxOff
+
 % LocalWords:  lstdefinelanguage morekeywords morecomment moretexcs defin sref
 % LocalWords:  twindef atwindef definalt twindefalt atwindefalt termref lstset
 % LocalWords:  basicstyle scriptsize fullflexible lineskip aboveskip belowskip
