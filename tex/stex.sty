@@ -2528,10 +2528,7 @@
   \cs_set:cpx{#1} {
     \_stex_invoke_symbol:nnnnnnnN
     {\l_stex_current_module_str}
-    \exp_not:n{{#2}{#3}{#4}{#5}{#6}{#7}{#8}}%{
-    %  \exp_after:wN \exp_not:n \exp_after:wN {\l__stex_modules_tmp_tl{####1}{####2}{####3}{####4}
-    %      {####5}{####6}{####7}{####8}{####9}}
-    %}#8
+    \exp_not:n{{#2}{#3}{#4}{#5}{#6}{#7}{#8}}
   }
   \stex_debug:nn{activating}{done}
   \prop_map_break:
@@ -5829,6 +5826,10 @@
     }}
     {}\stex_invoke_structure:
   \str_set:Nx \l_stex_macroname_str {#1}
+  \stex_execute_in_module:x{
+    \seq_clear:c{l_stex_structure_macros_\l_stex_current_module_str / \l__stex_structures_name_str-module_seq}
+    \seq_put_right:cn{l_stex_structure_macros_\l_stex_current_module_str / \l__stex_structures_name_str-module_seq}{#1}
+  }
   \exp_args:No \stex_structural_feature_module:nn
     {\l__stex_structures_name_str}{structure}
 }
@@ -5877,17 +5878,24 @@
   }
 }
 \stex_new_stylable_env:nnnnnnn {extstructure}{m O{} m}{
-  \__stex_structures_begin:nn{#1}{#2}
+  \seq_clear:N \l__stex_structures_imports_seq
   \clist_map_inline:nn{#3}{
     \stex_get_mathstructure:n{##1}
+    \seq_put_right:No \l__stex_structures_imports_seq \l_stex_get_structure_module_str
+    \stex_execute_in_module:x{
+      \seq_put_right:cn{l_stex_structure_macros_\l_stex_get_structure_module_str _seq}{#1}
+    }
+  }
+  \__stex_structures_begin:nn{#1}{#2}
+  \seq_map_inline:Nn\l__stex_structures_imports_seq{
     \stex_if_do_html:T {
       \hbox{\stex_annotate_invisible:nn
-        {shtml:import=\l_stex_get_structure_module_str} {}}
+        {shtml:import=##1} {}}
     }
     \stex_module_add_morphism:nonn
-      {}{\l_stex_get_structure_module_str}{import}{}
+      {}{##1}{import}{}
     \stex_execute_in_module:x{
-      \stex_activate_module:n{\l_stex_get_structure_module_str}
+      \stex_activate_module:n{##1}
     }
   }
   \stex_smsmode_do:
@@ -5902,22 +5910,41 @@
   \stex_reactivate_macro:N \extstructure
 }
 
+\cs_new:Nn \__stex_structures_extend_structure_i:NnnnnnnnN {
+  \exp_not:n{#1{#2}{#3}{#4}{#5}{defed}}{\l__stex_structures_extmod_str,#7}\exp_not:n{{#8}#9}
+}
+\cs_new_protected:Nn \__stex_structures_extend_structure:nn {
+  \stex_debug:nn{ext}{Extending~#1~by~#2}
+  \str_set:Nn \l__stex_structures_extmod_str{#2}
+  \tl_set:cx{#1}{
+    \exp_after:wN \exp_after:wN \exp_after:wN
+    \__stex_structures_extend_structure_i:NnnnnnnnN \cs:w #1 \cs_end:
+  }
+}
+
 \stex_new_stylable_env:nnnnnnn {extstructure*}{m}{
-  \str_clear:N \l__stex_structures_exstruct_name_str
-  \__stex_structures_new_extstruct_name:n {1}
+  \__stex_structures_new_extstruct_name:
   \stex_get_mathstructure:n{#1}
 
   \stex_execute_in_module:x{
-    \tl_set:cn{#1}{
-      \_stex_invoke_symbol:nnnnnnnN
-      {\l_stex_get_symbol_mod_str}
-      {\l_stex_get_symbol_name_str}
-      {0}{}{defed}{
-        \l_stex_current_module_str/\l__stex_structures_exstruct_name_str -module,
-        \l_stex_get_symbol_type_tl
-      }{}\stex_invoke_structure:
+    \seq_map_inline:cn{l_stex_structure_macros_\l_stex_get_structure_module_str _seq}{
+      \exp_not:N \tl_if_exist:cT{####1}{
+        \__stex_structures_extend_structure:nn{####1}{\l_stex_current_module_str/\l__stex_structures_exstruct_name_str -module}
+      }
     }
   }
+
+  %\stex_execute_in_module:x{
+  %  \tl_set:cn{#1}{
+  %    \_stex_invoke_symbol:nnnnnnnN
+  %    {\l_stex_get_symbol_mod_str}
+  %    {\l_stex_get_symbol_name_str}
+  %    {0}{}{defed}{
+  %      \l_stex_current_module_str/\l__stex_structures_exstruct_name_str -module,
+  %      \l_stex_get_symbol_type_tl
+  %    }{}\stex_invoke_structure:
+  %  }
+  %}
 
   \exp_args:No \__stex_structures_begin:nn\l__stex_structures_exstruct_name_str{}
 
@@ -5955,21 +5982,13 @@
   }
 }
 
-\cs_new_protected:Nn \__stex_structures_new_extstruct_name:n {
-  \prop_map_inline:cn
-    {c_stex_module_ \l_stex_current_module_str _symbols_prop}{
-      \__stex_structures_name_check:nnnnnnnnn{#1}##2
+\stex_every_module:n{ \str_set:Nn \l__stex_structures_extname_count 0}
+
+\cs_new_protected:Nn \__stex_structures_new_extstruct_name: {
+  \stex_do_up_to_module:n {
+    \str_set:Nx \l__stex_structures_extname_count {\int_eval:n{\l__stex_structures_extname_count+1}}
   }
-  \str_if_empty:NT \l__stex_structures_exstruct_name_str {
-    \str_set:Nn \l__stex_structures_exstruct_name_str {EXTSTRUCT_#1}
-  }
-}
-\cs_new:Nn \__stex_structures_name_check:nnnnnnnnn {
-  \str_if_eq:nnT{EXTSTRUCT_#1}{#3}{
-    \prop_map_break:n{
-      \exp_args:Ne \__stex_structures_new_extstruct_name:n {\int_eval:n{#1+1}}
-    }
-  }
+  \str_set:Nx \l__stex_structures_exstruct_name_str {EXTSTRUCT_\l__stex_structures_extname_count}
 }
 
 \cs_new_protected:Nn \stex_invoke_structure: {
