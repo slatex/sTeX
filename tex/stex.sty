@@ -5881,7 +5881,11 @@
   \seq_clear:N \l__stex_structures_imports_seq
   \clist_map_inline:nn{#3}{
     \stex_get_mathstructure:n{##1}
-    \seq_put_right:No \l__stex_structures_imports_seq \l_stex_get_structure_module_str
+    \clist_map_inline:Nn \l_stex_get_symbol_type_tl {
+      \exp_args:Ne \stex_if_module_exists:nT{\tl_to_str:n{####1}}{
+        \seq_put_right:Nn \l__stex_structures_imports_seq{####1}
+      }
+    }
     \stex_execute_in_module:x{
       \seq_put_right:cn{l_stex_structure_macros_\l_stex_get_structure_module_str _seq}{#1}
     }
@@ -5890,7 +5894,7 @@
   \seq_map_inline:Nn\l__stex_structures_imports_seq{
     \stex_if_do_html:T {
       \hbox{\stex_annotate_invisible:nn
-        {shtml:import=##1} {}}
+        {shtml:import={##1}} {}}
     }
     \stex_module_add_morphism:nonn
       {}{##1}{import}{}
@@ -5924,7 +5928,14 @@
 
 \stex_new_stylable_env:nnnnnnn {extstructure*}{m}{
   \__stex_structures_new_extstruct_name:
+  \seq_clear:N \l__stex_structures_imports_seq
   \stex_get_mathstructure:n{#1}
+
+  \clist_map_inline:Nn \l_stex_get_symbol_type_tl {
+    \exp_args:Ne \stex_if_module_exists:nT{\tl_to_str:n{##1}}{
+      \seq_put_right:Nn \l__stex_structures_imports_seq{##1}
+    }
+  }
 
   \stex_execute_in_module:x{
     \seq_map_inline:cn{l_stex_structure_macros_\l_stex_get_structure_module_str _seq}{
@@ -5934,28 +5945,18 @@
     }
   }
 
-  %\stex_execute_in_module:x{
-  %  \tl_set:cn{#1}{
-  %    \_stex_invoke_symbol:nnnnnnnN
-  %    {\l_stex_get_symbol_mod_str}
-  %    {\l_stex_get_symbol_name_str}
-  %    {0}{}{defed}{
-  %      \l_stex_current_module_str/\l__stex_structures_exstruct_name_str -module,
-  %      \l_stex_get_symbol_type_tl
-  %    }{}\stex_invoke_structure:
-  %  }
-  %}
-
   \exp_args:No \__stex_structures_begin:nn\l__stex_structures_exstruct_name_str{}
 
-  \stex_if_do_html:T {
-    \stex_annotate_invisible:nn
-      {shtml:import= \l_stex_get_structure_module_str} {}
-  }
-  \stex_module_add_morphism:nonn
-    {}{\l_stex_get_structure_module_str}{import}{}
-  \stex_execute_in_module:x{
-    \stex_activate_module:n{\l_stex_get_structure_module_str}
+  \seq_map_inline:Nn \l__stex_structures_imports_seq {
+    \stex_if_do_html:T {
+      \stex_annotate_invisible:nn
+        {shtml:import= {##1}} {}
+    }
+    \stex_module_add_morphism:nonn
+      {}{##1}{import}{}
+    \stex_execute_in_module:x{
+      \stex_activate_module:n{##1}
+    }
   }
 
   \stex_smsmode_do:
@@ -6490,6 +6491,7 @@
   macro   .str_set:N = \l_stex_key_macroname_str ,
   % start   .str_set:N = \l_stex_key_title_str , % TODO remove
   type    .clist_set:N = \l_stex_key_types_clist ,
+  symtype    .clist_set:N = \l_stex_key_type_tl ,
   judgment .code:n = {},
   from .code:n= {}, % TODO remove
   to .code:n={} % TODO remove
@@ -6629,7 +6631,7 @@
 
 \stex_new_statement:nnn{definition}{def}{
   \__stex_statements_force_id:
-  \__stex_statements_setup:nn{DEFINED}{}
+  \__stex_statements_setup:nn{}{}
   \__stex_statements_setup_def:
   \stex_reactivate_macro:N \definiens
 }
@@ -6731,13 +6733,16 @@
       }
     }
   }
-
-  \stex_annotate:nn{ shtml:definiens={\l__stex_statements_uri_str}}{
-    #2 %\_stex_annotate_force_break:n{ #2 }
+  \stex_if_smsmode:F{
+    \stex_annotate:nn{ shtml:definiens={\l__stex_statements_uri_str}}{
+      #2 %\_stex_annotate_force_break:n{ #2 }
+    }
   }
   \group_end:
+  \stex_smsmode_do:
 }
 \stex_deactivate_macro:Nn \definiens {definition~environments}
+\stex_sms_allow_escape:N \definiens
 
 \cs_new_protected:Nn \__stex_statements_add_definiens:nnnnnnnn {
   \stex_debug:nn{definiens}{Adding~definiens~to~\l_stex_current_module_str?#2}
