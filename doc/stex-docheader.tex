@@ -57,7 +57,10 @@
       \stexmaketitle
       \tableofcontents
       \int_gincr:N \l_stex_docheader_sect
-      \usemodule[sTeX/Documentation]{macros?AllMacros}
+      \exp_args:Ne \__stex_mathhub_find_manifest:n {\stex_file_use:N \c_stex_mathhub_file / sTeX / Documentation}
+      \str_if_empty:NF \l__stex_mathhub_manifest_str {
+        \usemodule[sTeX/Documentation]{macros?AllMacros}
+      }
       \DocInput{\jobname.dtx}
       \clearpage
       \PrintIndex
@@ -86,7 +89,117 @@
 
 %\usepackage{document-structure}
 
-\mhinput[sTeX/Documentation]{../lib/examples.tex}
+
+\usepackage{lststex,mdframed}
+\usepackage[most]{tcolorbox}
+
+\lstset{literate=%
+    {Ö}{{\"O}}1
+    {Ä}{{\"A}}1
+    {Ü}{{\"U}}1
+    {ß}{{\ss}}1
+    {ü}{{\"u}}1
+    {ä}{{\"a}}1
+    {ö}{{\"o}}1
+    {~}{{\textasciitilde}}1
+}
+
+\newenvironment{framed}[1][]{
+  \ifstexhtml\par\vbox\bgroup
+    \csname exp_args:Nne\endcsname\begin{stex_annotate_env}{%
+      style:border=solid 1px black,%
+      style:width=var(--this-width),%
+      style:min-width=var(--this-width),%
+      style:--this-width=calc(var(--current-width) - 6px),%
+      style:padding=3px,%
+      style:margin-top=5px,%
+      style:margin-bottom=5px%
+    }
+    \csname stex_annotate_invisible:n\endcsname{ }%
+    \begin{stex_annotate_env}{%
+      style:--current-width=var(--this-width);%
+    }\csname stex_annotate_invisible:n\endcsname{ }
+  \else\begin{mdframed}[#1]\fi
+  %\begin{center}%
+}{%
+  %\end{center}%
+  \ifstexhtml
+    \end{stex_annotate_env}\end{stex_annotate_env}\egroup\par
+  \else\end{mdframed}\fi
+}
+\newcommand{\scaled}[2][0.9\hsize]{\begin{center}\resizebox{#1}{!}{\begin{minipage}{\textwidth} #2 \end{minipage}}\end{center}}
+
+\makeatletter
+\ExplSyntaxOn
+
+\def\doc_exbox:nnn#1#2#3{
+  \begin{sexample}[#3]
+    Input:
+    \begin{framed}[linewidth=1pt,backgroundcolor=white]\small
+      #1
+    \end{framed}
+    Output:
+    \begin{framed}[linewidth=1pt,backgroundcolor=white]\small
+      #2
+    \end{framed}
+  \end{sexample}
+}
+
+
+\NewDocumentCommand\stexexamplefile{O{} m O{} O{}}{
+  \stex_resolve_path_pair:Nxx \l_@@_filepath_str {\tl_to_str:n{#1}} {\tl_to_str:n{#2}}
+  \doc_exbox:nnn{
+    \hfill File~\str_if_empty:nTF{#1}{
+      \prop_if_exist:NT \l_stex_current_archive_prop {
+        [\texttt{\prop_item:Nn \l_stex_current_archive_prop {id}}]
+      }
+    }{[#1]}\texttt{\tl_to_str:n{#2}}
+    \_lststex_parse_args:n{#3}
+    \exp_args:Nno \use:nn{\lstinputlisting[} \l_lststex_return_tl ]{\l_@@_filepath_str}
+  }{
+    \inputref[#1]{#2}
+  }{#4}
+}
+
+\newwrite\testoutfile
+\NewDocumentCommand\stexexample{O{} O{}}{
+  \begingroup 
+  \catcode`\\=12\relax
+  \catcode`\#=12\relax
+  \catcode`\&=12\relax
+  \catcode`\$=12\relax
+  \catcode`\^=12\relax
+  \catcode`\_=12\relax
+  \catcode`\ =12\relax
+  \catcode`^^J=12\relax
+  \endlinechar=`^^J
+  \newlinechar=-1
+%^^A    \everyeof{\noexpand}
+  \example_a:nnn{#1}{#2}
+}
+\long\def\example_a:nnn #1 #2 #3 {
+  \endgroup
+  \immediate\openout\testoutfile=\jobname.exmpl
+  \immediate\write\testoutfile{
+    \c_backslash_str begin{stexcode}[#1]
+    \detokenize{^^J}#3
+    \c_backslash_str end{stexcode}
+  }
+  \immediate\closeout\testoutfile
+  \doc_exbox:nnn{
+    \catcode`\#=12\relax
+    \csname @ @ input\endcsname{\jobname.exmpl}
+  }{
+    \immediate\openout\testoutfile=\jobname.exmpl
+    \immediate\write\testoutfile{#3}
+    \immediate\closeout\testoutfile
+    \csname @ @ input\endcsname \jobname.exmpl\relax
+  }{#2}
+  \peek_charcode_remove:NT ^^J
+}
+
+\ExplSyntaxOff
+\makeatother
 
 \makeatletter
 \newcount\example@counter\example@counter=0
@@ -149,6 +262,7 @@
 \definecolor{darkgreen}{rgb}{0.0, 0.5, 0.0}
 
 \usepackage[solutions]{problem}
+\usepackage{hwexam}
 \newtcolorbox{problemborderbox}[1][]{
   empty,
   title={Exercise #1},
