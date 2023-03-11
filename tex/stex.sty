@@ -1251,6 +1251,7 @@
 \int_new:N \l_stex_docheader_sect
 
 \tl_set:Nn \currentsectionlevel {document\tl_if_exist:NT\xspace\xspace}
+\cs_new_protected:Npn \Currentsectionlevel {\exp_args:No \_stex_capitalize:n \currentsectionlevel}
 
 \stex_if_html_backend:TF {
   \cs_new_protected:Nn \_sfragment_do_level:nn {
@@ -1891,9 +1892,21 @@
 \NewDocumentCommand \inputref { O{} m}{
   \exp_args:NNx \exp_args:Nnx \__stex_inputs_inputref:nn{ \tl_to_str:n{#1} }{ \tl_to_str:n{#2} }
 }
+\cs_new_protected:Nn \__stex_inputs_bibresource:n {
+  \__stex_inputs_up_archive:nn{#1}{bib}
+  \seq_if_empty:NTF \l__stex_inputs_libinput_files_seq {
+    \msg_error:nnxx{stex}{error/nofile}{\exp_not:N\addmhbibresource}{#1.bib}
+  }{
+    \seq_map_inline:Nn \l__stex_inputs_libinput_files_seq {
+      \addbibresource{ ##1 }
+    }
+  }
+}
 \newcommand\addmhbibresource[2][]{
-  \stex_in_archive:nn {#1} {
-    \addbibresource{ \stex_file_use:N \c_stex_mathhub_file / ##1 / #2 }
+  \tl_if_empty:nTF{#1}{
+    \__stex_inputs_bibresource:n{#2}
+  }{
+    \stex_in_archive:nn{#1}{\__stex_inputs_bibresource:n{#2}}
   }
 }
 \stex_if_html_backend:TF{
@@ -2200,7 +2213,8 @@
     \stex_debug:nn{sms}{End~Environment~#2}
     \end{#2}\__stex_smsmode_do:w
   }{
-    \str_if_eq:nnTF{#2}{document} \endinput \__stex_smsmode_do:w
+    %\str_if_eq:nnTF{#2}{document} \endinput
+    \__stex_smsmode_do:w
   }
 }
 \str_new:N \l_stex_current_module_str

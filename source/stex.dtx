@@ -1741,6 +1741,7 @@
 \int_new:N \l_stex_docheader_sect
 
 \tl_set:Nn \currentsectionlevel {document\tl_if_exist:NT\xspace\xspace}
+\cs_new_protected:Npn \Currentsectionlevel {\exp_args:No \_stex_capitalize:n \currentsectionlevel}
 
 \stex_if_html_backend:TF {
   \cs_new_protected:Nn \_sfragment_do_level:nn {
@@ -2467,9 +2468,21 @@
 %
 % \begin{macro}{\addmhbibresource}
 %    \begin{macrocode}
+\cs_new_protected:Nn \_@@_bibresource:n {
+  \_@@_up_archive:nn{#1}{bib}
+  \seq_if_empty:NTF \l_@@_libinput_files_seq {
+    \msg_error:nnxx{stex}{error/nofile}{\exp_not:N\addmhbibresource}{#1.bib}
+  }{
+    \seq_map_inline:Nn \l_@@_libinput_files_seq {
+      \addbibresource{ ##1 }
+    }
+  }
+}
 \newcommand\addmhbibresource[2][]{
-  \stex_in_archive:nn {#1} {
-    \addbibresource{ \stex_file_use:N \c_stex_mathhub_file / ##1 / #2 }
+  \tl_if_empty:nTF{#1}{
+    \_@@_bibresource:n{#2}
+  }{
+    \stex_in_archive:nn{#1}{\_@@_bibresource:n{#2}}
   }
 }
 %    \end{macrocode}
@@ -2844,7 +2857,8 @@
     \stex_debug:nn{sms}{End~Environment~#2}
     \end{#2}\_@@_do:w
   }{
-    \str_if_eq:nnTF{#2}{document} \endinput \_@@_do:w
+    %\str_if_eq:nnTF{#2}{document} \endinput 
+    \_@@_do:w
   }
 }
 %    \end{macrocode}
