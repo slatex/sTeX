@@ -2984,11 +2984,20 @@
   \tl_if_empty:nF {#2}{
     \str_set:Nx \l_stex_import_uri_str {\l_stex_import_uri_str / #2}
   }
-  \stex_debug:nn{importmodule}{~>#1<^^J>#2<^^J>#3<^^J>\l_stex_import_uri_str<^^JCurrent~file:\stex_file_use:N \g_stex_current_file}
-  \stex_if_module_exists:nF {\l_stex_import_uri_str?#3} {
-    \__stex_importmodule_get_from_file:nnn{#1}{#2}{#3}
+  \stex_debug:nn{importmodule}{~>#1<^^J>#2<^^J>#3<^^J>\l_stex_import_uri_str<^^J
+    Current~file:\stex_file_use:N \g_stex_current_file^^J
+    Current~namespace:\stex_uri_use:N \l_stex_current_ns_uri
   }
-  \str_set:Nx \l_stex_import_ns_str {\l_stex_import_uri_str?#3}
+  \stex_if_module_exists:nTF {\l_stex_import_uri_str?#3} {
+    \str_set:Nx \l_stex_import_ns_str {\l_stex_import_uri_str?#3}
+  }{
+    \stex_if_module_exists:nTF{\stex_uri_use:N \l_stex_current_ns_uri ? #3}{
+      \str_set:Nx \l_stex_import_ns_str {\stex_uri_use:N \l_stex_current_ns_uri ? #3}
+    }{
+      \__stex_importmodule_get_from_file:nnn{#1}{#2}{#3}
+      \str_set:Nx \l_stex_import_ns_str {\l_stex_import_uri_str?#3}
+    }
+  }
 }
 
 \cs_new_protected:Nn \__stex_importmodule_get_module:nnn {
@@ -3686,7 +3695,24 @@
   %  \str_set:Nx \l_stex_key_name_str {\l_stex_key_name_str-sym}
   %}
   \str_set:Nn \l_stex_key_role_str {textsymdecl}
-  \stex_symdecl_top:n{#1}
+
+  \stex_symdecl_do:
+  \_stex_symdecl_check_terms:
+  \exp_args:Nnx \use:nn {\stex_module_add_symbol:nnnnnnnN}{
+    {\l_stex_macroname_str}
+    {\l_stex_key_name_str}
+    {0}{}
+    {\tl_if_empty:NF \l_stex_key_def_tl{DEFED} }
+    {}% type
+    {\use:c{#1name}}% return
+    \stex_invoke_text_symbol:
+  }
+  \exp_args:Ne \stex_ref_new_symbol:n
+    {\l_stex_current_module_str?\l_stex_key_name_str}
+  \stex_if_do_html:T {
+    \_stex_symdecl_html:
+  }
+
   \int_set:Nn \l_stex_get_symbol_arity_int 0
   \tl_clear:N \l_stex_key_op_tl
   \str_clear:N \l_stex_key_intent_str
@@ -3718,25 +3744,30 @@
 \stex_every_module:n {\stex_reactivate_macro:N \textsymdecl}
 \stex_sms_allow_escape:N \textsymdecl
 
-  \cs_new_protected:Nn \__stex_symdecl_set_textsymdecl_macro:nnn {
-    \cs_set_nopar:cpn{#1name}{
-      \mode_if_vertical:T{\hbox_unpack:N\c_empty_box}
-      \mode_if_math:TF{
-        \hbox{#3}
-      }{
-        #3
-      }\xspace
-    }
-    \cs_set_nopar:cpn{#1}{
-      \mode_if_vertical:T{\hbox_unpack:N\c_empty_box}
-      \mode_if_math:TF{
-        \symref{#2}{\hbox{#3}}
-      }{
-        \symref{#2}{#3}
-      }\xspace
-
-    }
+\cs_new_protected:Nn \__stex_symdecl_set_textsymdecl_macro:nnn {
+  \cs_set_protected:cpn{#1name}{
+    \mode_if_vertical:T{\hbox_unpack:N\c_empty_box}
+    \mode_if_math:TF{
+      \hbox{#3}
+    }{
+      #3
+    }\cs_if_exist:NT\xspace\xspace
   }
+  %\cs_set_nopar:cpn{#1}{
+  %  \mode_if_vertical:T{\hbox_unpack:N\c_empty_box}
+  %  \mode_if_math:TF{
+  %    \symref{#2}{\hbox{#3}}
+  %  }{
+  %    \symref{#2}{#3}
+  %  }\xspace
+  %}
+}
+
+\cs_new_protected:Nn \stex_invoke_text_symbol: {
+  \mode_if_vertical:T{\hbox_unpack:N\c_empty_box}
+  \_stex_term_oms_or_omv:nnn{}{}{\l_stex_current_return_tl}
+  \group_end:\cs_if_exist:NT\xspace\xspace
+}
 \cs_new_protected:Nn \stex_get_symbol:n {
   \_stex_get_symbol:n{ #1 }
   \str_if_empty:NT \l_stex_get_symbol_name_str {
