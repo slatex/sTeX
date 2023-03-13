@@ -2980,6 +2980,20 @@
 }
 \cs_generate_variant:Nn \stex_import_require_module:nnn {ooo}
 
+\cs_new_protected:Npn \stex_import_require_module_safe:nnn #1 {
+  \tl_if_empty:nTF { #1 } {
+    \str_clear:N \l__stex_importmodule_archive_str
+    \str_set:Nn \l_stex_import_uri_str {file:}
+    \__stex_importmodule_get_module_safe:nnn {}
+  }{
+    \stex_require_archive:n { #1 }
+    \str_set:Nx \l__stex_importmodule_archive_str {#1}
+    \str_set:Nx \l_stex_import_uri_str { \prop_item:cn{ c_stex_mathhub_ #1 _manifest_prop}{ ns } }
+    \str_set:Nx \l__stex_importmodule_str { \stex_file_use:N \c_stex_mathhub_file / #1 / source }
+    \exp_args:No \__stex_importmodule_get_module_safe:nnn \l__stex_importmodule_str
+  }
+}
+
 \cs_new_protected:Nn \__stex_importmodule_get_module_uri:nnn {
   \tl_if_empty:nF {#2}{
     \str_set:Nx \l_stex_import_uri_str {\l_stex_import_uri_str / #2}
@@ -2999,11 +3013,35 @@
     }
   }
 }
+\cs_new_protected:Nn \__stex_importmodule_get_module_uri_safe:nnn {
+  \tl_if_empty:nF {#2}{
+    \str_set:Nx \l_stex_import_uri_str {\l_stex_import_uri_str / #2}
+  }
+  \stex_debug:nn{importmodule}{~>#1<^^J>#2<^^J>#3<^^J>\l_stex_import_uri_str<^^J
+    Current~file:\stex_file_use:N \g_stex_current_file^^J
+    Current~namespace:\stex_uri_use:N \l_stex_current_ns_uri
+  }
+  \stex_if_module_exists:nTF {\l_stex_import_uri_str?#3} {
+    \str_set:Nx \l_stex_import_ns_str {\l_stex_import_uri_str?#3}
+  }{
+    \stex_if_module_exists:nTF{\stex_uri_use:N \l_stex_current_ns_uri ? #3}{
+      \str_set:Nx \l_stex_import_ns_str {\stex_uri_use:N \l_stex_current_ns_uri ? #3}
+    }{
+      \__stex_importmodule_get_from_file_safe:nnn{#1}{#2}{#3}
+      \str_set:Nx \l_stex_import_ns_str {\l_stex_import_uri_str?#3}
+    }
+  }
+}
 
 \cs_new_protected:Nn \__stex_importmodule_get_module:nnn {
   \stex_debug:nn{importmodule}{Requiring~>[#1]#2?#3<}
   \__stex_importmodule_get_module_uri:nnn{#1}{#2}{#3}
   \stex_activate_module:o \l_stex_import_ns_str
+}
+
+\cs_new_protected:Nn \__stex_importmodule_get_module_safe:nnn {
+  \stex_debug:nn{importmodule}{Requiring~>[#1]#2?#3<}
+  \__stex_importmodule_get_module_uri_safe:nnn{#1}{#2}{#3}
 }
 
 \cs_new_protected:Nn \__stex_importmodule_get_from_file:nnn {
@@ -3031,6 +3069,36 @@
     }
   }{
     \__stex_importmodule_load_file:n{#3}
+  }
+}
+\cs_new_protected:Nn \__stex_importmodule_get_from_file_safe:nnn {
+  \stex_file_resolve:Nx \l__stex_importmodule_seq { \tl_if_empty:nF{ #1 }{ #1 / } #2 }
+  \str_set:Nx \l__stex_importmodule_str {\stex_file_use:N \l__stex_importmodule_seq}
+  \stex_debug:nn{imports}{Looking~for~\l_stex_import_uri_str?#3...}
+  \__stex_importmodule_check_file:nn{ /#3.tex }{
+    \__stex_importmodule_check_file:nn{/#3.\l_stex_current_language_str .tex}{
+      \__stex_importmodule_check_file:nn{/#3.en.tex}{
+        \__stex_importmodule_check_file:nn{.tex}{
+          \__stex_importmodule_check_file:nn{.\l_stex_current_language_str .tex}{
+            \__stex_importmodule_check_file:nn{.en.tex}{
+            }
+          }
+        }
+      }
+    }
+  }
+  \stex_if_smsmode:TF{
+    \exp_args:NNo \exp_args:Nnx \str_if_eq:nnTF{\l__stex_importmodule_str}{\stex_file_use:N \g_stex_current_file}{
+      \stex_debug:nn{imports}{Skipping~current~file}
+    }{
+      \IfFileExists{ \l__stex_importmodule_str }{
+      \__stex_importmodule_load_file:n{#3}
+      }{}
+    }
+  }{
+    \IfFileExists{ \l__stex_importmodule_str }{
+    \__stex_importmodule_load_file:n{#3}
+    }{}
   }
 }
 
@@ -3088,12 +3156,13 @@
 \cs_new_protected:Nn \__stex_importmodule_import_module_presms:nn {
   \stex_import_module_uri:nn { #1 }{ #2 }
   \tl_gput_right:Nx \g_stex_sms_import_code {
-    \stex_import_require_module:nnn
+    \stex_import_require_module_safe:nnn
       {\l_stex_import_archive_str}
       {\l_stex_import_path_str}
       {\l_stex_import_name_str}
   }
 }
+
 \stex_sms_allow_escape:N \importmodule
 \stex_every_module:n {\stex_reactivate_macro:N \importmodule}
 \stex_sms_allow_import:Nn \importmodule {
