@@ -1,5 +1,22 @@
 \ProvidesExplPackage{stex-expl-compat}{2022/05/14}{1.0}{stex support for ancient tex systems}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Newer Additions %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\cs_if_exist:cF{str_if_empty:nTF}{
+    \prg_new_eq_conditional:NNn \str_if_empty:n \tl_if_empty:n
+      { p , T , F , TF }
+}
+\cs_if_exist:cF{str_case:Nn}{
+    \cs_generate_variant:Nn \str_case:nn   { V , o , nV , nv }
+    \prg_generate_conditional_variant:Nnn \str_case:nn
+      { V , o , nV , nv } { T , F , TF }
+    \cs_new_eq:NN \str_case:Nn   \str_case:Vn
+    \cs_new_eq:NN \str_case:NnT  \str_case:VnT
+    \cs_new_eq:NN \str_case:NnF  \str_case:VnF
+    \cs_new_eq:NN \str_case:NnTF \str_case:VnTF
+}
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% TeXLive 2018 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \cs_if_exist:cF{sys_get_shell:nnN}{
@@ -143,24 +160,48 @@
 }
 
 \cs_if_exist:cF { prop_to_keyval:N }{
-  \cs_new:Npn \prop_to_keyval:N #1
+
+
+\cs_if_exist:NTF \tex_expanded:D
   {
-    \__kernel_exp_not:w
-      \prop_if_empty:NTF #1
-        { {} }
-        {
-          \exp_after:wN \exp_after:wN \exp_after:wN
-          {
-            \tex_expanded:D
+      \cs_new:Npn \prop_to_keyval:N #1
+      {
+        \__kernel_exp_not:w
+          \prop_if_empty:NTF #1
+            { {} }
+            {
+              \exp_after:wN \exp_after:wN \exp_after:wN
               {
-                \__kernel_exp_not:w { \use_none:n }
-                \prop_map_function:NN #1 \__prop_to_keyval:nn
+                \tex_expanded:D
+                  {
+                    \__kernel_exp_not:w { \use_none:n }
+                    \prop_map_function:NN #1 \__prop_to_keyval:nn
+                  }
               }
-          }
-        }
+            }
+      }
+      \cs_new:Npn \__prop_to_keyval:nn #1#2
+        { , ~ #1 =~ { \__kernel_exp_not:w {#2} } }
   }
-  \cs_new:Npn \__prop_to_keyval:nn #1#2
-    { , ~ #1 =~ { \__kernel_exp_not:w {#2} } }
+  {
+    \cs_new:Npn \prop_to_keyval:N #1
+      {
+        \__kernel_exp_not:w
+          \prop_if_empty:NTF #1
+            { {} }
+            {
+              \if_false: { \fi:
+                \prop_map_function:NN #1 \@@_to_keyval_aux:nnw
+                \@@_to_keyval_aux:w
+                \s_@@_mark
+              }
+            }
+      }
+    \cs_new:Npn \@@_to_keyval_aux:w \s_@@_mark ,
+      { \exp_after:wN { \if_false: } \fi: }
+    \cs_new:Npn \@@_to_keyval_aux:nnw #1#2#3 \s_@@_mark
+      { #3 \s_@@_mark , #1 =~ {#2} }
+  }
 }
 
 \cs_if_exist:cF { bool_to_str:N }{
