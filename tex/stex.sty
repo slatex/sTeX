@@ -2043,7 +2043,7 @@
   }
   \newcommand\cmhtikzinput[2][]{\begin{center}\mhtikzinput[#1]{#2}\end{center}}
 }
-\cs_new_protected:Nn \__stex_inputs_usetikzlibrary:nn {
+\cs_new_protected:Nn \__stex_inputs_usetikzlibrary_i:nn {
   \pgfkeys@spdef\pgf@temp{#1}
   \expandafter\ifx\csname tikz@library@\pgf@temp @loaded\endcsname\relax%
   \expandafter\global\expandafter\let\csname tikz@library@\pgf@temp @loaded\endcsname=\pgfutil@empty%
@@ -2059,15 +2059,23 @@
   \catcode`\$=\csname tikz@library@#1@dollarcode\endcsname
 }
 
-\cs_new_protected:Npn \libusetikzlibrary #1 {
+\cs_new_protected:Nn \__stex_inputs_usetikzlibrary:n{
+  \__stex_inputs_up_archive:nn{tikzlibrary#1}{code.tex}
+  \int_compare:nNnTF {\seq_count:N \l__stex_inputs_libinput_files_seq} = 1 {
+    \exp_args:Nne \__stex_inputs_usetikzlibrary_i:nn{#1}{ \seq_item:Nn \l__stex_inputs_libinput_files_seq 1 }
+  }{
+    \stex_fatal_error:nnn{error/nofile}{\libusetikzlibrary}{tikzlibrary#1.code.tex}
+  }
+}
+
+\newcommand \libusetikzlibrary [2][] {
   \cs_if_exist:NF \usetikzlibrary {
     \msg_error:nnx{stex}{error/notikz}{\tl_to_str:n{\libusetikzlibrary}}
   }
-  \__stex_inputs_up_archive:nn{tikzlibrary#1}{code.tex}
-  \int_compare:nNnTF {\seq_count:N \l__stex_inputs_libinput_files_seq} = 1 {
-    \exp_args:Nne \__stex_inputs_usetikzlibrary:nn{#1}{ \seq_item:Nn \l__stex_inputs_libinput_files_seq 1 }
+  \tl_if_empty:nTF{#1}{
+    \__stex_inputs_usetikzlibrary:n{#2}
   }{
-    \stex_fatal_error:nnn{error/nofile}{\libusetikzlibrary}{tikzlibrary#1.code.tex}
+    \stex_in_archive:nn{#1}{\__stex_inputs_usetikzlibrary:n{#2}}
   }
 }
 \tl_new:N \g__stex_smsmode_allowed_tl

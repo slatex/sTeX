@@ -2647,7 +2647,7 @@
 %
 % \begin{macro}{\libusetikzlibrary}
 %    \begin{macrocode}
-\cs_new_protected:Nn \_@@_usetikzlibrary:nn {
+\cs_new_protected:Nn \_@@_usetikzlibrary_i:nn {
   \pgfkeys@spdef\pgf@temp{#1}
   \expandafter\ifx\csname tikz@library@\pgf@temp @loaded\endcsname\relax%
   \expandafter\global\expandafter\let\csname tikz@library@\pgf@temp @loaded\endcsname=\pgfutil@empty%
@@ -2663,15 +2663,23 @@
   \catcode`\$=\csname tikz@library@#1@dollarcode\endcsname
 }
 
-\cs_new_protected:Npn \libusetikzlibrary #1 {
+\cs_new_protected:Nn \_@@_usetikzlibrary:n{
+  \_@@_up_archive:nn{tikzlibrary#1}{code.tex}
+  \int_compare:nNnTF {\seq_count:N \l_@@_libinput_files_seq} = 1 {
+    \exp_args:Nne \_@@_usetikzlibrary_i:nn{#1}{ \seq_item:Nn \l_@@_libinput_files_seq 1 }
+  }{
+    \stex_fatal_error:nnn{error/nofile}{\libusetikzlibrary}{tikzlibrary#1.code.tex}
+  }
+}
+
+\newcommand \libusetikzlibrary [2][] {
   \cs_if_exist:NF \usetikzlibrary {
     \msg_error:nnx{stex}{error/notikz}{\tl_to_str:n{\libusetikzlibrary}}
   }
-  \_@@_up_archive:nn{tikzlibrary#1}{code.tex}
-  \int_compare:nNnTF {\seq_count:N \l_@@_libinput_files_seq} = 1 {
-    \exp_args:Nne \_@@_usetikzlibrary:nn{#1}{ \seq_item:Nn \l_@@_libinput_files_seq 1 }
+  \tl_if_empty:nTF{#1}{
+    \_@@_usetikzlibrary:n{#2}
   }{
-    \stex_fatal_error:nnn{error/nofile}{\libusetikzlibrary}{tikzlibrary#1.code.tex}
+    \stex_in_archive:nn{#1}{\_@@_usetikzlibrary:n{#2}}
   }
 }
 %    \end{macrocode}
