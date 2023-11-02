@@ -137,7 +137,6 @@
       shtml:problempoints={\l_stex_key_pts_tl}
     }{ \l_stex_key_pts_tl }
   }
-
   \tl_set_eq:NN \thistitle \l_stex_key_title_tl
 
   \bool_set_true:N \l__problems_in_problem_bool
@@ -179,9 +178,15 @@
 }{s}
 
 \tl_set:Nn \problemheader {
-  \textbf{\sproblemautorefname{~}\thesproblem
+  \stex_if_do_html:TF{
     \tl_if_empty:NF \thistitle {
-      {~}(\thistitle)
+      \stex_annotate:nn{shtml:problemtitle={}}{\textbf{\thistitle}}
+    }
+  }{
+    \textbf{\sproblemautorefname{~}\thesproblem
+      \tl_if_empty:NF \thistitle {
+        {~}(\thistitle)
+      }
     }
   }
 }
@@ -641,13 +646,24 @@
 
 \tl_set:Nn\problem_scc_box_tl{$\bigcirc$}
 
+\cs_new_protected:Nn \__problems_maybe_inline:n {
+  \clist_if_in:NnTF \l_stex_key_style_clist {inline} {
+    \let\__problems_oldpar:\stex_par:
+    \cs_set:Nn\stex_par:{}
+    #1
+    \let\stex_par:\__problems_oldpar:
+  }{#1}
+}
+
 \stex_new_stylable_env:nnnnnnn{scb}{O{}}{
   \stex_keys_set:nn{style}{#1}
   \stex_if_do_html:T{
-    \exp_args:Nne\begin{stex_annotate_env}{
-      shtml:single-choice-block={}
-      \clist_if_empty:NF \l_stex_key_style_clist {,
-        shtml:styles={\l_stex_key_style_clist}
+    \__problems_maybe_inline:n{
+      \exp_args:Nne\begin{stex_annotate_env}{
+        shtml:single-choice-block={}
+        \clist_if_empty:NF \l_stex_key_style_clist {,
+          shtml:styles={\l_stex_key_style_clist}
+        }
       }
     }
     \tl_set:Nn\problem_scc_box_tl{}
@@ -670,7 +686,7 @@
 }{
   \stex_style_apply:
   \stex_if_do_html:T{
-    \end{stex_annotate_env}
+    \__problems_maybe_inline:n { \end{stex_annotate_env} }
   }
 }{\par}{}{}
 \stexstylescb[inline]{
