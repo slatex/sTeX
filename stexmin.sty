@@ -1,0 +1,289 @@
+\RequirePackage{expl3,l3keys2e,ltxcmds}
+\ProvidesExplPackage{stexmin}{2023/10/13}{3.4.0}{sTeX package}
+
+\RequirePackage{xcolor}
+\RequirePackage{pdfcomment}
+
+%%%%% UTILS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\cs_new_protected:Nn \stex_kpsewhich:Nn {\group_begin:
+  \catcode`\ =12
+  \sys_get_shell:nnN { kpsewhich ~ #2 } { } \l_tmpa_tl
+  \tl_gset_eq:NN \l_tmpa_tl \l_tmpa_tl
+  \group_end:
+  \exp_args:NNo\str_set:Nn #1 {\l_tmpa_tl}
+  \tl_trim_spaces:N #1
+}
+
+\sys_if_platform_windows:TF{
+  \cs_new_protected:Nn \stex_get_env:Nn {\group_begin:
+    \escapechar=-1\catcode`\\=12
+    \exp_args:NNe \stex_kpsewhich:Nn #1 {-expand-var~\c_percent_str#2\c_percent_str}
+    \exp_args:NNx\use:nn\group_end:{
+      \str_set:Nn \exp_not:N #1 { #1 }
+    }
+  }
+}{
+  \cs_new_protected:Nn \stex_get_env:Nn {
+    \stex_kpsewhich:Nn #1 {-var-value~#2}
+  }
+}
+
+\cs_new_protected:Nn \stex_file_set:Nn {
+  \str_if_empty:nTF {#2} { \seq_clear:N #1 }{
+    \exp_args:NNno \seq_set_split:Nnn #1 / { \tl_to_str:n{#2} }
+  }
+}
+\cs_generate_variant:Nn \stex_file_set:Nn {No, Nx}
+
+\sys_if_platform_windows:TF{
+  \cs_new_protected:Npn \_stex_tmp_win_take:w #1#2#3 \_stex_tmp_: {
+    \uppercase{ \str_set:Nn \l_stex_tmp_str{#1}}
+    \str_set:Nx \l_stex_tmp_win_drive {\l_stex_tmp_str #2}
+    \str_set:Nn \l_stex_tmp_str{#3}
+  }
+  \cs_new_protected:Nn \stex_file_resolve:Nn {
+    \str_set:Nn \l_stex_tmp_str {#2}
+    \str_clear:N \l_stex_tmp_win_drive
+    \exp_args:NNo \str_replace_all:Nnn \l_stex_tmp_str \c_backslash_str /
+    \exp_args:Nx \str_if_eq:nnT {\str_item:Nn \l_stex_tmp_str 2} : {
+      \exp_after:wN \_stex_tmp_win_take:w \l_stex_tmp_str \_stex_tmp_:
+    }
+    \stex_file_set:No #1 \l_stex_tmp_str
+    \_stex_tmp_canonicalize:N #1
+    \str_if_empty:NF \l_stex_tmp_win_drive {
+      \seq_pop_left:NN #1 \l_stex_tmp_str
+      \seq_put_left:No #1 \l_stex_tmp_win_drive
+    }
+  }
+}{
+  \cs_new_protected:Nn \stex_file_resolve:Nn {
+    \str_set:Nn \l_stex_tmp_str {#2}
+    \stex_file_set:No #1 \l_stex_tmp_str
+    \_stex_tmp_canonicalize:N #1
+  }
+}
+\cs_generate_variant:Nn \stex_file_resolve:Nn {No, Nx}
+
+\cs_new_protected:Nn \_stex_tmp_canonicalize:N {
+  \seq_if_empty:NF #1 {
+    \seq_pop:NN #1 \l_stex_tmp_str
+    \seq_clear:N \l_stex_tmp_seq
+    \str_if_empty:NTF \l_stex_tmp_str {
+      \seq_map_function:NN #1 \_stex_tmp_dodots:n
+      \seq_put_left:Nn \l_stex_tmp_seq {}
+    }{
+      \seq_push:No #1 \l_stex_tmp_str
+      \seq_map_function:NN #1 \_stex_tmp_dodots:n
+    }
+    \seq_set_eq:NN #1 \l_stex_tmp_seq
+  }
+}
+
+\cs_new_protected:Nn \_stex_tmp_dodots:n {
+  \str_if_empty:nF{#1}{
+    \str_if_eq:nnF {#1} {.} {
+      \str_if_eq:nnTF {#1} {..} {
+        \seq_if_empty:NF \l_stex_tmp_seq {
+          \seq_pop_right:NN \l_stex_tmp_seq \l_stex_tmp_str
+        }
+      }{
+        \seq_put_right:Nn \l_stex_tmp_seq {#1}
+      }
+    }
+  }
+}
+
+\sys_if_platform_windows:TF {
+  \prg_new_conditional:Nnn \stex_if_file_absolute:N {p, T, F, TF} {
+    \seq_if_empty:NTF #1 \prg_return_false: {
+      \tl_set:Nx \l_stex_tmp_maybewin_str {\seq_item:Nn #1 1}
+      \exp_args:No \tl_if_empty:nTF \l_stex_tmp_maybewin_str \prg_return_true: {
+        \exp_args:Nx \str_if_eq:nnTF {\str_item:Nn \l_stex_tmp_maybewin_str 2} :
+          \prg_return_true: \prg_return_false:
+      }
+    }
+  }
+}{
+  \prg_new_conditional:Nnn \stex_if_file_absolute:N {p, T, F, TF} {
+    \seq_if_empty:NTF #1 \prg_return_false: {
+      \exp_args:Nx \tl_if_empty:nTF {\seq_item:Nn #1 1}
+        \prg_return_true: \prg_return_false:
+    }
+  }
+}
+
+\cs_new:Nn \stex_file_use:N {
+  \seq_use:Nn #1 /
+}
+\sys_if_platform_windows:TF{
+  \stex_get_env:Nn\l_stex_tmp_str{CD}
+}{
+  \stex_get_env:Nn\l_stex_tmp_str{PWD}
+}
+\stex_file_resolve:No \c_stex_pwd_file \l_stex_tmp_str
+\seq_set_eq:NN \c_stex_main_file \c_stex_pwd_file
+\seq_put_right:Nx \c_stex_main_file {\jobname\tl_to_str:n{.tex}}
+
+\message {PWD:~\stex_file_use:N \c_stex_pwd_file}
+
+\str_set:Nx \c_stex_uri_top {file: \stex_file_use:N \c_stex_pwd_file}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\NewDocumentEnvironment{smodule}{O{} m}{
+  \str_set:Nx \l_stex_module_uri { \tl_to_str:o \c_stex_uri_top ? \tl_to_str:n{ #2 } }
+  \message{^^JsTeX:~New~Module~\l_stex_module_uri^^J}
+  %New~Module~\l_stex_module_uri
+  \let\symdecl\symdecl_i
+}{}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\seq_new:N \l_stex_all_symbols_seq
+
+\keys_define:nn {stex / symdecl}{
+  args      .str_set:N  = \l_stex_key_args_str,
+  name      .str_set:N  = \l_stex_key_name_str,
+}
+
+\NewDocumentCommand \symdecl_i {s m O{}} {
+  \str_clear:N \l_stex_key_name_str
+  \str_set:Nn \l_stex_key_args_str { 0 }
+  \keys_set:nn {stex / symdecl} { #3 }
+  \str_if_empty:NT \l_stex_key_name_str {
+    \str_set:Nn \l_stex_key_name_str {#2}
+  }
+  \message{^^JsTeX:~New~Symbol~\l_stex_module_uri?\l_stex_key_name_str^^J}
+  %sTeX:~New~Symbol~\l_stex_module_uri?\l_stex_key_name_str
+  \IfBooleanTF #1 {
+    \str_clear:N \l_stex_macroname_str
+  }{
+    \str_set:Nx \l_stex_macroname_str { #2 }
+    \expandafter\edef\csname#2\endcsname{
+      \str_set:Nn \exp_not:N \l_stex_module_str {\l_stex_module_uri}
+      \str_set:Nn \exp_not:N \l_stex_symbol_name_str {\l_stex_key_name_str}
+      \str_set:Nn \exp_not:N \l_stex_symbol_arity_str {\l_stex_key_args_str}
+      \stex_invoke_symbol:
+    }
+  }
+
+  \seq_gpush:Nx \l_stex_all_symbols_seq {
+    {\l_stex_macroname_str}{\l_stex_module_uri}{\tl_to_str:o \l_stex_key_name_str}{ \l_stex_key_args_str }
+  }
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\cs_new:Nn \stex_find_symbol:n {
+  \str_clear:N \l_stex_module_str
+  \str_clear:N \l_stex_symbol_name_str
+  \str_clear:N \l_stex_symbol_arity_str
+  \seq_map_inline:Nn \l_stex_all_symbols_seq {
+    \stex_find_symbol_i:nnnnn {#1} ##1
+  }
+  \str_if_empty:NT \l_stex_symbol_name_str {
+    \errmessage{No~symbol~"#1"~found}
+  }
+}
+
+\cs_new:Nn \stex_find_symbol_i:nnnnn {
+  \str_if_eq:nnTF{#1}{#4}{
+    \seq_map_break:n{
+      \str_set:Nn \l_stex_module_str {#3}
+      \str_set:Nn \l_stex_symbol_name_str {#4}
+      \str_set:Nn \l_stex_symbol_arity_str {#5}
+    }
+  }{
+    \str_if_eq:nnT{#1}{#2}{
+      \seq_map_break:n{
+        \str_set:Nn \l_stex_module_str {#3}
+        \str_set:Nn \l_stex_symbol_name_str {#4}
+        \str_set:Nn \l_stex_symbol_arity_str {#5}
+      }
+    }
+  }
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\NewDocumentCommand \symuse_i {m} {
+  \stex_find_symbol:n {#1}
+  \stex_invoke_symbol:
+}
+\let\symuse = \symuse_i
+
+\cs_new_protected:Nn \stex_not_allowed:nn{
+  \errmessage{Macro~\c_backslash_str#1~not~allowed~in~#2}
+}
+
+\cs_new_protected:Nn \stex_invoke_symbol_i: {
+  \message{^^JsTeX:~Invoking~Symbol~
+    \l_stex_module_str?\l_stex_symbol_name_str,~
+    with~arity~\l_stex_symbol_arity_str^^J}
+
+  %Invoking~Symbol~\l_stex_module_str?\l_stex_symbol_name_str,~with~arity~\l_stex_symbol_arity_str
+  \peek_charcode_remove:NTF ! {
+    \str_set:Nn \l_stex_symbol_arity_str { 0 }
+    \stex_invoke_symbol_i:n
+  }\stex_invoke_symbol_i:n
+}
+
+\let\stex_invoke_symbol: = \stex_invoke_symbol_i:
+
+\int_new:N \l_stex_symbol_arg_int
+
+\cs_new_protected:Nn \stex_invoke_symbol_i:n {
+  \group_begin:
+    \int_zero:N \l_stex_symbol_arg_int
+    \let\comp=\stex_comp:n
+    \let\arg=\stex_arg:n
+    \def\symname{\stex_not_allowed:nn{symname}{\l_stex_module_str?\l_stex_symbol_name_str}}
+    \def\sn{\stex_not_allowed:nn{symname}{\l_stex_module_str?\l_stex_symbol_name_str}}
+    \def\symuse{\stex_not_allowed:nn{symname}{\l_stex_module_str?\l_stex_symbol_name_str}}
+    #1
+    \int_compare:nNnF \l_stex_symbol_arg_int = \l_stex_symbol_arity_str {
+      \errmessage{Not~enough~arguments~for~symbol~\l_stex_module_str?\l_stex_symbol_name_str}
+    }
+  \group_end:
+}
+
+\cs_new_protected:Nn \stex_comp:n {
+  \stex_highlight:nn {#1}{\l_stex_module_str?\l_stex_symbol_name_str}
+}
+
+\cs_new_protected:Nn \stex_arg:n {
+  \group_begin:
+    \let\arg=\undefined
+    \let\comp=\undefined
+    \let\symname=\symname_i
+    \let\sn=\symname_i
+    \let\symuse=\symuse_i
+    \int_compare:nNnTF \l_stex_symbol_arg_int < \l_stex_symbol_arity_str {
+      #1
+    }{
+      \errmessage{Too~many~arguments~for~symbol~\l_stex_module_str?\l_stex_symbol_name_str}
+    }
+  \group_end:
+  \int_incr:N \l_stex_symbol_arg_int
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\cs_new_protected:Nn \stex_highlight:nn {
+  \pdftooltip{
+    \textcolor{blue}{#1}
+  }{
+    URI:~#2
+  }
+}
+
+\NewDocumentCommand \symname_i {m} {
+  \stex_find_symbol:n {#1}
+  \stex_highlight:nn {\l_stex_symbol_name_str}{\l_stex_module_str?\l_stex_symbol_name_str}
+}
+
+\let\symname=\symname_i
+
+\let\sn=\symname_i
