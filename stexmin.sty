@@ -131,11 +131,15 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+\bool_new:N \l_stex_in_module_bool
+\bool_set_false:N \l_stex_in_module_bool
+
 \NewDocumentEnvironment{smodule}{O{} m}{
   \str_set:Nx \l_stex_module_uri { \tl_to_str:o \c_stex_uri_top ? \tl_to_str:n{ #2 } }
   \message{^^JsTeX:~New~Module~\l_stex_module_uri^^J}
   %New~Module~\l_stex_module_uri
   \let\symdecl\symdecl_i
+  \bool_set_true:N \l_stex_in_module_bool
 }{}
 
 
@@ -161,7 +165,7 @@
     \str_clear:N \l_stex_macroname_str
   }{
     \str_set:Nx \l_stex_macroname_str { #2 }
-    \expandafter\edef\csname#2\endcsname{
+    \expandafter\xdef\csname#2\endcsname{
       \str_set:Nn \exp_not:N \l_stex_module_str {\l_stex_module_uri}
       \str_set:Nn \exp_not:N \l_stex_symbol_name_str {\l_stex_key_name_str}
       \str_set:Nn \exp_not:N \l_stex_symbol_arity_str {\l_stex_key_args_str}
@@ -173,6 +177,113 @@
     {\l_stex_macroname_str}{\l_stex_module_uri}{\tl_to_str:o \l_stex_key_name_str}{ \l_stex_key_args_str }
   }
 }
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\keys_define:nn { stex / senv }{
+  args      .str_set:N  = \l_stex_key_args_str,
+  name      .str_set:N  = \l_stex_key_name_str,
+  macro     .str_set:N  = \l_stex_key_macroname_str,
+  title     .tl_set:N   = \l_stex_key_title_tl,
+  style     .str_set:N  = \l_stex_key_style_str
+}
+
+\NewDocumentEnvironment{stex_env}{m m m}{
+  \str_clear:N \l_stex_key_name_str
+  \str_set:Nn \l_stex_key_args_str { 0 }
+  \str_clear:N \l_stex_key_macroname_str
+  \tl_clear:N \l_stex_key_title_tl
+  \str_clear:N \l_stex_key_style_str
+  \keys_set:nn {stex / senv} { #1 }
+  #2
+  \bool_if:NT \l_stex_in_module_bool {
+    \str_if_empty:NTF \l_stex_key_name_str {
+      \str_if_empty:NF \l_stex_key_macroname_str {
+        \use:x{
+          \symdecl{\l_stex_key_macroname_str}[
+            args = \l_stex_key_args_str
+          ]
+        }
+      }
+    } {
+      \str_if_empty:NTF \l_stex_key_macroname_str {
+        \use:x{
+          \symdecl*{\l_stex_key_name_str}[
+            args = \l_stex_key_args_str
+          ]
+        }
+      }{
+        \use:x{
+          \symdecl*{\l_stex_key_macroname_str}[
+            name = \l_stex_key_name_str,
+            args = \l_stex_key_args_str
+          ]
+        }
+      }
+    }
+  }
+}{ #3 }
+
+\NewDocumentEnvironment{sdefinition}{O{}} {
+  \begin{stex_env}{#1}{
+    \tl_if_empty:NTF \l_stex_key_title_tl {
+      \begin{definition}
+    }{
+      \exp_args:Nnx \use:nn{\begin{definition}}{[\l_stex_key_title_tl]}
+    }
+    \let\definame=\definame_i
+  }{\end{definition}}
+}{
+  \end{stex_env}
+}
+
+\NewDocumentCommand\inlinedef{O{} m} {
+  \begin{stex_env}{#1}{}{}
+    \let\definame=\definame_i 
+    #2 
+  \end{stex_env}
+}
+
+\NewDocumentEnvironment{sassertion}{O{}} {
+  \begin{stex_env}{#1}{
+    \tl_if_empty:NTF \l_stex_key_title_tl {
+      \exp_args:No \begin \l_stex_key_style_str
+    }{
+      \use:x{\begin{\l_stex_key_style_str}[\l_stex_key_title_tl]}
+    }
+  }{\exp_args:No \end \l_stex_key_style_str}
+  \let\conclusion = \conclusion_i:n
+}{
+  \end{stex_env}
+}
+
+\NewDocumentCommand\inlineass{O{} m} {
+  \begin{stex_env}{#1}{}{}
+    \let\conclusion = \conclusion_i:n
+    #2 
+  \end{stex_env}
+}
+
+\cs_new_protected:Nn \conclusion_i:n { #1 }
+
+\RequirePackage{amsthm}
+\RequirePackage{thmtools}
+
+\cs_new_protected:Nn \__stex_patch_env:nnn {
+  \cs_if_exist:cF {#1}{
+    \declaretheorem[#2]{#1}
+  }
+}
+
+\__stex_patch_env:nnn{theorem}{parent=section}{assertion}
+\__stex_patch_env:nnn{observation}{sibling=theorem}{assertion}
+\__stex_patch_env:nnn{corollary}{sibling=theorem}{assertion}
+\__stex_patch_env:nnn{lemma}{sibling=theorem}{assertion}
+\__stex_patch_env:nnn{axiom}{sibling=theorem}{assertion}
+\__stex_patch_env:nnn{remark}{sibling=theorem}{assertion,paragraph}
+
+\declaretheorem[sibling=theorem,style=definition]{example}
+\declaretheorem[sibling=theorem,style=definition]{definition}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -279,11 +390,23 @@
   }
 }
 
+\cs_new_protected:Nn \stex_highlight_def:nn {
+  \pdftooltip{
+    \textcolor{magenta}{#1}
+  }{
+    URI:~#2
+  }
+}
+
 \NewDocumentCommand \symname_i {m} {
   \stex_find_symbol:n {#1}
   \stex_highlight:nn {\l_stex_symbol_name_str}{\l_stex_module_str?\l_stex_symbol_name_str}
 }
 
 \let\symname=\symname_i
-
 \let\sn=\symname_i
+
+\NewDocumentCommand \definame_i {m} {
+  \stex_find_symbol:n {#1}
+  \stex_highlight_def:nn {\l_stex_symbol_name_str}{\l_stex_module_str?\l_stex_symbol_name_str}
+}
