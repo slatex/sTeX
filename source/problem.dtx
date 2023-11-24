@@ -19,7 +19,7 @@
 % 
 % \begin{stexmanual}
 %    \begin{sfragment}{Problem Manual}
-	%      \input{\stexdocpath/packages/stex-problem}
+%      \input{\stexdocpath/packages/stex-problem}
 %    \end{sfragment}
 % \end{stexmanual}
 %
@@ -42,7 +42,7 @@
 %    \begin{macrocode}
 %<*package>
 %<@@=problems>
-\ProvidesExplPackage{problem}{2023/03/19}{3.3.0}{Semantic Markup for Problems}
+\ProvidesExplPackage{problem}{2023/10/13}{3.4.0}{Semantic Markup for Problems}
 \RequirePackage{l3keys2e}
 
 \keys_define:nn { problem / pkg }{
@@ -74,6 +74,13 @@
 }{
   \solutionsfalse
 }
+\newif\ifintest
+\bool_if:NTF \c_@@_test_bool {
+  \intesttrue
+}{
+  \intestfalse
+}
+
 \RequirePackage{stex}
 %    \end{macrocode}
 %
@@ -85,7 +92,7 @@
   \ExplSyntaxOn\makeatletter
   \input{problem-english.ldf}
   \ltx@ifpackageloaded{babel}{
-      \clist_set:Nx \l_tmpa_clist {\bbl@loaded}
+			\clist_set:Nx \l_tmpa_clist {\exp_args:No \tl_to_str:n \bbl@loaded}
       \exp_args:NNx \clist_if_in:NnT \l_tmpa_clist {\detokenize{ngerman}}{
         \input{problem-ngerman.ldf}
       }
@@ -110,16 +117,20 @@
 % internal macros.
 %
 %    \begin{macrocode}
+\bool_new:N \l_stex_key_autogradable_bool
 \stex_keys_define:nnnn{ problem }{
   \tl_set:Nn \l_stex_key_pts_tl 0
   \tl_set:Nn \l_stex_key_min_tl 0
   \str_clear:N \l_stex_key_name_str
   \str_clear:N \l_stex_key_mhrepos_str
+  \bool_set_false:N \l_stex_key_autogradable_bool
 }{
   pts     .tl_set:N     = \l_stex_key_pts_tl,
   min     .tl_set:N     = \l_stex_key_min_tl,
   name    .str_set:N    = \l_stex_key_name_str,
-  archive .str_set:N    = \l_stex_key_mhrepos_str,
+  autogradable .bool_set:N = \l_stex_key_autogradable_bool,
+  archive  .code:n = {},
+  %archive .str_set:N    = \l_stex_key_mhrepos_str,
   creators .code:n = {}
   %imports .tl_set:N     = \l_@@_prob_imports_tl,
   %refnum  .int_set:N    = \l_@@_prob_refnum_int,
@@ -142,9 +153,26 @@
 %
 % \begin{environment}{sproblem}
 %    \begin{macrocode}
+\cs_new:Nn \_@@_activate_macros: {
+  \stex_reactivate_macro:N \solution
+  \stex_reactivate_macro:N \mcb
+  \stex_reactivate_macro:N \scb
+  \stex_reactivate_macro:N \fillinsol
+  \stex_reactivate_macro:N \hint
+  \stex_reactivate_macro:N \exnote
+  \stex_reactivate_macro:N \gnote
+}
+
 \newcounter{pts}
 \newcounter{min}
+\bool_new:N \l_@@_in_problem_bool
+\bool_new:N \l_@@_has_pts_bool
+\bool_new:N \l_@@_has_min_bool
+\bool_set_false:N \l_@@_in_problem_bool
 \stex_new_stylable_env:nnnnnnn {problem} {O{}}{
+  \bool_if:NT \l_@@_in_problem_bool {
+    \msg_error:nn{stex}{error/nestedproblem}
+  }
   \cs_if_exist:NTF \l_problem_inputproblem_keys_tl {
     \tl_put_left:Nn \l_problem_inputproblem_keys_tl {#1,}
     \exp_args:Nno \stex_keys_set:nn{problem}{
@@ -154,76 +182,154 @@
     \stex_keys_set:nn{problem}{#1}
   }
   \refstepcounter{sproblem}
-  \str_if_empty:NT \l_stex_key_name_str {
-    \stex_file_split_off_lang:NN \l_@@_path_seq \g_stex_current_file
-    \seq_get_right:NN \l_@@_path_seq \l_stex_key_name_str
-  }
-
-  \exp_args:No \stex_module_setup:n \l_stex_key_name_str
 
   \stex_if_do_html:T {
-    \exp_args:Nne \begin{stex_annotate_env} {
-      shtml:problem={\l_stex_current_module_str},
-      shtml:language={ \l_stex_current_language_str},
-      shtml:signature={\l_stex_key_sig_str}
-      \tl_if_empty:NF \l_stex_metatheory_uri {,
-        shtml:metatheory={\stex_uri_use:N \l_stex_metatheory_uri}
-      }
+    \str_if_empty:NT \l_stex_key_name_str {
+      \stex_file_split_off_lang:NN \l_@@_path_seq \g_stex_current_file
+      \seq_get_right:NN \l_@@_path_seq \l_stex_key_name_str
     }
-    \stex_annotate_invisible:n{}
+    \exp_args:Nne \begin{stex_annotate_env} {
+      shtml:problem={\l_stex_key_name_str},
+      shtml:language={ \l_stex_current_language_str},
+      shtml:autogradable={\bool_if:NTF \l_stex_key_autogradable_bool {true}{false}}
+    }
     \tl_if_empty:NF \l_stex_key_title_tl {
       \exp_args:No \stexdoctitle \l_stex_key_title_tl
     }
+    \stex_annotate_invisible:nn{
+      shtml:problempoints={\l_stex_key_pts_tl}
+    }{ \l_stex_key_pts_tl }
   }
-  \stex_if_smsmode:F {
-    \str_set_eq:NN \thismoduleuri \l_stex_current_module_str
-    \tl_set_eq:NN \thismodulename \l_stex_key_name_str
-    \tl_set_eq:NN \thistitle \l_stex_key_title_tl
-    \stex_style_apply:
-    \addtocounter{pts}{\l_stex_key_pts_tl}
-    \addtocounter{min}{\l_stex_key_min_tl}
-    \_stex_do_id:
-    \_@@_record_problem:
-  }
-  \stex_reactivate_macro:N \solution
-  \stex_reactivate_macro:N \mcb
-  \stex_reactivate_macro:N \fillinsol
-  \stex_smsmode_do:
+  \tl_set_eq:NN \thistitle \l_stex_key_title_tl
+  
+
+  \bool_set_true:N \l_@@_in_problem_bool
+  \tl_set_eq:NN \l_@@_pts_tl \l_stex_key_pts_tl
+  \tl_set_eq:NN \l_@@_min_tl \l_stex_key_min_tl
+  \tl_if_eq:NnTF \l_@@_pts_tl {0}
+    {\bool_set_false:N \l_@@_has_pts_bool}
+    {\bool_set_true:N \l_@@_has_pts_bool}
+  \tl_if_eq:NnTF \l_@@_min_tl {0}
+    {\bool_set_false:N \l_@@_has_min_bool}
+    {\bool_set_true:N \l_@@_has_min_bool}
+  \int_gzero:N \g_@@_subproblem_int
+
+  \stex_style_apply:
+  \_stex_do_id:
+  \_@@_activate_macros:
 }{
-  \stex_close_module:
-  \stex_if_smsmode:F \stex_style_apply:
+  \addtocounter{pts}{\l_@@_pts_tl}
+  \addtocounter{min}{\l_@@_min_tl}
+  \_@@_record_problem:
+  \stex_style_apply:
   \stex_if_do_html:T{ \end{stex_annotate_env} }
 }{
   \par\noindent\problemheader
   \bool_if:NT \c_@@_pts_bool {
-    \marginpar{\l_stex_key_pts_tl{}~\problem@kw@points\smallskip}
+    \tl_if_eq:NnF \l_@@_pts_tl {0}{
+      \marginpar{\l_@@_pts_tl{}~\problem@kw@pts\smallskip}
+    }
   }
   \bool_if:NT \c_@@_min_bool {
-    \marginpar{\l_stex_key_min_tl{}~\problem@kw@minutes\smallskip}
+    \tl_if_eq:NnF \l_@@_min_tl {0} {
+      \marginpar{\l_@@_min_tl{}~\problem@kw@minutes\smallskip}
+    }
   }
-  \\
+  \par
   \stex_ignore_spaces_and_pars:
 }{
   \par\bigskip
 %  \bool_if:NT \c_@@_test_bool \pagebreak
 }{s}
-\stex_sms_allow_env:n{sproblem}
 
 \tl_set:Nn \problemheader {
-  \textbf{\sproblemautorefname{~}\thesproblem
+  \stex_if_do_html:TF{
     \tl_if_empty:NF \thistitle {
-      {~}(\thistitle)
+      \stex_annotate:nn{shtml:problemtitle={}}{\textbf{\thistitle}}
+    }
+  }{
+    \textbf{\sproblemautorefname{~}\thesproblem
+      \tl_if_empty:NF \thistitle {
+        {~}(\thistitle)
+      }
     }
   }
 }
 
 \cs_new_protected:Nn \_@@_record_problem: {
   \exp_args:NNe \iow_now:Nn \@auxout {
-    \problem@restore {\thesproblem}{\l_stex_key_pts_tl}{\l_stex_key_min_tl}
+    \problem@restore {\thesproblem}{\l_@@_pts_tl}{\l_@@_min_tl}
   }
 }
 
 \cs_new_protected:Npn \problem@restore #1 #2 #3 {} 
+%    \end{macrocode}
+% \end{environment}
+%
+% \begin{environment}{subproblem}
+%    \begin{macrocode}
+\int_new:N \g_@@_subproblem_int
+
+\stex_new_stylable_env:nnnnnnn {subproblem} {O{}}{
+  \stex_keys_set:nn{problem}{#1}
+  \bool_if:NF \l_@@_in_problem_bool{
+    \ifstexhtml\else
+      \par{\bfseries WARNING~subproblem~to~be~used~in~some~problem}\par
+    \fi
+    \_@@_activate_macros:
+    \bool_set_true:N \l_@@_in_problem_bool
+    \tl_set:Nn \l_@@_pts_tl{0}
+    \tl_set:Nn \l_@@_min_tl{0}
+  }
+  \str_if_empty:NT \l_stex_key_name_str {
+    \stex_file_split_off_lang:NN \l_@@_path_seq \g_stex_current_file
+    \seq_get_right:NN \l_@@_path_seq \l_stex_key_name_str
+  }
+  \stex_if_do_html:T {
+    \str_if_empty:NT \l_stex_key_name_str {
+      \stex_file_split_off_lang:NN \l_@@_path_seq \g_stex_current_file
+      \seq_get_right:NN \l_@@_path_seq \l_stex_key_name_str
+    }
+    \exp_args:Nne \begin{stex_annotate_env} {
+      shtml:subproblem={\l_stex_key_name_str},
+      shtml:language={ \l_stex_current_language_str},
+      shtml:autogradable={\bool_if:NTF \l_stex_key_autogradable_bool {true}{false}}
+    }
+    \stex_annotate_invisible:n{}
+    \tl_if_empty:NF \l_stex_key_title_tl {
+      \exp_args:No \stexdoctitle \l_stex_key_title_tl
+    }
+  }
+  \int_gincr:N \g_@@_subproblem_int
+  \bool_if:NF \l_@@_has_pts_bool {
+    \tl_gset:Nx \l_@@_pts_tl {\int_eval:n {\l_@@_pts_tl + \l_stex_key_pts_tl}}
+  }
+  \bool_if:NF \l_@@_has_min_bool {
+    \tl_gset:Nx \l_@@_min_tl {\int_eval:n {\l_@@_min_tl + \l_stex_key_min_tl}}
+  }
+  \stex_if_smsmode:F \stex_style_apply:
+}{
+  \stex_if_smsmode:F \stex_style_apply:
+  \stex_if_do_html:T{ \end{stex_annotate_env} }
+}{
+  \begin{list}{}{
+    \setlength\topsep{0pt}
+    \setlength\parsep{0pt}
+    \setlength\rightmargin{0pt}
+  }\item[\int_use:N \g_@@_subproblem_int .]
+  \bool_if:NT \c_@@_pts_bool {
+    \bool_if:NF \l_@@_has_pts_bool {
+      \marginpar{\smallskip\l_stex_key_pts_tl{}~\problem@kw@pts}
+    }
+  }
+  \bool_if:NT \c_@@_min_bool {
+    \bool_if:NF \l_@@_has_min_bool{
+      \marginpar{\smallskip\l_stex_key_min_tl{}~\problem@kw@minutes}
+    }
+  }
+}{
+  \end{list}
+}{}
 %    \end{macrocode}
 % \end{environment}
 %
@@ -250,10 +356,17 @@
 % \begin{environment}{solution}
 %    \begin{macrocode}
 \int_new:N \g_problem_id_counter
+\dim_new:N \l_stex_key_testspace_dim
+\stex_keys_define:nnnn{ solution }{
+  \str_clear:N \l_stex_key_answerclass_str
+  \dim_zero:N \l_stex_key_testspace_dim
+}{
+  testspace   .dim_set:N = \l_stex_key_testspace_dim,
+  answerclass .str_set:N = \l_stex_key_answerclass_str
+}{id,title,style}
 
 \cs_new_protected:Nn \_@@_solution_start:n {
-  \str_set:Nn \l_stex_key_title_tl {#1}
-  \str_set:Nn \l_stex_key_id_str {#1}
+  \stex_keys_set:nn{ solution }{#1}
   \str_if_empty:NT \l_stex_key_id_str {
     \int_gincr:N \g_problem_id_counter
     \str_set:Nx \l_stex_key_id_str {
@@ -262,7 +375,8 @@
   }
   \stex_if_do_html:T{
     \begin{stex_annotate_env}{
-      shtml:solution=\l_stex_key_id_str
+      shtml:solution=\l_stex_key_id_str,
+      shtml:answerclass={\l_stex_key_answerclass_str}
     }
   }
   \stex_style_apply:
@@ -275,6 +389,8 @@
     \ifsolutions
       \_@@_solution_start:n{#1}
     \else
+      \stex_keys_set:nn{ solution }{#1}
+      \testspace{\l_stex_key_testspace_dim}
       \setbox\l_tmpa_box\vbox\bgroup
     \fi
   }
@@ -293,12 +409,14 @@
     \fi
   }
 }{
-  \par\smallskip\hrule\smallskip
-  \noindent\emph{Solution\str_if_empty:NF \l_stex_key_title_tl{
-    {~}\l_stex_key_title_tl
+  \par\smallskip\rule[.3em]{\linewidth}{0.4pt}\newline\smallskip
+  \noindent\emph{\problem@kw@solution\tl_if_empty:NF \l_stex_key_title_tl{
+    {~}\l_stex_key_title_tl \str_if_empty:NF \l_stex_key_answerclass_str {
+      (Answer Class: \l_stex_key_answerclass_str)
+    }
   } :~}
 }{
-  \par\smallskip\hrule
+  \par\rule[.3em]{\linewidth}{0.4pt}\newline
 }{}
 
 \stex_deactivate_macro:Nn \solution {sproblem~environments}
@@ -318,9 +436,11 @@
 %
 % \begin{environment}{hint}
 %    \begin{macrocode}
+
+\stex_keys_define:nnnn{ problemenv }{}{}{id,title,style}
+
 \cs_new_protected:Nn \_@@_hint_start:n {
-  \str_set:Nn \l_stex_key_title_tl {#1}
-  \str_set:Nn \l_stex_key_id_str {#1}
+  \stex_keys_set:nn{ problemenv }{#1}
   \str_if_empty:NT \l_stex_key_id_str {
     \int_gincr:N \g_problem_id_counter
     \str_set:Nx \l_stex_key_id_str {
@@ -360,21 +480,21 @@
     }
   }
 }{
-  \par\smallskip\hrule\smallskip
-  \noindent\emph{Hint\str_if_empty:NF \l_stex_key_title_tl{
+  \par\smallskip\rule[.3em]{\linewidth}{0.4pt}\newline\smallskip
+  \noindent\emph{\problem@kw@hint\tl_if_empty:NF \l_stex_key_title_tl{
     {~}\l_stex_key_title_tl
   } :~}
 }{
-  \par\smallskip\hrule
+  \par\rule[.3em]{\linewidth}{0.4pt}\newline
 }{}
+\stex_deactivate_macro:Nn \hint {sproblem~environments}
 %    \end{macrocode}
 % \end{environment}
 %
 % \begin{environment}{exnote}
 %    \begin{macrocode}
 \cs_new_protected:Nn \_@@_exnote_start:n {
-  \str_set:Nn \l_stex_key_title_tl {#1}
-  \str_set:Nn \l_stex_key_id_str {#1}
+  \stex_keys_set:nn{ problemenv }{#1}
   \str_if_empty:NT \l_stex_key_id_str {
     \int_gincr:N \g_problem_id_counter
     \str_set:Nx \l_stex_key_id_str {
@@ -414,26 +534,29 @@
     }
   }
 }{
-  \par\smallskip\hrule\smallskip
-  \noindent\emph{Note\str_if_empty:NF \l_stex_key_title_tl{
+  \par\smallskip\rule[.3em]{\linewidth}{0.4pt}\newline\smallskip
+  \noindent\emph{\problem@kw@note\tl_if_empty:NF \l_stex_key_title_tl{
     {~}\l_stex_key_title_tl
   } :~}
 }{
-  \par\smallskip\hrule
+  \par\rule[.3em]{\linewidth}{0.4pt}\newline
 }{}
+\stex_deactivate_macro:Nn \exnote {sproblem~environments}
 %    \end{macrocode}
 % \end{environment}
 %% \begin{environment}{gnote}
 %    \begin{macrocode}
+\int_new:N \l_@@_anscls_int
+
 \cs_new_protected:Nn \_@@_gnote_start:n {
-  \str_set:Nn \l_stex_key_title_tl {#1}
-  \str_set:Nn \l_stex_key_id_str {#1}
+  \stex_keys_set:nn{ problemenv }{#1}
   \str_if_empty:NT \l_stex_key_id_str {
     \int_gincr:N \g_problem_id_counter
     \str_set:Nx \l_stex_key_id_str {
       GNOTE_\int_use:N \g_problem_id_counter
     }
   }
+
   \stex_if_do_html:T{
     \begin{stex_annotate_env}{
       shtml:problemgnote=\l_stex_key_id_str
@@ -452,6 +575,7 @@
       \setbox\l_tmpa_box\vbox\bgroup
     }
   }
+  \stex_reactivate_macro:N \anscls
 }{
   \stex_if_do_html:TF{
     \stex_style_apply:
@@ -467,13 +591,59 @@
     }
   }
 }{
-  \par\smallskip\hrule\smallskip
-  \noindent\emph{Grading\str_if_empty:NF \l_stex_key_title_tl{
+  \par\smallskip\rule[.3em]{\linewidth}{0.4pt}\newline\smallskip
+  \noindent\emph{\problem@kw@grading\str_if_empty:NF \l_stex_key_title_tl{
     {~}\l_stex_key_title_tl
   } :~}
 }{
-  \par\smallskip\hrule
+  \par\rule[.3em]{\linewidth}{0.4pt}\newline
 }{}
+\stex_deactivate_macro:Nn \gnote {sproblem~environments}
+
+
+\stex_keys_define:nnnn{ anscls }{
+  \str_clear:N \l_stex_key_pts_str
+  \tl_clear:N \l_stex_key_feedback_tl
+}{
+  pts     .str_set:N = \l_stex_key_pts_str,
+  feedback .tl_set:N = \l_stex_key_feedback_str,
+  update  .code:n    = {}
+}{id}
+\newcommand \anscls [2][] {
+  \stex_keys_set:nn{ anscls }{#1}
+  \str_if_empty:NT \l_stex_key_id_str {
+    \int_incr:N \l_@@_anscls_int
+    \str_set:Nx \l_stex_key_id_str {
+      AC\int_use:N \l_@@_anscls_int
+    }
+  }
+  \begin{list}{}{
+    \setlength\topsep{0pt}
+    \setlength\parsep{0pt}
+    \setlength\rightmargin{0pt}
+  }\item[\l_stex_key_id_str] 
+    \stex_if_do_html:TF{
+      \stex_annotate:nn{
+        shtml:answerclass={\l_stex_key_id_str}
+        \str_if_empty:NF \l_stex_key_pts_str{
+          ,shtml:answerclass-pts={\l_stex_key_pts_str}
+        }
+        \str_if_empty:NF \l_stex_key_feedback_str{
+          ,shtml:answerclass-feedback={\l_stex_key_feedback_str}
+        }
+      }{
+        #2
+      }
+    }{#2}
+    \str_if_empty:NF \l_stex_key_pts_str {\par
+      ~ \problem@kw@points:~\l_stex_key_pts_str
+    }
+    \str_if_empty:NF \l_stex_key_feedback_str {\par
+      ~ \problem@kw@feedback :~\l_stex_key_feedback_str
+    }
+  \end{list}
+}
+\stex_deactivate_macro:Nn \anscls {gnote~environments}
 %    \end{macrocode}
 % \end{environment}
 %
@@ -482,33 +652,55 @@
 %    \begin{macrocode}
 \def\pts#1{
   \bool_if:NT \c_@@_pts_bool {
-    \marginpar{#1~\problem@kw@points}
-  }
+    \stex_annotate:nn{shtml:problempoints={#1}}{\marginpar{#1~\problem@kw@pts}}
+  }\hbox_unpack:N\c_empty_box
 }
 \def\min#1{
   \bool_if:NT \c_@@_min_bool {
-    \marginpar{#1~\problem@kw@minutes}
-  }
+    \stex_annotate:nn{shtml:problemminutes={}}{\marginpar{#1~\problem@kw@minutes}}
+  }\hbox_unpack:N\c_empty_box
 }
 %    \end{macrocode}
 %
 % \begin{environment}{mcb}
 %
 %    \begin{macrocode}
-\newenvironment{mcb}{\par
+\stex_new_stylable_env:nnnnnnn{mcb}{O{}}{
+  \stex_keys_set:nn{style}{#1}
   \stex_if_do_html:T{
-    \begin{stex_annotate_env}{shtml:multiple-choice-block={}}
+    \tl_set:Nn\problem_mcc_box_tl{}
+    \exp_args:Nne \begin{stex_annotate_env}{
+      shtml:multiple-choice-block={}
+      \clist_if_empty:NF \l_stex_key_style_clist {,
+        shtml:styles={\l_stex_key_style_clist}
+      }
+    }
   }
   \stex_deactivate_macro:Nn \mcb {sproblem~environments}
+  \stex_deactivate_macro:Nn \scb {sproblem~environments}
   \stex_deactivate_macro:Nn \solution {sproblem~environments}
+  \stex_deactivate_macro:Nn \hint {sproblem~environments}
+  \stex_deactivate_macro:Nn \exnote {sproblem~environments}
+  \stex_deactivate_macro:Nn \gnote {sproblem~environments}
   \stex_reactivate_macro:N \mcc
-  \begin{enumerate}
+  \cs_set:Nn \_@@_mccline:n{
+    \begin{list}{}{
+      \setlength\topsep{0pt}
+      \setlength\parsep{0pt}
+      \setlength\rightmargin{0pt}
+    }\item[\problem_mcc_box_tl] ##1 \end{list}
+  }
+  \stex_style_apply:
 }{
-  \end{enumerate}
+  \stex_style_apply:
   \stex_if_do_html:T{
     \end{stex_annotate_env}
   }
-}
+}{\par}{}{}
+\stexstylemcb[inline]{
+  \cs_set:Nn \_@@_mccline:n{\problem_mcc_box_tl{~} #1}
+}{}
+
 \stex_deactivate_macro:Nn \mcb {sproblem~environments}
 %    \end{macrocode}
 %
@@ -529,9 +721,7 @@
   \tl_clear:N \l_stex_key_Ftext_tl
 }{
   feedback  .tl_set:N     = \l_stex_key_feedback_tl ,
-  T         .default:n    = { false } ,
-  T         .bool_set:N   = \l_stex_key_T_bool ,
-  F         .default:n    = { false } ,
+  T         .code:n    = {\bool_set_true:N \l_stex_key_T_bool} ,
   F         .code:n       = {\bool_set_false:N \l_stex_key_T_bool} ,
   Ttext     .tl_set:N     = \l_stex_key_Ttext_tl ,
   Ftext     .tl_set:N     = \l_stex_key_Ftext_tl ,
@@ -547,8 +737,8 @@
   }
 }
 \newcommand\mcc[2][]{
-  \stex_keys_set:nn{mcc}{#1}\par
-  \tl_set:Nn \l_tmpb_tl {~--~
+  \stex_keys_set:nn{mcc}{#1}
+  \tl_set:Nn \l_tmpa_tl{
     \bool_if:NTF \l_stex_key_T_bool {
       \tl_if_empty:NTF \l_stex_key_Ttext_tl \problem@kw@correct \l_stex_key_Ttext_tl
     }{
@@ -558,51 +748,228 @@
       \\\emph{\l_stex_key_feedback_tl}
     }
   }
-  \tl_set:Nn \l_tmpa_tl {
-     #2
-    \stex_if_do_html:TF{ 
-      \stex_annotate:nn{shtml:mcc-solution={}}{\l_tmpb_tl} 
+
+  \_@@_mccline:n{
+    \stex_if_do_html:TF{
+      \stex_annotate:nn{shtml:mcc={
+        \bool_if:NTF \l_stex_key_T_bool {true}{false}
+      }}{
+        #2\stex_annotate:nn{shtml:mcc-solution={}}{\l_tmpa_tl}
+      }
     }{
-      \ifsolutions\l_tmpb_tl\fi
+        #2\ifsolutions\footnote{\l_tmpa_tl}\fi
     }
   }
-  \item[\problem_mcc_box_tl]{}~
-  \stex_if_do_html:TF{
-    \stex_annotate:nn{shtml:mcc={
-      \bool_if:NTF \l_stex_key_T_bool {true}{false}
-    }}{\l_tmpa_tl}
-  }{\l_tmpa_tl}
 } 
 \stex_deactivate_macro:Nn \mcc {mcb~environments}
 %    \end{macrocode}
 % \end{macro}
+% \end{environment}
+%
+% \begin{environment}{scb}
+%
+%    \begin{macrocode}
+
+\tl_set:Nn\problem_scc_box_tl{$\bigcirc$}
+
+\cs_new_protected:Nn \_@@_maybe_inline:n {
+  \clist_if_in:NnTF \l_stex_key_style_clist {inline} {
+    \let\_@@_oldpar:\stex_par:
+    \cs_set:Nn\stex_par:{}
+    #1
+    \let\stex_par:\_@@_oldpar:
+  }{#1}
+}
+
+\stex_new_stylable_env:nnnnnnn{scb}{O{}}{
+  \stex_keys_set:nn{style}{#1}
+  \stex_if_do_html:T{
+    \_@@_maybe_inline:n{
+      \exp_args:Nne\begin{stex_annotate_env}{
+        shtml:single-choice-block={}
+        \clist_if_empty:NF \l_stex_key_style_clist {,
+          shtml:styles={\l_stex_key_style_clist}
+        }
+      }
+    }
+    \tl_set:Nn\problem_scc_box_tl{}
+  }
+  \stex_deactivate_macro:Nn \mcb {sproblem~environments}
+  \stex_deactivate_macro:Nn \scb {sproblem~environments}
+  \stex_deactivate_macro:Nn \solution {sproblem~environments}
+  \stex_deactivate_macro:Nn \hint {sproblem~environments}
+  \stex_deactivate_macro:Nn \exnote {sproblem~environments}
+  \stex_deactivate_macro:Nn \gnote {sproblem~environments}
+  \stex_reactivate_macro:N \scc
+  \cs_set:Nn \_@@_sccline:n{
+    \begin{list}{}{
+      \setlength\topsep{0pt}
+      \setlength\parsep{0pt}
+      \setlength\rightmargin{0pt}
+    }\item[\problem_scc_box_tl] ##1 \end{list}
+  }
+  \stex_style_apply:
+}{
+  \stex_style_apply:
+  \stex_if_do_html:T{
+    \_@@_maybe_inline:n { \end{stex_annotate_env} }
+  }
+}{\par}{}{}
+\stexstylescb[inline]{
+  \cs_set:Nn \_@@_sccline:n{\problem_scc_box_tl{~} #1}
+}{}
+
+\stex_deactivate_macro:Nn \scb {sproblem~environments}
+%    \end{macrocode}
+%
+% \begin{macro}{\scc}
+%    \begin{macrocode}
+
+\newcommand\scc[2][]{
+  \stex_keys_set:nn{mcc}{#1}
+  \tl_set:Nn \l_tmpa_tl{
+    \bool_if:NTF \l_stex_key_T_bool {
+      \tl_if_empty:NTF \l_stex_key_Ttext_tl \problem@kw@correct \l_stex_key_Ttext_tl
+    }{
+      \tl_if_empty:NTF \l_stex_key_Ftext_tl \problem@kw@wrong \l_stex_key_Ftext_tl
+    }
+    \tl_if_empty:NF \l_stex_key_feedback_tl {
+      \\\emph{\l_stex_key_feedback_tl}
+    }
+  }
+
+  \_@@_sccline:n{
+    \stex_if_do_html:TF{
+      \stex_annotate:nn{shtml:scc={
+        \bool_if:NTF \l_stex_key_T_bool {true}{false}
+      }}{
+        #2\stex_annotate:nn{shtml:scc-solution={}}{\l_tmpa_tl}
+      }
+    }{
+        #2\ifsolutions\footnote{\l_tmpa_tl}\fi
+    }
+  }
+} 
+\stex_deactivate_macro:Nn \scc {scb~environments}
+
+
+\newcommand\yesTnoF{
+  \begin{scb}[style=inline]
+    \scc[T]{yes}~\scc[F]{no}
+  \end{scb}
+}
+\newcommand\yesFnoT{
+  \begin{scb}[style=inline]
+    \scc[F]{yes}~\scc[T]{no}
+  \end{scb}
+}
+\newcommand\trueTfalseF{
+  \begin{scb}[style=inline]
+    \scc[T]{true}~\scc[F]{false}
+  \end{scb}
+}
+\newcommand\trueFfalseT{
+  \begin{scb}[style=inline]
+    \scc[F]{true}~\scc[T]{false}
+  \end{scb}
+}
+%    \end{macrocode}
+% \end{macro}
+% \end{environment}
 %
 % \begin{macro}{\fillinsol}
 %    \begin{macrocode}
+\stex_keys_define:nnnn{fillinsol}{
+  \tl_clear:N \l_@@_fillin_solution_tl
+  \dim_zero:N \l_stex_key_testspace_dim
+}{
+  testspace   .dim_set:N = \l_stex_key_testspace_dim,
+  exact    .code:n = {\_@@_parse_fillin_arg:nnnn{exact}#1 },
+  numrange .code:n = {\_@@_parse_fillin_arg:nnnn{numrange}#1 },
+  regex    .code:n = {\_@@_parse_fillin_arg:nnnn{regex}#1 }
+}{}
+
+\cs_new:Nn \_@@_parse_fillin_arg:nnnn {
+  \stex_if_do_html:TF{
+    \tl_set:Nn \l_tmpa_tl{#3}
+    \tl_set:Nn \l_tmpb_tl{T}
+    \stex_annotate_invisible:nn{
+      shtml:fillin-case={#1},
+      shtml:fillin-case-value={#2},
+      shtml:fillin-case-verdict={
+        \tl_if_eq:NNTF\l_tmpa_tl\l_tmpb_tl{true}{false}
+      },
+    }{#4}
+  }{
+    \tl_put_right:Nn \l_@@_fillin_solution_tl {
+      #1{~} & #2{~} & #3{~} & #4{~} \\
+    }
+  }
+}
+
 \newcommand\fillinsol[2][]{
   \quad
+  \mode_if_math:TF{
+    \hbox{\_@@_fillinsol:nn{#1}{$#2$}}
+  }{
+    \_@@_fillinsol:nn{#1}{#2}
+  }
+  \quad
+}
+\cs_new_protected:Nn \_@@_fillinsol:nn {
+  \stex_keys_set:nn{fillinsol}{#1}
   \stex_if_do_html:TF{
-    \stex_annotate:nn{shtml:fillinsol={}}{ \_stex_annotate_force_break:n{#2} }
+    \stex_annotate:nn{shtml:fillinsol={}}{ \_stex_annotate_force_break:n{
+      #2
+      \l_@@_fillin_solution_tl
+    } }
   }{
     \ifsolutions
       \textcolor{red}{\fbox{#2}}
-    \else
-      \fbox{
-        \tl_if_empty:nTF{#1}{
-          \phantom{\huge{#2}}
-        }{
-          \hspace{#1}
+      \tl_if_empty:NF \l_@@_fillin_solution_tl {
+        \footnote{
+          \halign{ ##\hfil & ##\hfil &##\hfil&##\hfil \cr
+            \textbf{type }&\textbf{case }&\textbf{verdict }&\textbf{feedback }\cr
+            \l_@@_fillin_solution_tl
+          }
         }
       }
+    \else
+      \fbox{\dim_compare:nNnTF\l_stex_key_testspace_dim={0pt}{
+        \phantom{\huge{#2}}
+      }{
+        \hspace{\l_stex_key_testspace_dim}
+      }}
     \fi
   }
-  \quad
 }
 \stex_deactivate_macro:Nn \fillinsol {sproblem~environments}
 %    \end{macrocode}
 % \end{macro}
 %
-% \end{environment}
+%
+% \begin{macro}{\testemptypage}
+%    \begin{macrocode}
+\newcommand\testemptypage[1][]{%
+	\bool_if:NT \c_@@_test_bool {\ \vfill\begin{center}\hwexam@kw@testemptypage\end{center}\eject}
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\testspace}
+%    \begin{macrocode}
+\newcommand\testspace[1]{\bool_if:NT \c_@@_test_bool {\vspace*{#1}}}
+\newcommand\testsmallspace{\testspace{1cm}}
+\newcommand\testmedspace{\testspace{2cm}}
+\newcommand\testbigspace{\testspace{3cm}}
+%    \end{macrocode}
+% \end{macro}
+% 
+% \begin{macro}{\testnewpage}
+%    \begin{macrocode}
+\newcommand\testnewpage{\bool_if:NT \c_@@_test_bool {\newpage}}
+%    \end{macrocode}
+% \end{macro}
 %
 %
 %    \begin{macrocode}

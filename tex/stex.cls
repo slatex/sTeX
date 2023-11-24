@@ -9,7 +9,10 @@
 %%%%%%%%%%%%%   stex.dtx   %%%%%%%%%%%%%
 
 \RequirePackage{expl3,l3keys2e}
-\ProvidesExplClass{stex}{2023/03/19}{3.3.0}{sTeX document class}
+\ProvidesExplClass{stex}{2023/10/13}{3.4.0}{sTeX document class}
+\IfFileExists{stex-expl-compat.sty}{
+  \usepackage{stex-expl-compat}
+}{}
 
 \DeclareOption*{\PassOptionsToPackage{\CurrentOption}{stex}}
 \ProcessOptions
