@@ -608,45 +608,83 @@
   \tl_clear:N \l_stex_key_Ftext_tl
 }{
   feedback  .tl_set:N     = \l_stex_key_feedback_tl ,
-  T         .code:n    = {\bool_set_true:N \l_stex_key_T_bool} ,
+  T         .code:n       = {\bool_set_true:N \l_stex_key_T_bool} ,
   F         .code:n       = {\bool_set_false:N \l_stex_key_T_bool} ,
   Ttext     .tl_set:N     = \l_stex_key_Ttext_tl ,
   Ftext     .tl_set:N     = \l_stex_key_Ftext_tl ,
 }{id}
 
-\tl_set:Nn \problem_mcc_box_tl {
-  \ltx@ifpackageloaded{amssymb}{$\square$}{
-    \hbox{\vrule\vbox{\hrule width 6 pt\vskip 6pt\hrule}\vrule}
-  }
-}
-\newcommand\mcc[2][]{
-  \stex_keys_set:nn{mcc}{#1}
-  \tl_set:Nn \l_tmpa_tl{
-    \bool_if:NTF \l_stex_key_T_bool {
-      \tl_if_empty:NTF \l_stex_key_Ttext_tl \problem@kw@correct \l_stex_key_Ttext_tl
-    }{
-      \tl_if_empty:NTF \l_stex_key_Ftext_tl \problem@kw@wrong \l_stex_key_Ftext_tl
-    }
-    \tl_if_empty:NF \l_stex_key_feedback_tl {
-      \\\emph{\l_stex_key_feedback_tl}
-    }
-  }
 
-  \__problems_mccline:n{
-    \stex_if_do_html:TF{
-      \stex_annotate:nn{shtml:mcc={
-        \bool_if:NTF \l_stex_key_T_bool {true}{false}
-      }}{
-        #2\stex_annotate:nn{shtml:mcc-solution={}}{\l_tmpa_tl}
+\stex_if_html_backend:TF{
+  \tl_set:Nn \problem_mcc_box_tl {
+    \ltx@ifpackageloaded{amssymb}{$\square$}{
+      \hbox{\vrule\vbox{\hrule width 6 pt\vskip 6pt\hrule}\vrule}
+    }
+  }
+  \newcommand\mcc[2][]{
+    \stex_keys_set:nn{mcc}{#1}
+    \tl_set:Nn \l_tmpa_tl{
+      \bool_if:NTF \l_stex_key_T_bool {
+        \tl_if_empty:NTF \l_stex_key_Ttext_tl \problem@kw@correct \l_stex_key_Ttext_tl
+      }{
+        \tl_if_empty:NTF \l_stex_key_Ftext_tl \problem@kw@wrong \l_stex_key_Ftext_tl
       }
-    }{
-        #2\ifsolutions\footnote{\l_tmpa_tl}\fi
+      \tl_if_empty:NF \l_stex_key_feedback_tl {
+        \\\emph{\l_stex_key_feedback_tl}
+      }
+    }
+
+    \__problems_mccline:n{
+      \stex_if_do_html:T{
+        \stex_annotate:nn{shtml:mcc={
+          \bool_if:NTF \l_stex_key_T_bool {true}{false}
+        }}{
+          #2\stex_annotate:nn{shtml:mcc-solution={}}{\l_tmpa_tl}
+        }
+      }
+    }
+  }
+}{
+  \tl_set:Nn \problem_mcc_box_default_tl {
+    \ltx@ifpackageloaded{amssymb}{$\square$}{
+      \hbox{\vrule\vbox{\hrule width 6 pt\vskip 6pt\hrule}\vrule}
+    }
+  }
+  \tl_set:Nn \problem_mcc_box_tl {
+    \ifsolutions
+      \bool_if:NTF \l_stex_key_T_bool {
+        \makebox[0pt][l]{\problem_mcc_box_default_tl}
+          \hspace{0.1em}$\cs_if_exist:NTF\checkmark{
+            \raisebox{.15ex}{\checkmark}
+          } X$
+      }{\problem_mcc_box_default_tl}
+    \else
+      \problem_mcc_box_default_tl
+    \fi
+  }
+  \newcommand\mcc[2][]{
+    \stex_keys_set:nn{mcc}{#1}
+    \ifsolutions
+      \tl_set:Nx \l_tmpa_tl{
+        \bool_if:NTF \l_stex_key_T_bool {
+          \tl_if_empty:NF \l_stex_key_Ttext_tl {\exp_not:N \l_stex_key_Ttext_tl}
+        }{
+          \tl_if_empty:NF \l_stex_key_Ftext_tl {\exp_not:N \l_stex_key_Ftext_tl}
+        }
+        \tl_if_empty:NF \l_stex_key_feedback_tl {
+          \exp_not:n{\\\emph{\l_stex_key_feedback_tl}}
+        }
+      }
+    \fi
+
+    \__problems_mccline:n{ #2
+      \ifsolutions
+        \tl_if_empty:NF \l_tmpa_tl { \footnote{\l_tmpa_tl} }
+      \fi
     }
   }
 }
 \stex_deactivate_macro:Nn \mcc {mcb~environments}
-
-\tl_set:Nn\problem_scc_box_tl{$\bigcirc$}
 
 \cs_new_protected:Nn \__problems_maybe_inline:n {
   \clist_if_in:NnTF \l_stex_key_style_clist {inline} {
@@ -697,31 +735,68 @@
 
 \stex_deactivate_macro:Nn \scb {sproblem~environments}
 
-\newcommand\scc[2][]{
-  \stex_keys_set:nn{mcc}{#1}
-  \tl_set:Nn \l_tmpa_tl{
-    \bool_if:NTF \l_stex_key_T_bool {
-      \tl_if_empty:NTF \l_stex_key_Ttext_tl \problem@kw@correct \l_stex_key_Ttext_tl
-    }{
-      \tl_if_empty:NTF \l_stex_key_Ftext_tl \problem@kw@wrong \l_stex_key_Ftext_tl
+\stex_if_html_backend:TF{
+  \tl_set:Nn\problem_scc_box_tl{$\bigcirc$}
+  \newcommand\scc[2][]{
+    \stex_keys_set:nn{mcc}{#1}
+    \tl_set:Nn \l_tmpa_tl{
+      \bool_if:NTF \l_stex_key_T_bool {
+        \tl_if_empty:NTF \l_stex_key_Ttext_tl \problem@kw@correct \l_stex_key_Ttext_tl
+      }{
+        \tl_if_empty:NTF \l_stex_key_Ftext_tl \problem@kw@wrong \l_stex_key_Ftext_tl
+      }
+      \tl_if_empty:NF \l_stex_key_feedback_tl {
+        \\\emph{\l_stex_key_feedback_tl}
+      }
     }
-    \tl_if_empty:NF \l_stex_key_feedback_tl {
-      \\\emph{\l_stex_key_feedback_tl}
+
+    \__problems_sccline:n{
+      \stex_if_do_html:T{
+        \stex_annotate:nn{shtml:scc={
+          \bool_if:NTF \l_stex_key_T_bool {true}{false}
+        }}{
+          #2\stex_annotate:nn{shtml:scc-solution={}}{\l_tmpa_tl}
+        }
+      }
     }
   }
-
-  \__problems_sccline:n{
-    \stex_if_do_html:TF{
-      \stex_annotate:nn{shtml:scc={
-        \bool_if:NTF \l_stex_key_T_bool {true}{false}
-      }}{
-        #2\stex_annotate:nn{shtml:scc-solution={}}{\l_tmpa_tl}
+}{
+  \tl_set:Nn\problem_scc_box_default_tl{$\bigcirc$}
+  \tl_set:Nn\problem_scc_box_tl{
+    \ifsolutions
+      \bool_if:NTF \l_stex_key_T_bool {
+        \makebox[0pt][l]{\problem_scc_box_default_tl}
+          \hspace{0.1em}$\cs_if_exist:NTF\checkmark{
+            \raisebox{.15ex}{\checkmark}
+          } X$
+      }{\problem_scc_box_default_tl}
+    \else
+      \problem_scc_box_default_tl
+    \fi
+  }
+  \newcommand\scc[2][]{
+    \stex_keys_set:nn{mcc}{#1}
+    \ifsolutions
+      \tl_set:Nx \l_tmpa_tl{
+        \bool_if:NTF \l_stex_key_T_bool {
+          \tl_if_empty:NF \l_stex_key_Ttext_tl {\exp_not:N \l_stex_key_Ttext_tl}
+        }{
+          \tl_if_empty:NF \l_stex_key_Ftext_tl {\exp_not:N \l_stex_key_Ftext_tl}
+        }
+        \tl_if_empty:NF \l_stex_key_feedback_tl {
+          \exp_not:n{ \\\emph{\l_stex_key_feedback_tl} }
+        }
       }
-    }{
-        #2\ifsolutions\footnote{\l_tmpa_tl}\fi
+    \fi
+
+    \__problems_sccline:n{ #2
+      \ifsolutions
+        \tl_if_empty:NF \l_tmpa_tl { \footnote{\l_tmpa_tl} }
+      \fi
     }
   }
 }
+
 \stex_deactivate_macro:Nn \scc {scb~environments}
 
 \newcommand\yesTnoF{
