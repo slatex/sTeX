@@ -47,6 +47,8 @@
 \keys_define:nn {hwexam / pkg}{
 	multiple  .default:n 		= { false },
 	multiple	.bool_set:N 	= \c_hwexam_multiple_bool,
+	qrcode		.default:n 	  = { false },
+	qrcode		.bool_set:N 	= \c_hwexam_qrcode_bool,
 	unknown   .code:n 			= {
 		\PassOptionsToPackage{\CurrentOption}{problem}
 	}
@@ -54,6 +56,7 @@
 \ProcessKeysOptions{ hwexam /pkg }
 \RequirePackage{problem}
 %    \end{macrocode}
+%
 %
 % \begin{macro}{\hwexam_kw_*}
 %   For multilinguality, we define internal macros for keywords that can be specialized in
@@ -81,6 +84,231 @@
 }
 %    \end{macrocode}
 % \end{macro}
+%
+% \subsection{QR Codes}
+%    \begin{macrocode}
+\group_begin:
+  \escapechar=-1
+  \xdef\_@@_qr_backslash{\string\\}
+\group_end:
+
+\bool_if:NT \c_hwexam_qrcode_bool {
+	\RequirePackage{qrcode}
+	\RequirePackage{marginnote}
+	\str_new:N \g_@@_qr_json_str
+	\bool_new:N \g_@@_qr_in_problems_json_bool
+	\bool_set_false:N \g_@@_qr_in_problems_json_bool
+	\bool_new:N \g_@@_qr_in_subproblems_json_bool
+	\bool_set_false:N \g_@@_qr_in_subproblems_json_bool
+	\bool_new:N \g_@@_qr_in_anscls_json_bool
+	\bool_set_false:N \g_@@_qr_in_anscls_json_bool
+	\bool_if:NTF \c__problems_gnotes_bool {
+  	\gdef \qrjson { \str_gput_right:Nx \g_@@_qr_json_str}
+	}{
+		\gdef \qrjson #1 {}
+	}
+	\qrjson{[}
+	\AtEndDocument{\qrjson{]}}
+	\def\_@@_qr_escape_char:n #1 {
+		#1\exp_args:Nno\use:nn{\if_charcode:w#1}\_@@_qr_backslash#1\fi
+	}
+
+	\gdef\_@@_qr_escape:n #1{\exp_args:Ne\str_map_function:nN{\tl_to_str:n{#1}}\_@@_qr_escape_char:n}
+	\gdef \_@@_qr_escape:o #1{\exp_args:No\_@@_qr_escape:n#1}
+
+	\def\qrschema{TO:DO:\examnumber}
+
+	\bool_if:NTF \c__problems_test_bool {
+		\def\doproblemqr{
+			\ifstexhtml\else{
+				\reversemarginpar\marginnote{\qrcode[height=1.5cm]{\qrschema}}
+				\normalmarginpar
+			}\fi
+		}
+		\def\insertexamnumber{
+			\ifstexhtml\else
+				\tl_if_exist:NTF \examnumber {
+					{\Large\bfseries ID:~\examnumber}
+				}{
+					{\color{red}\Large\bfseries!!!~ WARNING:~NO~{\string\examnumber}~SET~!!!}\gdef\examnumber{0}
+				}
+				\global\def\insertexamnumber{}
+			\fi
+		}
+	}{
+		\def\doproblemqr{}
+		\def\insertexamnumber{}
+	}
+
+	\stexstyleproblem{
+		\par\noindent\problemheader \xdef\qrid{\thesproblem}
+		\doproblemqr
+		\bool_if:NT \c__problems_pts_bool {
+			\tl_if_eq:NnF \l__problems_pts_tl {0}{
+				\marginpar{\l__problems_pts_tl{}~\problem@kw@points\smallskip}
+			}
+		}
+		\bool_if:NT \c__problems_min_bool {
+			\tl_if_eq:NnF \l__problems_min_tl {0} {
+				\marginpar{\l__problems_min_tl{}~\problem@kw@minutes\smallskip}
+			}
+		}
+
+		\bool_if:NTF \g_@@_qr_in_problems_json_bool {
+			\qrjson{,}
+		}{
+			\bool_gset_true:N \g_@@_qr_in_problems_json_bool
+		}
+
+		\qrjson {
+			\c_left_brace_str
+				"id":"\_@@_qr_escape:o\l_stex_key_id_str","title":"\_@@_qr_escape:o\l_stex_key_title_tl",
+				"number":"\thesproblem"
+		}
+
+		\tl_if_eq:NnF \l__problems_pts_tl {0}{
+			\qrjson {
+				,"pts":\l__problems_pts_tl
+			}
+		}
+		\par
+		\stex_ignore_spaces_and_pars:
+	}{
+		\bool_if:NT \g_@@_qr_in_subproblems_json_bool {
+			\qrjson {]}
+		}
+		\bool_gset_false:N \g_@@_qr_in_subproblems_json_bool
+		\qrjson {\c_right_brace_str}
+		\par\bigskip
+	}
+
+	\stexstylesubproblem{
+		\begin{list}{}{
+			\setlength\topsep{0pt}
+			\setlength\parsep{0pt}
+			\setlength\rightmargin{0pt}
+		}\item[\int_use:N \g__problems_subproblem_int .]
+		\xdef\qrid{\thesproblem.\int_use:N \g__problems_subproblem_int}
+		\doproblemqr
+		\bool_if:NT \c__problems_pts_bool {
+			\bool_if:NF \l__problems_has_pts_bool {
+				\marginpar{\smallskip\l_stex_key_pts_tl{}~\problem@kw@points}
+			}
+		}
+		\bool_if:NT \c__problems_min_bool {
+			\bool_if:NF \l__problems_has_min_bool{
+				\marginpar{\smallskip\l_stex_key_min_tl{}~\problem@kw@minutes}
+			}
+		}
+		\bool_if:NTF \g_@@_qr_in_subproblems_json_bool {
+			\qrjson {,}
+		}{
+			\qrjson {
+				,"subproblems":[
+			}
+			\bool_gset_true:N \g_@@_qr_in_subproblems_json_bool
+		}
+		\qrjson {
+			\c_left_brace_str
+				"id":"\_@@_qr_escape:o\l_stex_key_id_str","title":"\_@@_qr_escape:o\l_stex_key_title_tl",
+				"number":"\thesproblem.\int_use:N \g__problems_subproblem_int"
+		}
+		\bool_if:NF \l__problems_has_pts_bool {
+			\qrjson {
+				,"pts":\l_stex_key_pts_tl
+			}
+		}
+	}{
+		\qrjson {\c_right_brace_str}
+		\end{list}
+	}
+
+	\stexstylegnote{
+		\par\smallskip\rule[.3em]{\linewidth}{0.4pt}\newline\smallskip
+		\noindent\emph{\problem@kw@grading\str_if_empty:NF \l_stex_key_title_tl{
+			{~}\l_stex_key_title_tl
+		} :~}
+		\qrjson {
+			,"gnote": \c_left_brace_str
+			"id":"\_@@_qr_escape:o\l_stex_key_id_str","title":"\_@@_qr_escape:o\l_stex_key_title_tl",
+			"anscls":[
+		}
+	}{
+		\qrjson {
+			]\c_right_brace_str
+		}
+		\par\rule[.3em]{\linewidth}{0.4pt}\newline
+	}{}
+
+	\renewcommand \anscls [2][] {
+		\stex_keys_set:nn{ anscls }{#1}
+		\str_if_empty:NT \l_stex_key_id_str {
+			\int_incr:N \l__problems_anscls_int
+			\str_set:Nx \l_stex_key_id_str {
+				AC\int_use:N \l__problems_anscls_int
+			}
+		}
+		\bool_if:NTF \g_@@_qr_in_anscls_json_bool {
+			\qrjson{,}
+		}{
+			\bool_set_true:N \g_@@_qr_in_anscls_json_bool
+		}
+		\qrjson{
+			\c_left_brace_str
+				"id":"\_@@_qr_escape:o\l_stex_key_id_str","description":"\_@@_qr_escape:n{#2}",
+				"feedback":"\_@@_qr_escape:o\l_stex_key_feedback_tl",
+				"pts":"\l_stex_key_pts_str"
+			\c_right_brace_str
+		}
+		\begin{list}{}{
+			\setlength\topsep{0pt}
+			\setlength\parsep{0pt}
+			\setlength\rightmargin{0pt}
+		}\item[\l_stex_key_id_str] 
+			\stex_if_do_html:TF{
+				\stex_annotate:nn{
+					shtml:answerclass={\l_stex_key_id_str}
+					\str_if_empty:NF \l_stex_key_pts_str{
+						,shtml:answerclass-pts={\l_stex_key_pts_str}
+					}
+				}{
+					#2
+					\tl_if_empty:NF \l_stex_key_feedback_tl{
+						\stex_annotate_invisible:nn{
+							shtml:answerclass-feedback={true}
+						}{\l_stex_key_feedback_tl}
+					}
+				}
+			}{#2}
+			\str_if_empty:NF \l_stex_key_pts_str {\par
+				~ \problem@kw@points :~\l_stex_key_pts_str
+			}
+			\str_if_empty:NF \l_stex_key_feedback_tl {\par
+				~ \problem@kw@feedback :~\l_stex_key_feedback_tl
+			}
+		\end{list}
+	}
+	\stex_deactivate_macro:Nn \anscls {gnote~environments}
+
+	\AtEndDocument{
+		\message{^^J^^J\g_@@_qr_json_str^^J^^J}
+		\bool_if:NT \c__problems_gnotes_bool {
+			\iow_new:N \c_@@_qr_json_iow
+			\iow_open:Nn \c_@@_qr_json_iow {\jobname-vollkorn.json}
+			\iow_now:Nx \c_@@_qr_json_iow {\g_@@_qr_json_str}
+			\iow_close:N \c_@@_qr_json_iow
+		}
+	}
+
+	\renewcommand\testemptypage[1][]{%
+		\bool_if:NT \c__problems_test_bool {\ 
+		\xdef\qrid{P\thepage}
+		\doproblemqr
+		\vfill\begin{center}\hwexam@kw@testemptypage\end{center}\eject
+		}
+	}
+}
+%    \end{macrocode}
 %
 % \subsection{Assignments}
 %
