@@ -230,7 +230,8 @@
   fi = finnish ,
   ro = romanian ,
   tr = turkish ,
-  fr = french
+  fr = french ,
+  sl = slovenian
 }}
 
 \exp_args:NNx \prop_const_from_keyval:Nn \c_stex_language_abbrevs_prop { \tl_to_str:n {
@@ -242,7 +243,8 @@
   finnish   = fi ,
   romanian  = ro ,
   turkish   = tr ,
-  french    = fr
+  french    = fr ,
+  slovenian = sl ,
 }}
 % todo: chinese simplified (zhs)
 %       chinese traditional (zht)
@@ -519,20 +521,6 @@
 %    \end{macrocode}
 % \end{macro}
 % \end{macro}
-% \end{macro}
-%
-% \begin{macro}{\_stex_annotate_force_break:n}
-%    \begin{macrocode}
-\stex_if_html_backend:TF {
-  \cs_new_protected:Nn \_stex_annotate_force_break:n {
-    \stex_annotate_invisible:n{~}
-    #1
-    \stex_annotate_invisible:n{~}
-  }
-}{
-  \cs_new_protected:Nn \_stex_annotate_force_break:n { #1 }
-}
-%    \end{macrocode}
 % \end{macro}
 %
 % \begin{macro}{\mmlintent,\mmlarg}
@@ -2488,7 +2476,7 @@
   }
   \tl_if_empty:nTF{ #1 }{
     \IfFileExists{#2}{
-      \ifvmode\noindent\fi\stex_annotate_invisible:nn{shtml:inputref={
+      \relax\ifvmode\noindent\fi\stex_annotate_invisible:nn{shtml:inputref={
         \l_tmpa_str / #2
       }}{}
     }{
@@ -2496,7 +2484,7 @@
     }
   }{
     \IfFileExists{ \stex_file_use:N \c_stex_mathhub_file / #1 / source / #2 }{
-      \ifvmode\noindent\fi\stex_annotate_invisible:nn{shtml:inputref={
+      \relax\ifvmode\noindent\fi\stex_annotate_invisible:nn{shtml:inputref={
         \l_tmpa_str / #2
       }}{}
     }{
@@ -4312,8 +4300,8 @@
       \stex_debug:nn{assignMorphism}{match!}
       \stex_iterate_break:n{
         \stex_annotate_invisible:nn{
-          shtml:assignMorphismFrom={\l_@@_morphism_dom_str}
-          ahtml:assignMorphismTo={\l_stex_current_module_str?##1}
+          shtml:assignmorphismfrom={\l_@@_morphism_dom_str}
+          shtml:assignmorphismto={\l_stex_current_module_str?##1}
         }{}
         \bool_set_true:N \l_tmpa_bool
       }
@@ -4322,8 +4310,8 @@
         \stex_debug:nn{assignMorphism}{match!}
         \stex_iterate_break:n{
           \stex_annotate_invisible:nn{
-            shtml:assignMorphismFrom={\l_@@_morphism_dom_str},
-            shtml:assignMorphismTo={\l_stex_current_module_str?##1}
+            shtml:assignmorphismfrom={\l_@@_morphism_dom_str},
+            shtml:assignmorphismto={\l_stex_current_module_str?##1}
           }{}
           \bool_set_true:N \l_tmpa_bool
         }
@@ -6302,7 +6290,7 @@
 %    \begin{macrocode}
 \cs_new_protected:Nn \_stex_invoke_symbol:nnnnnnnN {
   \bool_if:NTF \l_stex_allow_semantic_bool{
-    \stex_if_html_backend:T{\ifvmode\indent\fi}
+    \stex_if_html_backend:T{\relax\ifvmode\indent\fi}
     \_@@_setup:nnnnnn{\_comp}{#1?#2}{#3}{#4}{#7}{#6}
     \cs_set_eq:NN \_stex_term_oms_or_omv:nnn \_stex_term_oms:nnn
     \tl_put_right:Nn \l_stex_current_redo_tl{
@@ -6341,7 +6329,7 @@
 %    \begin{macrocode}
 \cs_new_protected:Nn \_stex_invoke_variable:nnnnnnN {
   \bool_if:NTF \l_stex_allow_semantic_bool{
-    \stex_if_html_backend:T{\ifvmode\indent\fi}
+    \stex_if_html_backend:T{\relax\ifvmode\indent\fi}
     \_@@_setup:nnnnnn{\_varcomp}{#1}{#2}{#3}{#6}{#5}
     \cs_set_eq:NN \_stex_term_oms_or_omv:nnn \_stex_term_omv:nnn
     \tl_put_right:Nn \l_stex_current_redo_tl {
@@ -6412,27 +6400,31 @@
 %
 %    \begin{macrocode}
 \cs_new_protected:Npn \_stex_invoke_notation:w [#1] {
-  \stex_debug:nn{expressions}{using~notation~#1~for~\l_stex_current_symbol_str}
-  \cs_if_exist:cTF{l_stex_notation_\l_stex_current_symbol_str _#1_cs}{
-    \tl_if_empty:NTF \l_stex_current_return_tl {
-      \stex_debug:nn{expressions}{return~empty}
-      \use:c{l_stex_notation_\l_stex_current_symbol_str _#1_cs}{\group_end:\_stex_eat_exclamation_point:}
-    }{
-      \stex_debug:nn{expressions}{return?}
-      \exp_after:wN\exp_after:wN\exp_after:wN
-      \@@_invoke_return_maybe:n
-      \exp_after:wN\exp_after:wN\exp_after:wN
-      {\cs:w l_stex_notation_\l_stex_current_symbol_str _#1_cs \cs_end: {}}
-    }
+  \peek_charcode_remove:NTF ! {
+    \@@_invoke_op_notation:w [#1]
   }{
-    \stex_do_default_notation:
-    \tl_if_empty:NTF \l_stex_current_return_tl {
-      \l_stex_default_notation{\group_end:\_stex_eat_exclamation_point:}
+    \stex_debug:nn{expressions}{using~notation~#1~for~\l_stex_current_symbol_str}
+    \cs_if_exist:cTF{l_stex_notation_\l_stex_current_symbol_str _#1_cs}{
+      \tl_if_empty:NTF \l_stex_current_return_tl {
+        \stex_debug:nn{expressions}{return~empty}
+        \use:c{l_stex_notation_\l_stex_current_symbol_str _#1_cs}{\group_end:\_stex_eat_exclamation_point:}
+      }{
+        \stex_debug:nn{expressions}{return?}
+        \exp_after:wN\exp_after:wN\exp_after:wN
+        \@@_invoke_return_maybe:n
+        \exp_after:wN\exp_after:wN\exp_after:wN
+        {\cs:w l_stex_notation_\l_stex_current_symbol_str _#1_cs \cs_end: {}}
+      }
     }{
-      \exp_after:wN
-      \@@_invoke_return_maybe:n
-      \exp_after:wN
-      {\l_stex_default_notation {}}
+      \stex_do_default_notation:
+      \tl_if_empty:NTF \l_stex_current_return_tl {
+        \l_stex_default_notation{\group_end:\_stex_eat_exclamation_point:}
+      }{
+        \exp_after:wN
+        \@@_invoke_return_maybe:n
+        \exp_after:wN
+        {\l_stex_default_notation {}}
+      }
     }
   }
 }
@@ -6691,9 +6683,8 @@
 }
 
 \cs_new_protected:Nn \_stex_term_arg:nnn {
-  \stex_annotate:nn{ shtml:arg={#2}, shtml:argmode={#1}}{
-    \_stex_annotate_force_break:n{ #3 }
-  }
+  \_stex_annotate_force_break:n{ \stex_annotate:nn{ shtml:arg={#2}, shtml:argmode={#1}
+  }{ #3 }}
 }
 %    \end{macrocode}
 % \end{macro}
@@ -6881,7 +6872,7 @@
   \exp_args:NNe \use:nn \group_end: {
     \seq_put_right:Nn \exp_not:N \l_stex_aB_args_seq {
       \_stex_is_sequentialized:n{
-        \_stex_term_arg:nnnnn{#4\int_use:N\l_@@_count_int}{#4}{#5}{#6}{
+        \_stex_term_arg:nnnnn{#3\int_use:N\l_@@_count_int}{#4}{#5}{#6}{
           \bool_set_true:N \l_stex_allow_semantic_bool
           \str_set:Nn \exp_not:N \l_stex_current_symbol_str
             {\l_stex_current_symbol_str}
@@ -7225,7 +7216,7 @@
 
 
 \cs_new_protected:Nn \_@@_do_ref:nNn {
-  \stex_if_html_backend:T{\ifvmode\indent\fi}
+  \stex_if_html_backend:T{\relax\ifvmode\indent\fi}
   \bool_if:NTF \l_stex_allow_semantic_bool{
     \str_set:Nx\l_stex_current_symbol_str
       {\l_stex_get_symbol_mod_str ? \l_stex_get_symbol_name_str}
@@ -8276,7 +8267,7 @@
 % \begin{macro}{definiendum}
 %    \begin{macrocode}
 \cs_new_protected:Nn \_@@_do_defref:nn {
-  \stex_if_html_backend:T{\ifvmode\indent\fi}
+  \stex_if_html_backend:T{\relax\ifvmode\indent\fi}
   \group_begin:
   \stex_get_symbol:n{#1}
   \bool_if:NTF \l_stex_allow_semantic_bool{
@@ -8980,7 +8971,7 @@
   \stex_annotate_invisible:n{
     $
     \stex_annotate:nn{shtml:rule={scala://#1}}{
-      \_stex_annotate_force_break:n{
+      \_stex_annotate_force_break:n{~
         \seq_if_empty:NF \l_tmpa_seq {
           \seq_map_inline:Nn \l_tmpa_seq {
             \int_incr:N \l_tmpa_int
@@ -8990,7 +8981,7 @@
             }{ ##1 }
           }
         }
-      }
+      ~}
     }$
   }
 }
