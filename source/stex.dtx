@@ -62,6 +62,7 @@
 \RequirePackage{stex-logo} % externalized for backwards-compatibility reasons
 \RequirePackage{standalone}
 
+\bool_new:N \c_stex_use_sref_bool
 \message{^^J*~This~is~sTeX~version~4.0.0~*^^J}
 %    \end{macrocode}
 %
@@ -2010,9 +2011,11 @@
 % References are stored in the file |\jobname.sref|, to enable
 % cross-referencing external documents.
 %    \begin{macrocode}
-\iow_new:N \c_@@_iow
-\AtBeginDocument{\iow_open:Nn \c_@@_iow {\jobname.sref}}
-\AtEndDocument{\iow_close:N \c_@@_iow}
+\bool_if:NT \c_stex_use_sref_bool {
+  \iow_new:N \c_@@_iow
+  \AtBeginDocument{\iow_open:Nn \c_@@_iow {\jobname.sref}}
+  \AtEndDocument{\iow_close:N \c_@@_iow}
+}
 %    \end{macrocode}
 %
 % The following macros are written to the |.aux|-file, and hence
@@ -2042,28 +2045,34 @@
   \str_set:Nx \l_stex_ref_url_str {\stex_uri_use:N \l_stex_current_doc_uri ? \l_@@_str}
 }
 
-\cs_new_protected:Nn \stex_ref_new_doc_target:n {
-  \_stex_ref_new_id:n{#1}
-  %\stex_uri_add_module:NNo \l_@@_uri \l_stex_current_doc_uri \l_@@_str
-  %\stex_debug:nn{sref}{New~document~target:~\stex_uri_use:N \l_@@_uri}
-  \_@@_add_doc_ref:xo {\stex_uri_use:N \l_stex_current_doc_uri} \l_@@_str
-  \stex_if_smsmode:F {
-    \iow_now:Nx \c_@@_iow {
-      \STEXInternalSrefRestoreTarget
-      {\stex_uri_use:N \l_stex_current_doc_uri}
-      {\l_@@_str}
-      {\@currentcounter}
-      {\@currentlabel}
-      {
-        \tl_if_exist:NT\@currentlabelname{
-          \exp_args:No\exp_not:n\@currentlabelname
+\bool_if:NTF \c_stex_use_sref_bool {
+  \cs_new_protected:Nn \stex_ref_new_doc_target:n {
+    \_stex_ref_new_id:n{#1}
+    %\stex_uri_add_module:NNo \l_@@_uri \l_stex_current_doc_uri \l_@@_str
+    %\stex_debug:nn{sref}{New~document~target:~\stex_uri_use:N \l_@@_uri}
+    \_@@_add_doc_ref:xo {\stex_uri_use:N \l_stex_current_doc_uri} \l_@@_str
+    \stex_if_smsmode:F {
+      \iow_now:Nx \c_@@_iow {
+        \STEXInternalSrefRestoreTarget
+        {\stex_uri_use:N \l_stex_current_doc_uri}
+        {\l_@@_str}
+        {\@currentcounter}
+        {\@currentlabel}
+        {
+          \tl_if_exist:NT\@currentlabelname{
+            \exp_args:No\exp_not:n\@currentlabelname
+          }
         }
       }
+      \exp_args:Nx \label {sref@\l_stex_ref_url_str}
+      \stex_if_do_html:T {
+        \pdfdest name "sref@\l_stex_ref_url_str" xyz\relax
+      }
     }
-    \exp_args:Nx \label {sref@\l_stex_ref_url_str}
-    \stex_if_do_html:T {
-      \pdfdest name "sref@\l_stex_ref_url_str" xyz\relax
-    }
+  }
+}{
+  \cs_new_protected:Nn \stex_ref_new_doc_target:n {
+    \_stex_ref_new_id:n{#1}
   }
 }
 \NewDocumentCommand \sreflabel {m} {\stex_ref_new_doc_target:n {#1}}
