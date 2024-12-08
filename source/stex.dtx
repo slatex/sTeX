@@ -95,10 +95,6 @@
 %
 % \begin{sfragment}{Utilities}
 %
-%    \begin{macrocode}
-\cs_set_eq:NN \stex_undefined: \undefined
-%    \end{macrocode}
-%
 % \begin{sfragment}{Calling kpsewhich and Environment Variables}
 %
 %    \begin{macrocode}
@@ -260,62 +256,7 @@
 %    \end{macrocode}
 % \end{variable}
 %
-% we use the |lang|-package option to load the corresponding
-% babel languages:
-% \begin{macro}{\stex_set_language:n, \stex_set_language:x, \stex_set_language:o}
-%    \begin{macrocode}
-\cs_new_protected:Nn \stex_set_language:n {
-  \str_set:Nn \l_stex_current_language_str { #1 }
-  \prop_if_in:NnTF \c_stex_languages_prop {#1} {
-    \tl_set_rescan:Nnx \l_@@_lang_str {}{\prop_item:Nn \c_stex_languages_prop {#1}}
-    \cs_if_eq:NNTF\@onlypreamble\@notprerr{
-      \ltx@ifpackageloaded{babel}{
-        \exp_args:No\selectlanguage\l_@@_lang_str
-      }{}
-    }{
-      \ltx@ifpackageloaded{babel}{}{
-        \str_if_eq:nnTF {#1} {tr} {
-          \RequirePackage[turkish,shorthands=:!]{babel}
-        }{
-          \RequirePackage[\l_@@_lang_str]{babel}
-        }
-      }
-    }
-  }{
-    \msg_error:nnx{stex}{error/unknownlanguage}{#1}
-  }
-}
-\cs_generate_variant:Nn \stex_set_language:n {x,o}
-%    \end{macrocode}
-% \end{macro}
 %
-% \begin{macro}{\stex_language_from_file:}
-%    \begin{macrocode}
-\cs_new_protected:Nn \stex_language_from_file: {
-  \seq_get_right:NN \g_stex_current_file \l_tmpa_str
-  \seq_set_split:NnV \l_tmpa_seq . \l_tmpa_str
-  \seq_pop_right:NN \l_tmpa_seq \l_tmpa_str % = ".tex/.dtx/.sty"
-  \exp_args:No \str_if_eq:nnF \l_tmpa_str {tex} {
-    \exp_args:No \str_if_eq:nnF \l_tmpa_str {dtx} {
-      \exp_args:No \str_if_eq:nnF \l_tmpa_str {ltx} {
-        \exp_args:NNo \seq_put_right:Nn \l_tmpa_seq \l_tmpa_str
-      }
-    }
-  }
-  \seq_pop_left:NN \l_tmpa_seq \l_tmpa_str % <filename>
-  \seq_if_empty:NF \l_tmpa_seq { %remaining element should be [<something>.]language
-    \seq_pop_right:NN \l_tmpa_seq \l_@@_str
-    \str_if_eq:NNF \l_@@_str \l_stex_current_language_str {
-      \exp_args:NNo \prop_if_in:NnT \c_stex_languages_prop \l_@@_str {
-        \stex_set_language:o \l_@@_str
-      }
-    }
-    \stex_debug:nn{lang} {Language~\l_stex_current_language_str~
-      inferred~from~file~name}
-  }
-}
-%    \end{macrocode}
-% \end{macro}
 %
 % Loading babel:
 %    \begin{macrocode}
@@ -323,7 +264,10 @@
   \bool_set_false:N \l_@@_turkish_bool
   \seq_clear:N \l_tmpa_seq
   \clist_map_inline:Nn \c_stex_languages_clist {
-    \str_set:Nx \l_tmpa_str {#1}
+    \str_if_empty:NF \l_stex_current_language_str {
+      \str_set:Nn \l_stex_current_language_str {#1}
+    }
+    \str_set:Ne \l_tmpa_str {#1}
     \str_if_eq:nnT {#1}{tr}{
       \bool_set_true:N \l_@@_turkish_bool
     }
@@ -382,67 +326,51 @@
 %    \end{macrocode}
 %   \end{macro}
 %
-%   \begin{macro}{\stex_metagroup_new:n, \stex_metagroup_new:o}
-% List of all currently existing metagroup identifiers
+%   \begin{macro}{\stex_metagroup_new:}
+% Current metagroup group level
 %    \begin{macrocode}
-\seq_new:N \l_@@_ids_seq
+\int_new:N \l_@@_id_int
 %    \end{macrocode}
-% start a new metagroup at the current group level with id \#1
+% start a new metagroup at the current group level
 %    \begin{macrocode}
-\cs_new_protected:Nn \stex_metagroup_new:n {
-    \str_set:cx{l_@@_#1_int} {\int_use:N\currentgrouplevel}
-    \seq_put_right:Nn \l_@@_ids_seq {#1}
+\cs_new_protected:Nn \stex_metagroup_new: {
+  \int_set_eq:NN \l_@@_id_int \currentgrouplevel
 }
-\cs_generate_variant:Nn \stex_metagroup_new:n {o}
 %    \end{macrocode}
 %   \end{macro}
 %
-%   \begin{macro}{\stex_metagroup_do_in:nn, \stex_metagroup_do_in:nx}
+%   \begin{macro}{\stex_metagroup_do_in:n, \stex_metagroup_do_in:e}
 %    \begin{macrocode}
-\prg_new_conditional:Nnn \_@@_exists:n {TF} {
-    \str_if_exist:cTF{l_@@_#1_int}
-        \prg_return_true: \prg_return_false:
-}
-
-\cs_new_protected:Nn \stex_metagroup_do_in:nn {
-    \_@@_exists:nTF{#1}{
-        \_@@_do_in:nn{#1}{#2}
-    }{
-      \msg_error:nnn{stex}{error/metagroup/missing}{#1}
-    }
-}
-\cs_generate_variant:Nn \stex_metagroup_do_in:nn {nx}
-
-\cs_new_protected:Nn \_@@_do_in:nn {
-  \exp_args:Nnx\stex_debug:nn{metagroup}{adding~to~\detokenize{#1}:^^J\tl_to_str:n{#2}}
-  \tl_set:Nn\_@@_tmp{#2}
-  \exp_args:Nx \int_compare:nNnF {\use:c{l_@@_#1_int}}
-      = \currentgrouplevel {
-      \tl_if_exist:cTF{g_@@_#1_\the\currentgrouplevel _content}{
-        \exp_args:Nno \tl_gput_right:cn{g_@@_#1_\the\currentgrouplevel _content}
-      }{
-        \exp_args:Nno \tl_gset:cn{g_@@_#1_\the\currentgrouplevel _content}
-      }\_@@_tmp
-      \bool_if_exist:cF {l_@@_\the\currentgrouplevel _bool} {
-          \group_insert_after:N \_@@_do:
-          \bool_set_true:c {l_@@_\the\currentgrouplevel _bool}
-      }
+\cs_new_protected:Npn \stex_metagroup_do_in:n {
+  \int_compare:nNnTF \l_@@_id_int = 0 \use:n {
+    \int_compare:nNnTF \l_@@_id_int = \currentgrouplevel
+      \use:n \_@@_do_in:n
   }
-  \_@@_tmp
 }
+\cs_new_protected:Nn \_@@_do_in:n {
+  \tl_if_exist:cTF{g_@@_\the\currentgrouplevel _tl}{
+    \exp_args:Nno \tl_gput_right:cn{g_@@_\the\currentgrouplevel _tl}
+  }{
+    \exp_args:Nno \tl_gset:cn{g_@@_\the\currentgrouplevel _tl}
+  }{ #1 }
+  \bool_if_exist:cF {l_@@_\the\currentgrouplevel _bool} {
+      \group_insert_after:N \_@@_do:
+      \bool_set_true:c {l_@@_\the\currentgrouplevel _bool}
+  }
+}
+\cs_generate_variant:Nn \stex_metagroup_do_in:n {e}
+
 
 \cs_new_protected:Nn \_@@_do: {
-  \seq_map_inline:Nn \l_@@_ids_seq {
-    \tl_if_exist:cT{g_@@_##1_\int_eval:n{\currentgrouplevel+1}_content}{
-      \exp_args:NNno \exp_args:Nno \_@@_do_in:nn{##1}{
-        \csname g_@@_##1_\int_eval:n{\currentgrouplevel+1}_content\endcsname
-      }
-      \cs_undefine:c{g_@@_##1_\int_eval:n{\currentgrouplevel+1}_content}
+  \tl_if_exist:cT{g_@@_\int_eval:n{\currentgrouplevel+1}_tl}{
+    \exp_args:NNo \exp_args:No \stex_metagroup_do_in:n {
+      \csname g_@@_\int_eval:n{\currentgrouplevel+1}_tl \endcsname
     }
-    \bool_if_exist:cF {l_@@_\int_eval:n\currentgrouplevel _bool} {
-      \group_insert_after:N \_@@_do:
-      \bool_set_true:c {l_@@_\int_eval:n\currentgrouplevel _bool}
-    }
+    \cs_undefine:c{g_@@_\int_eval:n{\currentgrouplevel+1}_tl}
+  }
+  \bool_if_exist:cF {l_@@_\the\currentgrouplevel _bool} {
+    \group_insert_after:N \_@@_do:
+    \bool_set_true:c {l_@@_\the\currentgrouplevel _bool}
   }
 }
 %    \end{macrocode}
@@ -462,7 +390,7 @@
 \bool_set_true:N \_stex_html_do_output_bool
 
 \prg_new_conditional:Nnn \stex_if_do_html: {p,T,F,TF} {
-  \bool_if:nTF \_stex_html_do_output_bool
+  \bool_if:NTF \_stex_html_do_output_bool
     \prg_return_true: \prg_return_false:
 }
 %    \end{macrocode}
@@ -814,56 +742,6 @@
 %    \end{macrocode}
 % \end{macro}
 %
-% \begin{macro}[EXP]{\stex_macro_definition:N}
-%    \begin{macrocode}
-\cs_new:Nn \stex_macro_definition:N {
-  \_@@_prefix:e {\cs_prefix_spec:N #1}
-  \def\exp_not:N #1
-  \_@@_params:e {\cs_parameter_spec:N #1} 
-  {
-    \stex_macro_body:N #1
-  }
-}
-
-\cs_new:Nn \_@@_prefix:n {
-  \tl_if_empty:nF{#1}{
-    \str_if_eq:eeTF {
-      \tl_range:nnn{#1}{1}{10}~
-    }{\tl_to_str:n{\protected}}{
-      \protected
-      \_@@_prefix_long:e {
-          \str_range:nnn{#1}{11}{-1}
-      }
-    }{
-      \_@@_prefix_long:n {#1}
-    }
-  }
-}
-\cs_generate_variant:Nn \_@@_prefix:n {e}
-
-\cs_new:Nn \_@@_prefix_long:n {
-  \tl_if_empty:nF{#1}{
-    \str_if_eq:eeT {
-      \tl_range:nnn{#1}{1}{10}~
-    }{\tl_to_str:n{\long}}{\long}
-  }
-}
-\cs_generate_variant:Nn \_@@_prefix_long:n {e}
-
-\cs_new:Nn \_@@_params:n {
-  \tl_if_empty:nF{#1}{
-    \exp_args:NNe \str_if_eq:VnTF \c_hash_str {\tl_head:n{#1}}{
-      ####
-    }{
-      \tl_head:n{#1}
-    }
-    \_@@_params:e {\tl_tail:n{#1}}
-  }
-}
-\cs_generate_variant:Nn \_@@_params:n {e}
-%    \end{macrocode}
-% \end{macro}
-%
 % \end{sfragment}
 %
 % \begin{sfragment}{Persistence}
@@ -915,7 +793,6 @@
 % Is called at the end of the |.sty|-file:
 %
 %    \begin{macrocode}
-
 \cs_new_protected:Nn \_@@_load_file:n {
   \file_if_exist:nT{#1}{
     \group_begin:
@@ -972,30 +849,30 @@
 %<@@=stex_path>
 %    \end{macrocode}
 %
-% \begin{macro}{\stex_file_set:Nn, \stex_file_set:No, \stex_file_set:Nx}
+% \begin{macro}{\stex_file_set:Nn, \stex_file_set:No, \stex_file_set:Ne}
 %    \begin{macrocode}
 \cs_new_protected:Nn \stex_file_set:Nn {
   \str_if_empty:nTF {#2} { \seq_clear:N #1 }{
     \exp_args:NNno \seq_set_split:Nnn #1 / { \tl_to_str:n{#2} }
   }
 }
-\cs_generate_variant:Nn \stex_file_set:Nn {No, Nx}
+\cs_generate_variant:Nn \stex_file_set:Nn {No, Ne}
 %    \end{macrocode}
 % \end{macro}
 %
-% \begin{macro}{\stex_file_resolve:Nn, \stex_file_resolve:No, \stex_file_resolve:Nx}
+% \begin{macro}{\stex_file_resolve:Nn, \stex_file_resolve:No, \stex_file_resolve:Ne}
 %    \begin{macrocode}
 \sys_if_platform_windows:TF{
   \cs_new_protected:Npn \_@@_win_take:w #1#2#3 \_@@_: {
     \uppercase{ \str_set:Nn \l_@@_str{#1}}
-    \str_set:Nx \l_@@_win_drive {\l_@@_str #2}
+    \str_set:Ne \l_@@_win_drive {\l_@@_str #2}
     \str_set:Nn \l_@@_str{#3}
   }
   \cs_new_protected:Nn \stex_file_resolve:Nn {
     \str_set:Nn \l_@@_str {#2}
     \str_clear:N \l_@@_win_drive
     \exp_args:NNo \str_replace_all:Nnn \l_@@_str \c_backslash_str /
-    \exp_args:Nx \str_if_eq:nnT {\str_item:Nn \l_@@_str 2} : {
+    \exp_args:Ne \str_if_eq:nnT {\str_item:Nn \l_@@_str 2} : {
       \exp_after:wN \_@@_win_take:w \l_@@_str \_@@_:
     }
     \stex_file_set:No #1 \l_@@_str
@@ -1014,7 +891,7 @@
    % \stex_debug:nn{files}{Set~\tl_to_str:n{#1}~to~\stex_file_use:N #1}
   }
 }
-\cs_generate_variant:Nn \stex_file_resolve:Nn {No, Nx}
+\cs_generate_variant:Nn \stex_file_resolve:Nn {No, Ne}
 
 \cs_new_protected:Nn \_@@_canonicalize:N {
   \seq_if_empty:NF #1 {
@@ -1053,9 +930,9 @@
 \sys_if_platform_windows:TF {
   \prg_new_conditional:Nnn \stex_if_file_absolute:N {p, T, F, TF} {
     \seq_if_empty:NTF #1 \prg_return_false: {
-      \tl_set:Nx \l_@@_maybewin_str {\seq_item:Nn #1 1}
+      \tl_set:Ne \l_@@_maybewin_str {\seq_item:Nn #1 1}
       \exp_args:No \tl_if_empty:nTF \l_@@_maybewin_str \prg_return_true: {
-        \exp_args:Nx \str_if_eq:nnTF {\str_item:Nn \l_@@_maybewin_str 2} :
+        \exp_args:Ne \str_if_eq:nnTF {\str_item:Nn \l_@@_maybewin_str 2} :
           \prg_return_true: \prg_return_false:
       }
     }
@@ -1063,7 +940,7 @@
 }{
   \prg_new_conditional:Nnn \stex_if_file_absolute:N {p, T, F, TF} {
     \seq_if_empty:NTF #1 \prg_return_false: {
-      \exp_args:Nx \tl_if_empty:nTF {\seq_item:Nn #1 1}
+      \exp_args:Ne \tl_if_empty:nTF {\seq_item:Nn #1 1}
         \prg_return_true: \prg_return_false:
     }
   }
@@ -1114,7 +991,7 @@
   \seq_pop_right:NN #1 \l_@@_str
   \seq_set_split:NnV \l_@@_seq . \l_@@_str
   \seq_pop_right:NN \l_@@_seq \l_@@_str
-  \seq_put_right:Nx #1 {\seq_use:Nn \l_@@_seq .}
+  \seq_put_right:Ne #1 {\seq_use:Nn \l_@@_seq .}
 }
 \cs_new_protected:Nn \stex_file_split_off_lang:NN {
   \seq_set_eq:NN #1 #2
@@ -1127,222 +1004,7 @@
     \seq_put_right:No \l_@@_seq \l_@@_str
   }
 
-  \seq_put_right:Nx #1 {\seq_use:Nn \l_@@_seq .}
-}
-%    \end{macrocode}
-% \end{macro}
-%
-% URIs:
-%
-% \begin{macro}{\stex_map_uri:Nnnnn}
-%    \begin{macrocode}
-\cs_set_protected:Nn \_@@_auth:n {
-  \msg_error:nnx{stex}{error/misused-uri}{\tl_to_str:n{#1}}
-}
-\cs_set_eq:NN \_@@_path:n \_@@_auth:n
-\cs_set_eq:NN \_@@_module:n \_@@_auth:n
-\cs_set_eq:NN \_@@_name:n \_@@_auth:n
-
-\cs_set_protected:Nn \stex_map_uri:Nnnnn{
-  \stex_pseudogroup_with:nn{\_@@_auth:n\_@@_path:n\_@@_module:n\_@@_name:n}{
-    \cs_set:Npn \_@@_auth:n ##1 {#2}
-    \cs_set:Npn \_@@_path:n ##1 {#3}
-    \cs_set:Npn \_@@_module:n ##1 {#4}
-    \cs_set:Npn \_@@_name:n ##1 {#5}
-    #1
-  }
-}
-%    \end{macrocode}
-% \end{macro}
-%
-% \begin{macro}{\stex_uri_set:Nn, \stex_uri_set:No, \stex_uri_set:Nx}
-%    \begin{macrocode}
-\str_set:Nx\_@@_colonslash{\c_colon_str/}
-\cs_new_protected:Nn \_@@_uri_set:NnN {
-  \str_if_empty:nTF {#2} {
-    \msg_error:nnxx{stex}{error/invalid-uri}{\tl_to_str:n{#2}}{empty}
-  }{
-    \exp_args:NNNo \exp_args:NNno \seq_set_split:Nnn #1 \_@@_colonslash { \tl_to_str:n{#2} }
-    \seq_pop_left:NN #1 \l_@@_auth_str
-    \seq_if_empty:NTF #1 {
-      \msg_error:nnxx{stex}{error/invalid-uri}{\tl_to_str:n{#2}}{missing~authority}
-    }{
-      \exp_args:NNnx \seq_set_split:Nnn #1 ? {\exp_args:NNo \seq_use:Nn #1 \_@@_colonslash }
-      \seq_pop_left:NN #1 \l_@@_path
-      #3 \l_@@_path \l_@@_path
-      \seq_if_empty:NTF #1 {
-        \exp_args:NNo \_@@_uri_set:Nnxnn #1 \l_@@_auth_str 
-          {\stex_file_use:N \l_@@_path} {} {}
-      }{
-        \seq_pop_left:NN #1 \l_@@_mod
-        \seq_if_empty:NTF #1 {
-          \exp_args:NNo \_@@_uri_set:Nnxon #1 \l_@@_auth_str 
-            {\stex_file_use:N \l_@@_path} \l_@@_mod {}
-        }{
-          \seq_pop_left:NN #1 \l_@@_name
-          \seq_if_empty:NTF #1 {
-            \exp_args:NNo \_@@_uri_set:Nnxon #2 \l_@@_auth_str 
-              {\stex_file_use:N \l_@@_path} \l_@@_mod \l_@@_name
-          }{
-            \msg_error:nnxx{stex}{error/invalid-uri}{\tl_to_str:n{#2}}{too~many~?s}
-          }
-        }
-      }
-    }
-  }
-  \stex_debug:nn{uris}{Set~\tl_to_str:n{#1}~to~\stex_uri_use:N #1}
-}
-
-\cs_new_protected:Nn \_@@_uri_set:Nnnnn{
-  \tl_set:Nn #1 {
-    \_@@_auth:n{ #2 }
-    \_@@_path:n{ #3 }
-    \_@@_module:n{ #4 }
-    \_@@_name:n{ #5 }
-  }
-}
-\cs_generate_variant:Nn\_@@_uri_set:Nnnnn {Nnxnn,Nnxon,Nnxoo}
-
-\cs_new_protected:Nn \stex_uri_set:Nn {
-  \_@@_uri_set:NnN #1 {#2} \stex_file_set:No
-}
-\cs_generate_variant:Nn \stex_uri_set:Nn {No, Nx}
-%    \end{macrocode}
-% \end{macro}
-%
-% \begin{macro}{\stex_uri_resolve:Nn, \stex_uri_resolve:No, \stex_uri_resolve:Nx}
-%    \begin{macrocode}
-\cs_new_protected:Nn \stex_uri_resolve:Nn {
-  \_@@_uri_set:NnN #1 {#2} \stex_file_resolve:No
-}
-\cs_generate_variant:Nn \stex_uri_resolve:Nn {No, Nx}
-%    \end{macrocode}
-% \end{macro}
-%
-% \begin{macro}[EXP]{\stex_uri_use:N}
-%    \begin{macrocode}
-\cs_new:Npn \_@@_uri_use:w \_@@_auth:n #1 \_@@_path:n #2 \_@@_module:n #3 \_@@_name:n #4 {
-  #1\c_colon_str/ #2 \tl_if_empty:nF { #3 }{ ? #3 
-    \tl_if_empty:nF { #4 }{ ? #4 } }
-}
-\cs_new:Nn \stex_uri_use:N {
-  \exp_args:Ne \cs_if_eq:NNTF { \tl_head:N #1 } \_@@_auth:n {
-    \exp_after:wN \_@@_uri_use:w #1
-  }{
-    \msg_error:nnnn{stex}{error/invalid-uri}{#1}{Not~a~URI}
-  }
-}
-%    \end{macrocode}
-% \end{macro}
-%
-% \begin{macro}{\stex_uri_from_repo_file:NNNn, \stex_uri_from_repo_file_nolang:NNNn}
-%    \begin{macrocode}
-\cs_new_protected:Npn \stex_uri_from_repo_file_nolang:NNNn {
-  \_@@_from_repo_file:NNNNn \stex_file_split_off_lang:NN
-}
-\cs_new_protected:Npn \stex_uri_from_repo_file:NNNn {
-  \_@@_from_repo_file:NNNNn \stex_file_split_off_ext:NN
-}
-
-\cs_new_protected:Nn \_@@_from_repo_file:NNNNn {
-  #1 \l_@@_file #4
-  \prop_if_exist:NTF #3 {
-    \str_clear:N \l_@@_uri
-    \prop_get:NnNF #3 {#5} \l_@@_uri {
-      \prop_get:NnNF #3 {ns} \l_@@_uri {
-        \_@@_uri_set:Nnxnn #2 {file} 
-          {\stex_file_use:N \l_@@_file} {} {}
-      }
-    }
-    \str_if_empty:NF \l_@@_uri {\_@@_relativize:N #2}
-  }{
-    \exp_args:NNx \_@@_uri_set:Nnxnn #2 {\tl_to_str:n{file}} 
-      {\stex_file_use:N \l_@@_file} {} {}
-  }
-}
-
-\cs_new_protected:Nn \_@@_relativize:N {
-  \seq_set_eq:NN \l_@@_seq \l_@@_file 
-  \seq_map_inline:Nn \c_stex_mathhub_file { % mathhub path
-    \seq_pop_left:NN \l_@@_seq \l_@@_tl
-  }
-  \stex_file_set:Nx \l_@@_path {\prop_item:Nn \l_stex_current_archive_prop {id} }
-  \seq_map_inline:Nn \l_@@_path { % id
-    \seq_pop_left:NN \l_@@_seq \l_@@_tl
-  }
-  \seq_pop_left:NN \l_@@_seq \l_@@_tl % source
-
-  \stex_uri_set:Nx #1 { \l_@@_uri / \stex_file_use:N \l_@@_seq }
-}
-%    \end{macrocode}
-% \end{macro}
-%
-% \begin{macro}{\stex_uri_from_current_file:Nn, \stex_uri_from_current_file_nolang:Nn}
-%    \begin{macrocode}
-\cs_new_protected:Nn \stex_uri_from_current_file:Nn {
-  \stex_debug:nn{docuri}{Here:~\stex_file_use:N \g_stex_current_file}
-  \stex_uri_from_repo_file:NNNn #1 \l_stex_current_archive_prop
-    \g_stex_current_file {#2}
-  \stex_debug:nn{docuri}{resolved:~\stex_uri_use:N #1}
-}
-\cs_new_protected:Nn \stex_uri_from_current_file_nolang:Nn {
-  \stex_uri_from_repo_file_nolang:NNNn #1 \l_stex_current_archive_prop
-    \g_stex_current_file {#2}
-}
-%    \end{macrocode}
-% \end{macro}
-%
-% \begin{macro}{\stex_uri_add_module:NNn, \stex_uri_add_module:NNo}
-%    \begin{macrocode}
-\cs_new_protected:Nn \stex_uri_add_module:NNn {
-  \exp_args:Ne \cs_if_eq:NNTF { \tl_head:N #2 } \_@@_auth:n {
-    \stex_pseudogroup_with:nn
-      {\_@@_auth:n\_@@_path:n\_@@_module:n\_@@_name:n}
-      {
-        \cs_set:Npn \_@@_module:n ##1 {
-          \tl_if_empty:nTF{##1}{
-            \exp_not:N \_@@_module:n {#3}
-          }{
-            \msg_error:nnn{stex}{error/invalid-dpath}{#2}
-          }
-        }
-        \cs_set:Npn \_@@_name:n ##1 {
-          \tl_if_empty:nTF{##1}{
-            \exp_not:N \_@@_name:n {}
-          }{
-            \msg_error:nnn{stex}{error/invalid-dpath}{#2}
-          }
-        }
-        \tl_set:Nx #1 {#2}
-      }
-  }{
-    \msg_error:nnnn{stex}{error/invalid-uri}{#2}{Not~a~URI}
-  }
-}
-\cs_generate_variant:Nn \stex_uri_add_module:NNn {NNo}
-%    \end{macrocode}
-% \end{macro}
-%
-% \begin{variable}{\l_stex_current_doc_uri}
-%    \begin{macrocode}
-\tl_new:N \l_stex_current_doc_uri
-%    \end{macrocode}
-% \end{variable}
-%
-% \begin{macro}{\stex_set_document_uri:}
-%    \begin{macrocode}
-\cs_new_protected:Nn \stex_set_document_uri: {
-  \stex_uri_from_current_file:Nn \l_stex_current_doc_uri {narr}
-  %\stex_debug:nn{sref}{Document~URI:~\stex_uri_use:N \l_stex_current_doc_uri}
-}
-%    \end{macrocode}
-% \end{macro}
-%
-% \begin{macro}{\stex_set_current_namespace:}
-%    \begin{macrocode}
-\cs_new_protected:Nn \stex_set_current_namespace: {
-  \stex_uri_from_current_file_nolang:Nn \l_stex_current_ns_uri {source-base}
-  %\stex_debug:nn{modules}{Namespace~URI:~\stex_uri_use:N \l_stex_current_ns_uri}
+  \seq_put_right:Ne #1 {\seq_use:Nn \l_@@_seq .}
 }
 %    \end{macrocode}
 % \end{macro}
@@ -1358,13 +1020,11 @@
 }
 \stex_file_resolve:No \c_stex_pwd_file \l_@@_str
 \seq_set_eq:NN \c_stex_main_file \c_stex_pwd_file
-\seq_put_right:Nx \c_stex_main_file {\jobname\tl_to_str:n{.tex}}
+\seq_put_right:Ne \c_stex_main_file {\jobname\tl_to_str:n{.tex}}
 
 \stex_debug:nn {files} {PWD:~\stex_file_use:N \c_stex_pwd_file}
 %    \end{macrocode}
 % \end{variable}
-%
-% \end{sfragment}
 %
 % \begin{sfragment}{File Hooks}
 %
@@ -1383,21 +1043,14 @@
     \stex_file_resolve:No \g_stex_current_file {#1.tex}
   }
   \stex_if_file_absolute:NF \g_stex_current_file {
-    \stex_file_resolve:Nx \g_stex_current_file {
+    \stex_file_resolve:Ne \g_stex_current_file {
       \stex_file_use:N \c_stex_pwd_file / \stex_file_use:N \g_stex_current_file
     }
   }
   \seq_gset_eq:NN \g_stex_current_file \g_stex_current_file
-  \exp_args:NNx \seq_gpush:Nn \g_@@_stack {\stex_file_use:N \g_stex_current_file}
+  \seq_gpush:Ne \g_@@_stack {{\stex_file_use:N \g_stex_current_file}{\l_stex_current_document_uri}}
   \_stex_every_file:
 }
-
-\cs_new_protected:Nn \_stex_every_file: {  
-  \stex_set_document_uri:
-  \stex_language_from_file:
-  \stex_set_current_namespace:
-}
-%\AtBeginDocument{\_stex_every_file:}
 %    \end{macrocode}
 % \end{macro}
 %
@@ -1405,20 +1058,37 @@
 %    \begin{macrocode}
 \cs_new_protected:Nn \stex_filestack_pop: {
   \seq_if_empty:NF \g_@@_stack {
-    \seq_gpop:NN \g_@@_stack \l_@@_str
+    \seq_gpop:NN \g_@@_stack \l_@@_tl
   }
   \seq_if_empty:NTF \g_@@_stack {
     \seq_gset_eq:NN \g_stex_current_file \c_stex_main_file
+    \seq_set_eq:NN \l_stex_current_document_uri \c_stex_main_document_uri
   }{
-    \seq_get:NN \g_@@_stack \l_@@_str
-    \exp_args:NNo \stex_file_set:Nn \g_stex_current_file \l_@@_str
-    \seq_gset_eq:NN \g_stex_current_file \g_stex_current_file
+    \seq_get:NN \g_@@_stack \l_@@_tl
+    \exp_after:wN \_@@_file_uri:nn \l_@@_tl
   }
   \_stex_every_file:
 }
+
+\cs_new_protected:Nn \_@@_file_uri:nn {
+  \stex_file_set:Nn \g_stex_current_file {#1}
+  \tl_set:Nn \l_stex_current_document_uri {#2}
+  \str_set:Ne \l_stex_current_ns_uri { \stex_ns_from_doc:N \l_stex_current_document_uri }
+  \str_set:Ne \l_stex_current_language_str { \stex_language_from_doc:N \l_stex_current_document_uri}
+}
 %    \end{macrocode}
 % \end{macro}
-
+%
+% \begin{macro}{\_stex_every_file:}
+%    \begin{macrocode}
+\cs_new_protected:Nn \_stex_every_file: {  
+  %\stex_set_document_uri:
+  %\stex_language_from_file:
+  %\stex_set_current_namespace:
+}
+%    \end{macrocode}
+% \end{macro}
+%
 % Hooks for the current file:
 %
 %    \begin{macrocode}
@@ -1438,13 +1108,146 @@
 }
 \tl_new:N \l_@@_do_hooks_pre_tl {}
 
-\AddToHook{file/before}{
-  \l_@@_do_hooks_pre_tl
-}
-%\AddToHook{file/after}{ \stex_filestack_pop: }
+\AddToHook{file/before}{ \l_@@_do_hooks_pre_tl }
 %    \end{macrocode}
 %
 % \end{sfragment}
+%
+%
+% URIs:
+%
+% \begin{macro}{\stex_map_uri:Nnnnn}
+%    \begin{macrocode}
+\tl_const:Ne \c_stex_no_archive_uri {
+  {\tl_to_str:n{http://unknown.source}}
+  {\tl_to_str:n{no/archive}}
+}
+
+\cs_new_protected:Nn \stex_uri_from_archive_file:Nn {
+  \stex_file_set:Nn \l_@@_file {#2}
+  \_@@_split_file:N \l_@@_file
+  \prop_if_exist:NTF \l_stex_current_archive_prop {
+    \prop_get:NnNTF \l_stex_current_archive_prop {url-base} \l_@@_uri {
+      \tl_set:Ne \l_@@_uri {
+        {\l_@@_uri}
+        {\prop_item:Nn \l_stex_current_archive_prop {id}}
+      }
+    } {
+      \tl_set:Ne \l_@@_uri {
+        {\tl_to_str:n{http://mathhub.info}}
+        {\prop_item:Nn \l_stex_current_archive_prop {id}}
+      }
+    }
+  }{
+    \tl_set_eq:NN \l_@@_uri \c_stex_no_archive_uri
+  }
+  \tl_set:Ne #1 {
+    \l_@@_uri
+    { \stex_file_use:N \l_@@_path_seq }
+    { \l_@@_name_str }
+    { \l_@@_lang_str }
+    {}
+  }
+}
+
+\cs_new_protected:Nn \_@@_split_file:N {
+  \seq_set_eq:NN \l_@@_path_seq #1
+  \seq_pop_right:NN \l_@@_path_seq \l_@@_name_str
+  \seq_set_split:NnV \l_tmpa_seq . \l_@@_name_str
+  \seq_pop_right:NN \l_tmpa_seq \l_@@_lang_str % .tex
+  \seq_pop_right:NN \l_tmpa_seq \l_@@_lang_str % actual language maybe?
+  \str_if_empty:NTF \l_@@_lang_str {
+    \str_set_eq:NN \l_@@_lang_str \l_stex_current_language_str
+  }{
+    \prop_if_in:NoF \c_stex_languages_prop \l_@@_lang_str {
+      \seq_put_right:No \l_tmpa_seq \l_@@_lang_str
+      \str_set:Nn \l_@@_lang_str {en}
+    }
+  }
+  \str_set:Ne \l_@@_name_str {\seq_use:Nn \l_tmpa_seq .}
+}
+
+
+\cs_set:Nn \_@@_base_uri:n { #1 }
+\cs_set:Ne \_@@_archive_uri:nn { #1 \tl_to_str:n{?a=} #2 }
+\cs_set:Ne \_@@_path_uri:nnn { 
+  \_@@_archive_uri:nn{#1}{#2}
+  \exp_not:N\tl_if_empty:nF{#3}{\c_ampersand_str\tl_to_str:n{p=}#3}
+}
+
+\cs_set:Nn \stex_module_uri:N {
+  \exp_after:wN \_@@_module_uri:nnnnn #1
+}
+
+\cs_set:Ne \_@@_module_uri:nnnnn { 
+  \_@@_archive_uri:nn{#1}{#2}
+  \exp_not:N\tl_if_empty:nF{#3}{\c_ampersand_str\tl_to_str:n{p=}#3}
+  \c_ampersand_str\tl_to_str:n{m=}#4
+  \c_ampersand_str\tl_to_str:n{l=}#5
+}
+\cs_set:Ne \_@@_symbol_uri:nnnnnn { 
+  \_@@_archive_uri:nn{#1}{#2}
+  \exp_not:N\tl_if_empty:nF{#3}{\c_ampersand_str\tl_to_str:n{p=}#3}
+  \c_ampersand_str\tl_to_str:n{m=}#4
+  \c_ampersand_str\tl_to_str:n{l=}#5
+  \c_ampersand_str\tl_to_str:n{s=}#6
+}
+
+\cs_set:Nn \stex_document_uri:N {
+  \exp_after:wN \_@@_document_uri:nnnnnn #1
+}
+
+\cs_set:Ne \_@@_document_uri:nnnnnn { 
+  \_@@_archive_uri:nn{#1}{#2}
+  \exp_not:N\tl_if_empty:nF{#3}{\c_ampersand_str\tl_to_str:n{p=}#3}
+  \c_ampersand_str\tl_to_str:n{d=}#4
+  \c_ampersand_str\tl_to_str:n{l=}#5
+}
+\cs_set:Ne \_@@_doc_elem_uri:nnnnnn { 
+  \_@@_archive_uri:nn{#1}{#2}
+  \exp_not:N\tl_if_empty:nF{#3}{\c_ampersand_str\tl_to_str:n{p=}#3}
+  \c_ampersand_str\tl_to_str:n{d=}#4
+  \c_ampersand_str\tl_to_str:n{l=}#5
+  \c_ampersand_str\tl_to_str:n{e=}#6
+}
+
+\cs_set_protected:Npn \stex_new_module_uri:Nn #1 {
+  \exp_after:wN \_@@_new_mod:Nnnnnnnn \exp_after:wN #1 \l_stex_current_document_uri
+}
+\cs_set_protected:Nn \_@@_new_mod:Nnnnnnnn {
+  % #1:macro
+  % #2:ns #3:archive #4:path #5:name #6:language #7:e #8:new name
+  \tl_set:Ne #1 {
+    {#2}{#3}
+    \str_if_eq:nnTF{#5}{#8}{
+      {#4}{#5}{#6}
+    }{
+      {#4/#5}{\tl_to_str:n{#8}}{#6}
+    }
+  }
+}
+
+\cs_set:Nn \stex_ns_from_doc:N {
+  \exp_after:wN \use_i:nnnnnn #1
+}
+\cs_set:Nn \stex_language_from_doc:N {
+  \exp_after:wN \use_v:nnnnnn #1
+}
+\cs_set:Nn \stex_name_from_doc:N {
+  \exp_after:wN \use_iv:nnnnnn #1
+}
+
+\cs_set_protected:Npn \stex_mod_append_name:Nn #1 {
+  \exp_after:wN \_@@_append:Nnnnnnn \exp_after:wN #1 #1
+}
+\cs_set_protected:Nn \_@@_append:Nnnnnnn {
+  \tl_set:Ne #1 {{#2}{#3}{#4}{#5}{#6 / \tl_to_str:n{#7}}}
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \end{sfragment}
+%
 %
 % \end{sfragment}
 %
@@ -1453,11 +1256,10 @@
 %<@@=stex_mathhub>
 %    \end{macrocode}
 %
-% \begin{variable}{\mathhub, \c_stex_home_file,\c_stex_mathhub_file}
+% \begin{variable}{\mathhub, \c_stex_home_file,\c_stex_mathhub_files}
 % The path to the mathhub directory. If the \cs{mathhub}-macro is not set,
 % we query |kpsewhich| for the |MATHHUB| system variable.
 %    \begin{macrocode}
-
 \sys_if_platform_windows:TF{
   \stex_get_env:Nn \l_@@_str {homedrive\c_percent_str\c_percent_str homepath}
 }{
@@ -1488,18 +1290,28 @@
 
 \str_if_empty:NTF \l_@@_str {
   \msg_warning:nn{stex}{warning/nomathhub}
-  \exp_args:NNe \stex_file_set:Nn \c_stex_mathhub_file {\stex_file_use:N \c_stex_home_file \tl_to_str:n{/MathHub}}
+  \stex_file_set:Ne \l_tmpa_seq {\stex_file_use:N \c_stex_home_file \tl_to_str:n{/MathHub}}
+  \seq_new:N \c_stex_mathhub_files
+  \seq_push:Ne \c_stex_mathhub_files {\stex_file_use:N \l_tmpa_seq}
+  %\stex_file_set:Ne \c_stex_mathhub_file {\stex_file_use:N \c_stex_home_file \tl_to_str:n{/MathHub}}
 }{
-  \stex_file_resolve:No \c_stex_mathhub_file \l_@@_str
-  \stex_if_file_absolute:NF \c_stex_mathhub_file {
-    \exp_args:NNe \stex_file_resolve:Nn \c_stex_mathhub_file {
-      \stex_file_use:N \c_stex_main_file / .. / \l_@@_str
+  \seq_new:N \c_stex_mathhub_files
+  \seq_set_split:NnV \l_tmpa_seq , \l_@@_str
+  \seq_map_inline:Nn \l_tmpa_seq {
+    \stex_file_resolve:Nn \l_@@_str {#1}
+    \stex_if_file_absolute:NF \l_@@_str {
+      \stex_file_resolve:Ne \l_@@_str {
+        \stex_file_use:N \c_stex_main_file / .. / #1
+      }
+    }
+    \seq_put_right:Ne \c_stex_mathhub_files {
+      \stex_file_use:N \l_@@_str
     }
   }
 }
 
-\exp_args:NNe \str_set:Nn \mathhub {\stex_file_use:N \c_stex_mathhub_file}
-\stex_debug:nn{mathhub}{MATHHUB:~\mathhub}
+\exp_args:NNe \str_set:Nn \mathhub {\seq_use:Nn \c_stex_mathhub_files ,}
+\stex_debug:nn{mathhub}{MATHHUBs:~\mathhub}
 %    \end{macrocode}
 % \end{variable}
 %
@@ -1549,7 +1361,7 @@
 %    \begin{macrocode}
 \cs_new_protected:Nn \stex_require_archive:n {
   \prop_if_exist:cF { c_stex_mathhub_#1_manifest_prop } {
-    \seq_if_empty:NTF \c_stex_mathhub_file {
+    \seq_if_empty:NTF \c_stex_mathhub_files {
       \msg_fatal:nn{stex}{warning/nomathhub}
     }{
       \stex_debug:nn{mathhub}{Opening~archive:~#1}
@@ -1565,20 +1377,25 @@
 %
 %    \begin{macrocode}
 \cs_new_protected:Nn \_@@_do_manifest:n {
-  \exp_args:Ne \_@@_find_manifest:n {\stex_file_use:N \c_stex_mathhub_file / #1}
+  \seq_map_inline:Nn \c_stex_mathhub_files {
+    \_@@_find_manifest:nn {##1}{#1}
+    \str_if_empty:NF \l_@@_manifest_str \seq_map_break:
+  }
+  %\exp_args:Ne \_@@_find_manifest:n {\stex_file_use:N \c_stex_mathhub_file / #1}
   \str_if_empty:NT \l_@@_manifest_str {
     \msg_fatal:nnee{stex}{error/noarchive}
-      {#1}{\stex_file_use:N \c_stex_mathhub_file}
+      {#1}{\seq_use:Nn \c_stex_mathhub_files ,}
   }
   \_@@_parse_manifest:n {#1}
 }
 
-\cs_new_protected:Nn \_@@_find_manifest:n {
-  \str_clear:N \l_@@_manifest_str 
-  \seq_set_split:Nnn \l_@@_seq / {#1}
+\cs_new_protected:Nn \_@@_find_manifest:nn {
+  \str_clear:N \l_@@_manifest_str
+  \seq_set_split:Nnn \l_tmpa_seq / { #1 }
+  \seq_set_split:Nnn \l_@@_seq / {#1 / #2}
   \bool_set_true:N \l_@@_bool
   \bool_while_do:Nn \l_@@_bool {
-    \tl_if_eq:NNTF \l_@@_seq \c_stex_mathhub_file {
+    \tl_if_eq:NNTF \l_@@_seq \l_tmpa_seq {
       \bool_set_false:N \l_@@_bool
     }{
       \_@@_check_manifest:
@@ -1588,7 +1405,6 @@
     }
   }
 }
-\cs_generate_variant:Nn \_@@_find_manifest:n {x}
 
 \cs_new_protected:Nn \_@@_check_manifest: {
   \_@@_check_manifest:n {MANIFEST.MF}
@@ -1604,7 +1420,7 @@
   \stex_debug:nn{mathhub}{Checking~\stex_file_use:N \l_@@_seq / #1}
   \file_if_exist:nT {\stex_file_use:N \l_@@_seq / #1} {
     \bool_set_false:N \l_@@_bool
-    \str_set:Nx \l_@@_manifest_str {\stex_file_use:N \l_@@_seq / #1}
+    \str_set:Ne \l_@@_manifest_str {\stex_file_use:N \l_@@_seq / #1}
   }
 }
 
@@ -1612,27 +1428,30 @@
 \cs_new_protected:Nn \_@@_parse_manifest:n {
   \ior_open:Nn \c_@@_manifest_ior \l_@@_manifest_str
   \prop_clear:N \l_@@_prop
+  \prop_put:Nne \l_@@_prop {file}{\stex_file_use:N \l_@@_seq}
   \ior_map_inline:Nn \c_@@_manifest_ior {
     \exp_args:NNNo \exp_args:NNNx 
       \seq_set_split:Nnn \l_@@_seq \c_colon_str {\tl_to_str:n{##1}}
     \seq_pop_left:NNT \l_@@_seq \l_@@_key {
       \exp_args:NNo \str_set:Nn \l_@@_key \l_@@_key
-      \str_set:Nx \l_@@_val {\seq_use:Nn \l_@@_seq :}
+      \str_set:Ne \l_@@_val {\seq_use:Nn \l_@@_seq :}
       \str_case:Nn \l_@@_key {
         {id}              {\prop_put:Nno \l_@@_prop { id }      \l_@@_val }
-        {narration-base}  {\prop_put:Nno \l_@@_prop { narr }    \l_@@_val }
+        %{narration-base}  {\prop_put:Nno \l_@@_prop { narr }    \l_@@_val }
         {url-base}        {\prop_put:Nno \l_@@_prop { docurl }  \l_@@_val }
-        {source-base}     {\prop_put:Nno \l_@@_prop { ns }      \l_@@_val }
-        {ns}              {\prop_put:Nno \l_@@_prop { ns }      \l_@@_val }
+        %{source-base}     {\prop_put:Nno \l_@@_prop { ns }      \l_@@_val }
+        %{ns}              {\prop_put:Nno \l_@@_prop { ns }      \l_@@_val }
       }
     }
   }
   \ior_close:N \c_@@_manifest_ior
   \prop_gset_eq:cN { c_stex_mathhub_#1_manifest_prop } \l_@@_prop
   \stex_debug:nn{mathhub}{Result:~\prop_to_keyval:N \l_@@_prop}
+  \prop_set_eq:NN \l_tmpa_prop \l_@@_prop
+  \prop_remove:Nn \l_tmpa_prop {file}
   \stex_persist:e {
     \prop_gset_from_keyval:cn {c_stex_mathhub_#1_manifest_prop}{
-      \prop_to_keyval:N \l_@@_prop
+      \prop_to_keyval:N \l_tmpa_prop
     }
   }
 }
@@ -1641,9 +1460,12 @@
 % Current MathHub archive
 % \begin{variable}{\c_stex_main_archive_prop, \l_stex_current_archive_prop}
 %    \begin{macrocode}
-\cs_new_protected:Nn \_stex_main_archive: {
-  \stex_if_file_starts_with:NNTF \c_stex_pwd_file \c_stex_mathhub_file {
-    \_@@_find_manifest:x { \stex_file_use:N \c_stex_pwd_file }
+\seq_map_inline:Nn \c_stex_mathhub_files {
+  \seq_set_split:Nnn \l_tmpa_seq / {#1}
+  \stex_if_file_starts_with:NNT \c_stex_pwd_file \l_tmpa_seq {
+    \seq_set_eq:NN \l_tmpb_seq \c_stex_pwd_file
+    \seq_map_inline:Nn \l_tmpa_seq { \seq_pop_left:NN \l_tmpb_seq \l_tmpa_tl }
+    \exp_args:Nne \_@@_find_manifest:nn {#1} { \stex_file_use:N \l_tmpb_seq }
     \str_if_empty:NTF \l_@@_manifest_str {
       \stex_debug:nn{mathhub}{Not~currently~in~a~MathHub~archive}
     }{
@@ -1654,6 +1476,7 @@
         \l_@@_str
       \prop_set_eq:cN { c_stex_mathhub_\l_@@_str _manifest_prop }
         \c_stex_main_archive_prop
+      \prop_set_eq:NN \l_stex_current_archive_prop \c_stex_main_archive_prop
       \exp_args:No \stex_set_current_archive:n { \l_@@_str }
       \stex_debug:nn{mathhub}{Current~archive:~
         \prop_item:Nn \l_stex_current_archive_prop {id}
@@ -1661,27 +1484,58 @@
       \bool_if:NT \c_stex_persist_write_mode_bool {
         \tl_put_right:Nx \_stex_persist_read_now: {
           \stex_persist:n {
-            \prop_gset_from_keyval:cn {c_stex_mathhub_\l_@@_str _manifest_prop}{
-              \prop_to_keyval:N \c_stex_main_archive_prop
-            }
-            \prop_gset_eq:Nc \exp_not:N \l_stex_current_archive_prop { 
-              c_stex_mathhub_\l_@@_str _manifest_prop 
-            }
-            \prop_gset_eq:Nc \exp_not:N \c_stex_main_archive_prop { 
-              c_stex_mathhub_\l_@@_str _manifest_prop 
-            }
+            \prop_gset_eq:cN{c_stex_mathhub_\l_@@_str _manifest_prop }\exp_not:N\c_stex_mathhub_main_manifest_prop
+            \prop_gset_eq:NN \exp_not:N \l_stex_current_archive_prop\exp_not:N\c_stex_mathhub_main_manifest_prop
+            \prop_gset_eq:NN \exp_not:N \c_stex_main_archive_prop\exp_not:N\c_stex_mathhub_main_manifest_prop
           }
         }
       }
     }
-  }{
-    \stex_debug:nn{mathhub}{Not~currently~in~the~MathHub~directory}
+    \seq_map_break:
+  }
+}
+\prop_if_exist:NF \c_stex_main_archive_prop {
+  \stex_debug:nn{mathhub}{Not~currently~in~the~MathHub~directory}
+}
+
+\cs_new_protected:Npn \_stex_need_archive_path: {
+  \prop_get:NnNF \l_stex_current_archive_prop {file} \l_stex_archive_path_str {
+    \cs_undefine:c { c_stex_mathhub_ \prop_item:Nn \l_stex_current_archive_prop {id} _manifest_prop }
+    \exp_args:Ne \stex_require_archive:n { \prop_item:Nn \l_stex_current_archive_prop {id} }
+    \prop_set_eq:Nc \l_stex_current_archive_prop { c_stex_mathhub_ \prop_item:Nn \l_stex_current_archive_prop {id} _manifest_prop }
+    \prop_get:NnN \l_stex_current_archive_prop {file} \l_stex_archive_path_str
   }
 }
 
-%\bool_if:NF \c_stex_persist_mode_bool {
-  \_stex_main_archive:
-%}
+\cs_new_protected:Nn \stex_source_path:Nn {
+  \prop_if_exist:NTF \l_stex_current_archive_prop {
+    \_stex_need_archive_path:
+    \exp_args:NNo \str_set:Nn #1 { \l_stex_archive_path_str / source / #2 }
+  }{
+    \str_set:Nn #1 { #2 }
+  }
+}
+
+\prop_if_exist:NTF \l_stex_current_archive_prop {
+  \prop_get:NnN \l_stex_current_archive_prop {file} \l_tmpa_str
+  \seq_set_split:NnV \l_tmpa_seq , \l_tmpa_str
+  \seq_set_eq:NN \l_tmpb_seq \c_stex_main_file
+  \seq_map_inline:Nn \l_tmpa_seq {
+    \seq_pop_left:NN \l_tmpb_seq \l_tmpa_tl
+  }
+  \seq_pop_left:NN \l_tmpb_seq \l_tmpa_tl
+  \exp_args:NNe \stex_uri_from_archive_file:Nn \l_stex_current_document_uri {
+    \stex_file_use:N \l_tmpb_seq
+  }
+}{
+  \exp_args:NNe \stex_uri_from_archive_file:Nn \l_stex_current_document_uri {
+    \stex_file_use:N \c_stex_main_file
+  }
+}
+
+\tl_set_eq:NN \c_stex_main_document_uri \l_stex_current_document_uri
+\str_set:Ne \l_stex_current_ns_uri { \stex_ns_from_doc:N \l_stex_current_document_uri }
+\str_set:Ne \l_stex_current_language_str { \stex_language_from_doc:N \l_stex_current_document_uri }
 %    \end{macrocode}
 % \end{variable}
 %
@@ -2008,530 +1862,105 @@
 %<@@=stex_refs>
 %    \end{macrocode}
 %
-% References are stored in the file |\jobname.sref|, to enable
-% cross-referencing external documents.
-%    \begin{macrocode}
-\bool_if:NT \c_stex_use_sref_bool {
-  \iow_new:N \c_@@_iow
-  \AtBeginDocument{\iow_open:Nn \c_@@_iow {\jobname.sref}}
-  \AtEndDocument{\iow_close:N \c_@@_iow}
-}
-%    \end{macrocode}
-%
-% The following macros are written to the |.aux|-file, and hence
-% use \LaTeX2e character code scheme:
+% TODO
 %
 %    \begin{macrocode}
-\cs_new_protected:Npn \STEXInternalSrefRestoreTarget #1#2#3#4#5 {}
-
-\cs_new_protected:Npn \STEXInternalSetSrefSymURL #1 #2 {
-  \str_gset:cn{g_stex_sref_sym_\tl_to_str:n{#1}_target}{#2}
-}
-
-%    \end{macrocode}
-%
-% \begin{macro}{\stex_ref_new_doc_target:n,\sreflabel}
-%    \begin{macrocode}
-\seq_new:N \g_@@_files_seq
 \int_new:N \l_@@_unnamed_counter_int
 
 \cs_new_protected:Nn \_stex_ref_new_id:n {
   \str_if_empty:nTF {#1}{
     \int_gincr:N \l_@@_unnamed_counter_int
-    \str_set:Nx \l_@@_str {REF\int_use:N \l_@@_unnamed_counter_int}
+    \str_set:Ne \l_@@_str {REF\int_use:N \l_@@_unnamed_counter_int}
   }{
     \str_set:Nn \l_@@_str {#1}
   }
-  \str_set:Nx \l_stex_ref_url_str {\stex_uri_use:N \l_stex_current_doc_uri ? \l_@@_str}
 }
 
-\bool_if:NTF \c_stex_use_sref_bool {
-  \cs_new_protected:Nn \stex_ref_new_doc_target:n {
-    \_stex_ref_new_id:n{#1}
-    %\stex_uri_add_module:NNo \l_@@_uri \l_stex_current_doc_uri \l_@@_str
-    %\stex_debug:nn{sref}{New~document~target:~\stex_uri_use:N \l_@@_uri}
-    \_@@_add_doc_ref:xo {\stex_uri_use:N \l_stex_current_doc_uri} \l_@@_str
-    \stex_if_smsmode:F {
-      \iow_now:Nx \c_@@_iow {
-        \STEXInternalSrefRestoreTarget
-        {\stex_uri_use:N \l_stex_current_doc_uri}
-        {\l_@@_str}
-        {\@currentcounter}
-        {\@currentlabel}
-        {
-          \tl_if_exist:NT\@currentlabelname{
-            \exp_args:No\exp_not:n\@currentlabelname
-          }
-        }
-      }
-      \exp_args:Nx \label {sref@\l_stex_ref_url_str}
-      \stex_if_do_html:T {
-        \pdfdest name "sref@\l_stex_ref_url_str" xyz\relax
-      }
-    }
-  }
-}{
-  \cs_new_protected:Nn \stex_ref_new_doc_target:n {
-    \_stex_ref_new_id:n{#1}
-  }
-}
-\NewDocumentCommand \sreflabel {m} {\stex_ref_new_doc_target:n {#1}}
-
-\cs_new_protected:Nn \_@@_add_doc_ref:nn {
-  \seq_if_in:NnTF \g_@@_files_seq {#1} {
-    \seq_if_in:cnF {g_@@_#1_seq}{#2}{
-      \seq_gput_left:cn{g_@@_#1_seq}{#2}
-    }
-  }{
-    \seq_gput_right:Nn \g_@@_files_seq {#1}
-    \seq_new:c{g_@@_#1_seq}
-    \seq_gput_left:cn{g_@@_#1_seq}{#2}
-  }
-}
-\cs_generate_variant:Nn \_@@_add_doc_ref:nn {xo,xx}
-%    \end{macrocode}
-% \end{macro}
-%
-% \begin{macro}{\sref,\extref}
-% Optional arguments:
-%    \begin{macrocode}
-\stex_keys_define:nnnn{sref / 1}{}{
-  % TODO get rid of this
-  fallback  .code:n = {},
-  pre       .code:n = {},
-  post      .code:n = {}
-}{archive file}
-\stex_keys_define:nnnn{sref / 2}{}{}{archive file, title}
-
-\str_new:N \l_@@_default_archive_str
-\str_new:N \l_@@_default_file_str
-\tl_new:N \l_@@_default_title_tl
-
-\cs_set_protected:Nn \_@@_set_keys_b:n {
-  \tl_if_empty:nTF{#1}{
-    \str_set_eq:NN \l_stex_key_archive_str \l_@@_default_archive_str
-    \str_set_eq:NN \l_stex_key_file_str \l_@@_default_file_str
-    \tl_set_eq:NN \l_stex_key_title_tl \l_@@_default_title_tl
-  }{
-    \stex_keys_set:nn{ sref / 2 }{ #1 }
-  }
+\cs_new_protected:Nn \stex_ref_new_doc_target:n {
+  \_stex_ref_new_id:n{#1}
 }
 
-\newcommand\srefsetin[3][]{
-  \str_set:Nx \l_@@_default_archive_str {#1}
-  \str_set:Nx \l_@@_default_file_str {#2}
-  \tl_set:Nn \l_@@_default_title_tl {#3}
-}
+\NewDocumentCommand \sreflabel {m} {}
+\newcommand\srefsetin[3][]{}
+\NewDocumentCommand \sref { O{} m O{}}{???}
+\NewDocumentCommand \extref { O{} m m}{???}
 
+\cs_new_protected:Nn \stex_ref_new_symbol:n {}
+\cs_new_protected:Nn \stex_ref_new_sym_target:n {}
+\cs_new_protected:Nn \stex_ref_new_sym_target:nn {}
+\NewDocumentCommand \srefsym { m m }{ #2 }
+\cs_new_protected:Npn \srefsymuri #1 {}
 %    \end{macrocode}
 %
-% Auxiliary methods:
 %
-%    \begin{macrocode}
-\cs_new_protected:Nn \_@@_find_uri:n {
-  \str_clear:N \l_@@_uri_str
-  \stex_debug:nn{sref}{
-    File:~\l_stex_key_file_str^^J
-    Repo:\l_stex_key_archive_str
-  }
-  \str_if_empty:NTF \l_stex_key_file_str {
-    \stex_debug:nn{sref}{Empty.~Checking~current~file~for~#1}
-    \seq_if_exist:cT{g_@@_\stex_uri_use:N \l_stex_current_doc_uri _seq}{
-      \exp_args:Nnx \_@@_find_uri_in_file:nnn{#1}
-        {\stex_uri_use:N \l_stex_current_doc_uri}\seq_map_break:
-    }
-    \str_if_empty:NT \l_@@_uri_str {
-      \seq_map_inline:Nn \g_@@_files_seq {
-        \_@@_find_uri_in_file:nnn{#1}{##1}{\seq_map_break:n{\seq_map_break:}}
-      }
-    }
-  }{
-    \str_if_empty:NTF \l_stex_key_archive_str {
-      \prop_if_exist:NTF \l_stex_current_archive_prop {
-        \_@@_find_uri_in_prop_file:N \l_stex_current_archive_prop
-      }{
-        \stex_file_resolve:Nx \l_@@_file 
-          { \stex_file_use:N \g_stex_current_file / .. / \l_stex_key_file_str }
-        \str_set:Nx \l_@@_uri_str { file:/ \stex_file_use:N \l_@@_file }
-      }
-    }{
-      \stex_require_archive:o \l_stex_key_archive_str
-      \prop_set_eq:Nc \l_@@_prop { c_stex_mathhub_\l_stex_key_archive_str _manifest_prop }
-      \_@@_find_uri_in_prop_file:N \l_@@_prop
-    }
-  }
-}
-
-\cs_new_protected:Nn \_@@_find_uri_in_prop_file:N {
-  \str_set:Nx \l_@@_uri_str {
-    \stex_file_use:N \c_stex_mathhub_file / 
-    \prop_item:Nn #1 {id} /
-      source / \l_stex_key_file_str .sref
-  }
-  \stex_file_resolve:No \l_@@_file \l_@@_uri_str
-  \stex_uri_from_repo_file:NNNn \l_@@_uri #1
-    \l_@@_file {narr}
-  \str_set:Nx \l_@@_uri_str {\stex_uri_use:N \l_@@_uri}
-}
-
-\cs_new_protected:Nn \_@@_find_uri_in_file:nnn {
-  \stex_debug:nn{sref}{Checking~file~#2}
-  \seq_map_inline:cn{g_@@_#2_seq}{
-    \str_if_eq:nnT{#1}{##1}{
-      \str_set:Nx \l_@@_uri_str {\stex_uri_use:N \l_stex_current_doc_uri}
-      \stex_debug:nn{sref}{Found.}
-      #3
-    }
-  }
-}
-%    \end{macrocode}
-% Doing the actual referencing:
-%    \begin{macrocode}
-\cs_new_protected:Nn \_@@_do_autoref:n {
-  \cs_if_exist:cTF{autoref}{
-     \exp_args:Nx\autoref{sref@#1}
-   }{
-     \exp_args:Nx\ref{sref@#1}
-   }
-}
-
-\cs_new_protected:Nn \_@@_do_sref:nn {
-  \str_if_empty:NTF \l_@@_uri_str {
-    \str_if_empty:NTF \l_stex_key_file_str {
-      \stex_debug:nn{sref}{autoref~on~\stex_uri_use:N \l_stex_current_doc_uri?#1}
-      \exp_args:Ne \_@@_do_autoref:n{\stex_uri_use:N \l_stex_current_doc_uri ? #1}
-    }{
-      \stex_debug:nn{sref}{srefin~on~#1}
-      \_@@_set_keys_b:n{ #2 }
-      \_@@_do_sref_in:n{#1}
-    }
-  }{
-    \exp_args:NNo \seq_if_in:NnTF \g_@@_files_seq \l_@@_uri_str {
-      \stex_debug:nn{sref}{Using~ref~file~\l_@@_uri_str}
-      \exp_args:Nnx \seq_if_in:cnTF{g_stex_ref_\l_@@_uri_str _seq}{\detokenize{#1}}{
-        \stex_debug:nn{sref}{Reference~found~in~ref~files;~autoref~on~\l_@@_uri_str?#1}
-        \_@@_do_autoref:n{\l_@@_uri_str?#1}
-      }{
-        \str_if_empty:NTF \l_stex_key_file_str {
-          \stex_debug:nn{sref}{in~empty;~autoref~on~\l_@@_uri_str?#1}
-          \_@@_do_autoref:n{\l_@@_uri_str?#1}
-        }{
-          \stex_debug:nn{sref}{in~non-empty;~srefin~on~\l_@@_uri_str?#1}
-          \_@@_set_keys_b:n{ #2 }
-          \_@@_do_sref_in:n{#1}
-        }
-      }
-    }{
-      \stex_debug:nn{sref}{No~ref~file~found~for~\l_@@_uri_str}
-      \str_if_empty:NTF \l_stex_key_file_str {
-        \stex_debug:nn{sref}{in~empty;~autoref~on~\l_@@_uri_str?#1}
-        \_@@_do_autoref:n{\l_@@_uri_str?#1}
-      }{
-        \stex_debug:nn{sref}{in~non-empty;~srefin~on~\l_@@_uri_str?#1}
-        \_@@_set_keys_b:n{ #2 }
-        \_@@_do_sref_in:n{#1}
-      }
-    }
-  }
-}
-
-\cs_new_protected:Nn \_@@_do_sref_in:n {
-  \stex_debug:nn{sref}{In: \l_stex_key_file_str^^JRepo:\l_stex_key_archive_str}
-  \stex_debug:nn{sref}{URI: \l_@@_uri_str?#1}
-  \tl_if_exist:cTF{r@sref@\l_@@_uri_str?#1}{
-    \_@@_do_autoref:n{\l_@@_uri_str?#1}
-  }{
-    %\msg_warning:nnn{stex}{warning/smsmissing}{<filename>}
-    \group_begin:\catcode13=9\relax\catcode10=9\relax
-      \str_if_empty:NTF \l_stex_key_archive_str {
-        \prop_if_exist:NTF \l_stex_current_archive_prop {
-          \str_set:Nx \l_@@_file_str {
-            \stex_file_use:N \c_stex_mathhub_file /
-            \prop_item:Nn \l_stex_current_archive_prop { id }
-            / source / \l_stex_key_file_str .sref
-          }
-        }{
-          \str_set:Nx \l_@@_file_str {
-            \stex_file_use:N \g_stex_current_file / .. / \l_stex_key_file_str . sref
-          }
-        }
-      }{
-        \str_set:Nx \l_@@_file_str {
-          \stex_file_use:N \c_stex_mathhub_file / \l_stex_key_archive_str
-          / source / \l_stex_key_file_str . sref
-        }
-      }
-      \stex_file_resolve:No \l_@@_file \l_@@_file_str
-      \str_set:Nx \l_@@_file_str {\stex_file_use:N \l_@@_file }
-      \stex_debug:nn{sref}{File: \l_@@_file_str }
-      \exp_args:NNNx \exp_args:No \str_if_eq:nnTF \l_@@_file_str {\stex_file_use:N\c_stex_pwd_file / \jobname.sref}{
-        \_@@_do_autoref:n{
-          \str_if_empty:NF\l_@@_uri_str{\l_@@_uri_str?}#1
-        }
-      }{
-        \exp_args:No \IfFileExists \l_@@_file_str {
-          \tl_clear:N \l_@@_return_tl
-          \str_set:Nn \l_@@_id_str {#1}
-          \let\STEXInternalSrefRestoreTarget\_@@_restore_target:nnnnn
-          \use:c{@ @ input}{\l_@@_file_str}
-          \exp_args:No \tl_if_empty:nTF \l_@@_return_tl {
-            \exp_args:Nnno \msg_warning:nnnn{stex}{warning/smslabelmissing}\l_@@_file_str{#1}
-            \_@@_do_autoref:n{
-              \str_if_empty:NF\l_@@_uri_str{\l_@@_uri_str?}#1
-            }
-          }{
-            \l_@@_return_tl
-          }
-        }{
-          \exp_args:Nnno \msg_warning:nnn{stex}{warning/smsmissing}\l_@@_file_str
-          \_@@_do_autoref:n{
-            \str_if_empty:NF\l_@@_uri_str{\l_@@_uri_str?}#1
-          }
-        }
-      }
-    \group_end:
-  }
-}
-
-\cs_new_protected:Nn \_@@_do_return:nnnn {
-  \tl_set:Nn \l_@@_return_tl {
-    \stex_annotate:nn{data-shtml-sref={#4},data-shtml-srefin={\l_@@_file_str}}{
-      \use:c{#3autorefname}~#1\tl_if_empty:nF{#2}{~(#2)}
-      \tl_if_empty:NF\l_stex_key_title_tl{
-        {}~in~\l_stex_key_title_tl
-      }
-    }
-  }
-}
-
-\cs_new_protected:Nn \_@@_restore_target:nnnnn {
-  \str_if_empty:NTF \l_@@_uri_str {
-    \exp_args:No \str_if_eq:nnT \l_@@_id_str {#2}{
-      \_@@_do_return:nnnn{#4}{#5}{#3}{#1?#2}
-    }
-  }{
-    \stex_debug:nn{sref}{\l_@@_uri_str{}~ == ~ #1 ~ ?}
-    \exp_args:No \str_if_eq:nnT \l_@@_uri_str {#1}{
-      \stex_debug:nn{sref}{\l_@@_id_str~ == ~ #2 ~ ?}
-      \exp_args:No \str_if_eq:nnT \l_@@_id_str {#2}{
-        \stex_debug:nn{sref}{success!}
-        \_@@_do_return:nnnn{#4}{#5}{#3}{#1?#2}
-        \endinput
-      }
-    }
-  }
-}
-%    \end{macrocode}
-% The actual macros:
-%    \begin{macrocode}
-\NewDocumentCommand \sref { O{} m O{}}{
-  \stex_keys_set:nn { sref / 1 }{ #1 }
-  \_@@_find_uri:n { #2 }
-  \_@@_do_sref:nn{#2}{#3}
-}
-\NewDocumentCommand \extref { O{} m m}{
-  \stex_keys_set:nn { sref / 1 }{ #1 }
-  \_@@_find_uri:n { #2 }
-  \_@@_set_keys_b:n{ #3 }
-  \str_if_empty:NT \l_stex_key_file_str {
-    \msg_error:nn{stex}{error/extrefmissing}
-  }
-  \_@@_do_sref_in:n{#2}
-}
-%    \end{macrocode}
-% \end{macro}
-%
-% \begin{macro}{\stex_ref_new_sym_target:n}
-%    \begin{macrocode}
-\cs_new_protected:Nn \stex_ref_new_symbol:n {
-  \cs_if_exist:cF{r@sref@sym@\tl_to_str:n{#1}}{
-    \_@@_new_symbol:n{#1}
-  }
-}
-
-\cs_new_protected:Nn \_stex_sref_do_aux:n {
-  #1 \iow_now:Nn \@auxout {#1}
-}
-
-\cs_new_protected:Nn \_@@_new_symbol:n {
-  \prop_if_exist:NTF \l_stex_current_archive_prop {
-    \prop_get:NnNTF \l_stex_current_archive_prop {docurl} \l_@@_str {
-      \exp_args:Ne \_stex_sref_do_aux:n {
-        \STEXInternalSetSrefSymURL{#1}{\l_@@_str / symbol? #1}
-      }
-    }{
-      \_stex_sref_do_aux:n { \STEXInternalSetSrefSymURL{#1}{} }
-    }
-  }{
-    \_stex_sref_do_aux:n { \STEXInternalSetSrefSymURL{#1}{} }
-  }
-}
-
-\cs_new_protected:Nn \stex_ref_new_sym_target:n {
-  \cs_if_exist:NT \hypertarget{
-    \exp_args:Ne \hypertarget{\tl_to_str:n{sref@sym@ #1}}{}
-    \str_gset:cx{\tl_to_str:n{r@sref@sym@ #1}}{\tl_to_str:n{sref@sym@ #1}}
-  }
-}
-
-\cs_new_protected:Nn \stex_ref_new_sym_target:nn {
-  \str_if_eq:nnTF{#1}{#2}{
-    \stex_ref_new_sym_target:n{#1}
-  }{
-    \str_gset:cn{g_stex_sref_sym_ #1 _label}{#2}
-  }
-}
-%    \end{macrocode}
-% \end{macro}
-%
-% \begin{macro}{\srefsym}
-%    \begin{macrocode}
-\NewDocumentCommand \srefsym { m m}{
-  \stex_get_symbol:n { #1 }
-  \exp_args:Ne 
-  \_@@_sym_aux:nn{\l_stex_get_symbol_mod_str ? \l_stex_get_symbol_name_str}
-}
-
-\cs_new_protected:Npn \_@@_do_internal_link:nn #1 {
-  \cs_if_exist:NTF \hyperlink {
-    \hyperlink{#1}
-  }\use:n
-}
-
-\cs_new_protected:Npn \_@@_do_url_link:nn {
-  \cs_if_exist:NTF \href \href \use_ii:nn
-}
-
-\cs_new_protected:Npn \_@@_sym_aux:nn #1 {
-  \cs_if_exist:cTF{\tl_to_str:n{r@sref@sym@#1}}{
-    \exp_args:Ne \_@@_do_internal_link:nn{\tl_to_str:n{sref@sym@#1}}
-  }{
-    \str_if_exist:cTF{g_stex_sref_sym_#1_label}{
-      \exp_args:Ne \_@@_sym_aux:nn{\use:c{g_stex_sref_sym_#1_label}}
-    }{
-      \str_if_empty:cTF{g_stex_sref_sym_#1_target}{
-        \exp_args:Ne \_@@_do_internal_link:nn{\tl_to_str:n{sref@sym@#1}}
-      }{
-        \exp_args:Ne \_@@_do_url_link:nn{\use:c{g_stex_sref_sym_#1_target}}
-      }
-    }
-  }
-}
-%    \end{macrocode}
-% \end{macro}
-%
-%
-% \begin{macro}{\srefsymuri}
-%    \begin{macrocode}
-\cs_new_protected:Npn \srefsymuri #1 {
-  \_@@_sym_aux:nn{#1}
-}
-%    \end{macrocode}
-% \end{macro}
-%
-% \end{sfragment}
 %
 % \begin{sfragment}{Inputs}
 %    \begin{macrocode}
 %<@@=stex_inputs>
 %    \end{macrocode}
 %
-% \begin{macro}{\stex_resolve_path_pair:Nnn,\stex_resolve_path_pair:Nxx}
-%    \begin{macrocode}
-\cs_new_protected:Nn \stex_resolve_path_pair:Nnn {
-  \stex_debug:nn{resolving~path}{#3~in~[#2]}
-  \str_if_empty:nTF{#2}{
-    \prop_if_exist:NTF \l_stex_current_archive_prop {
-      \str_set:Nx #1 {\stex_file_use:N \c_stex_mathhub_file / 
-      \prop_item:Nn \l_stex_current_archive_prop { id } / source /
-      #3}
-      \stex_debug:nn{resolving~path}{In~current~archive~
-        \prop_item:Nn \l_stex_current_archive_prop { id }
-        ;~result:~#1}
-    }{
-      \str_set:Nx #1 {\stex_file_use:N \c_stex_pwd_file / .. / #3 }
-      \stex_debug:nn{resolving~path}{No~current~archive;~result:~#1}
-    }
-  }{
-    \stex_require_archive:n { #2 }
-    \str_set:Nx #1 {\stex_file_use:N \c_stex_mathhub_file / 
-    \prop_item:cn {c_stex_mathhub_#2_manifest_prop} { id } / source /
-    #3}
-    \stex_debug:nn{resolving~path}{result:~#1}
-  }
-}
-\cs_generate_variant:Nn \stex_resolve_path_pair:Nnn {Nxx}
-%    \end{macrocode}
-% \end{macro}
-%
 % \begin{macro}{\inputref,\mhinput,\ifinputref}
 %    \begin{macrocode}
 \newif \ifinputref \inputreffalse
 
-\cs_new_protected:Nn \_@@_mhinput:nn {
-  \stex_in_archive:nn {#1} {
-    \ifinputref
-      \stex_input_with_hooks:n{ \stex_file_use:N \c_stex_mathhub_file / ##1 / source / #2 }
-    \else
-      \inputreftrue
-        \stex_input_with_hooks:n{ \stex_file_use:N \c_stex_mathhub_file / ##1 / source / #2 }
-      \inputreffalse
-    \fi
+\NewDocumentCommand \inputref { O{} m}{
+  \exp_args:NNe \exp_args:Nne \_@@_inputref:nn{ \tl_to_str:n{#1} }{ \tl_to_str:n{#2} }
+}
+
+\stex_if_html_backend:TF{
+  \cs_new_protected:Nn \_@@_inputref:nn {
+    \stex_in_archive:nn {#1} {
+      \_@@_inputref_html:n{#2}
+    }
+  }
+}{
+  \cs_new_protected:Nn \_@@_inputref:nn {
+    \stex_in_archive:nn {#1} {
+      \_@@_inputref_pdf:n{#2}
+    }
   }
 }
 
-\NewDocumentCommand \mhinput { O{} m}{
-  \exp_args:NNx\exp_args:Nnx\_@@_mhinput:nn{ \tl_to_str:n{#1} }{ \tl_to_str:n{#2} }
-}
 
-\cs_new_protected:Nn \_@@_inputref_html:nn {
-  \str_clear:N \l_tmpa_str
-  \prop_get:NnNF \l_stex_current_archive_prop { narr } \l_tmpa_str {
-    \prop_get:NnNF \l_stex_current_archive_prop { ns } \l_tmpa_str {}
-  }
-  \tl_if_empty:nTF{ #1 }{
-    \IfFileExists{#2}{
-      \relax
-      \exp_args:Ne\stex_html_literal:n{
-        \detokenize{<span~data-shtml-inputref="}\l_tmpa_str/#2\detokenize{"~ data-shtml-visible="false"~style="display:none;">} \c_ampersand_str \c_hash_str 8205;\detokenize{</span>}
-      }
-    }{
-      \stex_input_with_hooks:n{#2}
+\cs_new_protected:Nn \_@@_inputref_html:n {
+  \stex_uri_from_archive_file:Nn \l_@@_uri {#1}
+  \stex_source_path:Nn \l_@@_str {#1}
+  \IfFileExists{\l_@@_str}{
+    \relax
+    \exp_args:Ne\stex_html_literal:n{
+      \detokenize{<span~data-shtml-inputref="}
+      \stex_document_uri:N\l_@@_uri
+      \detokenize{"~ data-shtml-visible="false"~style="display:none;"><!-----></span>}
     }
   }{
-    \IfFileExists{ \stex_file_use:N \c_stex_mathhub_file / #1 / source / #2 }{
-      \relax
-      \exp_args:Ne\stex_html_literal:n{
-        \detokenize{<span~data-shtml-inputref="}\l_tmpa_str/#2\detokenize{"~data-shtml-visible="false"~style="display:none;">} \c_ampersand_str \c_hash_str 8205;\detokenize{</span>}
-      }
-    }{
-      \input{ \stex_file_use:N \c_stex_mathhub_file / #1 / source / #2 }
-    }
+    \stex_input_with_hooks:n{#1}
   }
 }
 
 \cs_new_protected:Nn \_@@_inputref_pdf:nn {
   \begingroup
     \inputreftrue
-    \tl_if_empty:nTF{ #1 }{
-      \stex_input_with_hooks:n{#2}
-    }{
-      \stex_input_with_hooks:n{ \stex_file_use:N \c_stex_mathhub_file / #1 / source / #2 }
-    }
+    \stex_source_path:Nn \l_@@_str {#1}
+    \stex_input_with_hooks:n{\l_@@_str}
   \endgroup
 }
 
-\cs_new_protected:Nn \_@@_inputref:nn {
-  \stex_in_archive:nn {#1} {
-    \stex_if_html_backend:TF 
-      \_@@_inputref_html:nn
-      \_@@_inputref_pdf:nn
-    {##1}{#2}
-  }
+\NewDocumentCommand \mhinput { O{} m}{
+  \exp_args:NNe\exp_args:Nne\_@@_mhinput:nn{ \tl_to_str:n{#1} }{ \tl_to_str:n{#2} }
 }
 
-\NewDocumentCommand \inputref { O{} m}{
-  \exp_args:NNx \exp_args:Nnx \_@@_inputref:nn{ \tl_to_str:n{#1} }{ \tl_to_str:n{#2} }
+\cs_new_protected:Nn \_@@_mhinput:nn {
+  \stex_in_archive:nn {#1} {
+    \ifinputref
+      \stex_source_path:Nn \l_@@_str {#2}
+      \stex_input_with_hooks:n{ \l_@@_str }
+    \else
+      \inputreftrue
+        \stex_source_path:Nn \l_@@_str {#2}
+        \stex_input_with_hooks:n{ \l_@@_str }
+      \inputreffalse
+    \fi
+  }
 }
 %    \end{macrocode}
 % \end{macro}
@@ -2582,12 +2011,18 @@
   \prop_get:NnNF \l_stex_current_archive_prop {id} \l_@@_id_str {
     \msg_error:nnn{stex}{error/notinarchive}\libinput
   }
+  \_stex_need_archive_path:
   \seq_clear:N \l_@@_libinput_files_seq
-  \seq_set_eq:NN \l_@@_path_seq \c_stex_mathhub_file
+  \seq_set_split:NnV \l_@@_path_seq / \l_stex_archive_path_str
   \seq_set_split:NnV \l_@@_id_seq / \l_@@_id_str
+  \seq_map_inline:Nn \l_@@_id_seq {
+    \seq_pop_right:NN \l_@@_path_seq \l_tmpa_tl
+  }
+  \stex_debug:nn{lib}{Checking~#1~in~\seq_use:Nn \l_@@_path_seq /}
 
   \bool_while_do:nn { ! \seq_if_empty_p:N \l_@@_id_seq }{
-    \str_set:Nx \l_@@_path_str {\stex_file_use:N \l_@@_path_seq / meta-inf / lib / #1.#2}
+    \str_set:Ne \l_@@_path_str {\stex_file_use:N \l_@@_path_seq / meta-inf / lib / #1.#2}
+    \stex_debug:nn{lib}{Checking~\l_@@_path_str}
     \IfFileExists{ \l_@@_path_str }{
       \exp_args:NNo \seq_if_in:NnF \l_@@_libinput_files_seq \l_@@_path_str {
         \seq_put_right:No \l_@@_libinput_files_seq \l_@@_path_str
@@ -2597,7 +2032,8 @@
     \seq_put_right:No \l_@@_path_seq \l_@@_path_str
   }
 
-  \str_set:Nx \l_@@_path_str {\stex_file_use:N \l_@@_path_seq / lib / #1.#2}
+  \str_set:Ne \l_@@_path_str {\stex_file_use:N \l_@@_path_seq / lib / #1.#2}
+  \stex_debug:nn{lib}{Checking~\l_@@_path_str}
   \IfFileExists{ \l_@@_path_str }{
     \exp_args:NNo \seq_if_in:NnF \l_@@_libinput_files_seq \l_@@_path_str {
       \seq_put_right:No \l_@@_libinput_files_seq \l_@@_path_str
@@ -2631,7 +2067,7 @@
 \newcommand\libusepackage[2][]{
   \_@@_up_archive:nn{#2}{sty}
   \int_compare:nNnTF {\seq_count:N \l_@@_libinput_files_seq} = 1 {
-    \str_set:Nx \l_@@_tmp_str {\seq_item:Nn \l_@@_libinput_files_seq 1}
+    \str_set:Ne \l_@@_tmp_str {\seq_item:Nn \l_@@_libinput_files_seq 1}
     \exp_args:Nne \use:n {\usepackage[#1]} {
       \str_range:Nnn\l_@@_tmp_str 1 {-5}
     }
@@ -2647,12 +2083,12 @@
 \str_new:N \l_@@_gin_repo_str
 \ltx@ifpackageloaded{graphicx}{\use:n}{\AtEndOfPackageFile{graphicx}}{
   \define@key{Gin}{archive}{
-    \tl_set:Nx\Gin@mhrepos{\stex_file_use:N \c_stex_mathhub_file / #1 / source /}
+    \stex_in_archive:nn{#1}{
+      \stex_source_path:Nn \Gin@mhrepos{}
+    }
   }
   \providecommand\mhgraphics[2][]{
-    \tl_set:Nx\Gin@mhrepos{
-      \stex_file_use:N \c_stex_mathhub_file / \prop_item:Nn \l_stex_current_archive_prop {id} / source /
-    }
+    \stex_source_path:Nn \Gin@mhrepos{}
     \setkeys{Gin}{#1}
     \includegraphics[#1]{ \Gin@mhrepos #2 }
   }
@@ -2661,12 +2097,12 @@
 
 \ltx@ifpackageloaded{listings}{\use:n}{\AtEndOfPackageFile{listings}}{
   \define@key{lst}{archive}{
-    \def\lst@mhrepos{\stex_file_use:N \c_stex_mathhub_file / #1 / source /}
+    \stex_in_archive:nn{#1}{
+      \stex_source_path:Nn \lst@mhrepos{}
+    }
   }
   \newcommand\lstinputmhlisting[2][]{%
-    \def\lst@mhrepos{
-      \stex_file_use:N \c_stex_mathhub_file / \prop_item:Nn \l_stex_current_archive_prop {id} / source /
-    }
+    \stex_source_path:Nn \lst@mhrepos{}
     \setkeys{lst}{#1}%
     \lstinputlisting[#1]{\lst@mhrepos #2}}
   \newcommand\clstinputmhlisting[2][]{\begin{center}\lstinputmhlisting[#1]{#2}\end{center}}
@@ -2674,14 +2110,13 @@
 
 \ltx@ifpackageloaded{tikzinput}{\use:n}{\AtEndOfPackageFile{tikzinput}}{  
   \define@key{Gin}{archive}{
-    \str_set:Nn \l_@@_gin_repo_str {#1}
-    \def\Gin@mhrepos{\stex_file_use:N \c_stex_mathhub_file / #1 / source /}
+    \stex_in_archive:nn{#1}{
+      \stex_source_path:Nn \Gin@mhrepos{}
+    }
   }
   \newcommand\mhtikzinput[2][]{%
     \str_clear:N \l_@@_gin_repo_str
-    \def\Gin@mhrepos{
-      \stex_file_use:N \c_stex_mathhub_file / \prop_item:Nn \l_stex_current_archive_prop {id} / source /
-    }
+    \stex_source_path:Nn \Gin@mhrepos{}
     \setkeys{Gin}{#1}%
     \exp_args:No \stex_in_archive:nn \l_@@_gin_repo_str {
       \tikzinput[#1]{\Gin@mhrepos #2}
@@ -2958,7 +2393,7 @@
 % \begin{variable}{\l_stex_current_module_str}
 %  The current module:
 %    \begin{macrocode}
-\str_new:N \l_stex_current_module_str
+\tl_new:N \l_stex_current_module_tl
 %    \end{macrocode}
 % \end{variable}
 %
@@ -2973,8 +2408,7 @@
 % \begin{macro}{\stex_every_module:n}
 %    \begin{macrocode}
 %<@@=stex_module_setup>
-\tl_clear:N \g_stex_every_module_tl {
-}
+\tl_clear:N \g_stex_every_module_tl
 \cs_new_protected:Nn \stex_every_module:n {
   \tl_gput_right:Nn \g_stex_every_module_tl { #1 }
 }
@@ -2985,49 +2419,63 @@
 % \begin{macro}{\stex_module_setup:n}
 % Sets up a new module:
 %    \begin{macrocode}
-\cs_new_protected:Npn \stex_module_setup:n {
-  \stex_if_in_module:TF \_@@_setup_nested:n \_@@_setup_top:n
+
+\cs_new:Nn \_@@_code:N {
+  c_stex_module_ \stex_module_uri:N #1 _code
+}
+\cs_new:Nn \_@@_morphisms:N {
+  c_stex_module_ \stex_module_uri:N #1 _morphisms_prop
+}
+\cs_new:Nn \_@@_symbols:N {
+  c_stex_module_ \stex_module_uri:N #1 _symbols_prop
+}
+\cs_new:Nn \_@@_notations:N {
+  c_stex_module_ \stex_module_uri:N #1 _notations_prop
 }
 
-\cs_new_protected:Nn \_@@_setup_top:n {
-  \_@@_get_uri_str:n{#1}
-  \stex_debug:nn{module}{Module~URI:~\l_@@_ns_str?#1}
+
+\cs_new_protected:Npn \stex_module_setup:n {
+  \stex_if_in_module:TF \_@@_nested:n \_@@_top:n
+}
+
+\cs_new_protected:Nn \_@@_top:n {
   \str_if_empty:NTF \l_stex_key_sig_str
-  \_stex_module_setup_top_nosig:n \_@@_setup_top_sig:n {\l_@@_ns_str?#1}
-  \stex_metagroup_new:o \l_stex_current_module_str
+    \_stex_module_setup_top_nosig:n \_@@_top_sig:n {#1}
   \g_stex_every_module_tl
-  \stex_execute_in_module:x {
-    \_stex_do_deprecation:n{#1}
-  }
+  %\stex_execute_in_module:e {
+  %  \_stex_do_deprecation:n{#1}
+  %}
   \_@@_load_meta:
 }
 
-\cs_new_protected:Nn \_stex_module_setup_top_nosig:n {  
-  \stex_if_module_exists:nTF{#1}{
+\cs_new_protected:Nn \_stex_module_setup_top_nosig:n {
+  \stex_metagroup_new:
+  \stex_new_module_uri:Nn \l_@@_uri{#1}
+  \stex_debug:nn{module}{Module~URI:~\l_@@_uri}
+  \exp_args:No \stex_if_module_exists:NTF \l_@@_uri {
     \stex_debug:nn{modules}{(already exists)}
   }{
-    \tl_gclear:c{c_stex_module_ #1 _code}
-    \prop_gclear:c{c_stex_module_ #1 _morphisms_prop }
-    \prop_gclear:c{c_stex_module_ #1 _symbols_prop }
-    \prop_gclear:c{c_stex_module_ #1 _notations_prop }
+    \tl_gclear:c{ \_@@_code:N \l_@@_uri }
+    \prop_gclear:c{ \_@@_morphisms:N \l_@@_uri }
+    \prop_gclear:c{ \_@@_symbols:N \l_@@_uri }
+    \prop_gclear:c{ \_@@_notations:N \l_@@_uri }
   }
-  \str_set:Nx \l_stex_current_module_str {#1}
-  \seq_put_right:No \l_stex_all_modules_seq \l_stex_current_module_str
+  \tl_set_eq:NN \l_stex_current_module_tl \l_@@_uri
+  \seq_put_right:No \l_stex_all_modules_seq \l_@@_uri
 }
 
-\cs_new_protected:Nn \_@@_setup_top_sig:n {
-  \stex_if_module_exists:nTF{#1}{
+\cs_new_protected:Nn \_@@_top_sig:n {
+  \stex_metagroup_new:
+  \stex_new_module_uri:Nn \l_@@_uri{#1}
+  \stex_debug:nn{module}{Module~URI:~\l_@@_uri}
+  \stex_if_module_exists:NTF \l_@@_uri {
     \stex_debug:nn{modules}{(already exists)}
   }{
     \stex_debug:nn{modules}{(needs loading)}
     \_@@_load_sig:
-  }    
-  %\stex_if_smsmode:F { % WHY?
-    \stex_activate_module:x {
-      #1
-    }
-  %}
-  \str_set:Nx\l_stex_current_module_str{#1}
+  }
+  \tl_set_eq:NN \l_stex_current_module_tl \l_@@_uri
+  %\stex_activate_module:e { #1 }
 }
 
 \cs_new_protected:Nn \_@@_load_sig: {
@@ -3038,31 +2486,21 @@
   }{}
 }
 
-\cs_new_protected:Nn \_@@_setup_nested:n {
-  \exp_after:wN 
-    \_@@_split_module:n \l_stex_current_module_str \_@@_end: {#1}
-  \stex_debug:nn{module}{Nested~Module~URI:~\l_stex_current_module_str}
-  \seq_put_right:No \l_stex_all_modules_seq \l_stex_current_module_str
-  \stex_metagroup_new:o \l_stex_current_module_str
-}
-
-
-\cs_new_protected:Nn \_@@_get_uri_str:n {
-  \str_clear:N \l_@@_ns_str
-  \stex_map_uri:Nnnnn \l_stex_current_ns_uri {
-    \str_set:Nx \l_@@_ns_str{##1\c_colon_str/}
+\cs_new_protected:Nn \_@@_nested:n {
+  \stex_metagroup_new:
+  \tl_set_eq:NN \l_@@_uri \l_stex_current_module_tl
+  \stex_mod_append_name:Nn \l_@@_uri {#1}
+  \stex_debug:nn{module}{Module~URI:~\l_@@_uri}
+  \exp_args:No \stex_if_module_exists:NTF \l_@@_uri {
+    \stex_debug:nn{modules}{(already exists)}
   }{
-    \seq_set_split:Nnn \l_@@_seq / {##1}
-    \seq_pop_right:NN \l_@@_seq \l_@@_seg
-    \exp_args:No \str_if_eq:nnF \l_@@_seg {#1} {
-      \seq_put_right:No \l_@@_seq \l_@@_seg
-    }
-    \tl_put_right:Nx \l_@@_ns_str {\seq_use:Nn \l_@@_seq /}
-  }{}{}
-}
-
-\cs_new_protected:Npn \_@@_split_module:n #1?#2 \_@@_end: #3 {
-  \_stex_module_setup_top_nosig:n { #1 ? #2 / #3}
+    \tl_gclear:c{ \_@@_code:N \l_@@_uri }
+    \prop_gclear:c{ \_@@_morphisms:N \l_@@_uri }
+    \prop_gclear:c{ \_@@_symbols:N \l_@@_uri }
+    \prop_gclear:c{ \_@@_notations:N \l_@@_uri }
+  }
+  \tl_set_eq:NN \l_stex_current_module_tl \l_@@_uri
+  \seq_put_right:No \l_stex_all_modules_seq \l_@@_uri
 }
 
 \bool_new:N \l_stex_in_meta_bool
@@ -3070,7 +2508,7 @@
 
 \cs_new_protected:Nn \_@@_load_meta: {
   \tl_if_empty:NF \l_stex_metatheory_uri {
-    \stex_execute_in_module:x{
+    \stex_execute_in_module:e{
       \stex_pseudogroup_with:nn{\l_stex_in_meta_bool}{
         \stex_activate_module:n {\stex_uri_use:N \l_stex_metatheory_uri }
       }
@@ -3209,15 +2647,15 @@
     \str_if_empty:nTF {#1}{
       \tl_clear:N \l_stex_metatheory_uri
     }{
-      \stex_uri_resolve:Nx \l_stex_metatheory_uri { #1 }
+      \stex_uri_resolve:Ne \l_stex_metatheory_uri { #1 }
     }
   },
   ns            .code:n       = {
-    \stex_uri_resolve:Nx \l_stex_current_ns_uri { #1 }
+    \stex_uri_resolve:Ne \l_stex_current_ns_uri { #1 }
   } ,
-  lang          .code:n       = {
-    \stex_set_language:n { #1 }
-  } ,
+  %lang          .code:n       = {
+  %  \stex_set_language:n { #1 }
+  %} ,
   sig           .str_set_x:N  = \l_stex_key_sig_str ,
   creators      .code:n       = {} , % todo ?
   contributors  .code:n       = {} , % todo ?
@@ -3276,21 +2714,21 @@
 % \begin{macro}[pTF]{\stex_if_module_exists:n}
 % Does a module with this URI exist?
 %    \begin{macrocode}
-\prg_new_conditional:Nnn \stex_if_module_exists:n {p, T, F, TF} {
-  \tl_if_exist:cTF { c_stex_module_#1_code }
+\prg_new_conditional:Nnn \stex_if_module_exists:N {p, T, F, TF} {
+  \tl_if_exist:cTF { c_stex_module_ \stex_module_uri:N #1 _code }
     \prg_return_true: \prg_return_false:
 }
 %    \end{macrocode}
 % \end{macro}
 %
-% \begin{macro}{\stex_do_up_to_module:n,\stex_do_up_to_module:x}
+% \begin{macro}{\stex_do_up_to_module:n,\stex_do_up_to_module:e}
 % Execute code in the current module (i.e. as if the \cs{begin}\Arg{smodule}
 % was the current tex group)
 %    \begin{macrocode}
 \cs_new_protected:Nn \stex_do_up_to_module:n {
-  \exp_args:No \stex_metagroup_do_in:nn \l_stex_current_module_str {#1}
+  \stex_metagroup_do_in:n {#1}
 }
-\cs_generate_variant:Nn \stex_do_up_to_module:n {x}
+\cs_generate_variant:Nn \stex_do_up_to_module:n {e}
 %    \end{macrocode}
 % \end{macro}
 %
@@ -3303,13 +2741,13 @@
 %    \end{macrocode}
 % \end{macro}
 %
-% \begin{macro}{\stex_execute_in_module:n,\stex_execute_in_module:x}
+% \begin{macro}{\stex_execute_in_module:n,\stex_execute_in_module:e}
 %    \begin{macrocode}
 \cs_new_protected:Nn \stex_execute_in_module:n { \stex_if_in_module:TF {
   \stex_module_add_code:n { #1 }
   \stex_do_up_to_module:n { #1 }
 }{ #1 }}
-\cs_generate_variant:Nn \stex_execute_in_module:n {x}
+\cs_generate_variant:Nn \stex_execute_in_module:n {e}
 %    \end{macrocode}
 % \end{macro}
 %
@@ -3447,7 +2885,7 @@
 %    \end{macrocode}
 % \end{macro}
 %
-% \begin{macro}{\stex_activate_module:n,\stex_activate_module:o,\stex_activate_module:x}
+% \begin{macro}{\stex_activate_module:n,\stex_activate_module:o,\stex_activate_module:e}
 %    \begin{macrocode}
 \cs_new_protected:Nn \stex_activate_module:n {
   \seq_if_in:NnF \l_stex_all_modules_seq { #1 } {
@@ -3461,7 +2899,7 @@
     }
   }
 }
-\cs_generate_variant:Nn \stex_activate_module:n {o,x}
+\cs_generate_variant:Nn \stex_activate_module:n {o,e}
 %    \end{macrocode}
 % \end{macro}
 %
@@ -3653,7 +3091,7 @@
   }
   \tl_if_empty:nTF{#1}{
     \bool_set_true:N \l_@@_implicit_bool
-    \str_set:Nx \l_tmpa_str {[\l_stex_current_domain_str]}
+    \str_set:Ne \l_tmpa_str {[\l_stex_current_domain_str]}
   }{
     \bool_set_false:N \l_@@_implicit_bool
     \str_set:Nn \l_tmpa_str {#1}
@@ -3672,7 +3110,7 @@
   \_@@_setup:
   \_@@_reactivate:
   %^^A\stex_activate_module:o \l_stex_current_domain_str
-  \exp_args:Ne \stex_metagroup_new:n {\l_stex_current_module_str / \l_stex_feature_name_str}
+  \stex_metagroup_new:
 }
 
 \cs_new_protected:Nn \_@@_do_for_list: {
@@ -3935,12 +3373,12 @@
   \stex_debug:nn{importmodule}{URI:~>#1<~>#2<}
   \exp_args:NNnx \seq_set_split:Nnn \_@@_seq ? { \tl_to_str:n{ #2 } }
   \seq_pop_right:NN \_@@_seq \l_stex_import_name_str
-  \str_set:Nx \l_stex_import_path_str { \seq_use:Nn \_@@_seq ? }
+  \str_set:Ne \l_stex_import_path_str { \seq_use:Nn \_@@_seq ? }
   \tl_if_empty:nTF { #1 } {
     \stex_debug:nn{importmodule}{No~archive}
     \prop_if_exist:NTF \l_stex_current_archive_prop {
       \stex_debug:nn{importmodule}{Picking~current~archive}
-      \str_set:Nx \l_stex_import_archive_str {
+      \str_set:Ne \l_stex_import_archive_str {
         \prop_item:Nn \l_stex_current_archive_prop { id }
       }
     }{
@@ -3950,13 +3388,13 @@
         \stex_debug:nn{importmodule}{Empty~Path}
         \stex_file_split_off_ext:NN \l_@@_path_seq \g_stex_current_file
         \stex_file_split_off_lang:NN \l_@@_path_seq \l_@@_path_seq
-        \str_set:Nx \l_stex_import_path_str {
+        \str_set:Ne \l_stex_import_path_str {
           \stex_file_use:N \l_@@_path_seq
         }
       }{
         \stex_debug:nn{importmodule}{Resolving~path~\l_stex_import_path_str~relative~to~\stex_file_use:N \g_stex_current_file}
-        \stex_file_resolve:Nx \l_@@_seq { \stex_file_use:N \g_stex_current_file / .. / \l_stex_import_path_str}
-        \str_set:Nx \l_stex_import_path_str {
+        \stex_file_resolve:Ne \l_@@_seq { \stex_file_use:N \g_stex_current_file / .. / \l_stex_import_path_str}
+        \str_set:Ne \l_stex_import_path_str {
           \stex_file_use:N \l_@@_seq
         }
         \stex_debug:nn{importmodule}{...yields~\l_stex_import_path_str}
@@ -3964,9 +3402,9 @@
     }
   } {
     \stex_debug:nn{importmodule}{Archive~#1}
-    \str_set:Nx \l_stex_import_archive_str { #1 }
+    \str_set:Ne \l_stex_import_archive_str { #1 }
     \stex_require_archive:o \l_stex_import_archive_str
-    \str_set:Nx \l_stex_import_uri_str { \prop_item:cn{ c_stex_mathhub_ \l_stex_import_archive_str _manifest_prop}{ ns } }
+    \str_set:Ne \l_stex_import_uri_str { \prop_item:cn{ c_stex_mathhub_ \l_stex_import_archive_str _manifest_prop}{ ns } }
   }
 }
 %    \end{macrocode}
@@ -3981,10 +3419,12 @@
     \str_set:Nn \l_stex_import_uri_str {file:}
     \_@@_get_module:nnn {}
   }{
-    \stex_require_archive:n { #1 }
-    \str_set:Nx \l_@@_archive_str {#1}
-    \str_set:Nx \l_stex_import_uri_str { \prop_item:cn{ c_stex_mathhub_ #1 _manifest_prop}{ ns } }
-    \str_set:Nx \l_@@_str { \stex_file_use:N \c_stex_mathhub_file / #1 / source }
+    \stex_in_archive:nn { #1 }{
+      \str_set:Ne \l_@@_archive_str {#1}
+      \str_set:Ne \l_stex_import_uri_str { \prop_item:cn{ c_stex_mathhub_ #1 _manifest_prop}{ url-base } }
+      \_stex_need_archive_path:
+      \exp_args:NNo \str_set:Nn \l_@@_str { \l_stex_archive_path_str / source }
+    }
     \exp_args:No \_@@_get_module:nnn \l_@@_str
   }
 }
@@ -3996,49 +3436,51 @@
     \str_set:Nn \l_stex_import_uri_str {file:}
     \_@@_get_module_safe:nnn {}
   }{
-    \stex_require_archive:n { #1 }
-    \str_set:Nx \l_@@_archive_str {#1}
-    \str_set:Nx \l_stex_import_uri_str { \prop_item:cn{ c_stex_mathhub_ #1 _manifest_prop}{ ns } }
-    \str_set:Nx \l_@@_str { \stex_file_use:N \c_stex_mathhub_file / #1 / source }
+    \stex_in_archive:nn { #1 }{
+      \str_set:Ne \l_@@_archive_str {#1}
+      \str_set:Ne \l_stex_import_uri_str { \prop_item:cn{ c_stex_mathhub_ #1 _manifest_prop}{ url-base } }
+      \_stex_need_archive_path:
+      \exp_args:NNo \str_set:Nn \l_@@_str { \l_stex_archive_path_str / source }
+    }
     \exp_args:No \_@@_get_module_safe:nnn \l_@@_str
   }
 }
 
 \cs_new_protected:Nn \_@@_get_module_uri:nnn {
   \tl_if_empty:nF {#2}{
-    \str_set:Nx \l_stex_import_uri_str {\l_stex_import_uri_str / #2}
+    \str_set:Ne \l_stex_import_uri_str {\l_stex_import_uri_str / #2}
   }
   \stex_debug:nn{importmodule}{~>#1<^^J>#2<^^J>#3<^^J>\l_stex_import_uri_str<^^J
     Current~file:\stex_file_use:N \g_stex_current_file^^J
-    Current~namespace:\stex_uri_use:N \l_stex_current_ns_uri
+    Current~namespace: \l_stex_current_ns_uri
   }
   \stex_if_module_exists:nTF {\l_stex_import_uri_str?#3} {
-    \str_set:Nx \l_stex_import_ns_str {\l_stex_import_uri_str?#3}
+    \str_set:Ne \l_stex_import_ns_str {\l_stex_import_uri_str?#3}
   }{
-    \stex_if_module_exists:nTF{\stex_uri_use:N \l_stex_current_ns_uri ? #3}{
-      \str_set:Nx \l_stex_import_ns_str {\stex_uri_use:N \l_stex_current_ns_uri ? #3}
+    \stex_if_module_exists:nTF{ \l_stex_current_ns_uri ? #3}{
+      \str_set:Ne \l_stex_import_ns_str { \l_stex_current_ns_uri ? #3}
     }{
       \_@@_get_from_file:nnn{#1}{#2}{#3}
-      \str_set:Nx \l_stex_import_ns_str {\l_stex_import_uri_str?#3}
+      \str_set:Ne \l_stex_import_ns_str {\l_stex_import_uri_str?#3}
     }
   }
 }
 \cs_new_protected:Nn \_@@_get_module_uri_safe:nnn {
   \tl_if_empty:nF {#2}{
-    \str_set:Nx \l_stex_import_uri_str {\l_stex_import_uri_str / #2}
+    \str_set:Ne \l_stex_import_uri_str {\l_stex_import_uri_str / #2}
   }
   \stex_debug:nn{importmodule}{~>#1<^^J>#2<^^J>#3<^^J>\l_stex_import_uri_str<^^J
     Current~file:\stex_file_use:N \g_stex_current_file^^J
-    Current~namespace:\stex_uri_use:N \l_stex_current_ns_uri
+    Current~namespace: \l_stex_current_ns_uri
   }
   \stex_if_module_exists:nTF {\l_stex_import_uri_str?#3} {
-    \str_set:Nx \l_stex_import_ns_str {\l_stex_import_uri_str?#3}
+    \str_set:Ne \l_stex_import_ns_str {\l_stex_import_uri_str?#3}
   }{
-    \stex_if_module_exists:nTF{\stex_uri_use:N \l_stex_current_ns_uri ? #3}{
-      \str_set:Nx \l_stex_import_ns_str {\stex_uri_use:N \l_stex_current_ns_uri ? #3}
+    \stex_if_module_exists:nTF{ \l_stex_current_ns_uri ? #3}{
+      \str_set:Ne \l_stex_import_ns_str { \l_stex_current_ns_uri ? #3}
     }{
       \_@@_get_from_file_safe:nnn{#1}{#2}{#3}
-      \str_set:Nx \l_stex_import_ns_str {\l_stex_import_uri_str?#3}
+      \str_set:Ne \l_stex_import_ns_str {\l_stex_import_uri_str?#3}
     }
   }
 }
@@ -4055,8 +3497,8 @@
 }
 
 \cs_new_protected:Nn \_@@_get_from_file:nnn {
-  \stex_file_resolve:Nx \l_@@_seq { \tl_if_empty:nF{ #1 }{ #1 / } #2 }
-  \str_set:Nx \l_@@_str {\stex_file_use:N \l_@@_seq}
+  \stex_file_resolve:Ne \l_@@_seq { \tl_if_empty:nF{ #1 }{ #1 / } #2 }
+  \str_set:Ne \l_@@_str {\stex_file_use:N \l_@@_seq}
   \stex_debug:nn{imports}{Looking~for~\l_stex_import_uri_str?#3...}
   \_@@_check_file:nn{ /#3.tex }{
     \_@@_check_file:nn{/#3.\l_stex_current_language_str .tex}{
@@ -4082,8 +3524,8 @@
   }
 }
 \cs_new_protected:Nn \_@@_get_from_file_safe:nnn {
-  \stex_file_resolve:Nx \l_@@_seq { \tl_if_empty:nF{ #1 }{ #1 / } #2 }
-  \str_set:Nx \l_@@_str {\stex_file_use:N \l_@@_seq}
+  \stex_file_resolve:Ne \l_@@_seq { \tl_if_empty:nF{ #1 }{ #1 / } #2 }
+  \str_set:Ne \l_@@_str {\stex_file_use:N \l_@@_seq}
   \stex_debug:nn{imports}{Looking~for~\l_stex_import_uri_str?#3...}
   \_@@_check_file:nn{ /#3.tex }{
     \_@@_check_file:nn{/#3.\l_stex_current_language_str .tex}{
@@ -4128,7 +3570,7 @@
   \stex_debug:nn{imports}{Checking~ \l_@@_str #1}
   \IfFileExists{ \l_@@_str #1 }{
     \stex_debug:nn{imports}{Success}
-    \str_set:Nx \l_@@_str { \l_@@_str #1 }
+    \str_set:Ne \l_@@_str { \l_@@_str #1 }
   }
 }
 %    \end{macrocode}
@@ -4148,7 +3590,7 @@
     \l_stex_import_archive_str
     \l_stex_import_path_str
     \l_stex_import_name_str
-  \stex_execute_in_module:x{ 
+  \stex_execute_in_module:e{ 
     \stex_activate_module:n{\l_stex_import_ns_str}
   }
   \stex_module_add_morphism:nonn
@@ -4191,7 +3633,7 @@
     \l_stex_import_archive_str
     \l_stex_import_path_str
     \l_stex_import_name_str
-  \stex_do_up_to_module:x{ 
+  \stex_do_up_to_module:e{ 
     \stex_activate_module:n{\l_stex_import_ns_str}
   }
   \stex_if_do_html:T {
@@ -4247,9 +3689,7 @@
       }
     }
   }
-  \exp_args:Ne \stex_metagroup_do_in:nx{
-    \l_stex_current_module_str / \l_stex_feature_name_str
-  }{
+  \stex_metagroup_do_in:e {
     \prop_put:Nnn \exp_not:N \l_stex_morphism_symbols_prop
     {[\l_stex_get_symbol_mod_str]/[\l_stex_get_symbol_name_str]}
     {
@@ -4281,9 +3721,7 @@
       \str_if_empty:nF{#1}{ ,data-shtml-to={#1} }
     }{}
   }
-  \exp_args:Ne \stex_metagroup_do_in:nx{
-    \l_stex_current_module_str / \l_stex_feature_name_str
-  }{
+  \stex_metagroup_do_in:e {
     \prop_put:Nnn \exp_not:N \l_stex_morphism_renames_prop 
     {\l_stex_get_symbol_mod_str?\l_stex_get_symbol_name_str}{{#2}{
       \tl_if_empty:nTF{#1}{\l_stex_feature_name_str/\l_stex_get_symbol_name_str}{#1}
@@ -4341,7 +3779,7 @@
 }{}
 \cs_new_protected:Nn \_@@_do_morph_assign:nnn {
   \stex_iterate_break:n{
-    \str_set:Nx \l_@@_morphism_dom_str { \l_stex_current_domain_str ? #1 }
+    \str_set:Ne \l_@@_morphism_dom_str { \l_stex_current_domain_str ? #1 }
     \stex_debug:nn{assignMorphism}{match!}
     \stex_iterate_symbols:nn{#2}{
       \stex_debug:nn{assignMorphism}{removing~##1?##3}
@@ -4407,7 +3845,7 @@
 \stex_new_stylable_env:nnnnnnn {realization}{O{} m}{
 
   \stex_structural_feature_morphism:nnnnn{}{morphism}{#1}{#2}{,data-shtml-total=true}
-  %\stex_execute_in_module:x{
+  %\stex_execute_in_module:e{
   %  \stex_activate_module:n{\l_stex_current_domain_str}
   %}
   \stex_if_smsmode:F {
@@ -4611,7 +4049,7 @@
   args      .str_set:N  = \l_stex_key_args_str ,
   reorder   .str_set:N  = \l_stex_key_reorder_str ,
   assoc     .choices:nn   = {bin,binl,binr,pre,conj,pwconj}
-    {\str_set:Nx \l_stex_key_assoc_str \l_keys_choice_tl},
+    {\str_set:Ne \l_stex_key_assoc_str \l_keys_choice_tl},
   role      .str_set:N     = \l_stex_key_role_str
 }{}
 
@@ -4647,7 +4085,7 @@
   \IfBooleanTF #1 {
     \str_clear:N \l_stex_macroname_str
   }{
-    \str_set:Nx \l_stex_macroname_str { #2 }
+    \str_set:Ne \l_stex_macroname_str { #2 }
   }
   \stex_symdecl_top:n{#2}
 
@@ -4674,7 +4112,7 @@
 %    \begin{macrocode}
 \cs_new_protected:Nn \stex_symdecl_top:n {
   \str_if_empty:NT \l_stex_key_name_str {
-    \str_set:Nx \l_stex_key_name_str { #1 }
+    \str_set:Ne \l_stex_key_name_str { #1 }
   }
   \stex_symdecl_do:
   \_stex_symdecl_check_terms:
@@ -4863,11 +4301,11 @@
 \stex_new_stylable_cmd:nnnn {textsymdecl} {m O{} m} {
   \stex_keys_set:nn{symdef}{}
   \stex_keys_set:nn{textsymdecl}{#2}
-  \str_set:Nx \l_stex_macroname_str { #1 }
+  \str_set:Ne \l_stex_macroname_str { #1 }
   \str_if_empty:NT \l_stex_key_name_str {
     \str_set:Nn \l_stex_key_name_str {#1}
   }%{
-  %  \str_set:Nx \l_stex_key_name_str {\l_stex_key_name_str-sym}
+  %  \str_set:Ne \l_stex_key_name_str {\l_stex_key_name_str-sym}
   %}
   \str_set:Nn \l_stex_key_role_str {textsymdecl}
   
@@ -4900,7 +4338,7 @@
     \def\comp{\_comp}
     \_stex_notation_do_html:n{\l_stex_get_symbol_mod_str ? \l_stex_get_symbol_name_str}
   }
-  \stex_execute_in_module:x{
+  \stex_execute_in_module:e{
     \_@@_set_textsymdecl_macro:nnn{#1}{\l_stex_current_module_str?\l_stex_key_name_str}
     \exp_not:n{{#3}}
   }
@@ -5111,7 +4549,7 @@
   argnames   .clist_set:N  = \l_stex_key_intent_args_clist , 
   unknown    .code:n       = {
     \str_if_empty:NTF \l_keys_key_str {
-        \str_set:Nx \l_stex_key_variant_str {\l_keys_key_tl}
+        \str_set:Ne \l_stex_key_variant_str {\l_keys_key_tl}
     }{
         \str_set_eq:NN \l_stex_key_variant_str \l_keys_key_str
     }
@@ -5362,7 +4800,7 @@
       \_do_comp:nNn {maincomp}\compemph@uri
     }
     $
-      \str_set:Nx \l_stex_current_symbol_str {#1}
+      \str_set:Ne \l_stex_current_symbol_str {#1}
       \stex_annotate:nn{data-shtml-notationcomp={}}{
         \exp_args:Nne \use:nn {
           \l_stex_notation_macrocode_cs {}
@@ -5373,7 +4811,7 @@
     $
     \tl_if_empty:NF \l_stex_key_op_tl {
       $
-      \str_set:Nx \l_stex_current_symbol_str {#1}
+      \str_set:Ne \l_stex_current_symbol_str {#1}
       \stex_annotate:nn{data-shtml-notationopcomp={}}{
         \_stex_term_oms:nnn{\l_stex_key_variant_str}{}{\l_stex_key_op_tl}
       }
@@ -5525,7 +4963,7 @@
 
 \stex_new_stylable_cmd:nnnn {symdef} { m O{} m} {
   \stex_keys_set:nn{symdef}{#2}
-  \str_set:Nx \l_stex_macroname_str { #1 }
+  \str_set:Ne \l_stex_macroname_str { #1 }
   \stex_symdecl_top:n{#1}
   \stex_debug:nn{symdef}{Doing~\l_stex_current_module_str ? \l_stex_key_name_str}
   \str_set_eq:NN \l_stex_get_symbol_mod_str \l_stex_current_module_str
@@ -5826,9 +5264,9 @@
 
 \stex_new_stylable_cmd:nnnn {vardef} { m O{} m} {
   \stex_keys_set:nn{vardef}{#2}
-  \str_set:Nx \l_stex_macroname_str { #1 }
+  \str_set:Ne \l_stex_macroname_str { #1 }
   \str_if_empty:NT \l_stex_key_name_str {
-    \str_set:Nx \l_stex_key_name_str { #1 }
+    \str_set:Ne \l_stex_key_name_str { #1 }
   }
 
   \stex_symdecl_do:
@@ -6045,9 +5483,9 @@
 %    \begin{macrocode}
 \stex_new_stylable_cmd:nnnn {varseq}{m O{} m m} {
   \stex_keys_set:nn{symdef}{#2}
-  \str_set:Nx \l_stex_macroname_str { #1 }
+  \str_set:Ne \l_stex_macroname_str { #1 }
   \str_if_empty:NT \l_stex_key_name_str {
-    \str_set:Nx \l_stex_key_name_str { #1 }
+    \str_set:Ne \l_stex_key_name_str { #1 }
   }
   \str_if_empty:NT \l_stex_key_args_str {
     \str_set:Nn \l_stex_key_args_str {1}
@@ -7257,10 +6695,10 @@
 \cs_new_protected:Nn \_stex_do_ref:nNn {
   \stex_if_html_backend:T{\relax\ifvmode\indent\fi}
   \bool_if:NTF \l_stex_allow_semantic_bool{
-    \str_set:Nx\l_stex_current_symbol_str
+    \str_set:Ne\l_stex_current_symbol_str
       {\l_stex_get_symbol_mod_str ? \l_stex_get_symbol_name_str}
     \str_if_in:NnT \l_stex_get_symbol_name_str / {
-      \str_set:Nx \l_stex_get_symbol_name_str {
+      \str_set:Ne \l_stex_get_symbol_name_str {
         \exp_after:wN \_stex_split_slash: \l_stex_get_symbol_name_str
         /\_stex_args_end:
       }
@@ -7380,7 +6818,7 @@
 \cs_new_protected:Npn \stex_current_this: {
   { \bool_set_true:N \l_stex_allow_semantic_bool
     \tl_if_empty:NTF \l_stex_current_this_tl {{}}{
-      \str_set:Nx \l_stex_current_symbol_str {
+      \str_set:Ne \l_stex_current_symbol_str {
         \l_stex_current_module_str ? \l_@@_name_str
       }
       \maincomp{\l_stex_current_this_tl}
@@ -7408,7 +6846,7 @@
   this    .tl_set:N = \l_stex_current_this_tl ,
   unknown .code:n   = {
     \str_if_empty:NTF \l_keys_key_str {
-      \str_set:Nx \l_@@_name_str {\l_keys_key_tl}
+      \str_set:Ne \l_@@_name_str {\l_keys_key_tl}
     }{
       \str_set_eq:NN \l_@@_name_str \l_keys_key_str
     }
@@ -7427,8 +6865,8 @@
       \l_stex_current_module_str / \l_@@_name_str-module
     }}
     {}\stex_invoke_structure:
-  \str_set:Nx \l_stex_macroname_str {#1}
-  \stex_execute_in_module:x{
+  \str_set:Ne \l_stex_macroname_str {#1}
+  \stex_execute_in_module:e{
     \seq_clear:c{l_stex_structure_macros_\l_stex_current_module_str / \l_@@_name_str-module_seq}
     \seq_put_right:cn{l_stex_structure_macros_\l_stex_current_module_str / \l_@@_name_str-module_seq}{#1}
   }
@@ -7501,7 +6939,7 @@
     \clist_set:No \l_tmpa_clist \l_stex_get_structure_module_str
     \clist_reverse:N \l_tmpa_clist
     \clist_pop:NN \l_tmpa_clist \l_stex_get_structure_module_str
-    \stex_execute_in_module:x{
+    \stex_execute_in_module:e{
       \seq_put_right:cn{l_stex_structure_macros_\l_stex_get_structure_module_str _seq}{#1}
     }
   }
@@ -7513,7 +6951,7 @@
     }
     \stex_module_add_morphism:nonn
       {}{##1}{import}{}
-    \stex_execute_in_module:x{ 
+    \stex_execute_in_module:e{ 
       \stex_activate_module:n{##1}
     }
   }
@@ -7556,7 +6994,7 @@
   \clist_reverse:N \l_tmpa_clist
   \clist_pop:NN \l_tmpa_clist \l_stex_get_structure_module_str
 
-  \stex_execute_in_module:x{
+  \stex_execute_in_module:e{
     \seq_map_inline:cn{l_stex_structure_macros_\l_stex_get_structure_module_str _seq}{
       \exp_not:N \tl_if_exist:cT{####1}{
         \_@@_extend_structure:nn{####1}{\l_stex_current_module_str/\l_@@_exstruct_name_str -module}
@@ -7573,7 +7011,7 @@
     }
     \stex_module_add_morphism:nonn
       {}{##1}{import}{}
-    \stex_execute_in_module:x{ 
+    \stex_execute_in_module:e{ 
       \stex_activate_module:n{##1}
     }
   }
@@ -7606,9 +7044,9 @@
 
 \cs_new_protected:Nn \_@@_new_extstruct_name: {
   \stex_do_up_to_module:n {
-    \str_set:Nx \l_@@_extname_count {\int_eval:n{\l_@@_extname_count+1}}
+    \str_set:Ne \l_@@_extname_count {\int_eval:n{\l_@@_extname_count+1}}
   }
-  \str_set:Nx \l_@@_exstruct_name_str {EXTSTRUCT_\l_@@_extname_count}
+  \str_set:Ne \l_@@_exstruct_name_str {EXTSTRUCT_\l_@@_extname_count}
 }
 
 %    \end{macrocode}
@@ -7935,7 +7373,7 @@
 }
 
 \cs_new_protected:Nn \_@@_get_field_name:n {
-  \str_set:Nx \l_@@_field_name_str {
+  \str_set:Ne \l_@@_field_name_str {
     \exp_args:Nne \use:n {\exp_after:wN \use_i:nn \use:n}
     {\prop_item:Nn \l_@@_prop {#1}}
   }
@@ -8194,13 +7632,13 @@
   \str_if_empty:NTF \l_stex_key_name_str {
     \stex_debug:nn{statement}{no~name}
     \int_compare:nNnTF {\seq_count:N \l_stex_fors_seq} = 1 {
-      \str_set:Nx \l_@@_uri_str {\seq_item:Nn \l_stex_fors_seq 1}
+      \str_set:Ne \l_@@_uri_str {\seq_item:Nn \l_stex_fors_seq 1}
       \stex_debug:nn{statement}{for:~\l_@@_uri_str}
     }{
       \stex_debug:nn{statement}{no~for}
     }
   }{
-    \str_set:Nx \l_@@_uri_str {\l_stex_current_module_str ? \l_stex_key_name_str}
+    \str_set:Ne \l_@@_uri_str {\l_stex_current_module_str ? \l_stex_key_name_str}
     \stex_debug:nn{statement}{name:~\l_@@_uri_str}
   }
 }
@@ -8212,7 +7650,7 @@
     data-shtml-fors={\seq_use:Nn \l_stex_fors_seq ,}
   }
   \str_if_empty:NF \l_stex_key_id_str {,
-    data-shtml-id={\stex_uri_use:N \l_stex_current_doc_uri ? \l_stex_key_id_str}
+    data-shtml-id={\l_stex_key_id_str}%{\stex_uri_use:N \l_stex_current_doc_uri ? \l_stex_key_id_str}
   }
   \clist_if_empty:NF \l_stex_key_style_clist {,
     data-shtml-styles={\l_stex_key_style_clist}
@@ -8327,10 +7765,10 @@
   \group_begin:
   \stex_get_symbol:n{#1}
   \bool_if:NTF \l_stex_allow_semantic_bool{
-    \str_set:Nx\l_stex_current_symbol_str
+    \str_set:Ne\l_stex_current_symbol_str
       {\l_stex_get_symbol_mod_str ? \l_stex_get_symbol_name_str}
     \str_if_in:NnT \l_stex_get_symbol_name_str / {
-      \str_set:Nx \l_stex_get_symbol_name_str {
+      \str_set:Ne \l_stex_get_symbol_name_str {
         \exp_after:wN \_stex_split_slash: \l_stex_get_symbol_name_str
         /\_stex_args_end:
       }
@@ -8381,7 +7819,7 @@
   \str_clear:N \l_stex_get_symbol_name_str
   \tl_if_empty:nF {#1} {
     \stex_get_symbol:n { #1 }
-    \str_set:Nx \l_@@_uri_str
+    \str_set:Ne \l_@@_uri_str
       {\l_stex_get_symbol_mod_str ? \l_stex_get_symbol_name_str}
   }
   \str_if_empty:NT \l_@@_uri_str {
@@ -8434,7 +7872,7 @@
   \str_clear:N \l_stex_get_symbol_name_str
   \tl_if_empty:nF {#1} {
     \stex_get_symbol:n { #1 }
-    \str_set:Nx \l_@@_uri_str
+    \str_set:Ne \l_@@_uri_str
       {\l_stex_get_symbol_mod_str ? \l_stex_get_symbol_name_str}
   }
   \str_if_empty:NT \l_@@_uri_str {
@@ -8733,7 +8171,7 @@
     \stex_style_apply:
     \str_if_empty:NF \l_stex_key_id_str {
       \_@@_number_as_string:N \@currentlabel
-      \str_set:Nx \@currentHref{subproof.\@currentlabel}
+      \str_set:Ne \@currentHref{subproof.\@currentlabel}
       \_stex_do_id:
     }
     \bool_set_false:N \l_@@_in_spfblock_bool
@@ -8742,7 +8180,7 @@
     \bool_if:NTF \l_@@_in_spfblock_bool {
       \str_if_empty:NF \l_stex_key_id_str {
         \_@@_number_as_string:N \@currentlabel
-        \str_set:Nx \@currentHref{subproof.\@currentlabel}
+        \str_set:Ne \@currentHref{subproof.\@currentlabel}
         \_stex_do_id:
       }
       \_@@_start_list:n\_@@_insert_number:
@@ -8836,7 +8274,7 @@
     \begin{spfstepenv}
       \str_if_empty:NF \l_stex_key_id_str {
         \_@@_number_as_string:N \@currentlabel
-        \str_set:Nx \@currentHref{spfstep.\@currentlabel}
+        \str_set:Ne \@currentHref{spfstep.\@currentlabel}
         \_stex_do_id:
       }
 
@@ -8910,8 +8348,13 @@
   \cs_set:Npn \_stex_sref_do_aux:n #1 { #1 }
   \bool_set_false:N \_stex_html_do_output_bool
   \bool_set_false:N \c_stex_check_terms_bool
-  \stex_uri_resolve:Nn \l_stex_current_ns_uri {http://mathhub.info/sTeX/meta}
-  \stex_module_setup:n{Metatheory}
+  \tl_set:Ne \l_stex_current_document_uri {
+    {\tl_to_str:n{http://mathhub.info}}
+    {\tl_to_str:n{sTeX/meta-inf}}{}
+    {\tl_to_str:n{Metatheory}}{\tl_to_str:n{en}}{}
+  }
+  \_stex_module_setup_top_nosig:n{Metatheory}
+  \g_stex_every_module_tl
 
   \symdef{of~type}[args=ii,invisible]{#1}
   \notation{of~type}[colon]{#1 \mathbin{\comp{:}} #2}
@@ -9092,15 +8535,15 @@
 %    \begin{macrocode}
 \NewDocumentCommand \mmtdef {m O{} m} {
   \stex_keys_set:nn{symdef}{#2}
-  \str_set:Nx \l_stex_macroname_str { #1 }
+  \str_set:Ne \l_stex_macroname_str { #1 }
   \str_if_empty:NT \l_stex_key_name_str {
-    \str_set:Nx \l_stex_key_name_str { #1 }
+    \str_set:Ne \l_stex_key_name_str { #1 }
   }
   \stex_symdecl_do:
 
   \str_set_eq:NN \l_stex_current_module_str \l_@@_mmt_module_str
-  \cs_set_eq:NN \l_@@_old_metagroup_cd \stex_metagroup_do_in:nn
-  \cs_set_protected:Npn \stex_metagroup_do_in:nn ##1 ##2 {##2}
+  \cs_set_eq:NN \l_@@_old_metagroup_cd \stex_metagroup_do_in:n
+  \cs_set_protected:Npn \stex_metagroup_do_in:n ##1 {##1}
   \exp_args:Nnx \use:nn {\stex_module_add_symbol:nnnnnnnN}{
     {\l_stex_macroname_str}
     {\l_stex_key_name_str}
@@ -9111,7 +8554,7 @@
     {}
     \stex_invoke_symbol:
   }
-  \cs_set_eq:NN \stex_metagroup_do_in:nn \l_@@_old_metagroup_cd
+  \cs_set_eq:NN \stex_metagroup_do_in:n \l_@@_old_metagroup_cd
   \str_set_eq:NN \l_stex_current_module_str \l_@@_stex_module_str
 
   \str_set_eq:NN \l_stex_get_symbol_mod_str \l_@@_mmt_module_str
