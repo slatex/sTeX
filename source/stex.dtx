@@ -1179,6 +1179,20 @@
   \exp_after:wN \_@@_module_uri:nnnnn #1
 }
 
+\cs_set:Nn \stex_name_from_module:N {
+  \exp_after:wN \use_iv:nnnnn #1
+}
+
+\cs_set_protected:Nn \stex_module_with_language:NNn {
+  \tl_set:Ne #1 {
+    \exp_after:wN \_@@_with_lang:nnnnnn #2
+  }
+}
+
+\cs_set:Nn \_@@_with_lang:nnnnnn {
+  {#1}{#2}{#3}{#6}{#5}
+}
+
 \cs_set:Ne \_@@_module_uri:nnnnn { 
   \_@@_archive_uri:nn{#1}{#2}
   \exp_not:N\tl_if_empty:nF{#3}{\c_ampersand_str\tl_to_str:n{p=}#3}
@@ -1222,7 +1236,7 @@
     \str_if_eq:nnTF{#5}{#8}{
       {#4}{#5}{#6}
     }{
-      {#4/#5}{\tl_to_str:n{#8}}{#6}
+      {#4/#5}{#8}{#6}
     }
   }
 }
@@ -1241,7 +1255,7 @@
   \exp_after:wN \_@@_append:Nnnnnnn \exp_after:wN #1 #1
 }
 \cs_set_protected:Nn \_@@_append:Nnnnnnn {
-  \tl_set:Ne #1 {{#2}{#3}{#4}{#5}{#6 / \tl_to_str:n{#7}}}
+  \tl_set:Ne #1 {{#2}{#3}{#4}{#5}{#6 / #7}}
 }
 %    \end{macrocode}
 % \end{macro}
@@ -2405,9 +2419,73 @@
 % \end{variable}
 %
 %
+% Keys and key handling:
+%
+%    \begin{macrocode}
+\stex_keys_define:nnnn{smodule}{
+  \str_clear:N \l_stex_key_sig_str
+}{
+  meta          .code:n       = {
+    \str_if_empty:nTF {#1}{
+      \tl_clear:N \l_stex_metatheory_uri
+    }{
+      \stex_uri_resolve:Ne \l_stex_metatheory_uri { #1 }
+    }
+  },
+  %ns            .code:n       = {
+  %  \stex_uri_resolve:Ne \l_stex_current_ns_uri { #1 }
+  %} ,
+  %lang          .code:n       = {
+  %  \stex_set_language:n { #1 }
+  %} ,
+  sig           .str_set_x:N  = \l_stex_key_sig_str ,
+  creators      .code:n       = {} , % todo ?
+  contributors  .code:n       = {} , % todo ?
+  srccite       .code:n       = {}   % todo ?
+}{id, title, style, deprecate}
+%    \end{macrocode}
+%
+% \begin{environment}{smodule}
+%    \begin{macrocode}
+\stex_new_stylable_env:nnnnnnn {module} {O{} m}{
+  \stex_keys_set:nn { smodule }{ #1 }
+  \tl_set_eq:NN \thistitle \l_stex_key_title_tl
+  \tl_if_empty:NF \thistitle {
+    \exp_args:No \stexdoctitle \thistitle
+  }
+  \exp_args:Ne \stex_module_setup:n { \tl_to_str:n{ #2 } }
+
+  \stex_if_do_html:T \_@@_html_annots:
+  \stex_if_smsmode:F {
+    \str_set_eq:Ne \thismoduleuri {\stex_module_uri:N \l_stex_current_module_uri }
+    \tl_set:Nn \thismodulename {#2}
+    \stex_style_apply:
+  }
+  \stex_smsmode_do:
+}{
+  \stex_close_module:
+  \stex_if_smsmode:F \stex_style_apply:
+  \stex_if_do_html:T{ \end{stex_annotate_env} }
+}{}{}{s}
+
+\cs_new_protected:Nn \_@@_html_annots: {
+  \exp_args:Nne \begin{stex_annotate_env} {
+    data-shtml-theory={\stex_name_from_module:N \l_stex_current_module_uri},
+    %data-shtml-language={ \l_stex_current_language_str},
+    data-shtml-signature={\l_stex_key_sig_str}
+    \tl_if_empty:NF \l_stex_metatheory_uri {,
+      data-shtml-metatheory={\stex_module_uri:N \l_stex_metatheory_uri}
+    }
+  }
+  \stex_annotate_invisible:n{}
+}
+
+\stex_sms_allow_env:n{smodule}
+%    \end{macrocode}
+% \end{environment}
+%
 % \begin{macro}{\stex_every_module:n}
 %    \begin{macrocode}
-%<@@=stex_module_setup>
 \tl_clear:N \g_stex_every_module_tl
 \cs_new_protected:Nn \stex_every_module:n {
   \tl_gput_right:Nn \g_stex_every_module_tl { #1 }
@@ -2432,7 +2510,6 @@
 \cs_new:Nn \_@@_notations:N {
   c_stex_module_ \stex_module_uri:N #1 _notations_prop
 }
-
 
 \cs_new_protected:Npn \stex_module_setup:n {
   \stex_if_in_module:TF \_@@_nested:n \_@@_top:n
@@ -2475,15 +2552,15 @@
     \_@@_load_sig:
   }
   \tl_set_eq:NN \l_stex_current_module_tl \l_@@_uri
-  %\stex_activate_module:e { #1 }
 }
 
 \cs_new_protected:Nn \_@@_load_sig: {
-  \stex_file_split_off_ext:NN \l_@@_sigfile \g_stex_current_file
-  \stex_file_split_off_lang:NN \l_@@_sigfile \l_@@_sigfile
+  \stex_file_split_off_lang:NN \l_@@_sigfile \g_stex_current_file
   \exp_args:Ne \stex_file_in_smsmode:nn {
     \stex_file_use:N \l_@@_sigfile . \l_stex_key_sig_str . tex
   }{}
+  \stex_module_with_language:NNn \l_@@_sig \l_@@_uri \l_stex_key_sig_str
+  \exp_args:No \stex_activate_module:n \l_@@_sig
 }
 
 \cs_new_protected:Nn \_@@_nested:n {
@@ -2509,61 +2586,70 @@
 \cs_new_protected:Nn \_@@_load_meta: {
   \tl_if_empty:NF \l_stex_metatheory_uri {
     \stex_execute_in_module:e{
-      \stex_pseudogroup_with:nn{\l_stex_in_meta_bool}{
+      \bool_if:NTF \l_stex_in_meta_bool {
         \stex_activate_module:n {\stex_uri_use:N \l_stex_metatheory_uri }
+      }{
+        \bool_set_true:N \l_stex_in_meta_bool
+        \stex_activate_module:n {\stex_uri_use:N \l_stex_metatheory_uri }
+        \bool_set_false:N \l_stex_in_meta_bool
       }
     }
   }
 }
-
-%<@@=stex_modules>
+%
 %    \end{macrocode}
 % \end{macro}
 %
 % \begin{macro}{\stex_close_module:}
 %    \begin{macrocode}
+
+
+%\tl_gclear:c{ \_@@_code:N \l_@@_uri }
+%\prop_gclear:c{ \_@@_morphisms:N \l_@@_uri }
+%\prop_gclear:c{ \_@@_symbols:N \l_@@_uri }
+%\prop_gclear:c{ \_@@_notations:N \l_@@_uri }
+
 \cs_new:Nn \stex_close_module: {
   \bool_if:NT \c_stex_persist_write_mode_bool \_@@_persist_module:
   \stex_debug:nn{module}{
-    Closing~module~\l_stex_current_module_str^^J
-    Code:~\expandafter\meaning\csname c_stex_module_\l_stex_current_module_str _code\endcsname^^J
-    Imports:\exp_after:wN \prop_to_keyval:N \cs:w c_stex_module_\l_stex_current_module_str _morphisms_prop\cs_end:^^J
-    Declarations:\exp_after:wN \prop_to_keyval:N \cs:w c_stex_module_\l_stex_current_module_str _symbols_prop\cs_end:^^J
-    Notations:\exp_after:wN \prop_to_keyval:N \cs:w c_stex_module_\l_stex_current_module_str _notations_prop\cs_end:^^J
+    Closing~module~\stex_module_uri:N \l_stex_current_module_uri^^J
+    Code:~\expandafter\meaning\csname \_@@_code:N \l_stex_current_module_uri \endcsname^^J
+    Imports:~ \exp_after:wN \prop_to_keyval:N \cs:w \_@@_morphisms:N \l_stex_current_module_uri \cs_end:^^J
+    Declarations:~ \exp_after:wN \prop_to_keyval:N \cs:w \_@@_symbols:N \l_stex_current_module_uri \cs_end:^^J
+    Notations:~ \exp_after:wN \prop_to_keyval:N \cs:w \_@@_notations:N \l_stex_current_module_uri \cs_end:^^J
   }
 }
 
 \cs_new_protected:Nn \_@@_persist_module: {
   \stex_persist:e {
-    \_@@_restore_module:nnnn {\l_stex_current_module_str}{
+    \_@@_restore_module:nnnn {\l_stex_current_module_uri}{
       \exp_after:wN \prop_to_keyval:N \cs:w 
-        c_stex_module_\l_stex_current_module_str _morphisms_prop
+        \_@@_morphisms:N \l_stex_current_module_uri
       \cs_end:
     }{
       \exp_after:wN \prop_to_keyval:N \cs:w 
-        c_stex_module_\l_stex_current_module_str _symbols_prop
+        \_@@_symbols:N \l_stex_current_module_uri
       \cs_end:
     }{
       \exp_after:wN \exp_after:wN \exp_after:wN \exp_not:n
       \exp_after:wN \exp_after:wN \exp_after:wN
-      { \cs:w c_stex_module_\l_stex_current_module_str _code \cs_end: }
+      { \cs:w \_@@_code:N \l_stex_current_module_uri \cs_end: }
     }{}
-    \prop_map_function:cN{c_stex_module_\l_stex_current_module_str _notations_prop}
+    \prop_map_function:cN{\_@@_notations:N \l_stex_current_module_uri}
       \_@@_persist_nots_i:nn
     \exp_not:N \STEXRestoreNotsEnd {}
   }
 }
 
 \cs_new_protected:Nn \_@@_restore_module:nnnn {
-  \prop_gset_from_keyval:cn{c_stex_module_\tl_to_str:n{#1}_morphisms_prop}{#2}
-  \cs_set:Npn \_@@_tl {#3}
-  \exp_args:Nno \prop_gset_from_keyval:cn{c_stex_module_\tl_to_str:n{#1}_symbols_prop}\_@@_tl
-  \prop_map_inline:cn{c_stex_module_\tl_to_str:n{#1}_symbols_prop}{
+  \tl_set:Nn \l_@@_uri { #1 }
+  \prop_gset_from_keyval:cn{ \_@@_morphisms:N \l_@@_uri }{#2}
+  \prop_gset_from_keyval:cn{\_@@_symbols:N \l_@@_uri}{#3}
+  \prop_map_inline:cn{\_@@_symbols:N \l_@@_uri}{
     \stex_ref_new_symbol:n{#1?##1}
   }
-  \cs_gset:cpn{c_stex_module_\tl_to_str:n{#1}_code}{#4}
-  \prop_gclear:c{c_stex_module_\tl_to_str:n{#1} _notations_prop}
-  \str_set:Nn \l_@@_restore_mod_str {#1}
+  \tl_gset:cn{\_@@_code:N \l_@@_uri}{#4}
+  \prop_gclear:c{\_@@_notations:N \l_@@_uri}
   \group_begin:
     \catcode`_=8\relax
     \catcode`:=12\relax
@@ -2589,9 +2675,9 @@
 }
 
 \cs_new_protected:Nn \_@@_restore_nots_ii:nnnnn {
-  \cs_set:Npn \l_@@_tl {{#4}{#5}}
+  \tl_set:Nn \l_@@_tl {{#4}{#5}}
   \exp_args:NNe\use:nn\prop_gput:cnn{
-    {c_stex_module_\l_@@_restore_mod_str _notations_prop}
+    {\_@@_notations:N \l_@@_uri}
     {\tl_to_str:n{#1!#2}}{
       {\tl_to_str:n{#1}}{\tl_to_str:n{#2}}{#3}
       \exp_args:No \exp_not:n \l_@@_tl
@@ -2636,70 +2722,6 @@
 \stex_sms_allow_escape:N \setmetatheory
 %    \end{macrocode}
 % \end{macro}
-%
-% Keys and key handling:
-%
-%    \begin{macrocode}
-\stex_keys_define:nnnn{smodule}{
-  \str_clear:N \l_stex_key_sig_str
-}{
-  meta          .code:n       = {
-    \str_if_empty:nTF {#1}{
-      \tl_clear:N \l_stex_metatheory_uri
-    }{
-      \stex_uri_resolve:Ne \l_stex_metatheory_uri { #1 }
-    }
-  },
-  ns            .code:n       = {
-    \stex_uri_resolve:Ne \l_stex_current_ns_uri { #1 }
-  } ,
-  %lang          .code:n       = {
-  %  \stex_set_language:n { #1 }
-  %} ,
-  sig           .str_set_x:N  = \l_stex_key_sig_str ,
-  creators      .code:n       = {} , % todo ?
-  contributors  .code:n       = {} , % todo ?
-  srccite       .code:n       = {}   % todo ?
-}{id, title, style, deprecate}
-%    \end{macrocode}
-%
-% \begin{environment}{smodule}
-%    \begin{macrocode}
-\stex_new_stylable_env:nnnnnnn {module} {O{} m}{
-  \stex_keys_set:nn { smodule }{ #1 }
-  \tl_set_eq:NN \thistitle \l_stex_key_title_tl
-  \tl_if_empty:NF \thistitle {
-    \exp_args:No \stexdoctitle \thistitle
-  }
-  \exp_args:Nx \stex_module_setup:n { \tl_to_str:n{ #2 } }
-
-  \stex_if_do_html:T {
-    \exp_args:Nne \begin{stex_annotate_env} {
-      data-shtml-theory={\l_stex_current_module_str},
-      data-shtml-language={ \l_stex_current_language_str},
-      data-shtml-signature={\l_stex_key_sig_str}
-      \tl_if_empty:NF \l_stex_metatheory_uri {,
-        data-shtml-metatheory={\stex_uri_use:N \l_stex_metatheory_uri}
-      }
-    }
-    \stex_annotate_invisible:n{}
-  }
-  \stex_if_smsmode:F {
-    \str_set_eq:NN \thismoduleuri \l_stex_current_module_str
-    \tl_set:Nn \thismodulename {#2}
-    \stex_style_apply:
-  }
-  \stex_smsmode_do:
-}{
-  \stex_close_module:
-  \stex_if_smsmode:F \stex_style_apply:
-  \stex_if_do_html:T{ \end{stex_annotate_env} }
-}{}{}{s}
-
-\stex_sms_allow_env:n{smodule}
-%    \end{macrocode}
-% \end{environment}
-%
 %
 % \begin{macro}[pTF]{\stex_if_in_module:}
 % Are we currently in a module?
