@@ -1,0 +1,234 @@
+% \iffalse
+%<*driver>
+\def\stexdocpath{../../doc}
+\input{\stexdocpath/stex-docheader-new}
+\stextoptitle{The \sTeX Package}{stex}
+\docmodule
+%</driver>
+%<*package>
+% \fi
+%
+% \begin{sfragment}{HTML Output}
+%
+% \begin{implementation}
+%    \begin{macrocode}
+%<@@=stex_annotate>
+%    \end{macrocode}
+% \end{implementation}
+%
+% \begin{documentation}
+%  Macros for dealing with HTML output.
+% \end{documentation}
+%
+% \begin{svariable}{\stex@backend}
+% Which engine is running; possible values are
+% |pdflatex|, |rustex|, |tex4ht| (\textcolor{red}{TODO}) and
+% |latexml| (\textcolor{red}{TODO}).
+%
+% \StartImpl
+% We determine and \cs{input} the backend config file:
+%    \begin{macrocode}
+\ifcsname if@rustex\endcsname\else
+  \expandafter\newif\csname if@rustex\endcsname
+  \@rustexfalse
+\fi
+
+\stex_get_env:Nn\_@@_env_str{STEX_FORCE_PDF}
+\exp_args:No \str_if_eq:nnTF \_@@_env_str {true} {
+  \def\stex@backend{pdflatex}
+}{
+  \tl_if_exist:NF\stex@backend{
+    \if@rustex
+      \def\stex@backend{rustex}
+    \else
+      \cs_if_exist:NTF\HCode{
+        \def\stex@backend{tex4ht}
+      }{
+        \def\stex@backend{pdflatex}
+      }
+    \fi
+  }
+}
+
+\input{stex-backend-\stex@backend.cfg}
+%    \end{macrocode}
+% \end{svariable}
+%
+% \begin{sfunction}[pTF]{\stex_if_html_backend:}{}
+%  \LaTeX3 conditional testing whether the engine running
+%  compiles to HTML.
+% \StartImpl
+%  is provided by the backend config file.
+% \end{sfunction}
+%
+% \begin{sfunction}[EXP]{\ifstexhtml}{}
+%  \LaTeX2 conditional testing whether the engine running
+%  compiles to HTML.
+%
+% \StartImpl
+%    \begin{macrocode}
+\bool_new:N \l_@@_do_output_bool
+
+\newif\ifstexhtml
+\stex_if_html_backend:TF {
+  \stexhtmltrue
+  \bool_set_true:N \l_@@_do_output_bool
+}{
+  \stexhtmlfalse
+  \bool_set_false:N \l_@@_do_output_bool
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}[pTF]{\stex_if_do_html:}{}
+%  Whether to (locally) produce HTML output. May be turned off
+% locally even if the backend produces HTML; e.g. when parsing
+% dependencies in \cs{importmodule} or \cs{usemodule}.
+%
+% \StartImpl
+%    \begin{macrocode}
+\prg_new_conditional:Nnn \stex_if_do_html: {p,T,F,TF} {
+  \bool_if:NTF \l_@@_do_output_bool
+    \prg_return_true: \prg_return_false:
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\stex_suppress_html:n}{}
+%  temporarily suppresses HTML output when processing the provided
+%  code.
+%
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_suppress_html:n {
+  \stex_pseudogroup:nn{
+    \bool_set_false:N \l_@@_do_output_bool
+    #1
+  }{
+    \stex_if_do_html:T {
+      \bool_set_true:N \l_@@_do_output_bool
+    }
+  }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\stex_annotate:nn}
+%   {\cs{stex_annotate:nn} \marg{keyvals} {code}}
+%  attaches the provided comma-separated key-value-pairs 
+%  (as |key=val|) as HTML attributes to the HTML node(s)
+%  generated from \meta{code}. If \meta{code} results in multiple
+%  nodes, this needs to insert a new |<div>|, |<span>| or |<mrow>|
+%  node for the attributes. Multiple nested calls to \cs{stex_annotate:nn}
+%  may be merged into a single node. 
+% \StartImpl
+%  is provided by the backend config file.
+% \end{sfunction}
+%
+% \begin{senvironment}{stex_annotate_env}{}
+%  like \cs{stex_annotate:nn}, but as an environment; i.e.
+% \cs{begin}|{|\env{stex\_annotate\_env}|}{|\meta{keyvals}|}|\meta{code}\cs{end}|{|\env{stex\_annotate\_env}|}|
+% is equivalent to \cs{stex_annotate:nn}|{|\meta{keyvals}|}{|\meta{code}|}|
+% \StartImpl
+%  is provided by the backend config file.
+% \end{senvironment}
+%
+% \begin{sfunction}{\stex_html_node:nnn}
+%   {\cs{stex_html_node:nnn} \marg{tag} \marg{keyvals} {code}}
+%  like \cs{stex_annotate:nn}, but makes sure to wrap \meta{code}
+% in a new |<tag>| node.
+%  
+% \StartImpl
+%  is provided by the backend config file.
+% \end{sfunction}
+%
+% \begin{senvironment}{stex_env_node}{}
+%  like \cs{stex_html_node:nnn}, but as an environment; i.e.
+% \cs{begin}|{|\env{stex\_env\_node}|}{|\meta{tag}|}{|\meta{keyvals}|}|\meta{code}\cs{end}|{|\env{stex\_env\_node}|}|
+% is equivalent to \cs{stex_html_node:nnn}|{|\meta{tag}|}{|\meta{keyvals}|}{|\meta{code}|}|
+% \StartImpl
+%  is provided by the backend config file.
+% \end{senvironment}
+%
+% \begin{sfunction}{\stex_annotate_invisible:nn,\stex_annotate_invisible:n}
+%   {\cs{stex_annotate_invisible:nn} \marg{keyvals} {code}}
+%  like \cs{stex_annotate:nn}, but additionally adds the key values
+%  |data-shtml-visible="false"| and |style="display:none;"|.
+% \cs{stex_annotate_invisible:n} does not take additional attribute-value-pairs. 
+% \StartImpl
+%  is provided by the backend config file.
+% \end{sfunction}
+%
+% \begin{sfunction}{\STEXinvisible}{}
+%  public wrapper for \cs{stex_annotate_invisible:n}.
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Npn \STEXinvisible #1 {
+  \stex_annotate_invisible:n { #1 }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\stex_css_link:n}{\cs{stex_css_link:n} \marg{url}}
+%  inserts a |<link rel="stylesheet" href="|\meta{url}|">| node in the header
+% of the generated HTML.
+% \StartImpl
+%  is provided by the backend config file.
+% \end{sfunction}
+%
+% \begin{sfunction}{\stex_css_literal:n}{\cs{stex_css_literal:n} \marg{text}}
+%  inserts a |<style>|\meta{text}|</style>| node in the header
+% of the generated HTML.
+% \StartImpl
+%  is provided by the backend config file.
+% \end{sfunction}
+%
+% \begin{sfunction}{\_stex_annotate_force_break:n}{}
+%   should guarantee that the HTML nodes generated by the provided
+%   code are not merged with any outer nodes with respect to
+% attached attributes.
+% \StartImpl
+%  is provided by the backend config file.
+% \end{sfunction}
+%
+% \begin{sfunction}{\mmlintent,\mmlarg}{\cs{mmlintent} \marg{value} \marg{code}}
+%  annotates \meta{code} with the provided MathML \emph{intent} 
+%  attribute (or \emph{intent} |arg| attribute, respectively).
+% \StartImpl
+%    \begin{macrocode}
+\stex_if_html_backend:TF {
+  \cs_new_protected:Npn \mmlintent #1 #2 { 
+    \stex_annotate:nn{mml:intent={#1}}{#2} 
+  }
+  \cs_new_protected:Npn \mmlarg #1 #2 { 
+    \stex_annotate:nn{mml:arg={#1}}{#2}
+  }
+}{
+  \cs_new_protected:Npn \mmlintent #1 #2 { #2 }
+  \cs_new_protected:Npn \mmlarg #1 #2 { #2 }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{implementation}
+% We can now define \cs{stex_persist:n}:
+%    \begin{macrocode}
+%<@@=stex_persist>
+\bool_if:NTF \c_stex_persist_write_mode_bool {
+  \stex_if_html_backend:TF{
+    \cs_new:Npn \stex_persist:n #1 {}
+    \cs_new:Npn \stex_persist:e #1 {}
+  }{
+    \cs_new_protected:Nn \stex_persist:n {
+      \iow_now:Nn \c_@@_sms_iow {#1}
+    }
+    \cs_generate_variant:Nn \stex_persist:n {e}
+  }
+}{
+  \cs_new:Npn \stex_persist:n #1 {}
+  \cs_new:Npn \stex_persist:e #1 {}
+}
+%    \end{macrocode}
+% \end{implementation}
+%
+% \end{sfragment}

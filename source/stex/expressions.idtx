@@ -1,0 +1,1109 @@
+% \iffalse
+%<*driver>
+\def\stexdocpath{../../doc}
+\input{\stexdocpath/stex-docheader-new}
+\stextoptitle{The \sTeX Package}{stex}
+\docmodule
+%</driver>
+%<*package>
+% \fi
+%
+% \begin{sfragment}{Expressions}
+%
+% \begin{implementation}
+%    \begin{macrocode}
+%<@@=stex_expr>
+%    \end{macrocode}
+% \end{implementation}
+%
+% \begin{sfunction}{\symuse}{}
+% retrieves a symbol by name/id and invokes it as if using
+% a semantic macro.
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Npn \symuse #1 {
+  \stex_get_symbol:n{#1}
+  \exp_args:Nno \use:n {\_stex_invoke_symbol:NeooooN
+  \l_stex_get_symbol_uri
+  {\int_use:N \l_stex_get_symbol_arity_int}
+  \l_stex_get_symbol_args_tl
+  \l_stex_get_symbol_def_tl
+  \l_stex_get_symbol_type_tl
+  \l_stex_get_symbol_return_tl}
+  \l_stex_get_symbol_invoke_cs
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\_stex_invoke_symbol:NnnnnnN,\_stex_invoke_symbol:nnnnnnN,\_stex_invoke_symbol:NeooooN}{}
+%
+% invokes the symbol. Takes as arguments the following data, and
+% defines the corresponding macros accordingly:
+%
+% \begin{itemize}
+%   \item \cs{l_stex_current_symbol_uri},
+%   \item \cs{l_stex_current_symbol_arity_int},
+%   \item \cs{l_stex_current_symbol_args_tl},
+%   \item definiens (currently not used),
+%   \item \cs{l_stex_current_symbol_type_tl},
+%   \item \cs{l_stex_current_symbol_return_tl},
+%   \item the invokation macro (is called after setup).
+% \end{itemize}
+%
+% Also defines \cs{l_stex_current_full_tl} and \cs{l_stex_current_display_tl}
+%
+% For a ``normal'' symbol defined via \cs{symdecl} or \cs{symdef},
+% \cs{l_stex_current_symbol_invoke_cs} is defined as \cs{stex_invoke_symbol:}.
+%
+% Opens a new \TeX\ group that needs to be closed by
+% \cs{l_stex_current_symbol_invoke_cs}!
+%
+% \StartImpl
+% \begin{itemize}
+%   \item \cs{l_stex_current_symbol_uri},
+%   \item \cs{l_stex_current_symbol_arity_int},
+%   \item \cs{l_stex_current_symbol_args_tl},
+%   \item definiens (currently not used),
+%   \item \cs{l_stex_current_symbol_type_tl},
+%   \item \cs{l_stex_current_symbol_return_tl},
+%   \item the invokation macro (is called after setup).
+% \end{itemize}
+%
+%    \begin{macrocode}
+\cs_new_protected:Nn \_stex_invoke_symbol:nnnnnnN {
+  \bool_if:NTF \l_stex_allow_semantic_bool{
+    \group_begin:
+    \tl_set:Nn \l_stex_current_symbol_uri {#1}
+    \tl_set:Nn \l_stex_current_full_tl { \stex_use_symbol_uri:N \l_stex_current_symbol_uri }
+    \tl_set:Nn \l_stex_current_display_tl {
+      \stex_symbol_uri_name:N \l_stex_current_symbol_uri
+    }
+    \_@@_invoke:nnnnN{#2}{#3}{#5}{#6}{#7}
+  }{
+    \msg_error:nnxx{stex}{error/notallowed}{
+      \stex_use_symbol_uri:n{#1} 
+    }{
+      \stex_use_symbol_uri:N \l_stex_current_symbol_uri
+    }
+  }
+}
+
+\cs_new_protected:Npn \_stex_invoke_symbol:NnnnnnN {
+  \exp_args:No \_stex_invoke_symbol:nnnnnnN
+}
+\cs_generate_variant:Nn \_stex_invoke_symbol:NnnnnnN {NeooooN}
+%    \end{macrocode}
+%
+%
+% Whether semantic macros are allowed currently. This is
+% false e.g. in the body of a semantic macro outside of
+% one of its arguments:
+%    \begin{macrocode}
+\bool_new:N \l_stex_allow_semantic_bool
+\bool_set_true:N \l_stex_allow_semantic_bool
+%    \end{macrocode}
+%
+% Code to execute every time a semantic macro is invoked:
+%    \begin{macrocode}
+\tl_set:Nn \l_stex_every_symbol_tl {
+  \bool_set_false:N \l_stex_allow_semantic_bool
+}
+%    \end{macrocode}
+%
+% The current top-level term; may be undefined:
+%    \begin{macrocode}
+\tl_new:N \l_stex_current_term_tl
+%    \end{macrocode}
+%
+% Keeps track of all set up so it can be reexecuted; this may
+% be necessary to e.g. typeset \cs{this} in a struct field:
+%    \begin{macrocode}
+\tl_new:N \l_stex_current_redo_tl
+%    \end{macrocode}
+%
+% Setup for symbols; takes: arity, args, type, return, invoke.
+% Calls invoke at the end.
+%
+% In HTML mode, we make sure we enter horizontal mode
+% \emph{before} any annotations are inserted
+%    \begin{macrocode}
+\cs_new_protected:Nn \_@@_invoke:nnnnN {
+  \stex_if_html_backend:T{\relax\ifvmode\indent\fi}
+  \_@@_setup:nnnnn{\_comp}{#1}{#2}{#4}{#3}
+  \cs_set_eq:NN \_stex_term_oms_or_omv:nn \_stex_term_oms:nn
+  \tl_put_right:Nn \l_stex_current_redo_tl{
+    \cs_set_eq:NN \_stex_term_oms_or_omv:nn \_stex_term_oms:nn
+  }
+  #5
+}
+%    \end{macrocode}
+%
+% general setup; takes: comp, arity, args, return, type
+%    \begin{macrocode}
+\cs_new_protected:Nn \_@@_setup:nnnnn {
+  \tl_clear:N \l_stex_return_notation_tl
+  \tl_set:Nn \l_stex_current_redo_tl {
+    \let \this \stex_current_this:
+    \def\comp{#1}
+    \def\maincomp{\comp}
+    \str_set:Nn \l_stex_current_arity_str{ #2 }
+    \tl_set:Nn \l_stex_current_args_tl{ #3 }
+    \tl_set:Nn \l_stex_current_return_tl{ #4 }
+    \tl_set:Nn \l_stex_current_type_tl{ #5 }
+    \tl_clear:N \l_stex_current_term_tl
+  }
+  \tl_put_right:No \l_stex_current_redo_tl \l_stex_every_symbol_tl
+  \l_stex_current_redo_tl
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\stex_invoke_symbol:}{}
+% Invokes \cs{l_stex_current_symbol_uri}; assumes all the 
+% \cs{l_stex_current_*}-macros have been defined prior.
+%
+% \StartImpl
+% Math or text mode?
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_invoke_symbol: {
+  \stex_debug:nn{expressions}{Invoking~ \stex_use_symbol_uri:N \l_stex_current_symbol_uri}
+  \mode_if_math:TF \@@_math: \@@_text:
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\stex_invoke_text_symbol:}{}
+% Invokes \cs{l_stex_current_symbol_uri} as a symbol
+% declared via \cs{textsymdecl}; assumes all the 
+% \cs{l_stex_current_*}-macros have been defined prior.
+%
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_invoke_text_symbol: {
+  \stex_if_html_backend:T{\relax\ifvmode\indent\fi}
+  \_stex_term_oms_or_omv:nn{}{\maincomp{\let\xspace\relax\l_stex_current_return_tl}}
+  \group_end:\mode_if_math:F{\cs_if_exist:NT\xspace\xspace}
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\_stex_invoke_variable:nnnnnn}{}
+%
+% invokes the variable. Takes as arguments the following data, and
+% defines the corresponding macros accordingly:
+%
+% \begin{itemize}
+%   \item variable name,
+%   \item \cs{l_stex_current_symbol_arity_int},
+%   \item \cs{l_stex_current_symbol_args_tl},
+%   \item definiens (currently not used),
+%   \item \cs{l_stex_current_symbol_type_tl},
+%   \item \cs{l_stex_current_symbol_return_tl},
+%   \item the invokation macro (is called after setup).
+% \end{itemize}
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Nn \_stex_invoke_variable:nnnnnnN {
+  \bool_if:NTF \l_stex_allow_semantic_bool{
+    \group_begin:
+    \tl_set:Nn \l_stex_current_full_tl { #1 }
+    \tl_set:Nn \l_stex_current_display_tl { #1 }
+    \stex_if_html_backend:T{\relax\ifvmode\indent\fi}
+    \_@@_setup:nnnnn{\_varcomp}{#2}{#3}{#6}{#5}
+    \cs_set_eq:NN \_stex_term_oms_or_omv:nn \_stex_term_omv:nn
+    \tl_put_right:Nn \l_stex_current_redo_tl {
+      \cs_set_eq:NN \_stex_term_oms_or_omv:nn \_stex_term_omv:nn
+    }
+    #7
+  }{
+    \msg_error:nnxx{stex}{error/notallowed}{#1}{\l_stex_current_full_tl}
+  }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\svar}{}
+% \StartImpl
+%    \begin{macrocode}
+\NewDocumentCommand \svar {O{} m}{
+  \group_begin:
+    \tl_if_empty:nTF{#1}{
+      \tl_set:Nn \l_stex_current_full_tl { #2 }
+      \tl_set:Nn \l_stex_current_display_tl { #2 }
+    }{
+      \tl_set:Nn \l_stex_current_full_tl { #1 }
+      \tl_set:Nn \l_stex_current_display_tl { #1 }
+    }
+    \bool_if:NTF \l_stex_allow_semantic_bool{
+        \tl_clear:N \l_stex_current_term_tl
+        \_stex_term_omv:nn{}{\_varcomp{#2}}
+    }{
+      \msg_error:nnxx{stex}{error/notallowed}{Variable}{\l_stex_current_symbol_str}
+    }
+  \group_end:
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{implementation}
+%
+% Now for the brunt of the work:
+% \begin{paragraph}{Math} \noindent \par
+% Modifiers (|!| or |*|)?
+%    \begin{macrocode}
+\cs_new_protected:Nn \@@_math: {
+  \stex_debug:nn{expressions}{math~mode}
+  \peek_charcode_remove:NTF ! {
+    % operator
+    \peek_charcode_remove:NTF * \_@@_op_custom:n {
+      % op notation
+      \peek_charcode:NTF [ \@@_op_notation:w {
+        \@@_op_notation:w []
+      }
+    }
+  }{
+    \peek_charcode_remove:NTF * \_@@_custom:n {
+      % normal
+      \peek_charcode:NTF [ \_@@_notation:w {
+        \_@@_notation:w []
+      }
+    }
+  }
+}
+%    \end{macrocode}
+% \end{paragraph}
+%
+% \begin{paragraph}{Text} \noindent \par
+% Operator?
+%    \begin{macrocode}
+\cs_new_protected:Nn \@@_text: {
+  \stex_debug:nn{expressions}{text~mode}
+  \peek_charcode_remove:NTF ! \_@@_op_custom:n \_@@_custom:n
+}
+%    \end{macrocode}
+% \end{paragraph}
+%
+% \begin{paragraph}{Notation} \noindent \par
+% Operator?
+%    \begin{macrocode}
+\cs_new_protected:Npn \_@@_notation:w [ #1 ] {
+  \peek_charcode_remove:NTF ! {
+    \_@@_op_notation:w [#1]
+  }{
+    \_@@_full_notation:n {#1}
+  }
+}
+%    \end{macrocode}
+%
+% (Possibly) complex notation taking arguments with optional
+% particular identifier:
+%    \begin{macrocode}
+\cs_new_protected:Nn \_@@_full_notation:n {
+  \stex_use_notation:nnTF \l_stex_current_full_tl {#1}{
+    \stex_debug:nn{expressions}{using~notation~"#1"~for~\l_stex_current_full_tl}
+    \tl_if_empty:NTF \l_stex_current_return_tl {
+      \stex_debug:nn{expressions}{return~empty}
+      \l_stex_notation_cs{\group_end:\_stex_eat_exclamation_point:}
+    }{
+      \stex_debug:nn{expressions}{return?}
+      \exp_after:wN \_@@_maybe_return:n \exp_after:wN {
+        \l_stex_notation_cs{}
+      }
+    }
+  }{
+    \stex_debug:nn{expressions}{notation~"#1"~for~\l_stex_current_full_tl{}~does~not~exist;~using~default}
+    \stex_do_default_notation:
+    \tl_if_empty:NTF \l_stex_current_return_tl {
+      \l_stex_default_notation{\group_end:\_stex_eat_exclamation_point:}
+    }{
+      \exp_after:wN
+      \_@@_maybe_return:n
+      \exp_after:wN
+      {\l_stex_default_notation {}}
+    }
+  }
+}
+%    \end{macrocode}
+%
+% Operator notation:
+%    \begin{macrocode}
+\cs_new_protected:Npn \@@_op_notation:w [#1] {
+  \stex_debug:nn{expressions}{op~notation~for~\l_stex_current_full_tl}
+  \stex_use_op_notation:nnTF \l_stex_current_full_tl {#1}{
+    \_stex_maybe_brackets:nn{\neginfprec}{
+      \_stex_term_oms_or_omv:nn{#1}
+      {\l_stex_notation_cs}
+    }
+    \group_end:
+  }{
+    \int_compare:nNnTF \l_stex_current_arity_str = 0 {
+      \tl_clear:N \l_stex_current_return_tl
+      \_@@_notation:w [#1]
+    }{
+      \stex_do_default_notation_op:    
+      \_stex_maybe_brackets:nn{\neginfprec}{
+        \_stex_term_oms_or_omv:nn{#1}
+        {\l_stex_default_notation}
+      }
+      \group_end:
+    }
+  }
+}
+%    \end{macrocode}
+% \end{paragraph}
+%
+% \begin{paragraph}{Custom Notations} \noindent \par
+% Operator:
+%    \begin{macrocode}
+\cs_new_protected:Nn \_@@_op_custom:n {
+  \stex_debug:nn{expressions}{custom~op}
+  \bool_set_true:N \l_stex_allow_semantic_bool
+  \_stex_term_oms_or_omv:nn{}{\maincomp{#1}}
+  \group_end:
+}
+%    \end{macrocode}
+%
+% Complex:
+%    \begin{macrocode}
+\int_new:N \l_@@_arg_counter_int
+
+\cs_new_protected:Nn \_@@_custom:n {
+  \stex_debug:nn{custom}{custom~notation~for~\l_stex_current_full_tl}
+  \stex_pseudogroup:nn{
+    \bool_set_true:N \l_stex_allow_semantic_bool
+    \prop_gclear:N \l_@@_customs_prop
+    \seq_gclear:N \l_@@_customs_seq
+    \int_gzero:N \l_@@_arg_counter_int
+    \tl_if_empty:NF \l_stex_current_args_tl {
+      \exp_after:wN \_@@_add_prop_arg:nnw \l_stex_current_args_tl \_stex_args_end:
+      \cs_set_eq:NN \arg \_@@_arg:n
+    }
+    \tl_set_eq:NN \l_stex_get_symbol_args_tl \l_stex_current_args_tl
+    \cs_set_eq:NN \_@@_do_ab_next:nn \_stex_term_oma:nn
+    \_stex_map_args:N \_@@_check_b:nn
+    \_@@_do_ab_next:nn{}{#1}
+  }{
+    \prop_if_exist:NT \l_@@_customs_prop {
+      \prop_gset_from_keyval:Nn \exp_not:N \l_@@_customs_prop {
+        \prop_to_keyval:N \l_@@_customs_prop
+      }
+    }
+    \int_gset:Nn \l_@@_arg_counter_int { \int_use:N \l_@@_arg_counter_int}
+    \seq_if_exist:NT \l_@@_customs_seq {
+      \seq_gset_split:Nnn \exp_not:N \l_@@_customs_seq , {
+        \seq_use:Nn \l_@@_customs_seq ,
+      }
+    }
+  }
+  % TODO check that all arguments are present
+  \group_end:
+}
+
+\cs_new_protected:Npn \_@@_add_prop_arg:nnw #1 #2 #3\_stex_args_end: {
+  \prop_gput:Nnn \l_@@_customs_prop {#1} {}
+  \seq_gput_right:Nn \l_@@_customs_seq {#2}
+  \tl_if_empty:nF{#3}{\_@@_add_prop_arg:nnw #3 \_stex_args_end:}
+}
+
+\cs_new:Nn \_@@_check_b:nn {
+  \str_case:nn #2 {
+    b {\cs_set_eq:NN \_@@_do_ab_next:nn \_stex_term_omb:nn}
+    B {\cs_set_eq:NN \_@@_do_ab_next:nn \_stex_term_omb:nn}
+  }
+}
+%    \end{macrocode}
+%
+% Arguments:
+%    \begin{macrocode}
+\NewDocumentCommand \_@@_arg:n {s O{} m} {
+  \IfBooleanTF #1 {
+    \stex_annotate_invisible:n{
+      \_@@_arg_inner:nn{#2}{#3}
+    }
+  }{
+    \_@@_arg_inner:nn{#2}{#3}
+  }
+}
+
+\cs_new_protected:Nn \_@@_arg_inner:nn {
+  \tl_if_empty:nTF{#1}{
+    \int_gincr:N \l_@@_arg_counter_int
+    \exp_args:Ne \_@@_check:nTF{ \int_use:N \l_@@_arg_counter_int }{
+      \_@@_arg_do:oon \l_tmpa_tl \l_tmpb_tl
+    }{
+      \_@@_arg_inner:nn{}
+    }{ #2 }
+  }{
+    \_@@_check:nTF {#1}{
+      \_@@_arg_do:oon \l_tmpa_tl \l_tmpb_tl { #2 }
+    }{
+      \exp_args:No \str_case:nnTF \l_tmpb_tl {
+        {a}{
+          \exp_args:NNne \prop_gput:Nnn \l_@@_customs_prop {#1}{
+            \l_tmpa_tl X
+          }
+          \tl_set:Nx \l_tmpa_tl { #1 \int_eval:n {\tl_count:N \l_tmpa_tl + 1} }
+        }
+        {B}{
+          \exp_args:NNne \prop_gput:Nnn \l_@@_customs_prop {#1}{
+            \l_tmpa_tl X
+          }
+          \tl_set:Ne \l_tmpa_tl { #1 \int_eval:n {\tl_count:N \l_tmpa_tl + 1} }
+        }
+      }{
+        \_@@_arg_do:oon \l_tmpa_tl \l_tmpb_tl { #2 }
+      }{
+        \msg_error:nnxx{stex}{error/invalidarg}{#1}{\stex_use_symbol_uri:N \l_stex_current_symbol_uri}
+      }
+    }
+  }
+}
+
+\prg_new_conditional:Nnn \_@@_check:n {TF} {
+  \exp_args:NNe \prop_get:NnNTF \l_@@_customs_prop {#1} \l_tmpa_tl {
+    \tl_set:Ne \l_tmpb_tl {\seq_item:Nn \l_@@_customs_seq {#1} }
+    \tl_if_empty:NTF \l_tmpa_tl {
+      \exp_args:NNe \prop_gput:Nnn \l_@@_customs_prop 
+        { #1 }{X}
+      \exp_args:No \str_case:nnF \l_tmpb_tl {
+        {a}{
+          \tl_set:Ne \l_tmpa_tl{ #1 1 }
+        }
+        {B}{
+          \tl_set:Ne \l_tmpa_tl{ #1 1 }
+        }
+      }{
+        \tl_set:Ne \l_tmpa_tl{ #1 }
+      }
+      \prg_return_true:
+    }{
+      \prg_return_false:
+    }
+  }{
+    \msg_error:nnxx{stex}{error/invalidarg}{#1}{\l_stex_current_full_tl}
+    \prg_return_false:
+  }
+}
+
+% #1 argnum #2 argmode #3 code
+\cs_new_protected:Nn \_@@_arg_do:nnn {
+  \stex_debug:nn{custom}{Doing~argument~#1~of~mode~#2:~\tl_to_str:n{#3}}
+  \group_begin:
+    \bool_set_true:N \l_stex_allow_semantic_bool
+    \_stex_term_arg:nnn {#2}{#1}{#3}
+  \group_end:
+}
+\cs_generate_variant:Nn \_@@_arg_do:nnn {oon}
+%    \end{macrocode}
+%
+% \end{paragraph}
+%
+% \begin{paragraph}{Return code}  \noindent \par
+%    \begin{macrocode}
+\cs_new_protected:Nn \_@@_maybe_return:n {
+  \tl_set:Nn \l_@@_return_this_tl {#1}
+  \exp_args:Nne \use:n {
+  \cs_generate_from_arg_count:NNnn \_@@_ret_cs:
+    \cs_set:Npn \l_stex_current_arity_str } {
+      \int_step_function:nN \l_stex_current_arity_str \_@@_return_arg:n
+      \_@@_return_next:
+    }
+  \_@@_ret_cs:
+}
+
+\cs_new:Nn \_@@_return_arg:n {
+  \tl_put_right:Nn \exp_not:N \l_@@_return_args_tl {{#### #1}}
+}
+
+\cs_new_protected:Nn \_@@_return_next: {
+  \peek_charcode_remove:NTF ! {
+    \exp_after:wN \l_@@_return_this_tl \l_@@_return_args_tl \group_end:
+  }\_@@_return:
+}
+
+\cs_new_protected:Nn \_@@_return: {
+  \tl_set:Ne \l_@@_return_this_tl {
+    \tl_if_empty:NTF \l_stex_return_notation_tl {
+      \exp_after:wN \exp_after:wN \exp_after:wN
+      \exp_not:n \exp_after:wN \exp_after:wN \exp_after:wN {
+        \exp_after:wN \l_@@_return_this_tl \l_@@_return_args_tl
+      }
+    }{
+      \l_stex_return_notation_tl
+    }
+  }
+  \stex_debug:nn{return}{Notation:~\meaning\l_@@_return_this_tl}
+
+  \exp_after:wN
+  \tl_put_left:Nn \exp_after:wN \l_@@_return_this_tl \exp_after:wN {
+    \exp_after:wN \group_begin: \l_stex_current_redo_tl
+  }
+  \exp_args:Nne \use:n {
+  \cs_generate_from_arg_count:NNnn \_@@_ret_cs:
+    \cs_set:Npn \l_stex_current_arity_str } {
+      \exp_args:No \exp_not:n \l_stex_current_return_tl
+    }
+  \stex_debug:nn{return}{
+    \meaning\_@@_ret_cs:^^J
+    \meaning\l_@@_return_this_tl^^J
+    \exp_args:No \exp_not:n \l_@@_return_args_tl^^J
+  }
+  \exp_args:Nne \use:nn {
+    \exp_after:wN \group_end: \_@@_ret_cs:
+  }{
+    \exp_args:No \exp_not:n \l_@@_return_args_tl
+    {
+      \exp_args:No \exp_not:n \l_@@_return_this_tl
+      \group_end:
+    }
+  }
+}
+%    \end{macrocode}
+% \end{paragraph}
+% \end{implementation}
+%
+%^^A ---------------------------------------------------------
+%
+% \begin{sfragment}{Term Annotations}
+%
+% \begin{sfunction}{\_stex_eat_exclamation_point:}{}
+% removes spurious |!| characters
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Nn \_stex_eat_exclamation_point: {
+  \peek_charcode_remove:NT ! \_stex_eat_exclamation_point:
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{implementation}
+% We occasionally allow for semantic macros where they
+% otherwise shouldn't be, if we are in ``invisible'' parts:
+%    \begin{macrocode}
+\bool_new:N \stex_in_invisible_html_bool
+%    \end{macrocode}
+% \end{implementation}
+%
+% \begin{sfunction}{\_stex_term_oms:nn}{\cs{_stex_term_oms:nn} \marg{notation id} \marg{code}}
+% annotes \meta{code} with |OMID="|\cs{l_stex_current_symbol_uri}|"|
+% \StartImpl
+%    \begin{macrocode}
+\stex_if_html_backend:TF {
+  \cs_new_protected:Nn \_stex_term_oms:nn {
+    \tl_if_empty:NTF \l_stex_current_term_tl {
+      \_@@_annotate:nnn{OMID}{#1}{#2}
+    }{
+      \_@@_do_headterm:nn{#1}{#2}
+    }
+  }
+}{
+  \cs_new_protected:Nn \_stex_term_oms:nn {#2}
+}
+
+\cs_set_eq:NN \_stex_term_oms_or_omv:nn \_stex_term_oms:nn
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\_stex_term_omv:nn}{\cs{_stex_term_omv:nn} \marg{notation id} \marg{code}}
+% annotes \meta{code} with |OMV="|\cs{l_stex_current_symbol_uri}|"|
+%
+% \textcolor{red}{TODO: This shouldn't use \cs{l_stex_current_symbol_uri}!}
+% \StartImpl
+%    \begin{macrocode}
+\stex_if_html_backend:TF {
+  \cs_new_protected:Nn \_stex_term_omv:nn {
+    \tl_if_empty:NTF \l_stex_current_term_tl {
+      \_@@_annotate:nnn{OMV}{#1}{#2}
+    }{
+      \_@@_do_headterm:nn{#1}{#2}
+    }
+  }
+}{
+  \cs_new_protected:Nn \_stex_term_omv:nn {#2}
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{implementation}
+% In the case where the ``symbol'' (OMS or OMV) is the field
+% of some structure or otherwise a complex expression, we have
+% to insert the full term representing the operator:
+%    \begin{macrocode}
+\stex_if_html_backend:TF {
+  \cs_new_protected:Nn \_@@_do_headterm:nn {
+    \bool_if:NTF \stex_in_invisible_html_bool {
+      {\bool_set_true:N \l_stex_allow_semantic_bool
+        \ensuremath{\l_stex_current_term_tl}
+      }
+    }{
+      \_@@_annotate:nnn{complex}{#1}{
+        \stex_annotate_invisible:nn{data-shtml-headterm={}}{
+          {\bool_set_true:N \l_stex_allow_semantic_bool
+            \ensuremath{\l_stex_current_term_tl}
+          }
+        }
+        #2
+      }
+    }
+  }
+}{
+  \cs_new_protected:Nn \_@@_do_headterm:nn { #2 }
+}
+%    \end{macrocode}
+% \end{implementation}
+%
+% \begin{sfunction}{\_stex_term_oma:nn}{\cs{_stex_term_oma:nn} \marg{notation id} \marg{code}}
+% annotes \meta{code} with |OMA="|\cs{l_stex_current_symbol_uri}|"|
+%
+% \textcolor{red}{TODO: This shouldn't use \cs{l_stex_current_symbol_uri} if the head is a variable!}
+% \StartImpl
+%    \begin{macrocode}
+\stex_if_html_backend:TF {
+  \cs_new_protected:Nn \_stex_term_oma:nn {
+    \_@@_annotate:nnn{OMA}{#1}{
+      \tl_if_empty:NF \l_stex_current_term_tl {
+        \stex_annotate_invisible:nn{data-shtml-headterm={}}{{
+          \bool_set_true:N \l_stex_allow_semantic_bool
+          \l_stex_current_term_tl
+        }}
+      }
+      #2
+    }
+  }
+}{
+  \cs_new_protected:Nn \_stex_term_oma:nn {#2}
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\_stex_term_omb:nn}{\cs{_stex_term_omb:nn} \marg{notation id} \marg{code}}
+% annotes \meta{code} with |OMBIND="|\cs{l_stex_current_symbol_uri}|"|
+%
+% \textcolor{red}{TODO: This shouldn't use \cs{l_stex_current_symbol_uri} if the head is a variable!}
+% \StartImpl
+%    \begin{macrocode}
+\stex_if_html_backend:TF {
+  \cs_new_protected:Nn \_stex_term_omb:nn {
+    \_@@_annotate:nnn{OMBIND}{#1}{
+      \tl_if_empty:NF \l_stex_current_term_tl {
+        \stex_annotate_invisible:nn{data-shtml-headterm={}}{{
+          \bool_set_true:N \l_stex_allow_semantic_bool
+          \l_stex_current_term_tl
+        }}
+      }
+      #2
+    }
+  }
+}{
+  \cs_new_protected:Nn \_stex_term_omb:nn {#2}
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{implementation}
+% Does the actual annotating:
+% \textcolor{red}{TODO: This shouldn't use \cs{l_stex_current_symbol_uri}!}
+%    \begin{macrocode}
+% kind, notation id, body
+\cs_new_protected:Nn \_@@_annotate:nnn {
+  \stex_annotate:nn{
+    data-shtml-term=#1,
+    data-shtml-head={\l_stex_current_full_tl},
+    data-shtml-notationid={#2},
+  }{
+    \_stex_annotate_force_break:n{#3}
+  }
+}
+%    \end{macrocode}
+% \end{implementation}
+%
+% \end{sfragment}
+%
+%^^A ---------------------------------------------------------
+%
+% \begin{sfragment}{Symbol Arguments}
+%
+% \begin{sfunction}{\_stex_term_arg:nnnnn}{}
+% marks an argument of a symbol application, sets the precedence
+% accordingly, sets \cs{l_stex_allow_semantic_bool} etc.
+% \begin{arguments}
+%   \item argument number
+%   \item argument mode
+%   \item precedence
+%   \item argument name (WiP)
+%   \item code / body
+% \end{arguments}
+%
+% \StartImpl
+% \begin{arguments}
+%   \item argument number
+%   \item argument mode
+%   \item precedence
+%   \item argument name (WiP)
+%   \item code / body
+% \end{arguments}
+%    \begin{macrocode}
+\cs_new_protected:Nn \_stex_term_arg:nnnnn {
+  \group_begin:
+    \tl_clear:N \l_stex_current_symbol_uri
+    \tl_clear:N \l_stex_current_full_tl
+    \tl_clear:N \l_stex_current_display_tl
+    \tl_clear:N \l_stex_current_term_tl
+    \int_set:Nn \l_stex_notation_downprec { #3 }
+    \bool_set_true:N \l_stex_allow_semantic_bool
+    \_stex_term_arg:nnn {#2}{#1}{#5}
+  \group_end:
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\_stex_term_arg:nnn}{\cs{_stex_term_arg:nnn} \marg{mode} \marg{num} \marg{code}}
+% Inserts the HTML annotations for the argument
+%
+% \StartImpl
+%    \begin{macrocode}
+\stex_if_html_backend:TF {
+  \cs_new_protected:Nn \_stex_term_arg:nnn {
+    \stex_if_do_html:TF{
+      \_stex_annotate_force_break:n{ 
+        \stex_annotate:nn{ 
+          data-shtml-arg={#2}, data-shtml-argmode={#1}
+        }{ 
+          \_stex_annotate_force_break:n{}
+          #3
+        }
+      }
+    }{ #3 }
+  }
+}{
+  \cs_new_protected:Nn \_stex_term_arg:nnn {#3}
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \end{sfragment}
+%
+%^^A ---------------------------------------------------------
+%
+% \begin{sfragment}{Notation components}
+%
+% \begin{implementation}
+%    \begin{macrocode}
+%<@@=stex_comps>
+%    \end{macrocode}
+% \end{implementation}
+%
+% \begin{sfunction}{\comp, \compemph@uri, \compemph}{}
+%
+% \StartImpl
+%    \begin{macrocode}
+\cs_set_protected:Npn \comp {}
+
+\cs_new_protected:Npn \compemph@uri #1 #2 {
+    \compemph{ #1 }
+}
+
+\cs_new_protected:Npn \compemph #1 { #1 }
+
+\cs_new_protected:Npn \_comp {
+  \_do_comp:nNn {comp}\compemph@uri
+}
+
+\def\maincomp{\comp}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\varemph@uri, \varemph}{}
+%
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Npn \varemph@uri #1 #2 {
+    \varemph{#1}
+}
+
+\cs_new_protected:Npn \varemph #1 { #1 }
+
+\cs_new_protected:Npn \_varcomp {
+  \_do_comp:nNn {comp}\varemph@uri
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\defemph@uri, \defemph}{}
+%
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Npn \defemph@uri #1 #2 {
+    \defemph{#1}
+}
+
+\cs_new_protected:Npn \defemph #1 {
+    \ifmmode\else\expandafter\textbf\fi{#1}
+}
+
+\cs_new_protected:Npn \_defcomp {
+  \_do_comp:nNn {definiendum}\defemph@uri
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\symrefemph@uri, \symrefemph}{}
+%
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Npn \symrefemph@uri #1 #2 {
+    \symrefemph{#1}
+}
+
+\cs_new_protected:Npn \symrefemph #1 { \emph{#1} }
+%    \end{macrocode}
+% \end{sfunction}
+%
+% The following commands do the actual attributes:
+%
+% \begin{sfunction}{\_do_comp:nNn}
+%   {\cs{_do_comp:nNn} \marg{key-suffix} \cs{comp-macro} \marg{code}}
+% annotated \meta{code} with |data-shtml-|\meta{key-suffix} using
+% the highlighting dictated by \cs{comp-macro}.
+%
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Nn \_do_comp:nNn {
+  \stex_pseudogroup_with:nn{\comp}{
+    \def\comp##1{##1}
+    \tl_if_empty:NTF \l_stex_current_full_tl {
+      #3
+    }{
+      \stex_if_html_backend:TF {
+        \stex_annotate:nn { data-shtml-#1 = {}}{ #3 }
+      }{
+        #2 { #3 } \l_stex_current_full_tl
+      }
+    }
+  }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \end{sfragment}
+%
+%^^A ---------------------------------------------------------
+%
+% \begin{sfragment}{Symbol References}
+%
+% \begin{implementation}
+%  Keys:
+%    \begin{macrocode}
+\stex_keys_define:nnnn{symname}{
+  \tl_clear:N \l_stex_key_pre_tl
+  \tl_clear:N \l_stex_key_post_tl
+  %\tl_clear:N \l_stex_key_root_tl
+}{
+  pre    .tl_set:N   = \l_stex_key_pre_tl ,
+  post   .tl_set:N   = \l_stex_key_post_tl ,
+  %root   .code:n     = {}%.tl_set:N   = \l_stex_key_root_tl
+}{}
+
+\stex_keys_define:nnnn{symref}{
+  %\tl_clear:N \l_stex_key_root_tl
+}{
+  root   .code:n     = {}%.tl_set:N   = \l_stex_key_root_tl
+}{}
+%    \end{macrocode}
+% \end{implementation}
+%
+% \begin{sfunction}{\symref,\sr}{}
+%
+% \StartImpl
+%    \begin{macrocode}
+\NewDocumentCommand \symref { O{} m m} {
+  \group_begin:
+  \stex_keys_set:nn{symname}{#1}
+  \stex_get_symbol:n{#2}
+  \_@@_do_ref:nNn{#3}\symrefemph@uri\_stex_term_oms:nn
+}
+\let\sr\symref
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\symname,\sn,\sns,\Symname,\Sn\Sns}{}
+%
+% \StartImpl
+%    \begin{macrocode}
+\NewDocumentCommand \symname { O{} m} {
+  \group_begin:
+  \stex_keys_set:nn{symname}{#1}
+  \stex_get_symbol:n{#2}
+  \tl_set:Nn \l_stex_current_full_tl { \stex_use_symbol_uri:N \l_stex_get_symbol_uri }
+  \tl_set:Nn \l_stex_current_display_tl {
+    \stex_symbol_uri_name:N \l_stex_get_symbol_uri
+  }
+  \_@@_do_ref:nNn{
+    \l_stex_key_pre_tl \l_stex_current_display_tl \l_stex_key_post_tl
+  }\symrefemph@uri\_stex_term_oms:nn
+}
+\let\sn\symname
+\protected\def\sns{\symname[post=s]}
+
+\NewDocumentCommand \Symname { O{} m} {
+  \group_begin:
+  \stex_keys_set:nn{symname}{#1}
+  \stex_get_symbol:n{#2} 
+  \tl_set:Nn \l_stex_current_full_tl { \stex_use_symbol_uri:N \l_stex_get_symbol_uri }
+  \tl_set:Nn \l_stex_current_display_tl {
+    \stex_symbol_uri_name:N \l_stex_get_symbol_uri
+  }
+  \_@@_do_ref:nNn{
+    \l_stex_key_pre_tl \exp_args:NNe \use:nn \uppercase \l_stex_current_display_tl \l_stex_key_post_tl
+  }\symrefemph@uri\_stex_term_oms:nn
+}
+\let\Sn\Symname
+\protected\def\Sns{\Symname[post=s]}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\varref,\varname,\Varname}{}
+%
+% \StartImpl
+%    \begin{macrocode}
+\NewDocumentCommand \varref { O{} m m} {
+  \group_begin:
+  \stex_keys_set:nn{symname}{#1}
+  \stex_get_var:n{#2}
+  \_@@_do_ref:nNn{#3}\varemph@uri{
+    \str_set_eq:NN \l_stex_current_symbol_str\l_stex_get_symbol_name_str
+    \def\comp{\_varcomp}
+    \_stex_term_omv:nn
+  }
+}
+
+\NewDocumentCommand \varname { O{} m} {
+  \group_begin:
+  \stex_keys_set:nn{symname}{#1}
+  \stex_get_var:n{#2}
+  \_@@_do_ref:nNn{
+    \l_stex_key_pre_tl\l_stex_get_symbol_name_str\l_stex_key_post_tl
+  }\varemph@uri{
+    \str_set_eq:NN \l_stex_current_symbol_str\l_stex_get_symbol_name_str
+    \def\comp{\_varcomp}
+    \_stex_term_omv:nn
+  }
+}
+
+\NewDocumentCommand \Varname { O{} m} {
+  \group_begin:
+  \stex_keys_set:nn{symname}{#1}
+  \stex_get_var:n{#2}
+  \_@@_do_ref:nNn{
+    \l_stex_key_pre_tl\exp_after:wN\uppercase\l_stex_get_symbol_name_str\l_stex_key_post_tl
+  }\varemph@uri{
+    \str_set_eq:NN \l_stex_current_symbol_str\l_stex_get_symbol_name_str
+    \def\comp{\_varcomp}
+    \_stex_term_omv:nn
+  }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\definiendum, \definame, \Definame, \defnotation}{}
+%
+% \StartImpl
+%    \begin{macrocode}
+\stex_keys_define:nnnn{defname}{}{
+  gf     .code:n       = {}
+}{symname}
+
+\NewDocumentCommand \definiendum { O{} m m} {
+  \stex_keys_set:nn{defname}{ #1 }
+  \_@@_do_defref:nn{#2}{#3}
+}
+\stex_deactivate_macro:Nn \definiendum {definition~environments}
+
+\NewDocumentCommand \definame { O{} m } {
+  \stex_keys_set:nn{defname}{#1}
+  \_@@_do_defref:nn{#2}{
+    \l_stex_key_pre_tl\l_stex_current_display_tl\l_stex_key_post_tl
+  }
+}
+\stex_deactivate_macro:Nn \definame {definition~environments}
+
+
+\NewDocumentCommand \Definame { O{} m } {
+  \stex_keys_set:nn{defname}{#1}
+  \_@@_do_defref:nn{#2}{
+    \l_stex_key_pre_tl \exp_args:NNe \use:nn \uppercase \l_stex_current_display_tl\l_stex_key_post_tl
+  }
+}
+\stex_deactivate_macro:Nn \Definame {definition~environments}
+
+
+\NewDocumentCommand \defnotation{ m } {
+  \_stex_next_symbol:n { \def\comp{\_defcomp}}#1
+}
+\stex_deactivate_macro:Nn \defnotation {definition~environments}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{implementation}
+  %
+% Does the actual referencing:
+%    \begin{macrocode}
+\cs_new_protected:Nn \_@@_do_ref:nNn {
+  \stex_if_html_backend:T{\relax\ifvmode\indent\fi}
+  \bool_if:NTF \l_stex_allow_semantic_bool{
+    \tl_set_eq:NN \l_stex_current_symbol_uri \l_stex_get_symbol_uri
+    \str_set:Ne \l_stex_current_symbol_name_str { \stex_symbol_uri_name:N \l_stex_current_symbol_uri }
+    \str_if_in:NnT \l_stex_current_symbol_name_str / {
+      \str_set:Ne \l_stex_current_symbol_name_str {
+        \exp_after:wN \_@@_slash:w \l_stex_current_symbol_name_str
+        /\_stex_args_end:
+      }
+    }
+    \tl_clear:N \l_stex_current_term_tl
+    \def\comp{\_comp}
+    \let\compemph@uri#2
+    #3{}{\comp{#1}}
+  }{
+    \msg_error:nnxx{stex}{error/notallowed}{#1}{\stex_use_symbol_uri:N \l_stex_current_symbol_uri}
+  }
+  \group_end:
+}
+%    \end{macrocode}
+%
+% \cs{definame} et al:
+%    \begin{macrocode}
+\cs_new_protected:Nn \_@@_do_defref:nn {
+  \stex_if_html_backend:T{\relax\ifvmode\indent\fi}
+  \group_begin:
+  \stex_get_symbol:n{#1}
+  \bool_if:NTF \l_stex_allow_semantic_bool{
+    \str_set:Ne\l_stex_current_symbol_str
+      {\l_stex_get_symbol_mod_str ? \l_stex_get_symbol_name_str}
+    \str_if_in:NnT \l_stex_get_symbol_name_str / {
+      \str_set:Ne \l_stex_get_symbol_name_str {
+        \exp_after:wN \_@@_slash:w \l_stex_get_symbol_name_str
+        /\_stex_args_end:
+      }
+    }
+    \exp_args:No \stex_ref_new_sym_target:n \l_stex_current_symbol_str
+    \def\comp{\_defcomp}
+    \stex_annotate:nn{data-shtml-definiendum=\l_stex_current_symbol_str}{\comp{#2}}
+  }{
+    \msg_error:nnxx{stex}{error/notallowed}{#1}{\l_stex_current_symbol_str}
+  }
+  \group_end:
+}
+
+\cs_new:Npn \_@@_slash:w #1/#2/#3\_stex_args_end: {
+  \tl_if_empty:nTF{#3}{
+  #2
+  }{
+    \_@@_slash:w #2 / #3 \_stex_args_end:
+  }
+}
+%    \end{macrocode}
+% \end{implementation}
+%
+% \end{sfragment} 
+%
+% \end{sfragment}

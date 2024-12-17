@@ -1,0 +1,397 @@
+% \iffalse
+%<*driver>
+\def\stexdocpath{../../doc}
+\input{\stexdocpath/stex-docheader-new}
+\stextoptitle{The \sTeX Package}{stex}
+\docmodule
+%</driver>
+%<*package>
+% \fi
+%
+% \begin{sfragment}{Math Archives}
+%
+% \begin{implementation}
+%    \begin{macrocode}
+%<@@=stex_mathhub>
+%    \end{macrocode}
+% \end{implementation}
+%
+% \begin{svariable}{\c_stex_mathhub_files, \mathhub}
+% represents the comma-separated, absolute path \emph{strings} of 
+% the user's MathHub directories. If the \cs{mathhub} macro
+% is set when the \pkg{stex} package is loaded, this one is used
+% for finding archives. Otherwise it is determined from the
+% |MATHHUB| environment variable, if set, or from the path
+% in |<HOME>/.stex/mathhub.path|, if existent, or set to
+% |<HOME>/MathHub| if all else fails. In all cases,
+% \cs{mathhub} will be defined.
+%
+% MathHub directories are scanned in order; i.e. earlier paths
+% are prioritized over later ones.
+%
+% \StartImpl
+%    \begin{macrocode}
+\str_if_empty:NTF\mathhub{
+  \stex_get_env:Nn \l_@@_str {MATHHUB}
+  \str_if_empty:NTF \l_@@_str {
+    \ior_open:NnTF \g_tmpa_ior{\stex_file_use:N \c_stex_home_file/.stex/mathhub.path}{
+      \group_begin:
+        \escapechar=-1\catcode`\\=12
+        \ior_str_get:NN \g_tmpa_ior \l_@@_str
+        \str_gset_eq:NN \l_@@_str \l_@@_str
+      \group_end:
+      \ior_close:N \g_tmpa_ior
+      \stex_debug:nn{mathhub}{MathHub~directory~determined~from~home~directory}
+    }{
+      \str_clear:N \l_@@_str
+    }
+  }{
+    \stex_debug:nn{mathhub}{MathHub~directory~determined~from~environment~variable}
+  }
+}{
+  \str_set_eq:NN \l_@@_str \mathhub
+}
+
+\str_if_empty:NTF \l_@@_str {
+  \msg_warning:nn{stex}{warning/nomathhub}
+  \stex_file_set:Ne \l_tmpa_seq {\stex_file_use:N \c_stex_home_file \tl_to_str:n{/MathHub}}
+  \seq_new:N \c_stex_mathhub_files
+  \seq_push:Ne \c_stex_mathhub_files {\stex_file_use:N \l_tmpa_seq}
+}{
+  \seq_new:N \c_stex_mathhub_files
+  \seq_set_split:NnV \l_tmpa_seq , \l_@@_str
+  \seq_map_inline:Nn \l_tmpa_seq {
+    \stex_file_resolve:Nn \l_@@_str {#1}
+    \stex_if_file_absolute:NF \l_@@_str {
+      \stex_file_resolve:Ne \l_@@_str {
+        \stex_file_use:N \c_stex_pwd_file / #1
+      }
+    }
+    \seq_put_right:Ne \c_stex_mathhub_files {
+      \stex_file_use:N \l_@@_str
+    }
+  }
+}
+
+\exp_args:NNe \str_set:Nn \mathhub {\seq_use:Nn \c_stex_mathhub_files ,}
+\stex_debug:nn{mathhub}{MATHHUBs:~\mathhub}
+%    \end{macrocode}
+% \end{svariable}
+%
+% \begin{documentation}
+%   \paragraph{} A \emph{math archive} is represented as a triple 
+%   |{<archive id>}{<base uri>}{<file path string>}|, where an invariant
+%   is that \meta{file path string} is of the form |<mh>/<archive id>| for
+%   some directory |<mh>| in \cs{c_stex_mathhub_files}.
+%
+%   Such a triple is stored in the macro
+%   \cs{c_stex_mathhub_<id>_archive} when the archives metadata
+%   is first loaded.
+% \end{documentation}
+%
+% \begin{sfunction}[EXP]{\stex_archive_id:N}{}
+%   expands to the id of the given archive (a macro defined as 
+%   a triple as described above)
+% \StartImpl
+%    \begin{macrocode}
+\cs_new:Npn \stex_archive_id:N {
+  \exp_after:wN \use_i:nnn
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}[EXP]{\stex_archive_base:N,\stex_archive_base:n}{}
+%   expands to the base URI of the given archive; either given as a macro defined as 
+%   a triple as described above, or as the archive's id. The latter
+%   requires the archive to be loaded beforehand!
+% \StartImpl
+%    \begin{macrocode}
+\cs_new:Npn \stex_archive_base:N {
+  \exp_after:wN \use_ii:nnn
+}
+
+\cs_new:Nn \stex_archive_base:n {
+  \exp_args:NNe \use:nn \use_ii:nnn { \use:c {c_stex_mathhub_#1_archive} }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}[EXP]{\stex_archive_path:N,\stex_archive_path:n}{}
+%   expands to the file path \emph{as a string} of the given 
+%   archive; either given as a macro defined as 
+%   a triple as described above, or as the archive's id. The latter
+%   requires the archive to be loaded beforehand!
+% \StartImpl
+%    \begin{macrocode}
+\cs_new:Npn \stex_archive_path:N {
+  \exp_after:wN \use_iii:nnn
+}
+
+\cs_new:Nn \stex_archive_path:n {
+  \exp_args:NNe \use:nn \use_iii:nnn { \use:c {c_stex_mathhub_#1_archive} }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\stex_in_archive:nn}{\cs{stex_in_archive:nn} \marg{archive id} \marg{code}}
+%   Temporarily sets the current archive \cs{l_stex_current_archive} to 
+%   \meta{archive id}, executes \meta{code} and reverts back to the previous
+%   archive. Passes the id of the \emph{now current} archive to 
+%   \meta{code} as |#1|: If the first argument is empty, this
+%   will be the current archive's id without changing it.
+%   Otherwise, the archive with the desired id will be loaded;
+%   throws an error, if it does not exist.
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_in_archive:nn {
+  \stex_pseudogroup:nn{
+    \cs_set:Npn \l_@@_cs ##1 {#2}
+    \tl_if_empty:nTF{#1}{
+      \tl_if_exist:NTF \l_stex_current_archive {
+        \exp_args:Ne \l_@@_cs {\stex_archive_id:N \l_stex_current_archive }
+      }{
+        \l_@@_cs {}
+      }
+    }{
+      \_@@_set_current:n{#1}
+      \l_@@_cs {#1}
+    }
+  }{
+    \stex_pseudogroup_restore:N \l_stex_current_archive
+    \cs_set:Npn \exp_not:N \l_@@_cs ##1 {
+      \exp_args:No \exp_not:n {\l_@@_cs {##1}}
+    }
+  }
+}
+
+\cs_set:Npn \l_@@_cs #1 {}
+%    \end{macrocode}
+%
+% Auxiliary macros for loading archives:
+%    \begin{macrocode}
+\cs_new_protected:Nn \_@@_set_current:n {
+  \_@@_require:n { #1 }
+  \stex_debug:nn{mathhub}{switching~to~archive~#1}
+  \tl_set_eq:Nc \l_stex_current_archive { 
+    c_stex_mathhub_#1_archive
+  }
+}
+
+\cs_new_protected:Nn \_@@_require:n {
+  \prop_if_exist:cF { c_stex_mathhub_#1_archive } {
+    \seq_if_empty:NTF \c_stex_mathhub_files {
+      \msg_fatal:nn{stex}{warning/nomathhub}
+    }{
+      \stex_debug:nn{mathhub}{Opening~archive:~#1}
+      \_@@_do_manifest:nn { #1 }{
+        \msg_fatal:nnee{stex}{error/noarchive}
+        {#1}{\seq_use:Nn \c_stex_mathhub_files ,}
+      }
+    }
+  }
+}
+%    \end{macrocode}
+%
+% Attempts to find the archive's manifest file:
+%    \begin{macrocode}
+\cs_new_protected:Nn \_@@_do_manifest:nn {
+  \seq_map_inline:Nn \c_stex_mathhub_files {
+    \_@@_find_manifest:nn {##1}{#1}
+    \str_if_empty:NF \l_@@_manifest_str \seq_map_break:
+  }
+  %\exp_args:Ne \_@@_find_manifest:n {\stex_file_use:N \c_stex_mathhub_file / #1}
+  \str_if_empty:NTF \l_@@_manifest_str { #2 }{
+    \_@@_parse_manifest:n {#1}
+  }
+}
+
+\cs_new_protected:Nn \_@@_find_manifest:nn {
+  \str_clear:N \l_@@_manifest_str
+  \seq_set_split:Nnn \l_tmpa_seq / { #1 }
+  \seq_set_split:Nnn \l_@@_seq / {#1 / #2}
+  \bool_set_true:N \l_@@_bool
+  \bool_while_do:Nn \l_@@_bool {
+    \tl_if_eq:NNTF \l_@@_seq \l_tmpa_seq {
+      \bool_set_false:N \l_@@_bool
+    }{
+      \_@@_check_manifest:
+      \bool_if:NT \l_@@_bool {
+        \seq_pop_right:NN \l_@@_seq \l_@@_tl
+      }
+    }
+  }
+}
+
+\cs_new_protected:Nn \_@@_check_manifest: {
+  \_@@_check_manifest:n {MANIFEST.MF}
+  \bool_if:NT \l_@@_bool {
+    \_@@_check_manifest:n {META-INF/MANIFEST.MF}
+    \bool_if:NT \l_@@_bool {
+      \_@@_check_manifest:n {meta-inf/MANIFEST.MF}
+    }
+  }
+}
+
+\cs_new_protected:Nn \_@@_check_manifest:n {
+  \stex_debug:nn{mathhub}{Checking~\stex_file_use:N \l_@@_seq / #1}
+  \file_if_exist:nT {\stex_file_use:N \l_@@_seq / #1} {
+    \bool_set_false:N \l_@@_bool
+    \str_set:Ne \l_@@_manifest_str {\stex_file_use:N \l_@@_seq / #1}
+  }
+}
+%    \end{macrocode}
+%
+% Parses the archive's manifest file:
+%    \begin{macrocode}
+\ior_new:N \c_@@_manifest_ior
+
+\cs_new_protected:Nn \_@@_parse_manifest:n {
+  \ior_open:Nn \c_@@_manifest_ior \l_@@_manifest_str
+  \str_set:Ne \l_@@_file_str {\stex_file_use:N \l_@@_seq}
+  \str_set:Nn \l_@@_id_str {#1}
+  \str_set:Nn \l_@@_base_str {http://mathhub.info}
+
+  \ior_map_inline:Nn \c_@@_manifest_ior {
+    \exp_args:NNNo \exp_args:NNNx 
+      \seq_set_split:Nnn \l_@@_seq \c_colon_str {\tl_to_str:n{##1}}
+    \seq_pop_left:NNT \l_@@_seq \l_@@_key {
+      \exp_args:NNo \str_set:Nn \l_@@_key \l_@@_key
+      \str_set:Ne \l_@@_val {\seq_use:Nn \l_@@_seq :}
+      \str_case:Nn \l_@@_key {
+        {id}              { \str_set_eq:NN \l_@@_id_str \l_@@_val }
+        {url-base}        { \str_set_eq:NN \l_@@_base_str \l_@@_val }
+      }
+    }
+  }
+  \ior_close:N \c_@@_manifest_ior
+  \tl_gset:ce { c_stex_mathhub_#1_archive } { {\l_@@_id_str} {\l_@@_base_str} {\l_@@_file_str} }
+  \stex_debug:nn{mathhub}{Result:~\use:c{c_stex_mathhub_#1_archive}}
+  \str_if_eq:nnF {#1}{main}{
+    \stex_persist:e {
+      \_@@_restore:nn{\l_@@_id_str}{\l_@@_base_str}
+    }
+  }
+}
+%    \end{macrocode}
+%
+% The |.sms| file persisting content should not store the file
+% path of the archive, since that depends on the directory layout
+% of the system that generated it. We therefore, when restoring
+% archive macros, check if we find the archive on the local system,
+% and if not, leave the directory path empty. This will throw
+% an error iff some functionality at some point \emph{requires}
+% the archive to actually exist locally.
+%    \begin{macrocode}
+\cs_set_protected:Nn \_@@_restore:nn {
+  \_@@_do_manifest:nn { #1 }{}
+  \tl_if_exist:cF { c_stex_mathhub_#1_archive }{
+    \tl_set:ce{ c_stex_mathhub_#1_archive }{ 
+      {\tl_to_str:n{#1}}
+      {\tl_to_str:n{#2}}
+      {}
+    }
+  }
+}
+
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{svariable}{\c_stex_no_archive_str,\c_stex_no_archive}
+% The archive ID \cs{c_stex_no_archive_str}$=$|no/archive| is used for documents and other
+% content that is not contained in a \emph{math archive}.
+% \cs{c_stex_no_archive} is the corresponding archive triple.
+% \StartImpl
+%    \begin{macrocode}
+\str_const:Nn \c_stex_no_archive_str { no/archive }
+
+\tl_const:Ne \c_stex_no_archive_uri {
+  {\c_stex_no_archive_str}
+  {\tl_to_str:n{http://unknown.source}}
+  {}
+}
+
+\tl_set_eq:cN {c_stex_mathhub_ no/archive _ archive}\c_stex_no_archive_uri
+%    \end{macrocode}
+% \end{svariable}
+%
+% \begin{svariable}{\c_stex_main_archive,\l_stex_current_archive}
+% Point to the main file's archive and the \emph{current} archive, respectively, 
+% if existent; undefined otherwise.
+%
+% \StartImpl
+%    \begin{macrocode}
+\seq_map_inline:Nn \c_stex_mathhub_files {
+  \seq_set_split:Nnn \l_tmpa_seq / {#1}
+  \stex_if_file_starts_with:NNT \c_stex_pwd_file \l_tmpa_seq {
+    \seq_set_eq:NN \l_tmpb_seq \c_stex_pwd_file
+    \seq_map_inline:Nn \l_tmpa_seq { \seq_pop_left:NN \l_tmpb_seq \l_tmpa_tl }
+    \exp_args:Nne \_@@_find_manifest:nn {#1} { \stex_file_use:N \l_tmpb_seq }
+    \str_if_empty:NTF \l_@@_manifest_str {
+      \stex_debug:nn{mathhub}{Not~currently~in~a~MathHub~archive}
+    }{
+      \_@@_parse_manifest:n { main }
+      \tl_set_eq:NN \c_stex_main_archive \c_stex_mathhub_main_archive
+      \cs_undefine:N \c_stex_mathhub_main_archive
+      \tl_set_eq:cN { c_stex_mathhub_ \stex_archive_id:N \c_stex_main_archive _archive }
+        \c_stex_main_archive
+      \prop_set_eq:NN \l_stex_current_archive \c_stex_main_archive
+      \stex_debug:nn{mathhub}{Current~archive:~
+        \stex_archive_id:N \c_stex_main_archive
+      }
+      \stex_persist:e {
+        \_@@_restore:nn{\stex_archive_id:N \c_stex_main_archive}{\stex_archive_base:N \c_stex_main_archive}
+        \tl_gset_eq:Nc \exp_not:N \c_stex_main_archive {c_stex_mathhub_ \stex_archive_id:N \c_stex_main_archive _archive }
+        \tl_gset_eq:NN \exp_not:N \l_stex_current_archive \exp_not:N \c_stex_main_archive
+      }
+      %\bool_if:NT \c_stex_persist_write_mode_bool {
+      %  \tl_put_right:Ne \_stex_persist_read_now: {
+      %    \stex_persist:n {{c_stex_mathhub_ \stex_archive_id:N \c_stex_main_archive _archive }
+      %      \tl_gset_eq:cN{c_stex_mathhub_ \stex_archive_id:N \c_stex_main_archive _manifest_prop }\exp_not:N\c_stex_main_archive
+      %      \tl_gset_eq:NN \exp_not:N \l_stex_current_archive \exp_not:N\c_stex_main_archive
+      %    }
+      %  }
+      %}
+    }
+    \seq_map_break:
+  }
+}
+\tl_if_exist:NF \c_stex_main_archive {
+  \stex_debug:nn{mathhub}{Not~currently~in~a~MathHub~directory}
+}
+%    \end{macrocode}
+% \end{svariable}
+%
+% \begin{sfunction}[EXP]{\stex_source_path:n,\stex_source_path:nn}{\cs{stex_source_path:n} \marg{relative path}}
+% expands to the absolute file path (string) of the given \meta{relative path}
+% relative to the |source| directory of the current archive -- or 
+% relative to the current file, if we are not in an archive.
+% In the latter case, the file path will \emph{not} be canonicalized as 
+% to remain expandable.
+%
+% The variant \cs{stex_source_path:nn} takes the ID of an archive
+% as first argument (instead of the current archive).
+%
+% \StartImpl
+%    \begin{macrocode}
+\cs_new:Nn \stex_source_path:n {
+  \tl_if_exist:NTF \l_stex_current_archive {
+    \stex_archive_path:N \l_stex_current_archive / source \tl_if_empty:nF{#1}{/ #1}
+  }{
+    \stex_file_use:N \g_stex_current_file / .. \tl_if_empty:nF{#1}{/ #1}
+  }
+}
+\cs_new:Nn \stex_source_path:nn {
+  \tl_if_empty:nTF{#1}{
+    \stex_source_path:n {#2}
+  }{
+    \tl_if_exist:cTF {c_stex_mathhub_ #1 _archive } {
+      \stex_archive_path:n {#1} / source \tl_if_empty:nF{#2}{/ #2}
+    }{
+      \stex_file_use:N \g_stex_current_file / .. \tl_if_empty:nF{#2}{/ #2}
+    }
+  }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \end{sfragment}

@@ -1,0 +1,692 @@
+% \iffalse
+%<*driver>
+\def\stexdocpath{../../doc}
+\input{\stexdocpath/stex-docheader-new}
+\stextoptitle{The \sTeX Package}{stex}
+\docmodule
+%</driver>
+%<*package>
+% \fi
+%
+% \begin{sfragment}{Notations}
+%
+% \begin{implementation}
+%    \begin{macrocode}
+%<@@=stex_notations>
+%    \end{macrocode}
+% \end{implementation}
+%
+% \begin{implementation}
+% keys:
+%    \begin{macrocode}
+\stex_keys_define:nnnn{notation}{
+  \str_clear:N \l_stex_key_variant_str
+  \str_clear:N \l_stex_key_prec_str
+  \str_clear:N \l_stex_key_op_tl
+  \str_clear:N \l_stex_key_intent_str
+  \clist_clear:N \l_stex_key_intent_args_clist
+}{
+  variant    .str_set_x:N  = \l_stex_key_variant_str ,
+  prec       .str_set_x:N  = \l_stex_key_prec_str ,
+  op         .tl_set:N     = \l_stex_key_op_tl ,
+  intent     .str_set:N    = \l_stex_key_intent_str ,
+  argnames   .clist_set:N  = \l_stex_key_intent_args_clist , 
+  unknown    .code:n       = {
+    \str_if_empty:NTF \l_keys_key_str {
+        \str_set:Ne \l_stex_key_variant_str {\l_keys_key_tl}
+    }{
+        \str_set_eq:NN \l_stex_key_variant_str \l_keys_key_str
+    }
+  }
+}{style}
+
+\stex_keys_define:nnnn{symdef}{}{}{decl,notation}
+%    \end{macrocode}
+% \end{implementation}
+%
+% \begin{sfunction}{\notation}{}
+%
+% \StartImpl
+%    \begin{macrocode}
+\stex_new_stylable_cmd:nnnn {notation} { s m O{} m} {
+  \stex_keys_set:nn{notation}{#3}
+  \stex_get_symbol:n{#2}
+  \stex_notation_parse:n{#4}
+  \stex_if_check_terms:T{ \_stex_notation_check: }
+  \_stex_notation_add:
+  \stex_if_do_html:T {
+    \def\comp{\_comp}
+    \_stex_notation_do_html:n{\stex_use_symbol_uri:N \l_stex_get_symbol_uri}
+  }
+  \IfBooleanTF#1{
+    \_stex_notation_set_default:n{
+      \l_stex_get_symbol_uri
+    }
+  }{}
+  \stex_if_smsmode:F{
+    \group_begin:
+    \_@@_styledefs:
+    \stex_style_apply:
+    \group_end:
+  }
+  \stex_smsmode_do:
+}{}
+
+\stex_deactivate_macro:Nn \notation {module~environments}
+\stex_every_module:n {\stex_reactivate_macro:N \notation}
+\stex_sms_allow_escape:N \notation
+
+\cs_new_protected:Nn \_@@_styledefs: {
+  \str_set_eq:NN\thisnotationvariant\l_stex_key_variant_str
+  \str_set:Nn \thisdeclname \l_stex_get_symbol_name_str
+  \tl_set:Ne \thisdecluri {\stex_use_symbol_uri:N \l_stex_get_symbol_uri}
+  \def\thisnotation{
+    $
+    \tl_set_eq:NN \l_stex_current_symbol_str\thisdecluri
+    \exp_args:Nne \use:nn{\l_stex_notation_macrocode_cs}{
+      \_stex_notation_make_args:
+    }$
+  }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\stex_notation_parse:n}{}
+% parses the body of a notations and saves it in
+% \cs{l_stex_notation_macrocode_cs}
+%
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_notation_parse:n {
+  \tl_if_empty:NF \l_stex_key_op_tl {
+    \tl_set:Ne \l_stex_key_op_tl { \exp_not:N\maincomp {
+      \exp_args:No \exp_not:n \l_stex_key_op_tl
+    } }
+  }
+  \seq_clear:N \l_@@_precs_seq
+  \tl_clear:N \l_stex_notation_args_tl
+  \int_compare:nNnTF \l_stex_get_symbol_arity_int = 0 {
+    \_@@_const_precs: 
+    \tl_if_empty:NT \l_stex_key_op_tl {
+      \tl_set:Nn \l_stex_key_op_tl { \maincomp{#1} }
+    }
+  }{
+    \_@@_fun_precs:
+    \_@@_do_missing_args:n{#1}
+    \tl_if_empty:NT \l_stex_key_op_tl {
+      \hbox_set:Nn \l_tmpa_box {
+        \str_set:Nn \l_stex_current_symbol_str {}
+        \cs_set:Npn \l_tmpa_cs ##1 ##2 ##3 ##4 ##5 ##6 ##7 ##8 ##9 { #1 }
+        \cs_set:Npn \maincomp ##1 {
+          \tl_gset:Nn \l_stex_key_op_tl { \maincomp{##1} }
+          ##1
+        }
+        \cs_set:Npn \argsep ##1 ##2 {##1 ##2}
+        \cs_set:Npn \argmap ##1 ##2 ##3 {##1 ##3}
+        \cs_set:Npn \argarraymap ##1 ##2 ##3 ##4 {
+          ##1 ##2
+        }
+        \stex_suppress_html:n{$\l_tmpa_cs abcdefghj$}
+      }
+    }
+  }
+  \exp_args:NNe
+  \tl_set:Nn \l_stex_notation_macrocode_cs {
+    \STEXInternalNotation
+      { \l_stex_key_variant_str }
+      { \l_@@_opprec_tl }
+      { \l_stex_key_intent_str }
+      { \l_stex_notation_args_tl }
+      { 
+        \int_compare:nNnTF \l_stex_get_symbol_arity_int = 0
+        { \exp_not:n { \maincomp{ #1 } } }
+        { \exp_not:n { #1 } \l_@@_missing_tl }
+      }
+  }
+  \stex_debug:nn{notation}{Notation:~\meaning\l_stex_notation_macrocode_cs}
+}
+%    \end{macrocode}
+%
+% precedences:
+%    \begin{macrocode}
+\cs_new_protected:Nn \_@@_const_precs: {
+  \str_if_empty:NTF \l_stex_key_prec_str {
+    \tl_set:No \l_@@_opprec_tl { \neginfprec }
+  }{
+    \str_if_eq:onTF \l_stex_key_prec_str {nobrackets}{
+      \tl_set:No \l_@@_opprec_tl { \neginfprec }
+    }{
+      \tl_set_eq:NN \l_@@_opprec_tl \l_stex_key_prec_str
+    }
+  }
+}
+
+\cs_new_protected:Nn \_@@_fun_precs: {
+  \str_if_empty:NTF \l_stex_key_prec_str {
+    \tl_set:No \l_@@_opprec_tl { \neginfprec }
+  }{
+    \str_if_eq:onTF \l_stex_key_prec_str {nobrackets}{
+      \tl_set:No \l_@@_opprec_tl { \neginfprec }
+    }{
+      \tl_set_eq:NN \l_@@_opprec_tl \l_stex_key_prec_str
+    }
+  }
+  \str_if_empty:NTF \l_stex_key_prec_str {
+    \tl_set:Nn \l_@@_opprec_tl { 0 }
+    \int_step_inline:nn \l_stex_get_symbol_arity_int {
+      \seq_put_right:Nn \l_@@_precs_seq {0}
+    }
+  }{
+    \str_if_eq:onTF \l_stex_key_prec_str {nobrackets}{
+      \stex_debug:nn{notation}{No~brackets}
+      \tl_set:No \l_@@_opprec_tl { \neginfprec }
+      \int_step_inline:nn \l_stex_get_symbol_arity_int {
+        \exp_args:NNo \seq_put_right:Nn \l_@@_precs_seq \infprec
+      }
+    }\_@@_parse_precs:
+  }
+  \_@@_do_argnames:
+}
+
+\cs_new_protected:Nn \_@@_parse_precs: {
+  \stex_debug:nn{notation}{parsing~precedence~\l_stex_key_prec_str}
+  \seq_set_split:NnV \l_@@_seq ; \l_stex_key_prec_str
+  \seq_pop_left:NNTF \l_@@_seq \l_@@_str {
+    \tl_set_eq:NN \l_@@_opprec_tl \l_@@_str
+    \seq_pop_left:NNT \l_@@_seq \l_@@_str {
+      \exp_args:NNo \seq_set_split:NnV \l_@@_seq 
+        {\tl_to_str:n{x}} \l_@@_str
+    }
+  }{
+    \tl_set:No \l_@@_opprec_tl { 0 }
+  }
+  \int_step_inline:nn \l_stex_get_symbol_arity_int {
+    \seq_pop_left:NNTF \l_@@_seq \l_@@_str {
+      \seq_put_right:No \l_@@_precs_seq \l_@@_str
+    }{
+      \seq_put_right:No \l_@@_precs_seq \l_@@_opprec_tl
+    }
+  }
+}
+%    \end{macrocode}
+%
+% Experimental; named arguments:
+%    \begin{macrocode}
+\cs_new_protected:Nn \_@@_do_argnames: {
+  \tl_clear:N \l_stex_notation_args_tl
+  \_stex_map_args:N \_@@_do_argname:nn
+}
+
+\cs_new_protected:Nn \_@@_do_argname:nn {
+  \clist_if_empty:NTF \l_stex_key_intent_args_clist {
+    \tl_put_right:Nx \l_stex_notation_args_tl {
+      #1#2{\seq_item:Nn \l_@@_precs_seq #1}{
+        \str_if_empty:NF \l_stex_key_intent_str {#1}
+      }
+    }
+  }{
+    \tl_put_right:Nx \l_stex_notation_args_tl {
+      #1#2{\seq_item:Nn \l_@@_precs_seq #1}
+      {\c_dollar_str\clist_item:Nn \l_stex_key_intent_args_clist 1}
+    }
+    \clist_pop:NN \l_stex_key_intent_args_clist \l_tmpa_tl
+  }
+}
+%    \end{macrocode}
+%
+% inserts hidden arguments that don't occur in the body
+% of the notation:
+%    \begin{macrocode}
+\cs_new:Nn \_@@_do_missing_args:n {
+  \str_set:Nn \l_@@_missing_str {#1}
+  \exp_args:NNe \seq_set_split:NnV \l_tmpa_seq {\c_hash_str\c_hash_str\c_hash_str\c_hash_str} \l_@@_missing_str
+  \str_clear:N \l_@@_missing_str
+  \seq_map_inline:Nn \l_tmpa_seq {
+    \tl_put_right:Nn \l_@@_missing_str { ##1 }
+  }
+  \tl_clear:N \l_@@_missing_tl
+  \_stex_map_args:N \_@@_add_missing_args:nn
+}
+
+\cs_new:Nn \_@@_add_missing_args:nn {
+  % TODO this skips arguments if e.g. ##1 occurs rather than #1!!
+  \exp_args:NNe \str_if_in:NnF \l_@@_missing_str {\c_hash_str\c_hash_str#1}{
+    \tl_put_right:Nn \l_@@_missing_tl{\STEXinvisible{## #1}}
+  }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\_stex_notation_add:}{}
+%   adds the fully parsed notation to the current module
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Nn \_stex_notation_add: {
+  \stex_add_notation:ooeoo
+    {\l_stex_get_symbol_uri}
+    \l_stex_key_variant_str
+    {\int_use:N \l_stex_get_symbol_arity_int}
+    \l_stex_notation_macrocode_cs
+    \l_stex_key_op_tl
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\stex_add_notation:nnnnn, \stex_add_notation:ooeoo}{}
+%   \begin{arguments}
+%     \item URI
+%     \item variant
+%     \item arity
+%     \item macro body
+%     \item op
+%   \end{arguments}
+%   adds the notation to the current module
+% \StartImpl
+%    \begin{macrocode}
+\cs_new:Nn \_@@_macro:nn {
+  l_stex_notation_ #1?#2 _cs
+}
+\cs_new:Nn \_@@_op_macro:nn {
+  l_stex_notation_ #1?#2 _op_cs
+}
+
+\cs_new_protected:Nn \stex_add_notation:nnnnn {
+  \stex_debug:nn{notations}{Adding~notation:^^J
+    #1~\c_hash_str#2~#3^^J
+    to~\stex_use_module_uri:N \l_stex_current_module_uri
+  }
+  \prop_gput:cen{ \_stex_notations_macro:N \l_stex_current_module_uri }
+  {\stex_use_symbol_uri:n{#1}?#2}{{#1}{#2}{#3}{#4}{#5}}
+  \stex_execute_in_module:n {
+    \_@@_activate_not:nn{#1}{#2}
+  }
+}
+\cs_generate_variant:Nn \stex_add_notation:nnnnn {ooeoo}
+
+\cs_new_protected:Nn \_@@_activate_not:nn {
+  \bool_set_false:N \l_tmpa_bool
+  \stex_debug:nn{notations}{activating~\stex_use_symbol_uri:n{#1}?#2}
+  \prop_map_inline:cn{ \_stex_notations_macro:N \l_stex_current_module_uri }{
+    \stex_debug:nn{notations}{##1?}
+    \exp_args:Ne \str_if_eq:nnT{\stex_use_symbol_uri:n{#1}?#2}{##1}{
+      \prop_map_break:n{
+        \stex_debug:nn{notations}{Found:~\tl_to_str:n{##2}}
+        \bool_set_true:N \l_tmpa_bool
+        \_@@_set_macro:nnnnn ##2
+      }
+    }
+  }
+  \bool_if:NF \l_tmpa_bool {
+    \errmessage{Woop}
+  }
+}
+
+\cs_new_protected:Nn \_@@_set_macro:nnnnn {
+  \tl_set:cn {\_@@_macro:nn{\stex_use_symbol_uri:n{#1}}{#2}}{#4}
+  \cs_if_exist:cF{\_@@_macro:nn{\stex_use_symbol_uri:n{#1}}{}}{
+    \tl_set:cn {\_@@_macro:nn{\stex_use_symbol_uri:n{#1}}{}}{#4}
+  }
+  \tl_if_empty:nF{#5}{
+    \tl_set:cn{\_@@_op_macro:nn{\stex_use_symbol_uri:n{#1}}{#2}}{#5}
+    \cs_if_exist:cF{\_@@_op_macro:nn{\stex_use_symbol_uri:n{#1}}{}}{
+      \tl_set:cn{\_@@_op_macro:nn{\stex_use_symbol_uri:n{#1}}{}}{#5}
+    }
+  }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\setnotation,\_stex_notation_set_default:n}{}
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Nn \_stex_notation_set_default:n{
+  \stex_if_in_module:TF{
+    \stex_add_notation:ooeoo{#1}{}
+      {\int_use:N \l_stex_get_symbol_arity_int}
+      \l_stex_notation_macrocode_cs
+      \l_stex_key_op_tl
+  }{
+    \cs_set_eq:cN {\_@@_macro:nn {\stex_use_symbol_uri:N \l_stex_get_symbol_uri}{}}
+      \l_stex_notation_macrocode_cs
+    \tl_if_empty:NF \l_stex_key_op_tl {
+      \cs_set_eq:cN{\_@@_op_macro:nn{\stex_use_symbol_uri:N \l_stex_get_symbol_uri}{}}
+        \l_stex_key_op_tl
+    }
+  }
+}
+
+\cs_new_protected:Npn \setnotation #1 #2 {
+  \stex_get_symbol:n{#1}
+  \cs_if_exist:cTF{\_@@_macro:nn{\stex_use_symbol_uri:N \l_stex_get_symbol_uri}{#2}}{
+    \tl_set_eq:Nc \l_stex_notation_macrocode_cs {\_@@_macro:nn{\stex_use_symbol_uri:N \l_stex_get_symbol_uri}{#2}}
+    \cs_if_exist:cTF{\_@@_op_macro:nn{\stex_use_symbol_uri:N \l_stex_get_symbol_uri}{#2}}{
+      \tl_set_eq:Nc \l_stex_key_op_tl {\_@@_op_macro:nn{\stex_use_symbol_uri:N \l_stex_get_symbol_uri}{#2}}
+    }{
+      \tl_clear:N \l_stex_key_op_tl
+    }
+    \_stex_notation_set_default:n{
+      \l_stex_get_symbol_uri
+    }
+  }{
+    \msg_error:nnxx{stex}{unknownnotation}{#2}{
+      \stex_use_symbol_uri:N \l_stex_get_symbol_uri
+    }
+  }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\stex_iterate_notations:nn}
+%   {\cs{stex_iterate_notations:nn} \marg{modules} \marg{code}}
+% iterates over all notations in the comma-separated list of module URIs
+% and executes \marg{code} with |#1| as the notation.
+%
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_iterate_notations:nn {
+  \seq_clear:N \l_@@_mods_seq
+  \stex_pseudogroup_with:nn{\_@@_not_cs:nnnnn}{
+    \cs_set:Npn \_@@_not_cs:nnnnn 
+    ##1 ##2 ##3 ##4 ##5 { #2 }
+    \clist_map_function:nN {#1} \_@@_it_not_i:n
+  }
+}
+
+\cs_new_protected:Nn \_@@_it_not_i:n {
+  \seq_if_in:NnF \l_@@_mods_seq {#1} {
+    \seq_put_left:Nn \l_@@_mods_seq {#1}
+    \prop_map_inline:cn{\_stex_notations_macro:n{#1}}{
+      \_@@_not_cs:nnnnn ##2
+    }
+    \prop_map_inline:cn{\_stex_morphisms_macro:n{#1}}{
+      \_@@_it_not_check:nnnn ##2
+    }
+  }
+}
+\cs_new_protected:Nn \_@@_it_not_check:nnnn {
+  \tl_if_empty:nT{#1}{
+    \_@@_it_not_i:n {#2}
+  }
+}
+%    \end{macrocode}
+%
+% \end{sfunction}
+%
+% \begin{sfunction}{\stex_use_notation:nnTF,\stex_use_op_notation:nnTF}{\cs{stex_use_notation:nn} \marg{uri} \marg{id} \marg{exists code} \marg{missing code}}
+% sets \cs{l_stex_notation_cs}
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Npn \stex_use_notation:nnTF #1 #2 #3 #4 {
+  \cs_if_exist:cTF{\_@@_macro:nn{#1}{#2}}{
+    \cs_set_eq:Nc \l_stex_notation_cs {\_@@_macro:nn{#1}{#2}}
+    #3
+  }{#4}
+}
+\cs_new_protected:Npn \stex_use_op_notation:nnTF #1 #2 #3 #4 {
+  \cs_if_exist:cTF{\_@@_op_macro:nn{#1}{#2}}{
+    \cs_set_eq:Nc \l_stex_notation_cs {\_@@_op_macro:nn{#1}{#2}}
+    #3
+  }{#4}
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\_stex_notation_check:}{}
+%
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Nn \_stex_notation_check: {
+  \stex_check_term:nn{notation}{
+    \str_set:Nn \l_stex_current_symbol_str {test}
+    \cs_set:Npn \comp ##1 {##1}
+    \stex_debug:nn{check}{Checking~notation:~\cs_meaning:N \l_stex_notation_macrocode_cs ^^J \cs_meaning:N\l_stex_notation_args_tl}
+    \exp_args:Nne \use:nn{\l_stex_notation_macrocode_cs{}}{
+      \_stex_notation_make_args:
+    }
+  }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\_stex_notation_do_html:n}{}
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Nn \_stex_notation_do_html:n {
+  \hbox{\stex_annotate_invisible:nn { 
+    data-shtml-notation={#1},
+    data-shtml-notationfragment={\l_stex_key_variant_str},
+    data-shtml-precedence={\l_@@_opprec_tl},
+    data-shtml-argprecs={\seq_use:Nn \l_@@_precs_seq ,}
+  }{
+    \cs_set_protected:Npn \argsep ##1 ##2 {
+      \stex_annotate:nn{data-shtml-argsep={}}{
+        ##1 ##2
+      }
+    }
+    \cs_set_protected:Npn \argmap ##1 ##2 ##3 {
+      \cs_set:Npn \_@@_map_cs: ####1 { ##2 }
+      \stex_annotate:nn{data-shtml-argmap={}}{
+        \_@@_map_cs:{##1} \stex_annotate:nn{data-shtml-argmap-sep={}}{##3}
+      }
+    }
+    \cs_set_protected:Npn \maincomp {
+      \_do_comp:nNn {maincomp}\compemph@uri
+    }
+    $
+      \str_set:Ne \l_stex_current_symbol_str {#1}
+      \stex_annotate:nn{data-shtml-notationcomp={}}{
+        \exp_args:Nne \use:nn {
+          \l_stex_notation_macrocode_cs {}
+        }{
+          \_stex_map_args:N \_@@_make_arg_html:nn
+        }
+      }
+    $
+    \tl_if_empty:NF \l_stex_key_op_tl {
+      $
+      \str_set:Ne \l_stex_current_symbol_str {#1}
+      \stex_annotate:nn{data-shtml-notationopcomp={}}{
+        \_stex_term_oms:nn{\l_stex_key_variant_str}{\l_stex_key_op_tl}
+      }
+      $
+    }
+  }}
+}
+
+\cs_new:Nn \_@@_make_arg_html:nn {
+  \stex_annotate:nn{data-shtml-argnum=#1}{x}
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\_stex_notation_make_args:}{}
+% \StartImpl
+%    \begin{macrocode}
+\cs_new:Nn \_stex_notation_make_args: {
+  \_stex_map_notation_args:N \_@@_make_arg:nnnn
+}
+
+\cs_new:Nn \_@@_make_arg:nnnn  {
+  \str_case:nnF #2 {
+    a {{
+        a\c_math_subscript_token{#1,1},
+        a\c_math_subscript_token{#1,2}
+      }}
+    B {{
+        B\c_math_subscript_token{#1,1},
+        B\c_math_subscript_token{#1,2}
+      }}
+  }{{
+    \_stex_term_arg:nnnnn{#1}{#2}{#3}{#4}
+      {{#2}\c_math_subscript_token{#1}}
+  }}
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\stex_do_default_notation:,\stex_do_default_notation_op:}{}
+%
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_do_default_notation: {
+  \stex_do_default_notation_op:
+  \tl_if_empty:NTF \l_stex_current_args_tl {
+    \tl_clear:N \l_@@_args_tl
+  }\_@@_default_args:
+  \tl_set:Ne \l_stex_default_notation {\STEXInternalNotation{}{0}{}{\l_@@_args_tl}{
+    \exp_args:No \exp_not:n \l_stex_default_notation
+  }}
+}
+
+\cs_new_protected:Nn \stex_do_default_notation_op: {
+  \_@@_make_name:
+  \tl_set:Ne \l_stex_default_notation {\exp_not:N \maincomp{ \exp_not:N \mathrm {\l_@@_name_str} }}
+}
+
+\cs_new_protected:Nn \_@@_default_args: {
+  \_@@_make_name:
+  \tl_set_eq:NN \l_stex_get_symbol_args_tl \l_stex_current_args_tl
+  \tl_set:Ne \l_@@_args_tl {
+    \_stex_map_args:N \_@@_augment_arg:nn
+  }
+  \tl_put_right:Nn \l_stex_default_notation {\comp(}
+  \seq_clear:N \l_tmpa_seq
+  \int_step_inline:nn \l_stex_current_arity_str {
+    \seq_put_right:Nn \l_tmpa_seq {#### ##1}
+  }
+  \tl_put_right:Ne \l_stex_default_notation {
+    \seq_use:Nn \l_tmpa_seq {\mathpunct{\comp{,}}}
+  }
+  \tl_put_right:Nn \l_stex_default_notation {\comp)}
+}
+
+\cs_new:Nn \_@@_augment_arg:nn {
+  #1#2{0}{}
+}
+
+\cs_new_protected:Nn \_@@_make_name: {
+  \exp_args:NNNe \seq_set_split:Nnn \l_tmpa_seq / \l_stex_current_display_tl
+  \seq_pop_right:NN \l_tmpa_seq \l_@@_name_str 
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\STEXInternalNotation}{}
+% \begin{arguments}
+%   \item notation id
+%   \item operator precedence
+%   \item intent (WiP)
+%   \item arguments
+%   \item notation code
+%   \item continuation
+% \end{arguments}
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Npn \STEXInternalNotation #1 #2 #3 #4 #5 #6 {
+  \_@@_process:nnnnnn{#1}{#2}{#3}{#4}{#5}{
+    \l_@@_code_tl
+    #6
+  }
+}
+
+\cs_new_protected:Npn \_@@_process:nnnnnn #1 #2 #3 #4 {
+  \tl_if_empty:nTF{#4}{
+    \_@@_simple:nnnnn{#1}{#2}{#3}
+  }{
+    \_@@_complex:nnnnnn{#1}{#2}{#3}{#4}
+  }
+}
+
+\cs_new_protected:Nn \_@@_simple:nnnnn {
+  \stex_debug:nn{Notation~code}{\tl_to_str:n{#4}}
+  \tl_set:Nn \l_@@_code_tl {
+    \cs_set:Npn \l_@@_cs {
+      \_stex_maybe_brackets:nn{#2}{
+        \_stex_term_oms_or_omv:nn{#1}{#4}
+      }
+    }
+    \l_@@_cs
+  }
+  #5
+}
+
+\cs_new_protected:Nn \_@@_complex:nnnnnn {
+  \stex_debug:nn{Notation~code}{\tl_to_str:n{#5}}
+  \int_zero:N \l_tmpa_int
+  \tl_set:Nn \l_@@_pre_tl {\cs_set_eq:NN \_stex_term_oma_or_omb:nn \_stex_term_oma:nn}
+  \tl_set:Nn \l_@@_code_tl {
+    \cs_generate_from_arg_count:NNnn \l_@@_cs \cs_set:Npn \l_tmpa_int
+    { 
+      \_stex_maybe_brackets:nn{#2}{
+        \_stex_term_oma_or_omb:nn{#1}{
+          \bool_set_false:N \l_stex_brackets_dones_bool
+          #5
+        }
+      }
+    }
+    \l_@@_cs
+  }
+  \tl_set:Nn \l_@@_after_tl{
+    \exp_args:NNo 
+    \tl_put_left:Nn \l_@@_code_tl \l_@@_pre_tl 
+    \tl_put_left:Ne \l_@@_code_tl {
+      \int_set:Nn \l_tmpa_int {\int_use:N \l_tmpa_int}
+    }
+    #6
+  }
+  \_@@_parse_args:nnnnw #4 \_@@_args_end:
+}
+
+\cs_new_protected:Npn \_@@_parse_args:nnnnw #1 #2 #3 #4 #5 \_@@_args_end: {
+  \tl_if_empty:nTF{#5}{
+    \_@@_add_last:nnnnn{#1}{#2}{#3}{#4}
+  }{
+    \_@@_add_next:nnnnnn{#1}{#2}{#3}{#4}{#5}
+  }
+}
+
+\cs_new_protected:Nn \_@@_add_next:nnnnnn {
+  \_@@_add:nnnnn{#1}{#2}{#3}{#4}{#6}
+  \_@@_parse_args:nnnnw #5 \_@@_args_end:
+}
+
+\cs_new_protected:Nn \_@@_add_last:nnnnn {
+  \_@@_add:nnnnn{#1}{#2}{#3}{#4}{#5}
+  \l_@@_after_tl
+}
+
+\cs_new_protected:Nn \_@@_add:nnnnn {
+  \int_incr:N \l_tmpa_int
+  \str_case:nn{#2}{
+    i {
+      \tl_put_right:Nn \l_@@_code_tl {
+        {\_stex_term_arg:nnnnn{#1}{#2}{#3}{#4}{#5}}
+      }
+    }
+    b {
+      \tl_set:Nn \l_@@_pre_tl {
+        \cs_set_eq:NN \_stex_term_oma_or_omb:nn \_stex_term_omb:nn
+      }
+      \tl_put_right:Nn \l_@@_code_tl {
+        {\_stex_term_arg:nnnnn{#1}{#2}{#3}{#4}{#5}}
+      }
+    }
+    a {
+      \tl_put_right:Nn \l_@@_code_tl {
+        {\_stex_term_arg_aB:nnnnn{#1}{#2}{#3}{#4}{#5}}
+      }
+    }
+    B  {
+      \tl_set:Nn \l_@@_pre_tl {
+        \cs_set_eq:NN \_stex_term_oma_or_omb:nn \_stex_term_omb:nn
+      }
+      \tl_put_right:Nn \l_@@_code_tl {
+        {\_stex_term_arg_aB:nnnnn{#1}{#2}{#3}{#4}{#5}}
+      }
+    }
+  }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \end{sfragment}

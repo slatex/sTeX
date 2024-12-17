@@ -1,0 +1,488 @@
+% \iffalse
+%<*driver>
+\def\stexdocpath{../../doc}
+\input{\stexdocpath/stex-docheader-new}
+\stextoptitle{The \sTeX Package}{stex}
+\docmodule
+%</driver>
+%<*package>
+% \fi
+%
+% \begin{sfragment}{Modules}
+%
+% \begin{implementation}
+%    \begin{macrocode}
+%<@@=stex_modules>
+%    \end{macrocode}
+%
+% A module consists of four separate macros, storing its
+% \emph{symbols}, \emph{incoming morphisms} (e.g. \cs{importmodule}s),
+% \emph{notations}, and ``initialization code'', respectively:
+%    \begin{macrocode}
+\cs_new:Nn \_@@_macro_short:nnn {
+  #1 ? #2 ? #3
+}
+\cs_new:Nn \_stex_symbol_macro:N {
+  c_stex_module_ \exp_after:wN \_@@_macro_short:nnn #1 _symbols_prop
+}
+\cs_new:Nn \_stex_symbol_macro:n {
+  c_stex_module_ \_@@_macro_short:nnn #1 _symbols_prop
+}
+\cs_new:Nn \_stex_morphisms_macro:N {
+  c_stex_module_ \exp_after:wN \_@@_macro_short:nnn #1 _morphisms_prop
+}
+\cs_new:Nn \_stex_morphisms_macro:n {
+  c_stex_module_ \_@@_macro_short:nnn #1 _morphisms_prop
+}
+\cs_new:Nn \_stex_notations_macro:N {
+  c_stex_module_ \exp_after:wN \_@@_macro_short:nnn #1 _notations_prop
+}
+\cs_new:Nn \_stex_notations_macro:n {
+  c_stex_module_ \_@@_macro_short:nnn #1 _notations_prop
+}
+\cs_new:Nn \_stex_module_code_macro:N {
+  c_stex_module_ \exp_after:wN \_@@_macro_short:nnn #1 _code
+}
+%    \end{macrocode}
+% \end{implementation}
+%
+% \begin{svariable}{\l_stex_current_module_uri}
+% stores the URI of the current module, if existent
+% \StartImpl
+% initially undefined.
+% \end{svariable}
+%
+% \begin{svariable}{\l_stex_all_modules_seq}
+% stores the URIs of all modules \emph{currently in scope}.
+% \StartImpl
+%    \begin{macrocode}
+\seq_new:N \l_stex_all_modules_seq
+%    \end{macrocode}
+% \end{svariable}
+%
+% \begin{senvironment}{smodule}
+% Parses the optional arguments, (if relevant) inserts HTML 
+% annotations, and then delegates to \cs{stex_module_setup:n}
+%
+% \StartImpl
+%    \begin{macrocode}
+\tl_new:N \l_stex_metatheory_uri
+
+\stex_keys_define:nnnn{smodule}{
+  \str_clear:N \l_stex_key_sig_str
+}{
+  meta          .code:n       = {
+    \tl_if_empty:nTF {#1}{
+      \tl_clear:N \l_stex_metatheory_uri
+    }{
+      \stex_uri_from_pair:Nn \l_stex_metatheory_uri { #1 }
+    }
+  },
+  %ns            .code:n       = {
+  %  \stex_uri_resolve:Ne \l_stex_current_ns_uri { #1 }
+  %} ,
+  %lang          .code:n       = {
+  %  \stex_set_language:n { #1 }
+  %} ,
+  sig           .str_set_x:N  = \l_stex_key_sig_str ,
+  creators      .code:n       = {} , % todo ?
+  contributors  .code:n       = {} , % todo ?
+  srccite       .code:n       = {}   % todo ?
+}{id, title, style, deprecate}
+
+\stex_if_html_backend:TF {
+  \cs_new_protected:Nn \_@@_html_annots: {
+    \exp_args:Nne \begin{stex_annotate_env} {
+      data-shtml-theory={\stex_name_from_module:N \l_stex_current_module_uri},
+      %data-shtml-language={ \l_stex_current_language_str},
+      data-shtml-signature={\l_stex_key_sig_str}
+      \tl_if_empty:NF \l_stex_metatheory_uri {,
+        data-shtml-metatheory={\stex_use_module_uri:N \l_stex_metatheory_uri}
+      }
+    }
+    \stex_annotate_invisible:n{}
+  }
+}
+
+\stex_new_stylable_env:nnnnnnn {module} {O{} m}{
+  \stex_keys_set:nn { smodule }{ #1 }
+  \tl_set_eq:NN \thistitle \l_stex_key_title_tl
+  \tl_if_empty:NF \thistitle {
+    \exp_args:No \stexdoctitle \thistitle
+  }
+  \stex_module_setup:n { #2 }
+
+  \stex_if_do_html:T \_@@_html_annots:
+  \stex_if_smsmode:F {
+    \str_set:Ne \thismoduleuri {\stex_use_module_uri:N \l_stex_current_module_uri }
+    \str_set:Nn \thismodulename {#2}
+    \stex_style_apply:
+  }
+  \stex_smsmode_do:
+}{
+  \stex_close_module:
+  \stex_if_smsmode:F \stex_style_apply:
+  \stex_if_do_html:T{ \end{stex_annotate_env} }
+}{}{}{s}
+%    \end{macrocode}
+% \end{senvironment}
+%
+% \begin{sfunction}{\stex_module_setup:n}{}
+% Sets up a new module with the given name by checking whether 
+% it is a nested
+% module, and if not, has a signature etc.
+% Loads signature and metatheory, if necessary
+% \textcolor{red}{TODO: deprecate in favor of every document
+% being a module}
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Npn \stex_module_setup:n {
+  \stex_if_in_module:TF \_@@_nested:n \_@@_top:n
+}
+
+\cs_new_protected:Nn \_@@_top:n {
+  \str_if_empty:NTF \l_stex_key_sig_str
+    \_stex_module_setup_top_nosig:n \_@@_top_sig:n {#1}
+  \g_stex_every_module_tl
+  \tl_if_empty:NF \l_stex_metatheory_uri {
+    \_@@_load_meta:
+  }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\stex_module_setup_top_nosig:n}{}
+% Sets up a new top-level module with the given name
+% and no signature. Does not load a meta theory.
+% \textcolor{red}{TODO: deprecate in favor of every document
+% being a module}
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Nn \_stex_module_setup_top_nosig:n {
+  \stex_metagroup_new:
+  \tl_set:Ne \l_@@_uri { \stex_new_module_uri:n {#1} }
+  \stex_debug:nn{module}{URI:\stex_use_module_uri:N \l_@@_uri}
+  \exp_args:No \stex_if_module_exists:NTF \l_@@_uri {
+    \stex_debug:nn{modules}{(already exists)}
+  }{
+    \tl_gclear:c{ \_stex_module_code_macro:N \l_@@_uri }
+    \prop_gclear:c{ \_stex_morphisms_macro:N \l_@@_uri }
+    \prop_gclear:c{ \_stex_symbol_macro:N \l_@@_uri }
+    \prop_gclear:c{ \_stex_notations_macro:N \l_@@_uri }
+  }
+  \tl_set_eq:NN \l_stex_current_module_uri \l_@@_uri
+  \seq_put_right:No \l_stex_all_modules_seq \l_@@_uri
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{implementation}
+%
+% \begin{macro}{\_@@_load_meta:}
+% loads the metatheory:
+%    \begin{macrocode}
+\bool_new:N \l_stex_in_meta_bool
+
+\cs_new_protected:Nn \_@@_load_meta: {
+  \stex_execute_in_module:e{
+    \bool_if:NTF \l_stex_in_meta_bool {
+      \stex_activate_module:N \l_stex_metatheory_uri
+    }{
+      \bool_set_true:N \l_stex_in_meta_bool
+      \stex_activate_module:N \l_stex_metatheory_uri
+      \bool_set_false:N \l_stex_in_meta_bool
+    }
+  }
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\_@@_top_sig:n}
+% sets up a new module with a signature:
+%    \begin{macrocode}
+\cs_new_protected:Nn \_@@_top_sig:n {
+  \stex_metagroup_new:
+  \tl_set:Ne \l_@@_uri { \stex_new_module_uri:n {#1} }
+  \stex_debug:nn{module}{URI:\stex_use_module_uri:N \l_@@_uri}
+  \stex_if_module_exists:NTF \l_@@_uri {
+    \stex_debug:nn{modules}{(already exists)}
+  }{
+    \stex_debug:nn{modules}{(needs loading)}
+    \_@@_load_sig:
+  }
+  \tl_set_eq:NN \l_stex_current_module_uri \l_@@_uri
+}
+
+\cs_new_protected:Nn \_@@_load_sig: {
+  \stex_file_split_off_lang:NN \l_@@_sigfile \g_stex_current_file
+  \tl_set:Ne \l_@@_sig {
+    \exp_args:NNo \stex_document_uri_with_language:Nn 
+      \l_stex_current_document_uri \l_stex_key_sig_str
+  }
+  \exp_args:NNe \stex_file_in_smsmode:Nn \l_@@_sig {
+    \stex_file_use:N \l_@@_sigfile . \l_stex_key_sig_str . tex
+  }
+  \stex_activate_module:N \l_@@_uri
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\_@@_nested:n}
+% sets up a new nested module:
+%    \begin{macrocode}
+\cs_new_protected:Nn \_@@_nested:n {
+  \stex_metagroup_new:
+  \tl_set_eq:NN \l_@@_uri \l_stex_current_module_uri
+  \stex_mod_append_name:Nn \l_@@_uri {#1}
+  \stex_debug:nn{module}{URI:\stex_use_module_uri:N \l_@@_uri}
+  \exp_args:No \stex_if_module_exists:NTF \l_@@_uri {
+    \stex_debug:nn{modules}{(already exists)}
+  }{
+    \tl_gclear:c{ \_stex_module_code_macro:N \l_@@_uri }
+    \prop_gclear:c{ \_stex_morphisms_macro:N \l_@@_uri }
+    \prop_gclear:c{ \_stex_symbol_macro:N \l_@@_uri }
+    \prop_gclear:c{ \_stex_notations_macro:N \l_@@_uri }
+  }
+  \tl_set_eq:NN \l_stex_current_module_uri \l_@@_uri
+  \seq_put_right:No \l_stex_all_modules_seq \l_@@_uri
+}
+%    \end{macrocode}
+% \end{macro}
+% \end{implementation}
+%
+% \begin{sfunction}{\stex_close_module:}{}
+% closes the current module.
+%
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_close_module: {
+  \bool_if:NT \c_stex_persist_write_mode_bool \_@@_persist_module:
+  \stex_debug:nn{module}{
+    Closing~module~\stex_use_module_uri:N \l_stex_current_module_uri^^J
+    Code:~\cs_meaning:c{ \_stex_module_code_macro:N \l_stex_current_module_uri }^^J
+    Imports:~ \exp_after:wN \prop_to_keyval:N \cs:w \_stex_morphisms_macro:N \l_stex_current_module_uri \cs_end:^^J
+    Declarations:~ \exp_after:wN \prop_to_keyval:N \cs:w \_stex_symbol_macro:N \l_stex_current_module_uri \cs_end:^^J
+    Notations:~ \exp_after:wN \prop_to_keyval:N \cs:w \_stex_notations_macro:N \l_stex_current_module_uri \cs_end:^^J
+  }
+}
+%    \end{macrocode}
+% Persist and restore modules in the |.sms|-file:
+%    \begin{macrocode}
+\cs_new_protected:Nn \_@@_persist_module: {
+  \stex_persist:e {
+    \_@@_restore_module:nnnn {\l_stex_current_module_uri}{
+      \exp_after:wN \prop_to_keyval:N \cs:w 
+        \_stex_morphisms_macro:N \l_stex_current_module_uri
+      \cs_end:
+    }{
+      \exp_after:wN \prop_to_keyval:N \cs:w 
+        \_stex_symbol_macro:N \l_stex_current_module_uri
+      \cs_end:
+    }{
+      \exp_after:wN \exp_after:wN \exp_after:wN \exp_not:n
+      \exp_after:wN \exp_after:wN \exp_after:wN
+      { \cs:w \_stex_module_code_macro:N \l_stex_current_module_uri \cs_end: }
+    }{}
+    \prop_map_function:cN{\_stex_notations_macro:N \l_stex_current_module_uri}
+      \_@@_persist_nots_i:nn
+    \exp_not:N \STEXRestoreNotsEnd {}
+  }
+}
+
+\cs_new:Nn \_@@_persist_nots_i:nn {
+  \exp_not:n{#2}
+}
+
+
+\cs_new:Nn \_@@_stringify_uri:nnn {
+  {\tl_to_str:n{#1}}
+  {\tl_to_str:n{#2}}
+  {\tl_to_str:n{#3}}
+}
+\cs_new:Nn \_@@_stringify_uri:nnnn {
+  {\tl_to_str:n{#1}}
+  {\tl_to_str:n{#2}}
+  {\tl_to_str:n{#3}}
+  {\tl_to_str:n{#4}}
+}
+
+\cs_new_protected:Nn \_@@_restore_module:nnnn {
+  \tl_set:Ne \l_@@_uri { \_@@_stringify_uri:nnn #1 }
+  \stex_debug:nn{presist}{restoring~\stex_use_module_uri:N \l_@@_uri}
+  \prop_gset_from_keyval:cn{ \_stex_morphisms_macro:N \l_@@_uri }{#2}
+  \prop_gset_from_keyval:cn{\_stex_symbol_macro:N \l_@@_uri}{#3}
+  \prop_map_inline:cn{\_stex_symbol_macro:N \l_@@_uri}{
+    \stex_ref_new_symbol:n{#1?##1}
+  }
+  \tl_gset:cn{\_stex_module_code_macro:N \l_@@_uri}{#4}
+  \prop_gclear:c{\_stex_notations_macro:N \l_@@_uri}
+  \group_begin:
+    \catcode`_=8\relax
+    \catcode`:=12\relax
+    \_@@_restore_nots:n
+}
+
+\quark_new:N \STEXRestoreNotsEnd
+
+\cs_new_protected:Nn \_@@_restore_nots:n {
+  \_@@_restore_nots_i:n
+}
+
+\cs_new_protected:Nn \_@@_restore_nots_i:n {
+  \tl_if_eq:nnTF{#1}{\STEXRestoreNotsEnd}{
+    \group_end:
+  }{
+    \_@@_restore_nots_ii:nnnnn {#1}
+  }
+}
+
+\cs_new_protected:Nn \_@@_restore_nots_ii:nnnnn {
+  \tl_set:Nn \l_@@_tl {{#4}{#5}}
+  % eliminate ## => #
+  \exp_after:wN \def \exp_after:wN \l_@@_tl \exp_after:wN {\l_@@_tl}
+  \exp_args:NNe\use:nn\prop_gput:cnn{
+    {\_stex_notations_macro:N \l_@@_uri}
+    {\stex_use_symbol_uri:n{#1}\tl_to_str:n{?#2}}{
+      {\_@@_stringify_uri:nnnn #1}{\tl_to_str:n{#2}}{#3}
+      \exp_args:No \exp_not:n \l_@@_tl
+    }
+  }
+  \_@@_restore_nots_i:n
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\stex_every_module:n}{}
+% adds code to be executed every time a new module is
+% opened (e.g. activating certain macros).
+% \StartImpl
+%    \begin{macrocode}
+\tl_new:N \g_stex_every_module_tl
+\cs_new_protected:Nn \stex_every_module:n {
+  \tl_gput_right:Nn \g_stex_every_module_tl { #1 }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\stex_do_up_to_module:n,\stex_do_up_to_module:e}{}
+% Execute code in the current module (i.e. as if the \cs{begin}\Arg{smodule}
+% was the current tex group)
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_do_up_to_module:n {
+  \stex_metagroup_do_in:n {#1}
+}
+\cs_generate_variant:Nn \stex_do_up_to_module:n {e}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\stex_execute_in_module:n,\stex_execute_in_module:e}{}
+% Execute code in the current module (i.e. as if the \cs{begin}\Arg{smodule}
+% was the current tex group) and also adds it to the initialization
+% code of the module; i.e. exports all macros defined.
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_execute_in_module:n { \stex_if_in_module:TF {
+  \tl_gput_right:cn { \_stex_module_code_macro:N \l_stex_current_module_uri } { #1 }
+  \stex_do_up_to_module:n { #1 }
+}{ #1 }}
+\cs_generate_variant:Nn \stex_execute_in_module:n {e}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}[pTF]{\stex_if_in_module:}{}
+% conditional whether we currently are in a module.
+% \textcolor{red}{TODO: deprecate in favor of every document
+% being a module}
+% \StartImpl
+%    \begin{macrocode}
+\prg_new_conditional:Nnn \stex_if_in_module: {p, T, F, TF} {
+  \tl_if_exist:NTF \l_stex_current_module_uri
+    \prg_return_true: \prg_return_false:
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}[pTF]{\stex_if_module_exists:N}{}
+% conditional whether a module with the given URI exists
+%
+% \StartImpl
+%    \begin{macrocode}
+\prg_new_conditional:Nnn \stex_if_module_exists:N {p, T, F, TF} {
+  \tl_if_exist:cTF { \_stex_module_code_macro:N #1 }
+    \prg_return_true: \prg_return_false:
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\stex_activate_module:N,\stex_activate_module:n}{}
+%
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_activate_module:N {
+  \exp_args:NNo \seq_if_in:NnF \l_stex_all_modules_seq #1 {
+    \stex_debug:nn{modules}{Activating~module~\stex_use_module_uri:N #1^^J\expandafter\meaning\csname \_stex_module_code_macro:N #1 \endcsname}
+    \exp_args:NNo \seq_put_right:Nn \l_stex_all_modules_seq #1
+    \stex_pseudogroup:nn{
+      \tl_set_eq:NN \l_stex_current_module_uri #1
+      \use:c{ \_stex_module_code_macro:N #1 }
+    }{
+      \stex_pseudogroup_restore:N \l_stex_current_module_uri
+    }
+  }
+}
+
+\cs_new_protected:Nn \stex_activate_module:n {
+  \tl_set:Nn \l_@@_mod_uri {#1}
+  \stex_activate_module:N \l_@@_mod_uri
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\setmetatheory}{\cs{setmetatheory} \oarg{archive id} \marg{module}}
+% sets the metatheory of all subsequent modules to the specified one
+%
+% \StartImpl
+%    \begin{macrocode}
+\NewDocumentCommand \setmetatheory {O{} m}{
+  \stex_debug:nn{metatheory}{Setting~metatheory~[#1]#2}
+  \stex_uri_from_pair:Nnn \l_stex_import_uri { #1 }{ #2 }
+  \stex_debug:nn{metatheory}{Here:\stex_use_module_uri:N \l_stex_import_uri
+  }
+  \tl_set_eq:NN \l_stex_metatheory_uri \l_stex_import_uri
+  \begingroup
+    \stex_require_module:N \l_stex_metatheory_uri
+  \endgroup
+  \stex_smsmode_do:
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+%
+% \begin{sfunction}{\STEXexport}{\cs{STEXexport} \marg{code}}
+% executes the provided code every time the current module
+% is opened (including immediately). Processes its content
+% in the \cs{ExplSyntaxOn} category code scheme.
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Npn \STEXexport {
+  \ExplSyntaxOn
+  \_@@_export:n
+}
+\cs_new_protected:Nn \_@@_export:n {
+  \stex_ignore_spaces_and_pars:#1\ExplSyntaxOff
+  \tl_gput_right:cn { \_stex_module_code_macro:N \l_stex_current_module_uri } { 
+    \stex_ignore_spaces_and_pars: #1 
+  }
+  \stex_smsmode_do:
+}
+
+\stex_deactivate_macro:Nn \STEXexport {module~environments}
+\stex_every_module:n {\stex_reactivate_macro:N \STEXexport}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \input{stex/smsmode.idtx}
+% \input{stex/imports.idtx}
+%
+% \end{sfragment}

@@ -1,0 +1,324 @@
+% \iffalse
+%<*driver>
+\def\stexdocpath{../../doc}
+\input{\stexdocpath/stex-docheader-new}
+\stextoptitle{The \sTeX Package}{stex}
+\docmodule
+%</driver>
+%<*package>
+% \fi
+%
+% \begin{sfragment}{SMS Mode}
+%
+% \begin{implementation}
+%    \begin{macrocode}
+%<@@=stex_smsmode>
+%    \end{macrocode}
+% \end{implementation}
+%
+% \begin{documentation}
+%
+% \stex has to extract formal content (i.e. modules and their symbols)
+% from \LaTeX-files, that may otherwise contain arbitrary
+% code, including macros that may not be defined unless
+% the file is fully processed by \TeX. Those
+% modules and symbols also may depend on other modules that have not yet
+% been loaded. The naive way to achieve this, which would
+% be to just suppress output (e.g. by storing it in a box register)
+% and then \cs{input} the required file, does not work thanks to
+% \TeX's limited \emph{file stack}, which would overflow quickly
+% for modules that have a deeply nested list of dependencies.
+%
+% To solve those problems, \sTeX reads dependencies in what we call
+% \emph{sms mode}, which can be summarized thusly:
+% \begin{itemize}
+%   \item In a first pass, we parse the file token by token, ignoring everything
+%     other than a select list of macros and environments that
+%     introduce dependencies (such as \cs{importmodule} and
+%     \cs{begin}|{|\env{smodule}|}[sig=...]|). Instead of loading
+%     those, we remember them for later.
+%   \item After the file as been fully parsed thusly, the
+%     dependencies found are loaded, again in sms-mode.
+%   \item In a second pass, we parse the file \emph{again} in the same way, but
+%     this time execute all macros that are explicitly allowed
+%     in sms mode, such as \cs{importmodule}, \cs{symdecl},
+%     \cs{notation}, \cs{symdef}, etc.
+%   \item all this parsing happens additionally in a
+%     \cs{setbox}\cs{throwaway}\cs{vbox}|{...}|-block to
+%     suppress any accidental output.
+% \end{itemize}
+% This means that \TeX's input stack never grows by more
+% than $+1$, but still behaves \emph{as if} the dependencies
+% were loaded recursively, at the detriment of being somewhat slow.
+% 
+% \end{documentation}
+%
+% \begin{sfunction}{\stex_sms_allow:N}{}
+% registers the provided macro to be allowed in sms mode.
+%
+% This only works, if the macro takes no arguments and/or
+% does not touch the subsequent tokens.
+% \StartImpl
+%    \begin{macrocode}
+\tl_new:N \g_@@_allowed_tl
+
+\cs_new_protected:Nn \stex_sms_allow:N {
+  \tl_gput_right:Nn \g_@@_allowed_tl {#1}
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\stex_sms_allow_escape:N}{}
+% registers the provided macro to be allowed in sms mode.
+%
+% If the macro is subsequently encountered in sms-mode,
+% parsing is halted and it can process arguments as desired.
+% It then needs to continue parsing manually though, by calling
+% \cs{stex_smsmode_do:} as (usually) its last token.
+% \StartImpl
+%    \begin{macrocode}
+\tl_new:N \g_@@_allowed_escape_tl
+
+\cs_new_protected:Nn \stex_sms_allow_escape:N {
+  \tl_gput_right:Nn \g_@@_allowed_escape_tl {#1}
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\stex_sms_allow_env:n}{}
+% registers the provided environment to be allowed in sms mode.
+%
+% As with \cs{stex_sms_allow_escape:N}, the \cs{begin}|{|\meta{envname}|}|
+% is escaped, hence the begin-code of the environment needs to call
+% \cs{stex_smsmode_do:}. Since 
+% \cs{end}|{|\meta{envname}|}| never takes arguments, it does not
+% need to be escaped.
+% \StartImpl
+%    \begin{macrocode}
+\seq_new:N \g_@@_allowedenvs_seq
+
+\cs_new_protected:Nn \stex_sms_allow_env:n {
+  \seq_gput_right:Ne \g_@@_allowedenvs_seq {\tl_to_str:n{#1}}
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{implementation}
+% Some initial allowed macros:
+%    \begin{macrocode}
+\stex_sms_allow:N \makeatletter
+\stex_sms_allow:N \makeatother
+\stex_sms_allow:N \ExplSyntaxOn
+\stex_sms_allow:N \ExplSyntaxOff
+\stex_sms_allow:N \rustexBREAK
+\stex_sms_allow_env:n{smodule}
+\stex_sms_allow_escape:N \setmetatheory
+\stex_sms_allow_escape:N \STEXexport
+%    \end{macrocode}
+% \end{implementation}
+%
+% \begin{sfunction}{\stex_sms_allow_import:Nn}
+%   {\cs{stex_sms_allow_import:Nn} \cs{macro} \marg{code}}
+% registers the provided macro to be allowed in
+% the \emph{first pass} in sms mode. The provided \meta{code} is
+% executed at the start of the first pass, to define macros
+% accordingly.
+% \StartImpl
+%    \begin{macrocode}
+\tl_new:N \g_@@_allowed_import_tl
+\tl_new:N \g_@@_import_setup_tl
+
+\cs_new_protected:Nn \stex_sms_allow_import:Nn {
+  \tl_gput_right:Nn \g_@@_allowed_import_tl {#1}
+  \tl_gput_right:Nn \g_@@_import_setup_tl {#2}
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\stex_sms_allow_import_env:nn}
+%   {\cs{stex_sms_allow_import_env:nn} \cs{envname} \marg{code}}
+% registers the provided environment to be allowed in
+% the \emph{first pass} in sms mode. The provided \meta{code} is
+% executed at the start of the first pass, to define macros
+% accordingly.
+% \StartImpl
+%    \begin{macrocode}
+\seq_new:N \g_@@_allowed_import_env_seq
+
+\cs_new_protected:Nn \stex_sms_allow_import_env:nn {
+  \seq_gput_right:Ne \g_@@_allowed_import_env_seq {\tl_to_str:n{#1}}
+  \tl_gput_right:Nn \g_@@_import_setup_tl {#2}
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{svariable}{\g_stex_sms_import_code}
+%  inserted between the first and second pass; macros/environments
+%  allowed via \cs{stex_sms_allow_import_*} should store
+%  their ``results'' in here.
+% \StartImpl
+%    \begin{macrocode}
+\tl_new:N \g_stex_sms_import_code
+%    \end{macrocode}
+% \end{svariable}
+%
+% \begin{sfunction}[pTF]{\stex_if_smsmode:}{}
+%  tests for whether we are currently in sms-mode.
+% \StartImpl
+%    \begin{macrocode}
+\bool_new:N \g_@@_bool
+
+\prg_new_conditional:Nnn \stex_if_smsmode: { p, T, F, TF } {
+  \bool_if:NTF \g_@@_bool \prg_return_true: \prg_return_false:
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\stex_file_in_smsmode:Nn}
+%    {\cs{stex_file_in_smsmode:Nn} \cs{document-URI} \marg{file string}}
+%  Loads \marg{file string} in sms mode, setting \cs{l_stex_current_document_uri}
+%  etc. accordingly and reverting them afterwards.
+%
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_file_in_smsmode:Nn {
+  \seq_gclear:N \l_@@_importmodules_seq
+  \seq_gclear:N \l_@@_sigmodules_seq
+  \tl_clear:N \g_stex_sms_import_code
+  \group_begin:
+    \let \l_stex_metatheory_uri \c_stex_default_metatheory
+    \seq_clear:N \l_stex_all_modules_seq
+    \stex_undefine:N \l_stex_current_module_uri
+    \cs_set:Npn \stex_check_term:nn ##1 ##2 {}
+    \stex_debug:nn{sms}{Loading~#2~in~\stex_use_document_uri:N #1}
+    \stex_with_file_hooks:Nnn #1 {#2}{
+      \_@@_in_smsmode:n {
+        \group_begin:
+          \let \_@@_do_aux_curr:N \_@@_do_aux_imports:N
+          \g_@@_import_setup_tl
+          \_@@_start_smsmode:n{#2}
+        \group_end:
+        %{ 
+          \g_stex_sms_import_code 
+        %}
+        %\group_begin:
+          \let \_@@_do_aux_curr:N \_@@_do_aux_normal:N
+          \_@@_start_smsmode:n{#2}
+        %\group_end:
+      }
+    }
+  \group_end:
+}
+
+\cs_new_protected:Nn \_@@_in_smsmode:n { 
+  \stex_suppress_html:n {
+    \vbox_set:Nn \l_tmpa_box {
+      \bool_set_true:N \g_@@_bool
+      #1
+    }
+  } 
+}
+
+\quark_new:N \q_@@_break
+
+\cs_new_protected:Nn \_@@_start_smsmode:n {
+  \everyeof{\q_@@_break\exp_not:N}
+  \let\stex_smsmode_do:\_@@_smsmode_do:
+  \exp_after:wN \exp_after:wN \exp_after:wN
+  \stex_smsmode_do:
+  \cs:w @ @ input\cs_end: "#1" \relax
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\stex_smsmode_do:}{}
+% should be called in escaped macros or environments allowed
+% in sms mode; switches back to parsing file contents ignoring
+% everything not explicitly allowed in sms mode.
+%
+% Does nothing outside of sms mode, so can be called safely.
+% \StartImpl
+%    \begin{macrocode}
+\let\stex_smsmode_do:\relax
+
+\cs_new_protected:Nn \_@@_smsmode_do: { \_@@_do:w }
+
+\cs_new_protected:Npn \_@@_do:w #1 {
+  \exp_args:Ne \tl_if_empty:nTF { \tl_tail:n{ #1 }}{
+    \_@@_check_cs:NNn \_@@_do_aux:N \_@@_do:w { #1 }
+  }{
+    \_@@_do:w
+  }
+}
+
+\cs_new:Nn \_@@_check_cs:NNn {
+  \exp_after:wN\if\exp_after:wN\relax\exp_not:N#3
+  \exp_after:wN#1\exp_after:wN#3\else
+  \exp_after:wN#2\fi
+}
+
+\cs_new_protected:Nn \_@@_do_aux:N {
+  \cs_if_eq:NNF #1 \q_@@_break {
+    \_@@_do_aux_curr:N #1
+  }
+}
+
+\cs_new_protected:Nn \_@@_do_aux_normal:N {
+  \tl_if_in:NnTF \g_@@_allowed_tl {#1} {
+    \stex_debug:nn{sms}{Executing~\tl_to_str:n{#1}}
+    #1\_@@_do:w
+  }{
+    \tl_if_in:NnTF \g_@@_allowed_escape_tl {#1} {
+      \stex_debug:nn{sms}{Executing~escaped~\tl_to_str:n{#1}}
+      #1
+    }{
+      \cs_if_eq:NNTF \begin #1 {
+        \_@@_check_begin:Nn \g_@@_allowedenvs_seq
+      }{
+        \cs_if_eq:NNTF \end #1 {
+          \_@@_check_end:Nn \g_@@_allowedenvs_seq
+        }{
+          \_@@_do:w
+        }
+      }
+    }
+  }
+}
+
+\cs_new_protected:Nn \_@@_do_aux_imports:N {
+  \tl_if_in:NnTF \g_@@_allowed_import_tl {#1} {
+    \stex_debug:nn{sms}{Executing~\tl_to_str:n{#1}~in~import}
+    #1
+  }{
+    \cs_if_eq:NNTF \begin #1 {
+      \_@@_check_begin:Nn \g_@@_allowed_import_env_seq
+    }{
+      \cs_if_eq:NNTF \end #1 {
+        \_@@_check_end:Nn \g_@@_allowed_import_env_seq
+      }{
+        \_@@_do:w
+      }
+    }
+  }
+}
+
+\cs_new_protected:Nn \_@@_check_begin:Nn {
+  \seq_if_in:NeTF #1 { \tl_to_str:n{#2} }{
+    \stex_debug:nn{sms}{Environment~#2}
+    \begin{#2}
+  }{
+    \_@@_do:w
+  }
+}
+\cs_new_protected:Nn \_@@_check_end:Nn {
+  \seq_if_in:NeTF #1 { \tl_to_str:n{#2} }{
+    \stex_debug:nn{sms}{End~Environment~#2}
+    \end{#2}\_@@_do:w
+  }{
+    \_@@_do:w
+  }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \end{sfragment}
