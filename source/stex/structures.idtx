@@ -1,0 +1,272 @@
+% \iffalse
+%<*driver>
+\def\stexdocpath{../../doc}
+\input{\stexdocpath/stex-docheader-new}
+\stextoptitle{The \sTeX Package}{stex}
+\docmodule
+%</driver>
+%<*package>
+% \fi
+%
+% \begin{sfragment}{Structures}
+%
+% \begin{implementation}
+%    \begin{macrocode}
+%<@@=stex_structures>
+%    \end{macrocode}
+%
+% Keys:
+%    \begin{macrocode}
+\stex_keys_define:nnnn{mathstructure}{
+  \tl_clear:N \l_stex_current_this_tl
+  \str_clear:N \l_@@_name_str
+}{
+  this    .tl_set:N = \l_stex_current_this_tl ,
+  unknown .code:n   = {
+    \str_if_empty:NTF \l_keys_key_str {
+      \str_set:Ne \l_@@_name_str {\l_keys_key_tl}
+    }{
+      \str_set_eq:NN \l_@@_name_str \l_keys_key_str
+    }
+  }
+}{}
+%    \end{macrocode}
+% \end{implementation}
+%
+% \begin{senvironment}{mathstructure}{}
+%
+% \StartImpl
+%    \begin{macrocode}
+\stex_new_stylable_env:nnnnnnn {mathstructure}{m O{}}{
+  \_@@_begin:nn{#1}{#2}
+  \stex_smsmode_do:
+}{
+  \stex_structural_feature_module_end:
+  \_@@_do_externals:
+}{}{}{}
+
+\stex_sms_allow_env:n{mathstructure}
+\stex_deactivate_macro:Nn \mathstructure {module~environments}
+\stex_every_module:n {\stex_reactivate_macro:N \mathstructure}
+%    \end{macrocode}
+% \end{senvironment}
+%
+% \begin{implementation}
+% Shared code for \env{mathstructure} and \env{extstructure}:
+%    \begin{macrocode}
+\cs_new_protected:Nn \_@@_begin:nn {
+  \stex_keys_set:nn {mathstructure}{#2}
+  \str_if_empty:NT \l_@@_name_str {
+    \str_set:Nn \l_@@_name_str {#1}
+  }
+  \def\comp{\_comp}
+
+  \tl_set:Ne \l_@@_struct_uri {
+    \exp_args:No \stex_new_module_uri:n \l_@@_name_str
+  }
+
+  \exp_args:Nne \use:nn { \stex_add_symbol:nnnnnnnN }
+    { {#1}{\l_@@_name_str}{0}{}{defed}{\l_@@_struct_uri}}
+    {}\stex_invoke_structure:
+  \str_set:Ne \l_stex_macroname_str {#1}
+
+  \exp_args:No \stex_structural_feature_module:nn
+    {\l_@@_name_str}{structure}
+}
+
+\cs_new_protected:Nn \_@@_do_externals: {
+  \tl_set:Nn \l_@@_replace_this_tl {####1}
+}
+
+%    \end{macrocode}
+%
+% \end{implementation}
+%
+% \begin{senvironment}{extstructure}{}
+%
+% \StartImpl
+%    \begin{macrocode}
+\stex_new_stylable_env:nnnnnnn {extstructure}{m O{} m}{
+  \seq_clear:N \l_@@_imports_seq
+  \clist_map_inline:nn{#3}{
+    \stex_get_mathstructure:n{##1}
+    \clist_map_inline:Nn \l_stex_get_symbol_type_tl {
+      \stex_if_module_exists:nT{####1}{
+        \seq_put_right:Nn \l_@@_imports_seq{####1}
+      }
+    }
+  }
+  \_@@_begin:nn{#1}{#2}
+  \seq_map_inline:Nn\l_@@_imports_seq{
+    \stex_if_do_html:T {
+      \hbox{\stex_annotate_invisible:nn 
+        {data-shtml-import={\stex_use_module_uri:n{##1}}} {}}
+    }
+    \stex_add_morphism:nonn
+      {}{##1}{import}{}
+    \stex_execute_in_module:e{ 
+      \stex_activate_module:n {##1}
+    }
+  }
+  \stex_smsmode_do:
+}{
+  \stex_structural_feature_module_end:
+  \_@@_do_externals:
+}{}{}{}
+
+\stex_sms_allow_env:n{extstructure}
+\stex_deactivate_macro:Nn \extstructure {module~environments}
+\stex_every_module:n {
+  \stex_reactivate_macro:N \extstructure
+}
+
+\stex_new_stylable_env:nnnnnnn {extstructure*}{m}{
+  \_@@_new_extstruct_name:
+  \seq_clear:N \l_@@_imports_seq
+  \stex_get_mathstructure:n{#1}
+  
+  \clist_map_inline:Nn \l_stex_get_symbol_type_tl {
+    \stex_if_module_exists:nT{##1}{
+      \seq_put_right:Nn \l_@@_imports_seq{##1}
+    }
+  }
+
+  \stex_module_uri_split_name:NNN \l_@@_parent_uri \l_@@_last_name_str \l_stex_get_structure_module_uri
+
+  \stex_execute_in_module:e{
+    \_@@_extend_structure:nnn{\l_@@_parent_uri}{\l_@@_last_name_str}{\exp_args:No \stex_new_module_uri:n {\l_@@_exstruct_name_str}}
+  }
+
+  \exp_args:No \_@@_begin:nn\l_@@_exstruct_name_str{}
+
+  \seq_map_inline:Nn \l_@@_imports_seq {
+    \stex_if_do_html:T {
+      \stex_annotate_invisible:nn 
+        {data-shtml-import= {\stex_use_module_uri:n{##1}}} {}
+    }
+    \stex_add_morphism:nonn
+      {}{##1}{import}{}
+    \stex_execute_in_module:e{ 
+      \stex_activate_module:n {##1}
+    }
+  }
+
+  \stex_smsmode_do:
+}{
+  \prop_map_inline:cn{\_stex_symbol_macro:N \l_stex_current_module_uri }{
+    \_@@_check_def:nnnnnnnn ##2
+  }
+  \stex_structural_feature_module_end:
+  \_@@_do_externals:
+}{}{}{}
+
+\stex_sms_allow_env:n{extstructure*}
+\exp_after:wN \stex_deactivate_macro:Nn 
+  \cs:w extstructure*\cs_end: {module~environments}
+\stex_every_module:n {
+  \exp_after:wN \stex_reactivate_macro:N \cs:w extstructure*\cs_end:
+}
+
+\cs_new_protected:Nn \_@@_extend_structure:nnn {
+  \stex_debug:nn{ext}{Extending~\stex_use_module_uri:n {#1} / #2~by~\stex_use_module_uri:n {#3}}
+  \exp_args:Nne \use:nn {\_@@_extend_ii:nnnn}{
+    \exp_args:NNe \use:nn \_@@_extend_i:nnnnnnnNn {
+      \prop_item:cn{\_stex_symbol_macro:n {#1} } { #2 } 
+    } { #3 }
+  }{#1}{#2}
+}
+
+\cs_new_protected:Nn \_@@_extend_ii:nnnn {
+  \prop_put:cnn{\_stex_symbol_macro:n {#3} } { #4 }{#2}
+  \tl_set:ce{#1}{
+    \_stex_invoke_symbol:nnnnnnN {\stex_new_symbol_uri:nn {#3}{#4}}
+    \use_none:nn #2
+  }
+}
+
+\cs_new:Nn \_@@_extend_i:nnnnnnnNn {
+  {#1}{{#1}{#2}{#3}{#4}{#5}{#6,#9}{#7}#8}
+}
+
+\cs_new_protected:Nn \_@@_check_def:nnnnnnnn {
+  \tl_if_empty:nT{#5}{
+    \msg_error:nnnn{stex}{error/needsdefiniens}{#2}{extstructure*}
+  }
+}
+
+\cs_new_protected:Nn \_@@_new_extstruct_name: {
+  \stex_do_up_to_module:n {
+    \str_set:Ne \l_@@_extname_count {\int_eval:n{\l_@@_extname_count+1}}
+  }
+  \str_set:Ne \l_@@_exstruct_name_str {EXTSTRUCT_\l_@@_extname_count}
+}
+
+\stex_every_module:n{ \str_set:Nn \l_@@_extname_count 0}
+%    \end{macrocode}
+% \end{senvironment}
+%
+% \begin{sfunction}{\this}{}
+%
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Npn \stex_current_this: {
+  { \bool_set_true:N \l_stex_allow_semantic_bool
+    \tl_if_empty:NTF \l_stex_current_this_tl {{}}{
+      \tl_set:Nn \l_stex_current_full_tl {
+        \exp_args:Ne \stex_use_symbol_uri:n {
+          \exp_args:No \stex_new_symbol_uri:n \l_@@_name_str
+        }
+      }
+      \str_set_eq:NN \l_stex_current_display_tl \l_@@_name_str
+      \maincomp{\l_stex_current_this_tl}
+    }
+  }
+}
+
+\let \this \stex_current_this:
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\stex_get_mathstructure:n}{}
+%   sets \cs{l_stex_get_structure_module_uri} or throws an error
+%   if no structure by the given name/id exists.
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_get_mathstructure:n {
+  \tl_clear:N \l_stex_get_structure_module_uri
+  \stex_get_symbol:nF{#1}{
+    \msg_error:nnn{stex}{error/unknownstructure}{#1}
+  }
+  \exp_args:No \tl_if_eq:NNTF \l_stex_get_symbol_invoke_cs \stex_invoke_structure: {
+    \tl_set_eq:NN \l_stex_get_structure_module_uri \l_stex_get_symbol_type_tl
+  }{
+    \msg_error:nnn{stex}{error/unknownstructure}{#1}
+  }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\usestructure}{}
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Npn \usestructure #1 {
+  \stex_get_mathstructure:n{ #1 }
+  \stex_debug:nn{usestructure}{Using~structure~#1:~\stex_use_module_uri:N \l_stex_get_structure_module_uri}
+  \seq_clear:N \l_@@_imports_seq
+  \clist_map_inline:Nn \l_stex_get_symbol_type_tl {
+    \stex_if_module_exists:nT{##1}{
+      \seq_put_right:Nn \l_@@_imports_seq{##1}
+    }
+  }
+  \seq_map_inline:Nn \l_@@_imports_seq {
+    \stex_if_do_html:T {
+      \hbox{\stex_annotate_invisible:nn 
+        {data-shtml-usemodule=\stex_use_module_uri:n {##1}} {}}
+    }
+    \stex_activate_module:n {##1}
+  }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \end{sfragment}

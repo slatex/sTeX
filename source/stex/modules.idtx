@@ -43,6 +43,9 @@
 \cs_new:Nn \_stex_module_code_macro:N {
   c_stex_module_ \exp_after:wN \_@@_macro_short:nnn #1 _code
 }
+\cs_new:Nn \_stex_module_code_macro:n {
+  c_stex_module_ \_@@_macro_short:nnn #1 _code
+}
 %    \end{macrocode}
 % \end{implementation}
 %
@@ -90,10 +93,10 @@
   srccite       .code:n       = {}   % todo ?
 }{id, title, style, deprecate}
 
-\stex_if_html_backend:TF {
+\stex_if_html_backend:T {
   \cs_new_protected:Nn \_@@_html_annots: {
     \exp_args:Nne \begin{stex_annotate_env} {
-      data-shtml-theory={\stex_name_from_module:N \l_stex_current_module_uri},
+      data-shtml-theory={\stex_module_uri_name:N \l_stex_current_module_uri},
       %data-shtml-language={ \l_stex_current_language_str},
       data-shtml-signature={\l_stex_key_sig_str}
       \tl_if_empty:NF \l_stex_metatheory_uri {,
@@ -145,6 +148,7 @@
     \_stex_module_setup_top_nosig:n \_@@_top_sig:n {#1}
   \g_stex_every_module_tl
   \tl_if_empty:NF \l_stex_metatheory_uri {
+    \stex_debug:nn{modules}{loading~metatheory~\stex_use_module_uri:N \l_stex_metatheory_uri}
     \_@@_load_meta:
   }
 }
@@ -184,7 +188,7 @@
 \bool_new:N \l_stex_in_meta_bool
 
 \cs_new_protected:Nn \_@@_load_meta: {
-  \stex_execute_in_module:e{
+  \stex_execute_in_module:n{
     \bool_if:NTF \l_stex_in_meta_bool {
       \stex_activate_module:N \l_stex_metatheory_uri
     }{
@@ -232,8 +236,8 @@
 %    \begin{macrocode}
 \cs_new_protected:Nn \_@@_nested:n {
   \stex_metagroup_new:
-  \tl_set_eq:NN \l_@@_uri \l_stex_current_module_uri
-  \stex_mod_append_name:Nn \l_@@_uri {#1}
+  \stex_debug:nn{module}{Nested~module~#1~in~\stex_use_module_uri:N \l_stex_current_module_uri}
+  \tl_set:Ne \l_@@_uri { \stex_new_module_uri:n{#1} }
   \stex_debug:nn{module}{URI:\stex_use_module_uri:N \l_@@_uri}
   \exp_args:No \stex_if_module_exists:NTF \l_@@_uri {
     \stex_debug:nn{modules}{(already exists)}
@@ -403,13 +407,17 @@
 %    \end{macrocode}
 % \end{sfunction}
 %
-% \begin{sfunction}[pTF]{\stex_if_module_exists:N}{}
+% \begin{sfunction}[pTF]{\stex_if_module_exists:N,\stex_if_module_exists:n}{}
 % conditional whether a module with the given URI exists
 %
 % \StartImpl
 %    \begin{macrocode}
 \prg_new_conditional:Nnn \stex_if_module_exists:N {p, T, F, TF} {
   \tl_if_exist:cTF { \_stex_module_code_macro:N #1 }
+    \prg_return_true: \prg_return_false:
+}
+\prg_new_conditional:Nnn \stex_if_module_exists:n {p, T, F, TF} {
+  \tl_if_exist:cTF { \_stex_module_code_macro:n {#1} }
     \prg_return_true: \prg_return_false:
 }
 %    \end{macrocode}
@@ -425,6 +433,9 @@
     \exp_args:NNo \seq_put_right:Nn \l_stex_all_modules_seq #1
     \stex_pseudogroup:nn{
       \tl_set_eq:NN \l_stex_current_module_uri #1
+      \tl_if_exist:cF { \_stex_module_code_macro:N #1 }{
+        \msg_error:nnx{stex}{error/unknownmodule}{\stex_use_module_uri:N #1}
+      }
       \use:c{ \_stex_module_code_macro:N #1 }
     }{
       \stex_pseudogroup_restore:N \l_stex_current_module_uri

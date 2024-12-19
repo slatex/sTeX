@@ -104,7 +104,7 @@
   \stex_debug:nn{symdef}{Doing~\stex_use_symbol_uri:N \l_stex_current_symbol_uri}
   \str_set_eq:NN \l_stex_get_symbol_uri \l_stex_current_symbol_uri
   \stex_notation_parse:n{#3}
-  \_stex_notation_check:
+  \stex_if_check_terms:T{ \_stex_notation_check: }
   \_stex_notation_add:
   \stex_if_do_html:T{
     \_stex_notation_do_html:n{\stex_use_symbol_uri:N \l_stex_current_symbol_uri}
@@ -127,10 +127,9 @@
   \tl_clear:N \thisstyle
   \str_set_eq:NN\thisnotationvariant\l_stex_key_variant_str
   \def\thisnotation{
-    $\let\l_stex_current_symbol_str\thisdecluri
-      \def\comp{\_comp}\exp_args:Nne \use:nn{\l_stex_notation_macrocode_cs}{
+    \exp_args:Nne \use:nn{\l_stex_notation_macrocode_cs{}}{
       \_stex_notation_make_args:
-    }$
+    }
   }
   \stex_style_apply:
   \group_end:
@@ -165,7 +164,6 @@
   %  \str_set:Ne \l_stex_key_name_str {\l_stex_key_name_str-sym}
   %}
   \str_set:Nn \l_stex_key_role_str {textsymdecl}
-  
   \stex_symdecl_do:
   \_stex_check_terms:
   \exp_args:Nne \use:nn {\stex_add_symbol:nnnnnnnN}{
@@ -238,6 +236,10 @@
   \str_if_empty:NT \l_stex_key_name_str {
     \str_set:Ne \l_stex_key_name_str { #1 }
   }
+  \tl_set:Ne \l_stex_current_symbol_uri {
+    \exp_args:No \stex_new_symbol_uri:n \l_stex_key_name_str
+  }
+  
   \stex_symdecl_do:
   \_stex_check_terms:
   \_@@_add_decl:
@@ -271,11 +273,12 @@
 %    \begin{macrocode}
 \cs_new_protected:Nn \stex_symdecl_do: {
   \_stex_do_deprecation:n \l_stex_key_name_str
-  \tl_set:Ne \l_stex_current_symbol_uri {
-    \exp_args:No \stex_new_symbol_uri:n \l_stex_key_name_str
-  }
   \_@@_parse_arity:
   \_@@_do_args:
+}
+
+\cs_new:Nn \_stex_return_args:nn {
+  {\svar{ARGUMENT_#1}\_stex_eat_exclamation_point:}
 }
 
 \cs_new_protected:Nn \_@@_do_args: {
@@ -340,9 +343,7 @@
       a {\int_incr:N \l_stex_get_symbol_arity_int \int_incr:N \l_stex_assoc_args_count}
       B {\int_incr:N \l_stex_get_symbol_arity_int \int_incr:N \l_stex_assoc_args_count}
     }{
-      \msg_error:nnxx{stex}{error/wrongargs}{
-        \l_stex_current_module_str ? \l_stex_key_name_str
-      }{##1}
+      \msg_error:nnxx{stex}{error/wrongargs}{}{##1}
     }
   }
 }
@@ -387,7 +388,7 @@
         \exp_args:Nno \use:n{
         \cs_generate_from_arg_count:NNnn \l_@@_cs
         \cs_set:Npn \l_stex_get_symbol_arity_int} \l_stex_key_return_tl
-        \tl_set:Nx \l_@@_args_tl {\_stex_map_args:N \_stex_return_args:nn}
+        \tl_set:Ne \l_@@_args_tl {\_stex_map_args:N \_stex_return_args:nn}
         $\stex_annotate:nn{data-shtml-returntype={}}{
           \exp_after:wN \l_@@_cs \l_@@_args_tl!
         }$
@@ -419,7 +420,7 @@
 % \StartImpl
 %    \begin{macrocode}
 \cs_new_protected:Nn \stex_add_symbol:nnnnnnnN {
-  \stex_debug:nn{declaration}{New~declaration:~\stex_use_symbol_uri:N \l_stex_current_symbol_uri^^J
+  \stex_debug:nn{declaration}{New~declaration:~\stex_use_module_uri:N \l_stex_current_module_uri :~ #2^^J
     Macro:#1^^JArity:#3~(#4)^^J
     Def:~\tl_to_str:n{#5}^^J
     Type:~\tl_to_str:n{#6}^^J
@@ -455,6 +456,26 @@
   }
   \stex_debug:nn{activating}{done}
   \prop_map_break:
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}[pTF]{\stex_has_definiens:N,\stex_has_definiens:n}{}
+% \StartImpl
+%    \begin{macrocode}
+\prg_new_conditional:Nnn \stex_has_definiens:N { p, T, F, TF } {
+  \exp_args:No \stex_has_definiens:nTF #1 \prg_return_true: \prg_return_false:
+}
+\prg_new_conditional:Nnn \stex_has_definiens:n { p, T, F, TF } {
+  \exp_args:Nne \use:nn{\_@@_has_definiens:nnnnnnnN}{\exp_args:Nne \prop_item:cn{
+    \exp_args:Ne \_stex_symbol_macro:n {\stex_symbol_uri_module:n{#1}} 
+  }{
+    \stex_symbol_uri_name:n {#1}
+  }}
+}
+
+\cs_new:Nn \_@@_has_definiens:nnnnnnnN {
+  \tl_if_empty:nTF{#5}\prg_return_false:\prg_return_true:
 }
 %    \end{macrocode}
 % \end{sfunction}
@@ -567,7 +588,7 @@
     \exp_args:Ne \tl_if_empty:nTF { \cs_argument_spec:N \l_@@_cs }{
       % ...that takes no arguments
       \exp_args:Ne \cs_if_eq:NNTF {\tl_head:N \l_@@_cs}
-        \_stex_invoke_symbol:nnnnnnnN
+        \_stex_invoke_symbol:nnnnnnN
         \_@@_get_symbol_from_cs:
         {\_@@_get_symbol_from_string:n { #1 }}
     }{
@@ -580,16 +601,15 @@
 }
 
 \cs_new_protected:Nn \_@@_get_symbol_from_cs: {
-  \stex_debug:nn{symbols}{Getting~from~cs...}
-  \stex_pseudogroup_with:nn{\_stex_invoke_symbol:nnnnnnnN}{
-    \cs_set:Npn \_stex_invoke_symbol:nnnnnnnN ##1 ##2 ##3 ##4 ##5 ##6 ##7 ##8 {
-      \tl_set:Ne \l_stex_get_symbol_uri { \stex_new_symbol_uri:nn {##1} {##2}}
-      \int_set:Nn \l_stex_get_symbol_arity_int {##3}
-      \tl_set:Nn \l_stex_get_symbol_args_tl {##4}
-      \tl_set:Nn \l_stex_get_symbol_def_tl {##5}
-      \tl_set:Nn \l_stex_get_symbol_type_tl {##6}
-      \tl_set:Nn \l_stex_get_symbol_return_tl {##7}
-      \tl_set:Nn \l_stex_get_symbol_invoke_cs {##8}
+  \stex_pseudogroup_with:nn{\_stex_invoke_symbol:nnnnnnN}{
+    \cs_set:Npn \_stex_invoke_symbol:nnnnnnN ##1 ##2 ##3 ##4 ##5 ##6 ##7 {
+      \tl_set:Nn \l_stex_get_symbol_uri { ##1 }
+      \int_set:Nn \l_stex_get_symbol_arity_int {##2}
+      \tl_set:Nn \l_stex_get_symbol_args_tl {##3}
+      \tl_set:Nn \l_stex_get_symbol_def_tl {##4}
+      \tl_set:Nn \l_stex_get_symbol_type_tl {##5}
+      \tl_set:Nn \l_stex_get_symbol_return_tl {##6}
+      \tl_set:Nn \l_stex_get_symbol_invoke_cs {##7}
     }
     \l_@@_cs
   }
@@ -634,15 +654,33 @@
 }
 
 \cs_new_protected:Nn \_@@_get_symbol_from_modules:nn {
+  \seq_set_split:Nnn \l_tmpa_seq ? {#1}
+  \seq_pop_right:NN \l_tmpa_seq \l_@@_name_str
+  \str_set:Ne \l_@@_path_str {\seq_use:Nn \l_tmpa_seq ?}
   \stex_debug:nn{symbols}{Getting~#2~in~#1...}
   \seq_map_inline:Nn \l_stex_all_modules_seq {
-    \stex_str_if_ends_with:nnT{##1}{#1}{
-      \prop_map_inline:cn{\_stex_symbol_macro:n {##1} }{
-        \_@@_sym_from_str_i:nnnn{##1}{#2} ####2
+    \exp_args:NNNe \exp_args:No \str_if_eq:nnT\l_@@_name_str{
+      \stex_module_uri_name:n {##1}
+    }{
+      \str_if_empty:NTF \l_@@_path_str {
+        \prop_map_inline:cn{\_stex_symbol_macro:n {##1} }{
+          \_@@_sym_from_str_i:nnnn{##1}{#2} ####2
+        }
+      }{
+        \exp_args:NNe \exp_args:Nno \str_str_if_ends_with:nnT{\stex_module_uri_path:n {##1}}\l_@@_path_str {
+          \prop_map_inline:cn{\_stex_symbol_macro:n {##1} }{
+            \_@@_sym_from_str_i:nnnn{##1}{#2} ####2
+          }
+        }
       }
     }
   }
 }
+
+\prg_new_conditional:Nnn \_@@_uri_match:n {T,F,TF} {
+  \str_if_eq:nnT
+}
+
 
 \cs_new_protected:Nn \_@@_get_from_one_string:n {
   \stex_debug:nn{symbols}{Getting~#1~anywhere...}
@@ -669,6 +707,7 @@
 % \end{sfunction}
 %
 % \end{sfragment}
+%
 %
 % \input{stex/variables.idtx}
 %

@@ -1,0 +1,560 @@
+\RequirePackage{paralist}
+\ifcsname stexdocpath\endcsname\else\def\stexdocpath{.}\fi
+\documentclass[full]{l3doc}
+\usepackage[hyperref=auto,style=alphabetic]{biblatex}
+\usepackage[lang={en,de}]{stex}
+\usepackage[show]{ed}
+\usepackage{rustex}
+\usepackage{stex-highlighting,stexthm}
+
+
+\srefsetin[sTeX/Documentation]{documentation}{the \stex Documentation}
+
+\makeatletter
+\providecommand{\HTML}{\textsc{html}\xspace}%
+\providecommand{\XML}{\textsc{xml}\xspace}%
+\providecommand{\PDF}{\textsc{pdf}\xspace}%
+\providecommand\openmath{\textsc{OpenMath}\xspace}
+\providecommand\OMDoc{\textsc{OMDoc}\xspace}
+\DeclareRobustCommand\LaTeXML{L\kern-.36em%
+        {\sbox\z@ T%
+         \vbox to\ht\z@{\hbox{\check@mathfonts
+                              \fontsize\sf@size\z@
+                              \math@fontsfalse\selectfont
+                              A}%
+                        \vss}%
+        }%
+        \kern-.15em%
+        T\kern-.1667em\lower.4ex\hbox{E}\kern-0.05em\relax
+        {\scshape xml}\xspace}%
+\def\mmt{\textsc{Mmt}\xspace}
+\def\immt{\textsc{iMmt}\xspace}
+\makeatother
+
+
+\newif\ifhadtitle\hadtitlefalse
+
+\def\stexversion{4.0.0}
+\def\changedate{\today}
+\def\stextoptitle#1#2{\title{#1\thanks{Version {\stexversion} (last revised {\changedate})} }\def\thispkg{#2}}
+
+\author{Michael Kohlhase, Dennis Müller\\
+ 	FAU Erlangen-Nürnberg\\
+ 	\url{http://kwarc.info/}
+}
+
+
+
+\ExplSyntaxOn
+
+\def\stexmaketitle{
+  \ifhadtitle\else
+    \hadtitletrue
+    \maketitle
+    \tableofcontents
+    \int_gincr:N \l_stex_current_section_level_int
+
+    \seq_map_inline:Nn \c_stex_mathhub_files {
+      \__stex_mathhub_find_manifest:nn {##1}{ sTeX / Documentation }
+      \str_if_empty:NF \l__stex_mathhub_manifest_str \seq_map_break:
+    }
+  %  \str_if_empty:NF \l__stex_mathhub_manifest_str {
+  %    \usemodule[sTeX/Documentation]{macros?AllMacros}
+  %  }
+  \fi
+}
+
+\def\stexdocumentation{
+  \DisableImplementation
+  \EnableDocumentation
+  \begin{sfragment}{Documentation}
+    \DocInput{\jobname.dtx}
+  \end{sfragment}
+}
+
+\def\steximplementation{
+  \DisableDocumentation
+  \EnableImplementation
+  \begin{sfragment}{Implementation}
+    \DocInput{\jobname.dtx}
+  \end{sfragment}
+}
+
+\def\stexfooter{
+  \clearpage
+  \PrintIndex
+  \printbibliography
+}
+
+\ExplSyntaxOff
+
+\usepackage{lststex,mdframed}
+\usepackage[most]{tcolorbox}
+
+\lstset{literate=%
+    {Ö}{{\"O}}1
+    {Ä}{{\"A}}1
+    {Ü}{{\"U}}1
+    {ß}{{\ss}}1
+    {ü}{{\"u}}1
+    {ä}{{\"a}}1
+    {ö}{{\"o}}1
+    {~}{{\textasciitilde}}1
+}
+
+
+\newenvironment{framed}[1][]{
+  \ifstexhtml\par\vbox\bgroup
+    \csname exp_args:Nne\endcsname\begin{stex_annotate_env}{%
+      style:border=solid 1px black,%
+      style:width=var(--this-width),%
+      style:min-width=var(--this-width),%
+      style:--this-width=calc(var(--current-width) - 6px),%
+      style:padding=3px,%
+      style:margin-top=5px,%
+      style:margin-bottom=5px%
+    }
+    \csname stex_annotate_invisible:n\endcsname{ }%
+    \begin{stex_annotate_env}{%
+      style:--current-width=var(--this-width);%
+    }\csname stex_annotate_invisible:n\endcsname{ }
+  \else\begin{mdframed}[#1]\fi
+}{%
+  \ifstexhtml
+    \end{stex_annotate_env}\end{stex_annotate_env}\egroup\par
+  \else\end{mdframed}\fi
+}
+\newcommand{\scaled}[2][0.9\hsize]{\begin{center}\resizebox{#1}{!}{\begin{minipage}{\textwidth} #2 \end{minipage}}\end{center}}
+
+\makeatletter
+\ExplSyntaxOn
+
+\def\doc_exbox:nnn#1#2#3{
+  \begin{sexample}[#3]
+    Input:
+    \begin{framed}[linewidth=1pt,backgroundcolor=white]\small
+      #1
+    \end{framed}
+    Output:
+    \begin{framed}[linewidth=1pt,backgroundcolor=white]\small
+      #2
+    \end{framed}
+  \end{sexample}
+}
+
+
+\NewDocumentCommand\stexexamplefile{O{} m O{} O{}}{
+  \stex_resolve_path_pair:Nxx \l_@@_filepath_str {\tl_to_str:n{#1}} {\tl_to_str:n{#2}}
+  \doc_exbox:nnn{
+    \hfill File~\str_if_empty:nTF{#1}{
+      \prop_if_exist:NT \l_stex_current_archive_prop {
+        [\texttt{\prop_item:Nn \l_stex_current_archive_prop {id}}]
+      }
+    }{[#1]}\texttt{\tl_to_str:n{#2}}
+    \_lststex_parse_args:n{#3}
+    \exp_args:Nno \use:nn{\lstinputlisting[} \l_lststex_return_tl ]{\l_@@_filepath_str}
+  }{
+    \inputref[#1]{#2}
+  }{#4}
+}
+
+\newwrite\testoutfile
+\NewDocumentCommand\stexexample{O{} O{}}{
+  \begingroup 
+  \catcode`\\=12\relax
+  \catcode`\#=12\relax
+  \catcode`\&=12\relax
+  \catcode`\$=12\relax
+  \catcode`\^=12\relax
+  \catcode`\_=12\relax
+  \catcode`\ =12\relax
+  \catcode`^^J=12\relax
+  \endlinechar=`^^J
+  \newlinechar=-1
+%^^A    \everyeof{\noexpand}
+  \example_a:nnn{#1}{#2}
+}
+\long\def\example_a:nnn #1 #2 #3 {
+  \endgroup
+  \immediate\openout\testoutfile=\jobname.exmpl
+  \immediate\write\testoutfile{
+    \c_backslash_str begin{stexcode}[#1]
+    \detokenize{^^J}#3
+    \c_backslash_str end{stexcode}
+  }
+  \immediate\closeout\testoutfile
+  \doc_exbox:nnn{
+    \catcode`\#=12\relax
+    \csname @ @ input\endcsname{\jobname.exmpl}
+  }{
+    \immediate\openout\testoutfile=\jobname.exmpl
+    \immediate\write\testoutfile{#3}
+    \immediate\closeout\testoutfile
+    \csname @ @ input\endcsname \jobname.exmpl\relax
+  }{#2}
+  \peek_charcode_remove:NT ^^J
+}
+
+\ExplSyntaxOff
+\makeatother
+
+\makeatletter
+\newcount\example@counter\example@counter=0
+\newtcolorbox{exampleborderbox}[1][]{
+  empty,
+  title={Example \the\example@counter #1},
+  attach boxed title to top left,
+     minipage boxed title,
+  boxed title style={empty,size=minimal,toprule=0pt,top=1pt,left=3mm,overlay={}},
+  coltitle=blue,fonttitle=\bfseries,
+  parbox=false,boxsep=0pt,left=3mm,right=0mm,top=2pt,breakable,pad at break=0mm,
+     before upper=\csname @totalleftmargin\endcsname0pt, 
+  overlay unbroken={\draw[blue,line width=2pt] ([xshift=-0pt]title.north west) -- ([xshift=-0pt]frame.south west); },
+  overlay first={\draw[blue,line width=2pt] ([xshift=-0pt]title.north west) -- ([xshift=-0pt]frame.south west); },
+  overlay middle={\draw[blue,line width=2pt] ([xshift=-0pt]frame.north west) -- ([xshift=-0pt]frame.south west); },
+  overlay last={\draw[blue,line width=2pt] ([xshift=-0pt]frame.north west) -- ([xshift=-0pt]frame.south west); },
+  outer arc=4pt%
+}
+
+\ExplSyntaxOn
+\stexstyleexample{
+  \global\advance\example@counter by 1
+  \tl_if_empty:NTF\thistitle{
+    \begin{exampleborderbox}
+  }{
+    \begin{exampleborderbox}[ (\thistitle)]
+  }
+}{
+    \end{exampleborderbox}
+}
+
+\ExplSyntaxOff\makeatother
+
+\usetikzlibrary{calc}
+
+\def\textwarning{\includegraphics[width=1.2em]{stex-dangerous-bend}\xspace}
+\newtcolorbox{dangerbox}{
+  breakable,
+  enhanced,
+  left=0pt,
+  right=0pt,
+  top=8pt,
+  bottom=8pt,
+  colback=white,
+  colframe=red,
+  width=\textwidth,
+  enlarge left by=0mm,
+  boxsep=5pt,
+  fontupper=\small,
+  arc=4pt,
+  outer arc=4pt,
+  leftupper=1.5cm,
+  overlay={
+    \node[anchor=west] at ([xshift=10pt]$(frame.north west)!0.5!(frame.south west)$)
+       {\includegraphics[width=1cm,height=1cm]{stex-dangerous-bend}};}
+}
+
+\protected\def\TODO#1{\textcolor{red}{TODO}\footnote{\textcolor{red}{TODO: #1}}}
+
+\definecolor{darkgreen}{rgb}{0.0, 0.5, 0.0}
+
+\usepackage[solutions]{problem}
+\usepackage{hwexam}
+\newtcolorbox{problemborderbox}[1][]{
+  empty,
+  title={Exercise #1},
+  attach boxed title to top left,
+     minipage boxed title,
+  boxed title style={empty,size=minimal,toprule=0pt,top=1pt,left=3mm,overlay={}},
+  coltitle=darkgreen,fonttitle=\bfseries,
+  parbox=false,boxsep=0pt,left=3mm,right=0mm,top=2pt,breakable,pad at break=0mm,
+     before upper=\csname @totalleftmargin\endcsname0pt, 
+  overlay unbroken={\draw[darkgreen,line width=2pt] ([xshift=-0pt]title.north west) -- ([xshift=-0pt]frame.south west); },
+  overlay first={\draw[darkgreen,line width=2pt] ([xshift=-0pt]title.north west) -- ([xshift=-0pt]frame.south west); },
+  overlay middle={\draw[darkgreen,line width=2pt] ([xshift=-0pt]frame.north west) -- ([xshift=-0pt]frame.south west); },
+  overlay last={\draw[darkgreen,line width=2pt] ([xshift=-0pt]frame.north west) -- ([xshift=-0pt]frame.south west); },
+  outer arc=4pt%
+}
+
+\ExplSyntaxOn
+\stexstyleproblem{
+  \tl_if_empty:NTF\thistitle{
+    \begin{problemborderbox}
+  }{
+    \begin{problemborderbox}[ (\thistitle)]
+  }
+}{
+    \end{problemborderbox}
+}
+\ExplSyntaxOff
+
+\newtcolorbox{experimental}{
+  breakable,
+  enhanced,
+  left=0pt,
+  right=0pt,
+  top=8pt,
+  bottom=8pt,
+  colback=white,
+  colframe=gray,
+  width=\textwidth,
+  enlarge left by=0mm,
+  boxsep=5pt,
+  fontupper=\small,
+  arc=4pt,
+  outer arc=4pt,
+  leftupper=1.5cm,
+  overlay={
+    \node[anchor=west] at ([xshift=10pt]$(frame.north west)!0.5!(frame.south west)$)
+       {\includegraphics[height=1cm]{stex-experimental}};}
+}
+
+
+\usetikzlibrary{decorations.pathmorphing,shapes,arrows,calc}
+% Taken from pgflibrarytikzmmt.code.tex
+\newcommand{\mmtarrowtip}{angle 45}
+\newcommand{\mmtarrowtipmonoright}{right hook}
+
+\tikzstyle{include}=[\mmtarrowtipmonoright-\mmtarrowtip,thick]
+\tikzstyle{morph}=[-\mmtarrowtip,thick]
+\tikzstyle{preview}=[decorate, decoration={coil,aspect=0,amplitude=1pt,
+                                                  segment length=6pt,
+                                                  pre=lineto,pre length=3pt,
+                                                  post=lineto,post length=5pt}, thick]
+\tikzstyle{view}=[preview,-\mmtarrowtip]
+
+
+% TIKZ RULES
+\def\mmtlogo{
+\begin{tikzpicture}
+
+  % White Background (Margins are eyeballed)
+  % This is necessary because we paste white over arrows later.
+  % If somebody want's to do the full song and dance with
+  % interrupted arrows to get transparent background, be my guest.
+
+  \fill[white!] (-0.01,0.15) rectangle (1.11,-0.95);
+
+  % Arrows
+  \draw [blue, include] (0,0)     -- (1.1,0);
+  \draw [green, morph] (0,-0.4)  -- (1.1,-0.4);
+  \draw [red, view]   (-0,-0.8) -- (1.1,-0.8);
+
+  % Cutout for letters
+  \fill[white] (0.33,0.1) rectangle (0.66,-0.9);
+
+  % Letters
+  \node at (0.18,0)    (nodeM1) {\large M};
+  \node at (0.18,-0.4) (nodeM2) {\large M};
+  \node at (0.21,-0.8) (nodeT)  {\large T};
+
+\end{tikzpicture}
+}
+
+\newtcolorbox{mmtbox}{
+  breakable,
+  enhanced,
+  left=0pt,
+  right=0pt,
+  top=8pt,
+  bottom=8pt,
+  colback=white,
+  colframe=green,
+  width=\textwidth,
+  enlarge left by=0mm,
+  boxsep=5pt,
+  fontupper=\small,
+  arc=4pt,
+  outer arc=4pt,
+  leftupper=1.5cm,
+  overlay={
+    \node[anchor=west] at ([xshift=10pt]$(frame.north west)!0.5!(frame.south west)$)
+       {\mmtlogo};}
+}
+
+\newtcolorbox{defibox}{
+  breakable,
+  enhanced,
+  left=0pt,
+  right=0pt,
+  top=8pt,
+  bottom=8pt,
+  colback=white,
+  colframe=orange,
+  width=\textwidth,
+  enlarge left by=0mm,
+  boxsep=5pt,
+  fontupper=\small,
+  leftupper=1.5cm,
+  arc=4pt,
+  outer arc=4pt,
+  overlay={\node[anchor=west] at ([xshift=10pt]$(frame.north west)!0.5!(frame.south west)$)
+       {\textcolor{orange}{\Large\sTeX}};}
+}
+
+\stexstyleparagraph[defibox]{
+  \begin{defibox}
+}{
+  \end{defibox}
+}
+
+\AtBeginDocument{\catcode`_=8}
+
+
+\makeatletter
+% l3doc is based on article, but for these very large documents we need
+% chapters; the code is based on the standard classes but somewhat simplified
+\renewcommand\part{%
+    \clearpage
+  \thispagestyle{plain}%
+  \@tempswafalse
+  \null\vfil
+  \secdef\@part\@spart}
+\ifx\chapter\undefined
+\newcounter {chapter}
+\numberwithin{section}{chapter}
+\renewcommand \thechapter {\@arabic\c@chapter}
+\renewcommand \thesection {\thechapter.\@arabic\c@section}
+\newcommand*\chaptermark[1]{}
+\setcounter{secnumdepth}{2}
+\newcommand\@chapapp{\chaptername}
+\ifx\chaptername\undefined\newcommand\chaptername{Chapter}\fi
+  \def\ps@headings{%
+    \let\@oddfoot\@empty
+    \def\@oddhead{{\slshape\rightmark}\hfil\thepage}%
+    \let\@mkboth\markboth
+    \def\chaptermark##1{%
+      \markright {\MakeUppercase{%
+        \ifnum \c@secnumdepth >\m@ne
+            \@chapapp\ \thechapter. \ %
+        \fi
+        ##1}}}}
+\newcommand\chapter{\clearpage
+                    \thispagestyle{plain}%
+                    \global\@topnum\z@
+                    \@afterindentfalse
+                    \secdef\@chapter\@schapter}
+\def\@chapter[#1]#2{\refstepcounter{chapter}%
+                    \typeout{\@chapapp\space\thechapter.}%
+                    \addcontentsline{toc}{chapter}%
+                      {\protect\numberline{\thechapter}#1}%
+                    \chaptermark{#1}%
+                    \addtocontents{lof}{\protect\addvspace{10\p@}}%
+                    \addtocontents{lot}{\protect\addvspace{10\p@}}%
+                    \@makechapterhead{#2}%
+                    \@afterheading}
+\def\@makechapterhead#1{%
+  \vspace*{50\p@}%
+  {\parindent \z@ \raggedright \normalfont
+   \huge\bfseries \@chapapp\space \thechapter
+   \par\nobreak
+   \vskip 20\p@
+    \interlinepenalty\@M
+    \Huge \bfseries #1\par\nobreak
+    \vskip 40\p@
+  }}
+\newcommand*\l@chapter[2]{%
+  \ifnum \c@tocdepth >\m@ne
+    \addpenalty{-\@highpenalty}%
+    \vskip 1.0em \@plus\p@
+    \setlength\@tempdima{1.5em}%
+    \begingroup
+      \parindent \z@ \rightskip \@pnumwidth
+      \parfillskip -\@pnumwidth
+      \leavevmode \bfseries
+      \advance\leftskip\@tempdima
+      \hskip -\leftskip
+      #1\nobreak\hfil
+      \nobreak\hb@xt@\@pnumwidth{\hss #2%
+                                 \kern-\p@\kern\p@}\par
+      \penalty\@highpenalty
+    \endgroup
+  \fi}
+\renewcommand*\l@section{\@dottedtocline{1}{1.5em}{2.8em}}
+\renewcommand*\l@subsection{\@dottedtocline{2}{3.8em}{3.2em}}
+\renewcommand*\l@subsubsection{\@dottedtocline{3}{7.0em}{4.1em}}
+\fi
+\def\partname{Part}
+\def\parttitlename{Part}
+\def\chaptertitlename{Chapter}
+\def\toclevel@part{-1}
+%\def\maketitle{\chapter{\@title}}
+\let\thanks\@gobble
+\let\DelayPrintIndex\PrintIndex
+\let\PrintIndex\@empty
+\providecommand*{\hexnum}[1]{\text{\texttt{\char`\"}#1}}
+\makeatother
+
+\ExplSyntaxOn
+
+\NewDocumentEnvironment{ sfunction }{ O{} +v m }{
+  \protected\def \StartImpl {\_start_impl_fun:nn{#1}{#2}}
+  \bool_if:NTF \g__codedoc_typeset_documentation_bool {
+    \bool_set_false:N \l__codedoc_in_implementation_bool
+    \__codedoc_function:nnw{#1}{#2}
+      \tl_if_empty:nF{#3}{ \begin{syntax} #3 \end{syntax} }
+  }{
+    \exp_after:wN \StartImpl \_skip_doc:
+  }
+}{
+  \bool_if:NTF \g__codedoc_typeset_implementation_bool {
+    \__codedoc_macro_end:
+  }{
+    \endcomment
+  }
+}
+
+\NewDocumentEnvironment{ svariable }{ O{} +v }{
+  \protected\def \StartImpl {\_start_impl_fun:nn{var, #1}{#2}}
+  \bool_if:NTF \g__codedoc_typeset_documentation_bool {
+    \bool_set_false:N \l__codedoc_in_implementation_bool
+    \__codedoc_function:nnw{#1}{#2}
+  }{
+    \exp_after:wN \StartImpl \_skip_doc:
+  }
+}{
+  \bool_if:NTF \g__codedoc_typeset_implementation_bool {
+    \__codedoc_macro_end:
+  }{
+    \endcomment
+  }
+}
+
+\NewDocumentEnvironment{ senvironment }{ +v }{
+  \protected\def \StartImpl {\_start_env_fun:n{#1}}
+  \bool_if:NTF \g__codedoc_typeset_documentation_bool {
+    \bool_set_false:N \l__codedoc_in_implementation_bool
+    \vskip10pt
+    \DescribeEnv{#1}
+  }{
+    \exp_after:wN \StartImpl \_skip_doc:
+  }
+}{
+  \bool_if:NTF \g__codedoc_typeset_implementation_bool {
+    \endenvironment
+  }{
+    \endcomment
+  }
+}
+
+\cs_new:Npn \_skip_doc: #1 \StartImpl {}
+
+\cs_new_protected:Nn \_start_impl_fun:nn {
+  \bool_if:NT \g__codedoc_typeset_documentation_bool {
+    \__codedoc_function_end:
+  }
+  \bool_if:NTF \g__codedoc_typeset_implementation_bool {
+    \__codedoc_macro:nnw{#1}{#2}
+  }{ \comment }
+}
+
+\cs_new_protected:Nn \_start_env_fun:n {
+  \bool_if:NT \g__codedoc_typeset_documentation_bool {
+    \par
+  }
+  \bool_if:NTF \g__codedoc_typeset_implementation_bool {
+    \environment{#1}
+  }{ \comment }
+}
+
+\ExplSyntaxOff
