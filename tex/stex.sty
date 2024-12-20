@@ -1989,13 +1989,14 @@
 
 \cs_new_protected:Nn \__stex_modules_restore_module:nnnn {
   \tl_set:Ne \l__stex_modules_uri { \__stex_modules_stringify_uri:nnn #1 }
-  \stex_debug:nn{presist}{restoring~\stex_use_module_uri:N \l__stex_modules_uri}
+  \stex_debug:nn{persist}{restoring~\stex_use_module_uri:N \l__stex_modules_uri}
   \prop_gset_from_keyval:cn{ \_stex_morphisms_macro:N \l__stex_modules_uri }{#2}
   \prop_gset_from_keyval:cn{\_stex_symbol_macro:N \l__stex_modules_uri}{#3}
   \prop_map_inline:cn{\_stex_symbol_macro:N \l__stex_modules_uri}{
     \stex_ref_new_symbol:n{#1?##1}
   }
-  \tl_gset:cn{\_stex_module_code_macro:N \l__stex_modules_uri}{#4}
+  \def \l_tmpa_tl { #4 }
+  \exp_args:Nno \tl_gset:cn{\_stex_module_code_macro:N \l__stex_modules_uri}\l_tmpa_tl
   \prop_gclear:c{\_stex_notations_macro:N \l__stex_modules_uri}
   \group_begin:
     \catcode`_=8\relax
@@ -2056,26 +2057,27 @@
     \prg_return_true: \prg_return_false:
 }
 \cs_new_protected:Nn \stex_activate_module:N {
-  \exp_args:NNo \seq_if_in:NnF \l_stex_all_modules_seq #1 {
-    \stex_debug:nn{modules}{Activating~module~\stex_use_module_uri:N #1^^J\expandafter\meaning\csname \_stex_module_code_macro:N #1 \endcsname}
-    \exp_args:NNo \seq_put_right:Nn \l_stex_all_modules_seq #1
-    \stex_pseudogroup:nn{
-      \tl_set_eq:NN \l_stex_current_module_uri #1
-      \tl_if_exist:cF { \_stex_module_code_macro:N #1 }{
-        \msg_error:nnx{stex}{error/unknownmodule}{\stex_use_module_uri:N #1}
-      }
-      \_stex_activate_symbols:N #1
-      \_stex_activate_notations:N #1
-      \use:c{ \_stex_module_code_macro:N #1 }
-    }{
-      \stex_pseudogroup_restore:N \l_stex_current_module_uri
-    }
-  }
+  \exp_args:No \stex_activate_module:n #1
 }
 
 \cs_new_protected:Nn \stex_activate_module:n {
-  \tl_set:Nn \l__stex_modules_mod_uri {#1}
-  \stex_activate_module:N \l__stex_modules_mod_uri
+  \seq_if_in:NnF \l_stex_all_modules_seq {#1} {
+    \stex_debug:nn{modules}{Activating~module~\stex_use_module_uri:n{#1}}
+    \seq_put_right:Nn \l_stex_all_modules_seq {#1}
+    \stex_pseudogroup:nn{
+      \tl_set:Nn \l_stex_current_module_uri {#1}
+      \tl_if_exist:cF { \_stex_module_code_macro:N \l_stex_current_module_uri }{
+        \msg_error:nnx{stex}{error/unknownmodule}{\stex_use_module_uri:n {#1} }
+      }
+      \_stex_activate_symbols:
+      \_stex_activate_notations:
+      \stex_debug:nn{modules}{Executing:~\expandafter\meaning\csname\_stex_module_code_macro:N \l_stex_current_module_uri \endcsname}
+      \use:c{ \_stex_module_code_macro:N \l_stex_current_module_uri }
+    }{
+      \stex_pseudogroup_restore:N \l_stex_current_module_uri
+    }
+    \stex_debug:nn{modules}{Activated~module~\stex_use_module_uri:n {#1} }
+  }
 }
 \NewDocumentCommand \setmetatheory {O{} m}{
   \stex_debug:nn{metatheory}{Setting~metatheory~[#1]#2}
@@ -2396,6 +2398,7 @@
 \stex_new_stylable_cmd:nnnn {usemodule} { O{} m } {
   \stex_uri_from_pair:Nnn \l_stex_import_uri { #1 }{ #2 }
   \stex_require_module:N \l_stex_import_uri
+  \stex_debug:nn{usemodule}{Done.}
   \stex_if_do_html:T {
     \hbox{\stex_annotate_invisible:nn
       {data-shtml-usemodule=\stex_use_module_uri:N \l_stex_import_uri } {}}
@@ -3468,22 +3471,16 @@
     }
   }
 }
-\cs_new_protected:Nn \_stex_activate_symbols:N {
-  \prop_map_inline:cn{ \_stex_symbol_macro:N #1 }{
-    \__stex_syms_maybe_activate:Nnnnnnnnn #1 ##2
+\cs_new_protected:Nn \_stex_activate_symbols: {
+  \stex_debug:nn{activating}{All~symbols:~\cs_meaning:c{ \_stex_symbol_macro:N \l_stex_current_module_uri }}
+  \prop_map_inline:cn{ \_stex_symbol_macro:N \l_stex_current_module_uri }{
+    \__stex_syms_maybe_activate:nnnnnnnn ##2
   }
 }
 
-\cs_new_protected:Nn \__stex_syms_maybe_activate:Nnnnnnnnn {
+\cs_new_protected:Nn \__stex_syms_maybe_activate:nnnnnnnn {
   \str_if_empty:nF{#1}{
-    \stex_debug:nn{activating}{macro~#2:\stex_use_module_uri:N #1 ? #2^^J
-      \tl_to_str:n{{#3}{#4}{#5}{#6}{#7}{#8}{#9}}
-    }
-    \cs_set:cpe{#2} {
-      \_stex_invoke_symbol:nnnnnnN
-      {\exp_args:No \stex_new_symbol_uri:nn {#1} {#3} }
-      \exp_not:n{{#4}{#5}{#6}{#7}{#8}{#9}}
-    }
+    \__stex_syms_activate_i:nnnnnnnn {#1}{#2}{#3}{#4}{#5}{#6}{#7}{#8}
   }
 }
 
@@ -4272,8 +4269,9 @@
 }
 \cs_generate_variant:Nn \stex_add_notation:nnnnn {ooeoo}
 
-\cs_new_protected:Nn \_stex_activate_notations:N {
-  \prop_map_inline:cn{ \_stex_notations_macro:N #1 }{
+\cs_new_protected:Nn \_stex_activate_notations: {
+  \stex_debug:nn{activating}{All~notations:~\cs_meaning:c{ \_stex_notations_macro:N \l_stex_current_module_uri }}
+  \prop_map_inline:cn{ \_stex_notations_macro:N \l_stex_current_module_uri }{
     \__stex_notations_set_macro:nnnnn ##2
   }
 }
