@@ -188,14 +188,18 @@
 \bool_new:N \l_stex_in_meta_bool
 
 \cs_new_protected:Nn \_@@_load_meta: {
-  \stex_execute_in_module:n{
-    \bool_if:NTF \l_stex_in_meta_bool {
-      \stex_activate_module:N \l_stex_metatheory_uri
-    }{
-      \bool_set_true:N \l_stex_in_meta_bool
-      \stex_activate_module:N \l_stex_metatheory_uri
-      \bool_set_false:N \l_stex_in_meta_bool
-    }
+  \exp_after:wN \stex_execute_in_module:n \exp_after:wN { 
+    \exp_after:wN \_@@_load_meta_i:n \exp_after:wN { \l_stex_metatheory_uri } 
+  }
+}
+
+\cs_new_protected:Nn \_@@_load_meta_i:n {
+  \bool_if:NTF \l_stex_in_meta_bool {
+    \stex_activate_module:n {#1}
+  }{
+    \bool_set_true:N \l_stex_in_meta_bool
+    \stex_activate_module:n {#1}
+    \bool_set_false:N \l_stex_in_meta_bool
   }
 }
 %    \end{macrocode}
@@ -436,6 +440,8 @@
       \tl_if_exist:cF { \_stex_module_code_macro:N #1 }{
         \msg_error:nnx{stex}{error/unknownmodule}{\stex_use_module_uri:N #1}
       }
+      \_stex_activate_symbols:N #1
+      \_stex_activate_notations:N #1
       \use:c{ \_stex_module_code_macro:N #1 }
     }{
       \stex_pseudogroup_restore:N \l_stex_current_module_uri
@@ -493,7 +499,34 @@
 %    \end{macrocode}
 % \end{sfunction}
 %
+% \begin{sfunction}{\stex_structural_feature_module:nn,\stex_structural_feature_module_end:}{}
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_structural_feature_module:nn {
+  \stex_if_do_html:TF {
+    \exp_args:Nne \begin{stex_annotate_env} {
+      data-shtml-feature-#2={#1}
+      \str_if_empty:NF \l_stex_macroname_str {,
+        data-shtml-macroname={\l_stex_macroname_str}
+      }
+    }
+    \stex_annotate_invisible:n{}
+  }\group_begin:
+  \stex_module_setup:n {#1}
+}
+
+\cs_new_protected:Nn \stex_structural_feature_module_end: {
+  \tl_gset_eq:NN \g_stex_last_feature_str \l_stex_current_module_str
+  \stex_close_module:
+  \stex_if_do_html:TF{
+    \end{stex_annotate_env}
+  }\group_end:
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
 % \input{stex/smsmode.idtx}
 % \input{stex/imports.idtx}
+% \input{stex/morphisms.idtx}
 %
 % \end{sfragment}
