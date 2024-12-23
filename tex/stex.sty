@@ -1151,8 +1151,10 @@
   {#2}
   {#3 / \tl_to_str:n{#4}}
 }
+\bool_new:N \l_stex_relative_import_bool
 \cs_new_protected:Nn \stex_uri_from_pair:Nnn {
-  \stex_debug:nn{uri}{resolving~<#2,#3>}
+  \bool_set_false:N \l_stex_relative_import_bool
+  \stex_debug:nn{uri}{resolving~<#2,#3>~in~\stex_use_document_uri:N \l_stex_current_document_uri}
   \seq_set_split:Nne \l_tmpa_seq ? { \tl_to_str:n {#3} }
   \seq_pop_right:NN \l_tmpa_seq \l__stex_uris_name_str
   \str_clear:N \l__stex_uris_path_str
@@ -1169,17 +1171,27 @@
 }
 
 \cs_new_protected:Nn \__stex_uris_maybe_relative:N {
-  \tl_set:Ne \l_tmpa_seq {
+  \tl_set:Ne \l_tmpb_tl {
+    \stex_document_uri_path:N \l_stex_current_document_uri
+  }
+  \tl_set:Ne \l_tmpa_tl {
     {
       \stex_document_uri_archive:N \l_stex_current_document_uri
     }
     {
-      \stex_document_uri_path:N \l_stex_current_document_uri
+      \l_tmpb_tl
+      \exp_args:NNo \exp_args:Nne \str_if_eq:nnF \l__stex_uris_name_str {
+        \stex_document_uri_name:N \l_stex_current_document_uri
+      }{
+        \str_if_empty:NF \l_tmpb_tl / \stex_document_uri_name:N \l_stex_current_document_uri
+      }
     }
     { \l__stex_uris_name_str }
   }
-  \stex_if_module_exists:NTF \l_tmpa_seq {
-    \tl_set_eq:NN #1 \l_tmpa_seq
+  \stex_if_module_exists:NTF \l_tmpa_tl {
+    \tl_set_eq:NN #1 \l_tmpa_tl
+    \bool_set_true:N \l_stex_relative_import_bool
+    \stex_debug:nn{uri}{returning~relative~\stex_use_module_uri:N #1}
   }{
     \__stex_uris_absolute:N #1
   }
@@ -1192,6 +1204,7 @@
       { \l__stex_uris_path_str }
       { \l__stex_uris_name_str }
     }
+    \stex_debug:nn{uri}{returning~\stex_use_module_uri:N #1}
   }{
     \__stex_uris_pair_no_archive:N #1
   }
@@ -1206,6 +1219,7 @@
     { \stex_file_use:N \l_tmpa_seq }
     { \l__stex_uris_name_str }
   }
+  \stex_debug:nn{uri}{returning~\stex_use_module_uri:N #1}
 }
 
 \cs_new_protected:Nn \__stex_uris_pair_in_archive:Nn {
@@ -1214,6 +1228,7 @@
     { \l__stex_uris_path_str }
     { \l__stex_uris_name_str }
  }
+ \stex_debug:nn{uri}{returning~\stex_use_module_uri:N #1}
 }
 \cs_new_protected:Nn \stex_uri_from_pair:Nn {
   \peek_charcode:NTF [ {
@@ -1588,7 +1603,7 @@
     \begingroup
       \inputreftrue
       \let \l_stex_metatheory_uri \c_stex_default_metatheory
-      \seq_clear:N \l_stex_all_modules_seq
+      %\seq_clear:N \l_stex_all_modules_seq
       \stex_undefine:N \l_stex_current_module_uri
       \stex_debug:nn{inputref}{Inputrefing~document~\stex_use_document_uri:N \l__stex_inputs_uri{}~at~\stex_source_path:n{#1}}
       \stex_input_with_hooks:Ne\l__stex_inputs_uri{\stex_source_path:n {#1}}
@@ -1824,9 +1839,9 @@
 \stex_if_html_backend:T {
   \cs_new_protected:Nn \__stex_modules_html_annots: {
     \exp_args:Nne \begin{stex_annotate_env} {
-      data-shtml-theory={\stex_module_uri_name:N \l_stex_current_module_uri},
+      data-shtml-theory={\stex_module_uri_name:N \l_stex_current_module_uri}
       %data-shtml-language={ \l_stex_current_language_str},
-      data-shtml-signature={\l_stex_key_sig_str}
+      \str_if_empty:NF\l_stex_key_sig_str {, data-shtml-signature={\l_stex_key_sig_str}}
       \tl_if_empty:NF \l_stex_metatheory_uri {,
         data-shtml-metatheory={\stex_use_module_uri:N \l_stex_metatheory_uri}
       }
@@ -1901,11 +1916,13 @@
   }
 }
 \cs_new_protected:Nn \__stex_modules_top_sig:n {
+  \stex_debug:nn{modules}{Signature:\l_stex_key_sig_str}
   \stex_metagroup_new:
   \tl_set:Ne \l__stex_modules_uri { \stex_new_module_uri:n {#1} }
   \stex_debug:nn{module}{URI:\stex_use_module_uri:N \l__stex_modules_uri}
   \stex_if_module_exists:NTF \l__stex_modules_uri {
     \stex_debug:nn{modules}{(already exists)}
+    \stex_activate_module:N \l__stex_modules_uri
   }{
     \stex_debug:nn{modules}{(needs loading)}
     \__stex_modules_load_sig:
@@ -2041,6 +2058,7 @@
 \cs_generate_variant:Nn \stex_do_up_to_module:n {e}
 \cs_new_protected:Nn \stex_execute_in_module:n { \stex_if_in_module:TF {
   \tl_gput_right:cn { \_stex_module_code_macro:N \l_stex_current_module_uri } { #1 }
+  \stex_debug:nn{modules}{extending~activation~for~\stex_use_module_uri:N \l_stex_current_module_uri^^J\tl_to_str:n{#1}}
   \stex_do_up_to_module:n { #1 }
 }{ #1 }}
 \cs_generate_variant:Nn \stex_execute_in_module:n {e}
@@ -2160,17 +2178,24 @@
   \seq_gput_right:Ne \g__stex_smsmode_allowed_import_env_seq {\tl_to_str:n{#1}}
   \tl_gput_right:Nn \g__stex_smsmode_import_setup_tl {#2}
 }
+
+\stex_sms_allow_import_env:nn{smodule}{}
 \tl_new:N \g_stex_sms_import_code
 \bool_new:N \g__stex_smsmode_bool
 
 \prg_new_conditional:Nnn \stex_if_smsmode: { p, T, F, TF } {
   \bool_if:NTF \g__stex_smsmode_bool \prg_return_true: \prg_return_false:
 }
+
+\seq_new:N \l__stex_smsmode_cycles_seq
+
 \cs_new_protected:Nn \stex_file_in_smsmode:Nn {
   \seq_gclear:N \l__stex_smsmode_importmodules_seq
   \seq_gclear:N \l__stex_smsmode_sigmodules_seq
   \tl_clear:N \g_stex_sms_import_code
+  \seq_if_in:NnF \l__stex_smsmode_cycles_seq {#2} {
   \group_begin:
+    \seq_push:Nn \l__stex_smsmode_cycles_seq {#2}
     \let \l_stex_metatheory_uri \c_stex_default_metatheory
     \seq_clear:N \l_stex_all_modules_seq
     \stex_undefine:N \l_stex_current_module_uri
@@ -2193,6 +2218,7 @@
       }
     }
   \group_end:
+  }
 }
 
 \cs_new_protected:Nn \__stex_smsmode_in_smsmode:n {
@@ -2445,8 +2471,10 @@
 }
 \cs_new_protected:Nn \__stex_import_import_module_presms:nn {
   \stex_uri_from_pair:Nnn \l_stex_import_uri { #1 }{ #2 }
-  \tl_gput_right:Ne \g_stex_sms_import_code {
-    \stex_require_module_noerr:n { \l_stex_import_uri }
+  \bool_if:NF \l_stex_relative_import_bool {
+    \tl_gput_right:Ne \g_stex_sms_import_code {
+      \stex_require_module_noerr:n { \l_stex_import_uri }
+    }
   }
 }
 
@@ -2479,11 +2507,10 @@
   }
   \tl_if_empty:nTF{#1}{
     \bool_set_true:N \l__stex_morphisms_implicit_bool
-    \str_set:Ne \l_tmpa_str {[\stex_use_module_uri:N \l_stex_current_domain_uri]}
   }{
     \bool_set_false:N \l__stex_morphisms_implicit_bool
-    \str_set:Nn \l_tmpa_str {#1}
   }
+  \str_set:Nn \l_tmpa_str {#1}
 
   \stex_debug:nn{morphisms}{#2:~\l_tmpa_str;~for~\stex_use_module_uri:N \l_stex_current_domain_uri}
 
@@ -2522,9 +2549,13 @@
 }
 
 \cs_new_protected:Nn \__stex_morphisms_do:n {
+  %\seq_clear:N \l__stex_morphisms_dones_seq
     \prop_map_inline:cn {\_stex_morphisms_macro:n{#1}}{
-      \stex_debug:nn{morphisms}{Doing ~ \tl_to_str:n{##2}}
-      \__stex_morphisms_do_morph:nnnn ##2
+      %\seq_if_in:NnF \l__stex_morphisms_dones_seq {##2}{
+      %  \seq_push:Nn \l__stex_morphisms_dones_seq {##2}
+        \stex_debug:nn{morphisms}{Doing ~ \tl_to_str:n{##2}}
+        \__stex_morphisms_do_morph:nnnn ##2
+     % }
     }
 }
 
@@ -2604,14 +2635,20 @@
   \stex_debug:nn{morphisms}{patching~\stex_use_module_uri:n{#1};
     ~ using ~ \tl_to_str:n{ #2 }
   }
+  \seq_clear:N \l__stex_morphisms_reactivate_seq
   \tl_set:Nn \l__stex_morphisms_renames_seq {#2}
   \seq_map_inline:Nn \l__stex_morphisms_renames_seq {
     \__stex_morphisms_implicit_rename:nn ##1
   }
-  \stex_activate_module:n { #1 }
+  \seq_map_inline:Nn \l__stex_morphisms_reactivate_seq {
+    \stex_debug:nn{morphisms}{reactivating~\stex_use_module_uri:n{##1}}
+    \seq_remove_all:Nn \l_stex_all_modules_seq { ##1 }
+    \stex_activate_module:n { ##1 }
+  }
 }
 
 \cs_new_protected:Nn \__stex_morphisms_implicit_rename:nn {
+  \seq_push:Ne \l__stex_morphisms_reactivate_seq {  \stex_symbol_uri_module:n { #1 } }
   \tl_set:Ne \l_tmpb_tl {
     \exp_args:Ne \_stex_symbol_macro:n { \stex_symbol_uri_module:n { #1 } }
   }
@@ -2661,23 +2698,14 @@
 }
 
 \cs_new_protected:Nn \__stex_morphisms_add_definiens:nn {
+  \tl_set:Nn \l_stex_get_symbol_uri {#1}
   \stex_debug:nn{morphisms}{Adding~definiens~\tl_to_str:n{#1~#2}}
-  \__stex_morphisms_set_definiens_macros: #1\__stex_morphisms_break:
+  %\__stex_morphisms_set_definiens_macros: #1\__stex_morphisms_break:
   \_stex_assign_do:n{#2}
   #2
 }
 
-\cs_new_protected:Npn \__stex_morphisms_set_definiens_macros: #1?#2?#3\__stex_morphisms_break: {
-  \str_set:Nn \l_stex_get_symbol_uri { #1?#2} % TODO
-  \str_set:Nn \l_stex_get_symbol_name_str {#3}
-  \exp_args:Nne\use:nn{\__stex_morphisms_set_definiens_macros_i:nnnnnnn}{
-    \prop_item:Nn \l_stex_morphism_symbols_prop {[#1?#2]/[#3]}
-  }
-}
 
-\cs_new_protected:Nn \__stex_morphisms_set_definiens_macros_i:nnnnnnn {
-  \tl_set:Nn \l_stex_get_symbol_def_tl{#4}
-}
 
 \cs_new_protected:Nn \__stex_morphisms_rename_all: {
     % TODO
@@ -2758,18 +2786,15 @@
   }
 }
 \cs_new_protected:Nn \stex_get_in_morphism:n {
-  \stex_debug:nn{morphisms}{Getting~in~morphism:~#1^^J\meaning\l_stex_morphism_symbols_seq}
+  \stex_debug:nn{morphisms}{Getting~in~morphism:~#1}
   \tl_clear:N \l_stex_get_symbol_uri
   \str_set:Nn \l__stex_morphisms_get_str {#1}
   \seq_map_inline:Nn \l_stex_morphism_symbols_seq {
     \__stex_morphisms_get_check:nn ##1
   }
   \tl_if_empty:NT \l_stex_get_symbol_uri {
-    \msg_error:nnxx{stex}{error/unknownsymbolin}{#1}{
-      morphism~\l_stex_feature_name_str;\meaning\l_stex_morphism_symbols_seq;~\meaning\l_stex_morphism_renames_seq
-    }
     \seq_map_inline:Nn \l_stex_morphism_renames_seq {
-      \__stex_morphisms_renamed_check:nnn{#1}##1
+      \__stex_morphisms_renamed_check:nn##1
     }
     \tl_if_empty:NT \l_stex_get_symbol_uri {
       \msg_error:nnxx{stex}{error/unknownsymbolin}{#1}{
@@ -2815,34 +2840,28 @@
 
 \cs_new_protected:Nn \__stex_morphisms_gobble:nnnnnnN {}
 
-\cs_new_protected:Nn \__stex_morphisms_renamed_check:nnn {
-
+\cs_new_protected:Nn \__stex_morphisms_renamed_check:nn {
+  \stex_debug:nn{here}{\tl_to_str:n{{#1}{#2}}:~\l__stex_morphisms_get_str}
+  \__stex_morphisms_renamed_check:nnnnnn #1 #2
 }
 
-\cs_new_protected:Npn \__stex_morphisms_renamed_check:nnnnn #1#2?#3?#4=#5#6 {
-  \str_if_eq:nnTF{#1}{#5}{
-    \exp_args:Nne \use:nn{\__stex_morphisms_check_break:nnnnnnnnn{#2?#3}{#4}}{
-      \prop_item:Nn \l_stex_morphism_symbols_prop {[#2?#3]/[#4]}
-    }
-  }{
-    \str_if_eq:nnT{#1}{#6}{
-      \exp_args:Nne \use:nn{\__stex_morphisms_check_break:nnnnnnnnn{#2?#3}{#4}}{
-        \prop_item:Nn \l_stex_morphism_symbols_prop {[#2?#3]/[#4]}
+\cs_new_protected:Nn \__stex_morphisms_renamed_check:nnnnnn {
+  \exp_args:No \str_if_eq:nnTF \l__stex_morphisms_get_str{#5}{
+    \seq_map_break:n{
+      \str_set:Nn \l__stex_morphisms_get_str {#4}
+      \seq_map_inline:Nn \l_stex_morphism_symbols_seq {
+        \__stex_morphisms_get_check:nn ##1
       }
     }
-  }
-}
-
-\cs_new_protected:Nn \__stex_morphisms_check_break:nnnnnnnnn {
-  \prop_map_break:n{
-    \tl_set:Nn \l_stex_get_symbol_uri{ \stex_new_symbol_uri:nn{#1}{#2} }
-    \str_set:Nn \l_stex_get_symbol_macro_str{#3}
-    \int_set:Nn \l_stex_get_symbol_arity_int {#4}
-    \tl_set:Nn \l_stex_get_symbol_args_tl {#5}
-    \tl_set:Nn \l_stex_get_symbol_def_tl {#6}
-    \tl_set:Nn \l_stex_get_symbol_type_tl {#7}
-    \tl_set:Nn \l_stex_get_symbol_return_tl {#8}
-    \tl_set:Nn \l_stex_get_symbol_invoke_cs {#9}
+  }{
+    \exp_args:No \str_if_eq:nnT \l__stex_morphisms_get_str{#6}{
+      \seq_map_break:n{
+        \str_set:Nn \l__stex_morphisms_get_str {#4}
+        \seq_map_inline:Nn \l_stex_morphism_symbols_seq {
+          \__stex_morphisms_get_check:nn ##1
+        }
+      }
+    }
   }
 }
 \stex_new_stylable_env:nnnnnnn {copymodule}{m O{} m}{
@@ -3865,9 +3884,9 @@
   }
 }
 \cs_new_protected:Nn \stex_get_var:n {
-  \str_clear:N \l_stex_get_symbol_name_str
+  \str_clear:N \l_stex_get_variable_str
   \__stex_vars_get_var:n{#1}
-  \str_if_empty:NT \l_stex_get_symbol_name_str {
+  \str_if_empty:NT \l_stex_get_variable_str {
     \msg_error:nnn{stex}{error/unknownsymbol}{#1}
   }
 }
@@ -3891,7 +3910,7 @@
 \cs_new_protected:Nn \__stex_vars_set_vars:nnnnnnN {
   \stex_debug:nn{symbols}{Variable~#1~found}
   \cs_set:Npn \_stex_variable:nnnnnnnN ##1 ##2 ##3 ##4 ##5 ##6 ##7 ##8 {}
-  \str_set:Nn \l_stex_get_symbol_name_str {#1}
+  \str_set:Nn \l_stex_get_variable_str {#1}
   \int_set:Nn \l_stex_get_symbol_arity_int {#2}
   \tl_set:Nn \l_stex_get_symbol_args_tl {#3}
   \tl_set:Nn \l_stex_get_symbol_def_tl {#4}
@@ -4065,7 +4084,7 @@
 
 \cs_new_protected:Nn \__stex_notations_styledefs: {
   \str_set_eq:NN\thisnotationvariant\l_stex_key_variant_str
-  \str_set:Nn \thisdeclname \l_stex_get_symbol_name_str
+  \str_set:Nn \thisdeclname {\stex_symbol_uri_name:N \l_stex_get_symbol_uri}
   \tl_set:Ne \thisdecluri {\stex_use_symbol_uri:N \l_stex_get_symbol_uri}
   \def\thisnotation{
     \exp_args:Nne \use:nn{\l_stex_notation_macrocode_cs{}}{
@@ -4076,15 +4095,15 @@
 \stex_new_stylable_cmd:nnnn {varnotation} { s m O{} m} {
   \stex_keys_set:nn{notation}{#3}
   \stex_get_var:n{#2}
-  \str_set_eq:NN \l_stex_key_name_str \l_stex_get_symbol_name_str
+  \str_set_eq:NN \l_stex_key_name_str \l_stex_get_variable_str
   \stex_notation_parse:n{#4}
   \stex_if_check_terms:T{ \_stex_notation_check: }
   \_stex_var_notation_macro:
   \IfBooleanTF#1{
-    \_stex_notation_set_default:n{\l_stex_get_symbol_uri}
+    \_stex_notation_set_default:n{\l_stex_get_variable_str}
   }{}
   \group_begin:
-  \tl_set_eq:NN \thisvarname \l_stex_get_symbol_name_str
+  \tl_set_eq:NN \thisvarname \l_stex_get_variable_str
   \tl_clear:N \thisstyle
   \str_set_eq:NN\thisnotationvariant\l_stex_key_variant_str
   \def\thisnotation{
@@ -4444,7 +4463,7 @@
       }
     }
     \cs_set_protected:Npn \maincomp {
-      \_do_comp:nNn {maincomp}\compemph@uri
+      \_do_comp:nnNn {maincomp}{}\compemph@uri
     }
     \stex_debug:nn{notation}{Doing~notation~HTML:\meaning\l_stex_get_symbol_args_tl}
     $
@@ -4863,9 +4882,10 @@
 
 \cs_new_protected:Npn \__stex_expr_seq_op:w [#1] {
   \stex_use_op_notation:nnTF \l_stex_current_full_tl{#1}{
+    \stex_debug:nn{vars}{Here: \meaning\l_stex_notation_cs}
     \_stex_maybe_brackets:nn{\neginfprec}{
       \_stex_term_oms_or_omv:nn{#1}
-      {\l_stex_notation_cs}
+      {\l_stex_notation_cs}\group_end:
     }
   }{
     \__stex_expr_get_index_notation:n{#1}
@@ -5294,46 +5314,28 @@
   \seq_clear:N \l__stex_expr_assigned_seq
   \tl_clear:N \l__stex_expr_redo_tl
   \__stex_expr_prop_do_decls:
-  \__stex_expr_prop_do_notations:
-}
-
-\cs_new_protected:Nn \__stex_expr_make_prop_assign: {
-  \clist_if_empty:NF \l__stex_expr_fields_clist {
-    \clist_map_inline:Nn \l__stex_expr_fields_clist {
-      \__stex_expr_make_prop_assign:nn ##1
-    }
-  }
-}
-
-\cs_new_protected:Nn \__stex_expr_make_prop_assign:nn {
-  \prop_if_in:NnTF \l__stex_expr_prop {#1}{
-    \exp_args:NNe \seq_put_right:Nn \l__stex_expr_assigned_seq {\tl_to_str:n{#1}}
-    \exp_args:Nne \use:nn {\__stex_expr_make_prop_assign_replace:nnnn {#1}{#2}}
-    {\prop_item:Nn \l__stex_expr_prop {#1}}
-  }{
-    \msg_error:nnn{stex}{error/unknownfieldass}{#1}
-  }
-}
-\cs_new_protected:Nn \__stex_expr_make_prop_assign_replace:nnnn {
-  \prop_put:Nnn \l__stex_expr_prop {#1}{{#3}{#2}}
-  \tl_if_empty:nF{#3}{
-    \tl_set:cn{#1}{ #2 }
-    \tl_put_right:Nn \l__stex_expr_redo_tl {
-      \tl_set:cn{#1}{ #2 }
-    }
-  }
 }
 
 \cs_new_protected:Nn \__stex_expr_prop_do_decls: {
-  \exp_args:No \stex_iterate_symbols:nn \l_stex_current_type_tl {
-    % uri, macro name, name, arity, args, type, def, return, macro
-    \tl_if_empty:nTF{##2}{
-      \exp_args:Nne\__stex_expr_do_decl_nomacro:nnnnnnnnn{##3}
-    }{
-      \exp_args:Nne\__stex_expr_do_decl:nnnnnnnnn{##2}
+  \group_begin:
+    \stex_debug:nn{expressions}{constructing~record}
+    \seq_clear:N \l_stex_all_module_seq
+    \exp_args:Ne \stex_activate_module:n {\clist_item:Nn \l_stex_current_type_tl 1}
+    \exp_args:No \stex_iterate_symbols:nn \l_stex_current_type_tl {
+      % uri, macro name, name, arity, args, type, def, return, macro
+      \tl_if_empty:nTF{##2}{
+        \exp_args:Nne\__stex_expr_do_decl_nomacro:nnnnnnnnn{##3}
+      }{
+        \exp_args:Nne\__stex_expr_do_decl:nnnnnnnnn{##2}
+      }
+      {\stex_new_symbol_uri:nn{##1}{##3}}{##3}{##4}{##5}{##6}{##7}{##8}##9
     }
-    {\stex_new_symbol_uri:nn{##1}{##3}}{##3}{##4}{##5}{##6}{##7}{##8}##9
-  }
+    \exp_after:wN \tl_set:Nn \exp_after:wN \l__stex_expr_after_tl \exp_after:wN {
+      \exp_after:wN \tl_set:Nn \exp_after:wN \l__stex_expr_prop \exp_after:wN { \l__stex_expr_prop }
+    }
+    \__stex_expr_prop_do_notations:
+    \stex_debug:nn{expressions}{record:~\meaning\l__stex_expr_after_tl}
+  \exp_after:wN \group_end: \l__stex_expr_after_tl
 }
 
 \cs_new_protected:Nn \__stex_expr_do_decl_nomacro:nnnnnnnnn {
@@ -5364,8 +5366,35 @@
   }
 }
 
+\cs_new_protected:Nn \__stex_expr_make_prop_assign: {
+  \clist_if_empty:NF \l__stex_expr_fields_clist {
+    \clist_map_inline:Nn \l__stex_expr_fields_clist {
+      \__stex_expr_make_prop_assign:nn ##1
+    }
+  }
+}
+
+\cs_new_protected:Nn \__stex_expr_make_prop_assign:nn {
+  \prop_if_in:NnTF \l__stex_expr_prop {#1}{
+    \exp_args:NNe \seq_put_right:Nn \l__stex_expr_assigned_seq {\tl_to_str:n{#1}}
+    \exp_args:Nne \use:nn {\__stex_expr_make_prop_assign_replace:nnnn {#1}{#2}}
+    {\prop_item:Nn \l__stex_expr_prop {#1}}
+  }{
+    \msg_error:nnn{stex}{error/unknownfieldass}{#1}
+  }
+}
+\cs_new_protected:Nn \__stex_expr_make_prop_assign_replace:nnnn {
+  \prop_put:Nnn \l__stex_expr_prop {#1}{{#3}{#2}}
+  \tl_if_empty:nF{#3}{
+    \tl_set:cn{#1}{ #2 }
+    \tl_put_right:Nn \l__stex_expr_redo_tl {
+      \tl_set:cn{#1}{ #2 }
+    }
+  }
+}
+
 \cs_new_protected:Nn \__stex_expr_prop_do_notations: {
-  \exp_args:No \stex_iterate_notations:nn\l_stex_current_type_tl{
+  \exp_args:No \stex_iterate_notations:nn \l_stex_current_type_tl {
     \exp_args:NNe \seq_if_in:NnT \l__stex_expr_seq {\tl_to_str:n{##1}}{
       \tl_set:Nn \l_tmpa_tl {
         \cs_if_exist:cF{l_stex_notation_ \stex_use_symbol_uri:n{##1}?##2_cs}{
@@ -5376,7 +5405,7 @@
         }
       }
       \exp_args:NNo \tl_put_right:Nn \l__stex_expr_redo_tl \l_tmpa_tl
-      \l_tmpa_tl
+      \exp_args:NNo \tl_put_right:Nn \l__stex_expr_after_tl \l_tmpa_tl
       \tl_if_empty:nF{##5}{
         \tl_set:Nn \l_tmpa_tl {
           \cs_if_exist:cF{l_stex_notation_\stex_use_symbol_uri:n{##1}?##2_op_cs}{
@@ -5387,7 +5416,7 @@
           }
         }
         \exp_args:NNo \tl_put_right:Nn \l__stex_expr_redo_tl \l_tmpa_tl
-        \l_tmpa_tl
+        \exp_args:NNo \tl_put_right:Nn \l__stex_expr_after_tl \l_tmpa_tl
       }
     }
   }
@@ -6001,7 +6030,7 @@
 \cs_new_protected:Npn \compemph #1 { #1 }
 
 \cs_new_protected:Npn \_comp {
-  \_do_comp:nNn {comp}\compemph@uri
+  \_do_comp:nnNn {comp}{}\compemph@uri
 }
 
 \cs_new_protected:Npn \_thiscomp #1 #2 {
@@ -6022,7 +6051,7 @@
 \cs_new_protected:Npn \varemph #1 { #1 }
 
 \cs_new_protected:Npn \_varcomp {
-  \_do_comp:nNn {comp}\varemph@uri
+  \_do_comp:nnNn {comp}{}\varemph@uri
 }
 \cs_new_protected:Npn \defemph@uri #1 #2 {
     \defemph{#1}
@@ -6033,23 +6062,23 @@
 }
 
 \cs_new_protected:Npn \_defcomp {
-  \_do_comp:nNn {definiendum}\defemph@uri
+  \_do_comp:nnNn {definiendum}{\l_stex_current_full_tl}\defemph@uri
 }
 \cs_new_protected:Npn \symrefemph@uri #1 #2 {
     \symrefemph{#1}
 }
 
 \cs_new_protected:Npn \symrefemph #1 { \emph{#1} }
-\cs_new_protected:Nn \_do_comp:nNn {
+\cs_new_protected:Nn \_do_comp:nnNn {
   \stex_pseudogroup_with:nn{\comp}{
     \def\comp##1{##1}
     \tl_if_empty:NTF \l_stex_current_full_tl {
-      #3
+      #4
     }{
       \stex_if_html_backend:TF {
-        \stex_annotate:nn { data-shtml-#1 = {}}{ #3 }
+        \stex_annotate:nn { data-shtml-#1 = {#2}}{ #4 }
       }{
-        #2 { #3 } \l_stex_current_full_tl
+        #3 { #4 } \l_stex_current_full_tl
       }
     }
   }
@@ -6112,8 +6141,8 @@
   \stex_keys_set:nn{symname}{#1}
   \stex_get_var:n{#2}
   \__stex_comps_do_ref:nNn{#3}\varemph@uri{
-    \tl_set:Nn \l_stex_current_full_tl { \l_stex_get_symbol_name_str }
-    \tl_set:Nn \l_stex_current_display_tl {\l_stex_get_symbol_name_str}
+    \tl_set:Nn \l_stex_current_full_tl { \l_stex_get_variable_str }
+    \tl_set:Nn \l_stex_current_display_tl {\l_stex_get_variable_str}
     \def\comp{\_varcomp}
     \_stex_term_omv:nn
   }
@@ -6124,10 +6153,10 @@
   \stex_keys_set:nn{symname}{#1}
   \stex_get_var:n{#2}
   \__stex_comps_do_ref:nNn{
-    \l_stex_key_pre_tl\l_stex_get_symbol_name_str\l_stex_key_post_tl
+    \l_stex_key_pre_tl\l_stex_get_variable_str\l_stex_key_post_tl
   }\varemph@uri{
-    \tl_set:Nn \l_stex_current_full_tl { \l_stex_get_symbol_name_str }
-    \tl_set:Nn \l_stex_current_display_tl {\l_stex_get_symbol_name_str}
+    \tl_set:Nn \l_stex_current_full_tl { \l_stex_get_variable_str }
+    \tl_set:Nn \l_stex_current_display_tl {\l_stex_get_variable_str}
     \def\comp{\_varcomp}
     \_stex_term_omv:nn
   }
@@ -6138,10 +6167,10 @@
   \stex_keys_set:nn{symname}{#1}
   \stex_get_var:n{#2}
   \__stex_comps_do_ref:nNn{
-    \l_stex_key_pre_tl\exp_after:wN\__stex_comps_uppercase:n\l_stex_get_symbol_name_str\l_stex_key_post_tl
+    \l_stex_key_pre_tl\exp_after:wN\__stex_comps_uppercase:n\l_stex_get_variable_str\l_stex_key_post_tl
   }\varemph@uri{
-    \tl_set:Nn \l_stex_current_full_tl { \l_stex_get_symbol_name_str }
-    \tl_set:Nn \l_stex_current_display_tl {\l_stex_get_symbol_name_str}
+    \tl_set:Nn \l_stex_current_full_tl { \l_stex_get_variable_str }
+    \tl_set:Nn \l_stex_current_display_tl {\l_stex_get_variable_str}
     \def\comp{\_varcomp}
     \_stex_term_omv:nn
   }
@@ -6207,15 +6236,14 @@
     \tl_set:Nn \l_stex_current_display_tl {
       \stex_symbol_uri_name:N \l_stex_get_symbol_uri
     }
-    %\str_if_in:NnT \l_stex_get_symbol_name_str / {
-    %  \str_set:Ne \l_stex_get_symbol_name_str {
-    %    \exp_after:wN \__stex_comps_slash:w \l_stex_get_symbol_name_str
+    %\str_if_in:NnT \l_stex_get_svariable_str / {
+    %  \str_set:Ne \l_stex_get_variable_str {
+    %    \exp_after:wN \__stex_comps_slash:w \l_stex_get_variable_str
     %    /\_stex_args_end:
     %  }
     %}
     \exp_args:Ne \stex_ref_new_sym_target:n \l_stex_current_full_tl
-    \def\comp{\_defcomp}
-    \stex_annotate:nn{data-shtml-definiendum=\l_stex_current_full_tl}{\comp{#2}}
+    \_defcomp{#2}
   }{
     \msg_error:nnxx{stex}{error/notallowed}{#1}{\l_stex_current_full_tl}
   }
@@ -6325,7 +6353,7 @@
   \stex_module_uri_split_name:NNN \l__stex_structures_parent_uri \l__stex_structures_last_name_str \l_stex_get_structure_module_uri
 
   \stex_execute_in_module:e{
-    \__stex_structures_extend_structure:nnn{\l__stex_structures_parent_uri}{\l__stex_structures_last_name_str}{\exp_args:No \stex_new_module_uri:n {\l__stex_structures_exstruct_name_str}}
+    \__stex_structures_extend_structure:nnnn{\l__stex_structures_parent_uri}{\l__stex_structures_last_name_str}{\exp_args:No \stex_new_module_uri:n {\l__stex_structures_exstruct_name_str}}{\l_stex_get_structure_module_uri}
   }
 
   \exp_args:No \__stex_structures_begin:nn\l__stex_structures_exstruct_name_str{}
@@ -6335,11 +6363,12 @@
       \stex_annotate_invisible:nn
         {data-shtml-import= {\stex_use_module_uri:n{##1}}} {}
     }
-    \stex_add_morphism:nonn
-      {}{##1}{import}{}
-    \stex_execute_in_module:e{
-      \stex_activate_module:n {##1}
-    }
+    %\stex_add_morphism:nonn
+    %  {}{##1}{import}{}
+    %\stex_execute_in_module:e{
+    %  \stex_activate_module:n {##1}
+    %}
+    \stex_activate_module:n {##1}
   }
 
   \stex_smsmode_do:
@@ -6348,6 +6377,9 @@
     \__stex_structures_check_def:nnnnnnnn ##2
   }
   \stex_structural_feature_module_end:
+  %\exp_args:Ne \stex_do_up_to_module:n {
+  %  \stex_activate_module:n {\exp_args:No \stex_new_module_uri:n {\l__stex_structures_exstruct_name_str}}
+  %}
   \__stex_structures_do_externals:
 }{}{}{}
 
@@ -6358,8 +6390,14 @@
   \exp_after:wN \stex_reactivate_macro:N \cs:w extstructure*\cs_end:
 }
 
-\cs_new_protected:Nn \__stex_structures_extend_structure:nnn {
+\cs_new_protected:Nn \__stex_structures_extend_structure:nnnn {
   \stex_debug:nn{ext}{Extending~\stex_use_module_uri:n {#1} / #2~by~\stex_use_module_uri:n {#3}}
+  \exp_args:Nne \tl_put_right:cn{\_stex_module_code_macro:n{#4}}{
+    \stex_activate_module:n{#3}
+  }
+  \exp_args:Nne \prop_put:cnn{\_stex_morphisms_macro:n{#4}}{\stex_use_module_uri:n{#3}}{
+    {}{#3}{extstruct}{}
+  }
   \exp_args:Nne \use:nn {\__stex_structures_extend_ii:nnnn}{
     \exp_args:NNe \use:nn \__stex_structures_extend_i:nnnnnnnNn {
       \prop_item:cn{\_stex_symbol_macro:n {#1} } { #2 }
@@ -6414,10 +6452,7 @@
     \msg_error:nnn{stex}{error/unknownstructure}{#1}
   }
   \exp_args:No \tl_if_eq:NNTF \l_stex_get_symbol_invoke_cs \stex_invoke_structure: {
-
     \tl_set:Ne \l_stex_get_structure_module_uri { \exp_after:wN \__stex_structures_get:w \l_stex_get_symbol_type_tl , \stex_end:  }
-
-    %\tl_set_eq:NN \l_stex_get_structure_module_uri \l_stex_get_symbol_type_tl
   }{
     \msg_error:nnn{stex}{error/unknownstructure}{#1}
   }
@@ -6521,7 +6556,7 @@
   data-shtml-#1={},
   data-shtml-inline={#2},
   \seq_if_empty:NF \l_stex_fors_seq {,
-    data-shtml-fors={\seq_map_function:NN \l_stex_fors_seq \stex_use_symbol_uri:N }
+    data-shtml-fors={\seq_map_indexed_function:NN \l_stex_fors_seq \__stex_statements_comma_sep_uri:nn }
   }
   \str_if_empty:NF \l_stex_key_id_str {,
     data-shtml-id={\l_stex_key_id_str}%{\stex_uri_use:N \l_stex_current_doc_uri ? \l_stex_key_id_str}
@@ -6529,6 +6564,11 @@
   \clist_if_empty:NF \l_stex_key_style_clist {,
     data-shtml-styles={\l_stex_key_style_clist}
   }
+}
+
+\cs_new:Nn \__stex_statements_comma_sep_uri:nn {
+  \int_compare:nNnF{#1}=1 {,}
+  \stex_use_symbol_uri:n{#2}
 }
 \cs_new_protected:Nn \__stex_statements_setup:n {
   \str_if_empty:NF \l_stex_key_macroname_str {
@@ -6626,7 +6666,6 @@
 }
 \NewDocumentCommand \definiens { O{} m }{
   \group_begin:
-  \str_clear:N \l_stex_get_symbol_name_str
   \tl_if_empty:nF {#1} {
     \stex_get_symbol:n { #1 }
     \tl_set_eq:NN \l__stex_statements_uri \l_stex_get_symbol_uri
@@ -6646,7 +6685,7 @@
 \stex_sms_allow_escape:N \definiens
 \cs_new_protected:Nn \_stex_add_definiens:nn {
   \stex_if_smsmode:F {
-    \stex_annotate:nn{data-shtml-definiens={#1}}{
+    \stex_annotate:nn{data-shtml-definiens={\stex_use_symbol_uri:n{#1}}}{
       #2 %\_stex_annotate_force_break:n{ #2 }
     }
   }
@@ -6672,23 +6711,21 @@
   \clist_map_inline:nn {#1} {
     \stex_get_var:n {##1}
     \stex_if_do_html:T {
-      \stex_annotate_invisible:nn {data-shtml-bind=\l_stex_get_symbol_name_str}{}
+      \stex_annotate_invisible:nn {data-shtml-bind=\l_stex_get_variable_str}{}
     }
   }
 }
 \stex_deactivate_macro:Nn \varbind {definition~or~assertion~environments}
 \NewDocumentCommand \conclusion { O{} m} {
   \group_begin:
-  \str_clear:N \l_stex_get_symbol_name_str
   \tl_if_empty:nF {#1} {
     \stex_get_symbol:n { #1 }
-    \str_set:Ne \l__stex_statements_uri_str
-      {\l_stex_get_symbol_mod_str ? \l_stex_get_symbol_name_str}
+    \tl_set_eq:NN \l__stex_statements_uri \l_stex_get_symbol_uri
   }
-  \str_if_empty:NT \l__stex_statements_uri_str {
+  \tl_if_empty:NT \l__stex_statements_uri {
     \msg_error:nn{stex}{error/conclusionfor}
   }
-  \stex_annotate:nn{ data-shtml-conclusion=\l__stex_statements_uri_str}{
+  \stex_annotate:nn{ data-shtml-conclusion={\stex_use_symbol_uri:N \l__stex_statements_uri}}{
     #2 %\_stex_annotate_force_break:n{ #2 }
   }
   \group_end:

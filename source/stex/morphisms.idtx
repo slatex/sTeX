@@ -45,11 +45,10 @@
   }
   \tl_if_empty:nTF{#1}{
     \bool_set_true:N \l_@@_implicit_bool
-    \str_set:Ne \l_tmpa_str {[\stex_use_module_uri:N \l_stex_current_domain_uri]}
   }{
     \bool_set_false:N \l_@@_implicit_bool
-    \str_set:Nn \l_tmpa_str {#1}
   }
+  \str_set:Nn \l_tmpa_str {#1}
 
   \stex_debug:nn{morphisms}{#2:~\l_tmpa_str;~for~\stex_use_module_uri:N \l_stex_current_domain_uri}
 
@@ -89,9 +88,13 @@
 
 
 \cs_new_protected:Nn \_@@_do:n {
+  %\seq_clear:N \l_@@_dones_seq
     \prop_map_inline:cn {\_stex_morphisms_macro:n{#1}}{
-      \stex_debug:nn{morphisms}{Doing ~ \tl_to_str:n{##2}}
-      \_@@_do_morph:nnnn ##2
+      %\seq_if_in:NnF \l_@@_dones_seq {##2}{
+      %  \seq_push:Nn \l_@@_dones_seq {##2}
+        \stex_debug:nn{morphisms}{Doing ~ \tl_to_str:n{##2}}
+        \_@@_do_morph:nnnn ##2
+     % }
     }
 }
 
@@ -173,14 +176,20 @@
   \stex_debug:nn{morphisms}{patching~\stex_use_module_uri:n{#1};
     ~ using ~ \tl_to_str:n{ #2 }
   }
+  \seq_clear:N \l_@@_reactivate_seq
   \tl_set:Nn \l_@@_renames_seq {#2}
   \seq_map_inline:Nn \l_@@_renames_seq {
     \_@@_implicit_rename:nn ##1
   }
-  \stex_activate_module:n { #1 }
+  \seq_map_inline:Nn \l_@@_reactivate_seq {
+    \stex_debug:nn{morphisms}{reactivating~\stex_use_module_uri:n{##1}}
+    \seq_remove_all:Nn \l_stex_all_modules_seq { ##1 }
+    \stex_activate_module:n { ##1 }
+  }
 }
 
 \cs_new_protected:Nn \_@@_implicit_rename:nn {
+  \seq_push:Ne \l_@@_reactivate_seq {  \stex_symbol_uri_module:n { #1 } }
   \tl_set:Ne \l_tmpb_tl {
     \exp_args:Ne \_stex_symbol_macro:n { \stex_symbol_uri_module:n { #1 } }
   }
@@ -245,23 +254,24 @@
 }
 
 \cs_new_protected:Nn \_@@_add_definiens:nn {
+  \tl_set:Nn \l_stex_get_symbol_uri {#1}
   \stex_debug:nn{morphisms}{Adding~definiens~\tl_to_str:n{#1~#2}}
-  \_@@_set_definiens_macros: #1\_@@_break:
+  %\_@@_set_definiens_macros: #1\_@@_break:
   \_stex_assign_do:n{#2}
   #2
 }
 
-\cs_new_protected:Npn \_@@_set_definiens_macros: #1?#2?#3\_@@_break: {
-  \str_set:Nn \l_stex_get_symbol_uri { #1?#2} % TODO
-  \str_set:Nn \l_stex_get_symbol_name_str {#3}
-  \exp_args:Nne\use:nn{\_@@_set_definiens_macros_i:nnnnnnn}{
-    \prop_item:Nn \l_stex_morphism_symbols_prop {[#1?#2]/[#3]}
-  }
-}
+%\cs_new_protected:Npn \_@@_set_definiens_macros: #1?#2?#3\_@@_break: {
+%  \str_set:Nn \l_stex_get_symbol_uri { #1?#2} % TODO
+%  \str_set:Nn \l_stex_get_symbol_name_str {#3}
+%  \exp_args:Nne\use:nn{\_@@_set_definiens_macros_i:nnnnnnn}{
+%    \prop_item:Nn \l_stex_morphism_symbols_prop {[#1?#2]/[#3]}
+%  }
+%}
 
-\cs_new_protected:Nn \_@@_set_definiens_macros_i:nnnnnnn {
-  \tl_set:Nn \l_stex_get_symbol_def_tl{#4}
-}
+%\cs_new_protected:Nn \_@@_set_definiens_macros_i:nnnnnnn {
+%  \tl_set:Nn \l_stex_get_symbol_def_tl{#4}
+%}
 
 
 \cs_new_protected:Nn \_@@_rename_all: {
@@ -358,18 +368,15 @@
 % \StartImpl
 %    \begin{macrocode}
 \cs_new_protected:Nn \stex_get_in_morphism:n {
-  \stex_debug:nn{morphisms}{Getting~in~morphism:~#1^^J\meaning\l_stex_morphism_symbols_seq}
+  \stex_debug:nn{morphisms}{Getting~in~morphism:~#1}
   \tl_clear:N \l_stex_get_symbol_uri
   \str_set:Nn \l_@@_get_str {#1}
   \seq_map_inline:Nn \l_stex_morphism_symbols_seq {
     \_@@_get_check:nn ##1
   }
   \tl_if_empty:NT \l_stex_get_symbol_uri {
-    \msg_error:nnxx{stex}{error/unknownsymbolin}{#1}{
-      morphism~\l_stex_feature_name_str;\meaning\l_stex_morphism_symbols_seq;~\meaning\l_stex_morphism_renames_seq
-    }
     \seq_map_inline:Nn \l_stex_morphism_renames_seq {
-      \_@@_renamed_check:nnn{#1}##1
+      \_@@_renamed_check:nn##1
     }
     \tl_if_empty:NT \l_stex_get_symbol_uri {
       \msg_error:nnxx{stex}{error/unknownsymbolin}{#1}{
@@ -416,35 +423,28 @@
 
 \cs_new_protected:Nn \_@@_gobble:nnnnnnN {}
 
-\cs_new_protected:Nn \_@@_renamed_check:nnn {
-
+\cs_new_protected:Nn \_@@_renamed_check:nn {
+  \stex_debug:nn{here}{\tl_to_str:n{{#1}{#2}}:~\l_@@_get_str}
+  \_@@_renamed_check:nnnnnn #1 #2
 }
 
-\cs_new_protected:Npn \_@@_renamed_check:nnnnn #1#2?#3?#4=#5#6 {
-  \str_if_eq:nnTF{#1}{#5}{
-    \exp_args:Nne \use:nn{\_@@_check_break:nnnnnnnnn{#2?#3}{#4}}{
-      \prop_item:Nn \l_stex_morphism_symbols_prop {[#2?#3]/[#4]}
-    }
-  }{
-    \str_if_eq:nnT{#1}{#6}{
-      \exp_args:Nne \use:nn{\_@@_check_break:nnnnnnnnn{#2?#3}{#4}}{
-        \prop_item:Nn \l_stex_morphism_symbols_prop {[#2?#3]/[#4]}
+\cs_new_protected:Nn \_@@_renamed_check:nnnnnn {
+  \exp_args:No \str_if_eq:nnTF \l_@@_get_str{#5}{
+    \seq_map_break:n{
+      \str_set:Nn \l_@@_get_str {#4}
+      \seq_map_inline:Nn \l_stex_morphism_symbols_seq {
+        \_@@_get_check:nn ##1
       }
     }
-  }
-}
-
-
-\cs_new_protected:Nn \_@@_check_break:nnnnnnnnn {
-  \prop_map_break:n{
-    \tl_set:Nn \l_stex_get_symbol_uri{ \stex_new_symbol_uri:nn{#1}{#2} }
-    \str_set:Nn \l_stex_get_symbol_macro_str{#3}
-    \int_set:Nn \l_stex_get_symbol_arity_int {#4}
-    \tl_set:Nn \l_stex_get_symbol_args_tl {#5}
-    \tl_set:Nn \l_stex_get_symbol_def_tl {#6}
-    \tl_set:Nn \l_stex_get_symbol_type_tl {#7}
-    \tl_set:Nn \l_stex_get_symbol_return_tl {#8}
-    \tl_set:Nn \l_stex_get_symbol_invoke_cs {#9}
+  }{
+    \exp_args:No \str_if_eq:nnT \l_@@_get_str{#6}{
+      \seq_map_break:n{
+        \str_set:Nn \l_@@_get_str {#4}
+        \seq_map_inline:Nn \l_stex_morphism_symbols_seq {
+          \_@@_get_check:nn ##1
+        }
+      }
+    }
   }
 }
 %    \end{macrocode}
