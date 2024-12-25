@@ -4468,6 +4468,7 @@
     }
     \stex_debug:nn{notation}{Doing~notation~HTML:\meaning\l_stex_get_symbol_args_tl}
     $
+      \tl_clear:N \l_stex_current_full_tl
       \stex_annotate:nn{data-shtml-notationcomp={}}{
         \exp_args:Nne \use:nn {
           \l_stex_notation_macrocode_cs {}
@@ -4478,6 +4479,7 @@
     $
     \tl_if_empty:NF \l_stex_key_op_tl {
       $
+      \tl_clear:N \l_stex_current_full_tl
       \stex_annotate:nn{data-shtml-notationopcomp={}}{
         \_stex_term_oms:nn{\l_stex_key_variant_str}{\l_stex_key_op_tl}
       }
@@ -5090,7 +5092,7 @@
 
 \cs_new:Nn \__stex_expr_make_mod:n {
   ,\symuse{Metatheory?module~type}{
-    \stex_annotate:nn{data-shtml-term=OMMOD,data-shtml-head={#1}}{}
+    \exp_args:Ne \stex_annotate:nn{data-shtml-term=OMMOD,data-shtml-head={\stex_use_module_uri:n{#1}}}{}
   }
 }
 
@@ -5799,15 +5801,24 @@
 }{
   \cs_new_protected:Nn \_stex_term_omb:nn {#2}
 }
-\cs_new_protected:Nn \__stex_expr_annotate:nnn {
-  \stex_annotate:nn{
-    data-shtml-term=#1,
-    data-shtml-head={\l_stex_current_full_tl},
-    data-shtml-notationid={#2},
-  }{
-    \_stex_annotate_force_break:n{#3}
+
+\stex_if_html_backend:TF {
+  \cs_new_protected:Nn \__stex_expr_annotate:nnn {
+    \tl_if_exist:NF \l_stex_current_full_tl {
+      \errmessage{^^J \detokenize{\l_stex_current_full_tl}~undefined!}
+    }
+    \exp_args:Ne \stex_annotate:nn{
+      data-shtml-term=#1,
+      data-shtml-head={\l_stex_current_full_tl},
+      data-shtml-notationid={#2},
+    }{
+      \_stex_annotate_force_break:n{#3}
+    }
   }
+}{
+  \cs_new_protected:Nn \__stex_expr_annotate:nnn { #3 }
 }
+
 \cs_new_protected:Nn \_stex_term_arg:nnnnn {
   \group_begin:
     \tl_clear:N \l_stex_current_symbol_uri
@@ -6212,6 +6223,7 @@
   \stex_if_html_backend:T{\relax\ifvmode\indent\fi}
   \bool_if:NTF \l_stex_allow_semantic_bool{
     \tl_set_eq:NN \l_stex_current_symbol_uri \l_stex_get_symbol_uri
+    \tl_set:Nn \l_stex_current_full_tl { \stex_use_symbol_uri:N \l_stex_current_symbol_uri }
     %\str_set:Ne \l_stex_current_symbol_name_str { \stex_symbol_uri_name:N \l_stex_current_symbol_uri }
     %\str_if_in:NnT \l_stex_current_symbol_name_str / {
     %  \str_set:Ne \l_stex_current_symbol_name_str {
