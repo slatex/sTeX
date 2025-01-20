@@ -198,14 +198,14 @@
     {\bool_set_true:N \l__problems_has_min_bool}
   \int_gzero:N \g__problems_subproblem_int
 
-  \stex_style_apply:
+  \stex_if_do_html:F\stex_style_apply:
   \_stex_do_id:
   \__problems_activate_macros:
 }{
   \fp_gadd:Nn \g_problem_total_pts_fp { \l__problems_pts_tl}
   \fp_gadd:Nn \g_problem_total_min_fp { \l__problems_min_tl}
   \__problems_record_problem:
-  \stex_style_apply:
+  \stex_if_do_html:F\stex_style_apply:
   \stex_if_do_html:T{ \end{stex_annotate_env} }
 }{
   \par\noindent\problemheader
@@ -506,7 +506,7 @@
     }
   }
 
-  \stex_if_do_html:T{
+  \stex_if_do_html:TF{
     \begin{stex_annotate_env}{
       data-shtml-problemgnote=\l_stex_key_id_str
     }
@@ -527,7 +527,6 @@
   \stex_reactivate_macro:N \anscls
 }{
   \stex_if_do_html:TF{
-    \stex_style_apply:
     \end{stex_annotate_env}
   }{
     \bool_if:NTF \c__problems_gnotes_bool {
@@ -641,7 +640,7 @@
 }{
   \stex_style_apply:
   \stex_if_do_html:T{
-    \end{stex_annotate_env}
+    \__problems_maybe_inline:n{\end{stex_annotate_env}}
   }
 }{\par}{}{}
 \stexstylemcb[inline]{
@@ -905,13 +904,15 @@
         \msg_error:nnn{problem}{error/neither-true-nor-false}{#3}
       }
     }
-    \exp_args:Ne \stex_annotate_invisible:nn{
-      data-shtml-fillin-case={#1},
-      data-shtml-fillin-case-value={\tl_to_str:n{#2}},
-      data-shtml-fillin-case-verdict={
-        \tl_if_eq:NNTF\l_tmpa_tl\l_tmpb_tl{true}{false}
-      },
-    }{#4}
+    \tl_put_right:Ne \l__problems_fillin_solution_tl {
+      \stex_annotate:nn{
+        data-shtml-fillin-case={#1},
+        data-shtml-fillin-case-value={\tl_to_str:n{#2}},
+        data-shtml-fillin-case-verdict={
+          \tl_if_eq:NNTF\l_tmpa_tl\c__problems_true_tl{true}{false}
+        },
+      }{\_stex_annotate_force_break:n{\exp_not:n{#4}}}
+    }
   }
 }{
   \cs_new:Nn \__problems_parse_fillin_arg:nnnn {
@@ -933,12 +934,18 @@
 
 \stex_if_html_backend:TF{
   \cs_new_protected:Nn \__problems_fillinsol:nn {
-    \exp_args:Ne \stex_annotate:nn{data-shtml-fillinsol={true}}{
     \stex_keys_set:nn{fillinsol}{#1}
-    \_stex_annotate_force_break:n{
-      \tl_to_str:n{#2}
+    \tl_if_empty:NT \l__problems_fillin_solution_tl {
+      \__problems_parse_fillin_arg:nnnn{exact}{#2}{T}{}
     }
-    \l__problems_fillin_solution_tl
+    \hbox_set:Nn \l_tmpa_box{\fbox{\huge{\texttt{\tl_to_str:n{#2}}}\hskip\l_stex_key_testspace_dim}}
+    \exp_args:Ne \stex_annotate:nn{
+      data-shtml-fillinsol={},
+      data-shtml-fillinsol-width={\dim_to_decimal:n{1.5 \box_wd:N \l_tmpa_box }}
+    }{
+      \_stex_annotate_force_break:n{
+        \l__problems_fillin_solution_tl
+      }
     }
   }
 }{
