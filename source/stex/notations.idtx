@@ -325,8 +325,9 @@
 }
 
 \cs_new_protected:Nn \stex_add_notation:nnnnn {
-  \stex_debug:nn{notations}{Adding~notation:^^J
+  \exp_args:Nne \stex_debug:nn{notations}{Adding~notation:^^J
     #1~\c_hash_str#2~#3^^J
+    \tl_to_str:n{#4}^^J\tl_to_str:n{#5}^^J
     to~\stex_use_module_uri:N \l_stex_current_module_uri
   }
   \prop_gput:cen{ \_stex_notations_macro:N \l_stex_current_module_uri }
@@ -748,6 +749,7 @@
 
 \cs_new_protected:Nn \_@@_add_last:nnnnn {
   \_@@_add:nnnnn{#1}{#2}{#3}{#4}{#5}
+  \stex_debug:nn{sequences}{Executing~notation:~\meaning\l_@@_code_tl}
   \l_@@_after_tl
 }
 
@@ -791,13 +793,11 @@
 %    \begin{macrocode}
 \cs_new_protected:Npn \argsep #1 #2 {
   \_@@_check_aB_arg:Nn\argsep{#1}
-  \seq_if_empty:NF \l_stex_aB_args_seq {
-    \stex_pseudogroup_with:nn{\_stex_term_do_aB_clist:}{
-      \tl_set:Nn \_stex_term_do_aB_clist: {
-        \seq_use:Nn \l_stex_aB_args_seq {#2}
-      }
-      #1
+  \stex_pseudogroup_with:nn{\_stex_term_do_aB_clist:}{
+    \tl_set:Nn \_stex_term_do_aB_clist: {
+      \seq_use:Nn \l_stex_aB_args_seq {#2}
     }
+    #1
   }
 }
 
@@ -827,28 +827,26 @@
 %    \begin{macrocode}
 \cs_new_protected:Npn \argmap #1 #2 #3 {
   \_@@_check_aB_arg:Nn\argmap{#1}
-  \seq_if_empty:NF \l_stex_aB_args_seq {
-    \stex_pseudogroup_with:nn{
-      \_stex_term_do_aB_clist:
-      \_@@_map_cs:
-    }{
-      \cs_set:Npn \_@@_map_cs: ##1 { #2 }
-      \tl_set:Nn \_stex_term_do_aB_clist: {
-        \seq_clear:N \l_tmpa_seq
-        \seq_map_inline:Nn \l_stex_aB_args_seq {
-          \tl_if_eq:nnTF{##1}{\ellipses}{
-            \seq_put_right:Nn \l_tmpa_seq \ellipses
-          }{
-            \seq_put_right:Nx \l_tmpa_seq {
-              \exp_after:wN \exp_not:n \exp_after:wN { \_@@_map_cs: {##1} }
-            }
+  \stex_pseudogroup_with:nn{
+    \_stex_term_do_aB_clist:
+    \_@@_map_cs:
+  }{
+    \cs_set:Npn \_@@_map_cs: ##1 { #2 }
+    \tl_set:Nn \_stex_term_do_aB_clist: {
+      \seq_clear:N \l_tmpa_seq
+      \seq_map_inline:Nn \l_stex_aB_args_seq {
+        \tl_if_eq:nnTF{##1}{\ellipses}{
+          \seq_put_right:Nn \l_tmpa_seq \ellipses
+        }{
+          \seq_put_right:Nx \l_tmpa_seq {
+            \exp_after:wN \exp_not:n \exp_after:wN { \_@@_map_cs: {##1} }
           }
         }
-        \seq_set_eq:NN \l_stex_aB_args_seq \l_tmpa_seq
-        \seq_use:Nn \l_stex_aB_args_seq {#3}
       }
-      #1
+      \seq_set_eq:NN \l_stex_aB_args_seq \l_tmpa_seq
+      \seq_use:Nn \l_stex_aB_args_seq {#3}
     }
+    #1
   }
 }
 %    \end{macrocode}
@@ -861,33 +859,31 @@
 \int_new:N \l_@@_clist_count_int
 \cs_new_protected:Npn \argarraymap #1 #2 #3 #4 {
   \_@@_check_aB_arg:Nn\argarraymap{#1}
-  \seq_if_empty:NF \l_stex_aB_args_seq {
-    \stex_pseudogroup_with:nn{
-      \_stex_term_do_aB_clist:
-      \_@@_map_cs:
-    }{
-      \cs_set:Npn \_@@_map_cs: ##1 { #3 }
-      \int_set:Nn \l_@@_clist_count_int {\exp_args:No\clist_count:n{\tl_to_str:n{#4}}}
-      \tl_set:Nn \_stex_term_do_aB_clist: {
-        \tl_clear:N \l_tmpa_tl
-        \int_zero:N \l_tmpa_int
-        \seq_map_inline:Nn \l_stex_aB_args_seq {
-          \int_incr:N \l_tmpa_int
-          \int_compare:nNnT \l_tmpa_int > \l_@@_clist_count_int {
-            \int_set:Nn \l_tmpa_int 1
-          }
-          \tl_put_right:Ne \l_tmpa_tl {
-            \exp_after:wN \exp_not:n \exp_after:wN { \_@@_map_cs: {##1} }
-            \clist_item:nn{#4}\l_tmpa_int
-          }
+  \stex_pseudogroup_with:nn{
+    \_stex_term_do_aB_clist:
+    \_@@_map_cs:
+  }{
+    \cs_set:Npn \_@@_map_cs: ##1 { #3 }
+    \int_set:Nn \l_@@_clist_count_int {\exp_args:No\clist_count:n{\tl_to_str:n{#4}}}
+    \tl_set:Nn \_stex_term_do_aB_clist: {
+      \tl_clear:N \l_tmpa_tl
+      \int_zero:N \l_tmpa_int
+      \seq_map_inline:Nn \l_stex_aB_args_seq {
+        \int_incr:N \l_tmpa_int
+        \int_compare:nNnT \l_tmpa_int > \l_@@_clist_count_int {
+          \int_set:Nn \l_tmpa_int 1
         }
-        \seq_set_eq:NN \l_stex_aB_args_seq \l_tmpa_seq
-        \begin{array}{#2}
-            \l_tmpa_tl
-        \end{array}
+        \tl_put_right:Ne \l_tmpa_tl {
+          \exp_after:wN \exp_not:n \exp_after:wN { \_@@_map_cs: {##1} }
+          \clist_item:nn{#4}\l_tmpa_int
+        }
       }
-      #1
+      \seq_set_eq:NN \l_stex_aB_args_seq \l_tmpa_seq
+      \begin{array}{#2}
+          \l_tmpa_tl
+      \end{array}
     }
+    #1
   }
 }
 %    \end{macrocode}

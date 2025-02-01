@@ -4226,8 +4226,9 @@
 }
 
 \cs_new_protected:Nn \stex_add_notation:nnnnn {
-  \stex_debug:nn{notations}{Adding~notation:^^J
+  \exp_args:Nne \stex_debug:nn{notations}{Adding~notation:^^J
     #1~\c_hash_str#2~#3^^J
+    \tl_to_str:n{#4}^^J\tl_to_str:n{#5}^^J
     to~\stex_use_module_uri:N \l_stex_current_module_uri
   }
   \prop_gput:cen{ \_stex_notations_macro:N \l_stex_current_module_uri }
@@ -4571,6 +4572,7 @@
 
 \cs_new_protected:Nn \__stex_notations_add_last:nnnnn {
   \__stex_notations_add:nnnnn{#1}{#2}{#3}{#4}{#5}
+  \stex_debug:nn{sequences}{Executing~notation:~\meaning\l__stex_notations_code_tl}
   \l__stex_notations_after_tl
 }
 
@@ -4607,13 +4609,11 @@
 }
 \cs_new_protected:Npn \argsep #1 #2 {
   \__stex_notations_check_aB_arg:Nn\argsep{#1}
-  \seq_if_empty:NF \l_stex_aB_args_seq {
-    \stex_pseudogroup_with:nn{\_stex_term_do_aB_clist:}{
-      \tl_set:Nn \_stex_term_do_aB_clist: {
-        \seq_use:Nn \l_stex_aB_args_seq {#2}
-      }
-      #1
+  \stex_pseudogroup_with:nn{\_stex_term_do_aB_clist:}{
+    \tl_set:Nn \_stex_term_do_aB_clist: {
+      \seq_use:Nn \l_stex_aB_args_seq {#2}
     }
+    #1
   }
 }
 
@@ -4628,60 +4628,56 @@
 }
 \cs_new_protected:Npn \argmap #1 #2 #3 {
   \__stex_notations_check_aB_arg:Nn\argmap{#1}
-  \seq_if_empty:NF \l_stex_aB_args_seq {
-    \stex_pseudogroup_with:nn{
-      \_stex_term_do_aB_clist:
-      \__stex_notations_map_cs:
-    }{
-      \cs_set:Npn \__stex_notations_map_cs: ##1 { #2 }
-      \tl_set:Nn \_stex_term_do_aB_clist: {
-        \seq_clear:N \l_tmpa_seq
-        \seq_map_inline:Nn \l_stex_aB_args_seq {
-          \tl_if_eq:nnTF{##1}{\ellipses}{
-            \seq_put_right:Nn \l_tmpa_seq \ellipses
-          }{
-            \seq_put_right:Nx \l_tmpa_seq {
-              \exp_after:wN \exp_not:n \exp_after:wN { \__stex_notations_map_cs: {##1} }
-            }
+  \stex_pseudogroup_with:nn{
+    \_stex_term_do_aB_clist:
+    \__stex_notations_map_cs:
+  }{
+    \cs_set:Npn \__stex_notations_map_cs: ##1 { #2 }
+    \tl_set:Nn \_stex_term_do_aB_clist: {
+      \seq_clear:N \l_tmpa_seq
+      \seq_map_inline:Nn \l_stex_aB_args_seq {
+        \tl_if_eq:nnTF{##1}{\ellipses}{
+          \seq_put_right:Nn \l_tmpa_seq \ellipses
+        }{
+          \seq_put_right:Nx \l_tmpa_seq {
+            \exp_after:wN \exp_not:n \exp_after:wN { \__stex_notations_map_cs: {##1} }
           }
         }
-        \seq_set_eq:NN \l_stex_aB_args_seq \l_tmpa_seq
-        \seq_use:Nn \l_stex_aB_args_seq {#3}
       }
-      #1
+      \seq_set_eq:NN \l_stex_aB_args_seq \l_tmpa_seq
+      \seq_use:Nn \l_stex_aB_args_seq {#3}
     }
+    #1
   }
 }
 \int_new:N \l__stex_notations_clist_count_int
 \cs_new_protected:Npn \argarraymap #1 #2 #3 #4 {
   \__stex_notations_check_aB_arg:Nn\argarraymap{#1}
-  \seq_if_empty:NF \l_stex_aB_args_seq {
-    \stex_pseudogroup_with:nn{
-      \_stex_term_do_aB_clist:
-      \__stex_notations_map_cs:
-    }{
-      \cs_set:Npn \__stex_notations_map_cs: ##1 { #3 }
-      \int_set:Nn \l__stex_notations_clist_count_int {\exp_args:No\clist_count:n{\tl_to_str:n{#4}}}
-      \tl_set:Nn \_stex_term_do_aB_clist: {
-        \tl_clear:N \l_tmpa_tl
-        \int_zero:N \l_tmpa_int
-        \seq_map_inline:Nn \l_stex_aB_args_seq {
-          \int_incr:N \l_tmpa_int
-          \int_compare:nNnT \l_tmpa_int > \l__stex_notations_clist_count_int {
-            \int_set:Nn \l_tmpa_int 1
-          }
-          \tl_put_right:Ne \l_tmpa_tl {
-            \exp_after:wN \exp_not:n \exp_after:wN { \__stex_notations_map_cs: {##1} }
-            \clist_item:nn{#4}\l_tmpa_int
-          }
+  \stex_pseudogroup_with:nn{
+    \_stex_term_do_aB_clist:
+    \__stex_notations_map_cs:
+  }{
+    \cs_set:Npn \__stex_notations_map_cs: ##1 { #3 }
+    \int_set:Nn \l__stex_notations_clist_count_int {\exp_args:No\clist_count:n{\tl_to_str:n{#4}}}
+    \tl_set:Nn \_stex_term_do_aB_clist: {
+      \tl_clear:N \l_tmpa_tl
+      \int_zero:N \l_tmpa_int
+      \seq_map_inline:Nn \l_stex_aB_args_seq {
+        \int_incr:N \l_tmpa_int
+        \int_compare:nNnT \l_tmpa_int > \l__stex_notations_clist_count_int {
+          \int_set:Nn \l_tmpa_int 1
         }
-        \seq_set_eq:NN \l_stex_aB_args_seq \l_tmpa_seq
-        \begin{array}{#2}
-            \l_tmpa_tl
-        \end{array}
+        \tl_put_right:Ne \l_tmpa_tl {
+          \exp_after:wN \exp_not:n \exp_after:wN { \__stex_notations_map_cs: {##1} }
+          \clist_item:nn{#4}\l_tmpa_int
+        }
       }
-      #1
+      \seq_set_eq:NN \l_stex_aB_args_seq \l_tmpa_seq
+      \begin{array}{#2}
+          \l_tmpa_tl
+      \end{array}
     }
+    #1
   }
 }
 \int_new:N \l_stex_notation_downprec
@@ -5820,6 +5816,7 @@
 }
 \int_new:N \l__stex_expr_count_int
 \cs_new_protected:Nn \_stex_term_arg_aB:nnnnn {
+  \stex_debug:nn{sequences}{Processing~argument:~ \tl_to_str:n{#5}}
   \tl_if_empty:nTF{#5}{
     \_stex_term_arg:nnnnn{#1}{#2}{#3}{#4}{}
   }{
@@ -5868,6 +5865,12 @@
 \prg_new_conditional:Nnn \__stex_expr_is_seqmap:n {TF} {
   \int_compare:nNnTF {\tl_count:n{#1}} = 3 {
     \exp_args:Ne \tl_if_eq:nnTF {\tl_head:n{#1}} {\seqmap}
+      \prg_return_true:\prg_return_false:
+  }\prg_return_false:
+}
+\prg_new_conditional:Nnn \__stex_expr_is_argsep:n {TF} {
+  \int_compare:nNnTF {\tl_count:n{#1}} = 3 {
+    \exp_args:Ne \tl_if_eq:nnTF {\tl_head:n{#1}} {\argsep}
       \prg_return_true:\prg_return_false:
   }\prg_return_false:
 }
@@ -6169,6 +6172,7 @@
     \l_stex_key_pre_tl\l_stex_current_display_tl\l_stex_key_post_tl
   }
 }
+\protected\def\definames{\definame[post=s]}
 \stex_deactivate_macro:Nn \definame {definition~environments}
 
 \NewDocumentCommand \Definame { O{} m } {
@@ -6177,6 +6181,7 @@
     \l_stex_key_pre_tl \exp_args:NNe \use:nn \__stex_comps_uppercase:n \l_stex_current_display_tl\l_stex_key_post_tl
   }
 }
+\protected\def\Definames{\Definame[post=s]}
 \stex_deactivate_macro:Nn \Definame {definition~environments}
 
 \NewDocumentCommand \defnotation{ m } {
@@ -7129,8 +7134,8 @@
 
 \symdef{apply}[args=ia,prec=0;\infprec x\infprec]{#1\mathopen{\comp(} #2 \mathclose{\comp)}}
 \notation{apply}[lambda]{#1\; \argsep{#2}{\;}}
-\notation{apply}[infixop]{\argsep{#2}{\mathbin{#1}}}
-\notation{apply}[infixrel]{\argsep{#2}{\mathrel{#1}}}
+\notation{apply}[infixop]{\argsep{#2}{\mathbin{#1}}\STEXinvisible{#1}}
+\notation{apply}[infixrel]{\argsep{#2}{\mathrel{#1}}\STEXinvisible{#1}}
 
 \symdef{module~type}[args=i,op=\mathtt{MOD}]
   {\mathopen{\comp{\mathtt{MOD}(}}#1\mathclose{\comp{)}}}
