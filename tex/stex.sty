@@ -519,12 +519,12 @@
   }
   \NewDocumentEnvironment{#7#1}{#2}{
     \cs_set:Npn \stex_style_apply: {
-      \__stex_styles_apply_patch_begin:n{#1}
+      \_stex_apply_patch_begin:n{#1}
     }
     #3
   }{
     \cs_set:Npn \stex_style_apply: {
-      \__stex_styles_apply_patch_end:n{#1}
+      \_stex_apply_patch_end:n{#1}
     }
     #4
   }
@@ -542,7 +542,7 @@
   }
 }
 
-\cs_new_protected:Nn \__stex_styles_apply_patch_begin:n {
+\cs_new_protected:Nn \_stex_apply_patch_begin:n {
   \clist_if_empty:NTF \l_stex_key_style_clist {
     \tl_clear:N \thisstyle
     \use:c{__stex_styles_style_#1_start:}
@@ -557,7 +557,7 @@
   }
 }
 
-\cs_new_protected:Nn \__stex_styles_apply_patch_end:n {
+\cs_new_protected:Nn \_stex_apply_patch_end:n {
   \tl_if_empty:NTF \thisstyle {
     \use:c{__stex_styles_style_#1_end:}
   }{
@@ -2853,15 +2853,8 @@
     }
   }
 }
-\stex_new_stylable_env:nnnnnnn {copymodule}{s m O{} m}{
-  \IfBooleanTF#1\stex_structural_feature_morphism_with_macros:nnnnn
-  \stex_structural_feature_morphism:nnnnn{#2}{morphism}{#3}{#4}{,data-shtml-total=false}
-  \stex_if_smsmode:F {
-    \tl_set:Nn \thiscopyname { #2 }
-    \tl_set:Nn \thismoduleuri {\stex_use_module_uri:N \l_stex_current_domain_uri}
-    \stex_style_apply:
-  }
-  \stex_smsmode_do:
+\stex_new_stylable_env:nnnnnnn {copymodule}{m O{} m}{
+  \__stex_morphisms_begin_copy:Nnnn\stex_structural_feature_morphism:nnnnn {#1}{#2}{#3}
 }{
   \stex_if_smsmode:F {
     \stex_style_apply:
@@ -2869,12 +2862,42 @@
   \stex_structural_feature_morphism_end:
 }{}{}{}
 
+\stex_new_stylable_env:nnnnnnn {copymodule*}{m O{} m}{
+  \cs_set:Npn \stex_style_apply: {
+    \_stex_apply_patch_begin:n{copymodule}
+  }
+  \__stex_morphisms_begin_copy:Nnnn\stex_structural_feature_morphism_with_macros:nnnnn {#1}{#2}{#3}
+}{
+  \cs_set:Npn \stex_style_apply: {
+    \_stex_apply_patch_end:n{copymodule}
+  }
+  \stex_if_smsmode:F {
+    \stex_style_apply:
+  }
+  \stex_structural_feature_morphism_end:
+}{}{}{}
+
+\cs_new_protected:Nn \__stex_morphisms_begin_copy:Nnnn {
+  #1{#2}{morphism}{#3}{#4}{,data-shtml-total=false}
+  \stex_if_smsmode:F {
+    \tl_set:Nn \thiscopyname { #2 }
+    \tl_set:Nn \thismoduleuri {\stex_use_module_uri:N \l_stex_current_domain_uri}
+    \stex_style_apply:
+  }
+  \stex_smsmode_do:
+}
 
 \stex_deactivate_macro:Nn \copymodule {module~environments}
 \stex_every_module:n {
   \stex_reactivate_macro:N \copymodule
 }
 \stex_sms_allow_env:n{copymodule}
+
+\exp_after:wN \stex_deactivate_macro:Nn \csname copymodule*\endcsname {module~environments}
+\stex_every_module:n {
+  \exp_after:wN\stex_reactivate_macro:N \csname copymodule*\endcsname
+}
+\stex_sms_allow_env:n{copymodule*}
 
 \stex_new_stylable_cmd:nnnn{copymod}{s m O{} m m}{
   \IfBooleanTF#1\stex_structural_feature_morphism_with_macros:nnnnn
@@ -2894,15 +2917,8 @@
   \stex_reactivate_macro:N \copymod
 }
 \stex_sms_allow_escape:N\copymod
-\stex_new_stylable_env:nnnnnnn {interpretmodule}{s m O{} m}{
-  \IfBooleanTF#1\stex_structural_feature_morphism_with_macros:nnnnn
-  \stex_structural_feature_morphism:nnnnn{#2}{morphism}{#3}{#4}{,data-shtml-total=true}
-  \stex_if_smsmode:F {
-    \tl_set:Nn \thiscopyname { #2 }
-    \tl_set:Nn \thismoduleuri {\stex_use_module_uri:N \l_stex_current_domain_uri}
-    \stex_style_apply:
-  }
-  \stex_smsmode_do:
+\stex_new_stylable_env:nnnnnnn {interpretmodule}{m O{} m}{
+  \__stex_morphisms_begin_interpret:Nnnn\stex_structural_feature_morphism:nnnnn {#1}{#2}{#3}
 }{
   \stex_structural_feature_morphism_check_total:
   \stex_if_smsmode:F {
@@ -2911,11 +2927,43 @@
   \stex_structural_feature_morphism_end:
 }{}{}{}
 
+\stex_new_stylable_env:nnnnnnn {interpretmodule*}{m O{} m}{
+  \cs_set:Npn \stex_style_apply: {
+    \_stex_apply_patch_begin:n{interpretmodule}
+  }
+  \__stex_morphisms_begin_interpret:Nnnn\stex_structural_feature_morphism_with_macros:nnnnn {#1}{#2}{#3}
+}{
+  \cs_set:Npn \stex_style_apply: {
+    \_stex_apply_patch_end:n{interpretmodule}
+  }
+  \stex_structural_feature_morphism_check_total:
+  \stex_if_smsmode:F {
+    \stex_style_apply:
+  }
+  \stex_structural_feature_morphism_end:
+}{}{}{}
+
+\cs_new_protected:Nn \__stex_morphisms_begin_interpret:Nnnn {
+  #1{#2}{morphism}{#3}{#4}{,data-shtml-total=true}
+  \stex_if_smsmode:F {
+    \tl_set:Nn \thiscopyname { #2 }
+    \tl_set:Nn \thismoduleuri {\stex_use_module_uri:N \l_stex_current_domain_uri}
+    \stex_style_apply:
+  }
+  \stex_smsmode_do:
+}
+
 \stex_deactivate_macro:Nn \interpretmodule {module~environments}
 \stex_every_module:n {
   \stex_reactivate_macro:N \interpretmodule
 }
 \stex_sms_allow_env:n{interpretmodule}
+
+\exp_after:wN \stex_deactivate_macro:Nn \csname interpretmodule*\endcsname {module~environments}
+\stex_every_module:n {
+  \exp_after:wN \stex_reactivate_macro:N \csname interpretmodule*\endcsname
+}
+\stex_sms_allow_env:n{interpretmodule*}
 
 \stex_new_stylable_cmd:nnnn{interpretmod}{s m O{} m m}{
   \IfBooleanTF#1\stex_structural_feature_morphism_with_macros:nnnnn
