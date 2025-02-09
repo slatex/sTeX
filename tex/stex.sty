@@ -515,7 +515,10 @@
 }
 \cs_new_protected:Nn \stex_new_stylable_env:nnnnnnn {
   \exp_after:wN \newcommand \cs:w stexstyle#1 \cs_end:[3][]{
-    \__stex_styles_patch:nnnn{#1}{##1}{##2}{##3}
+    \__stex_styles_patch:nnnn{#1}{##1}{##2}{##3} % <- defined after \stex_if_html_backend
+  }
+  \exp_after:wN \newcommand \cs:w stexcss#1 \cs_end:[1][]{
+    \__stex_styles_css_patch:nnnn{#1}{##1}
   }
   \NewDocumentEnvironment{#7#1}{#2}{
     \cs_set:Npn \stex_style_apply: {
@@ -523,23 +526,15 @@
     }
     #3
   }{
-    \cs_set:Npn \stex_style_apply: {
-      \_stex_apply_patch_end:n{#1}
+    \stex_if_html_backend:F{
+      \cs_set:Npn \stex_style_apply: {
+        \_stex_apply_patch_end:n{#1}
+      }
     }
     #4
   }
   \tl_set:cn {__stex_styles_style_#1_start:} { #5 }
   \tl_set:cn {__stex_styles_style_#1_end:} { #6 }
-}
-
-\cs_new_protected:Nn \__stex_styles_patch:nnnn {
-  \str_if_empty:nTF {#2}{
-    \tl_set:cn{__stex_styles_style_#1_start:}{#3}
-    \tl_set:cn{__stex_styles_style_#1_end:}{#4}
-  }{
-    \tl_set:cn{__stex_styles_style_#1_#2_start:}{#3}
-    \tl_set:cn{__stex_styles_style_#1_#2_end:}{#4}
-  }
 }
 
 \cs_new_protected:Nn \_stex_apply_patch_begin:n {
@@ -719,6 +714,83 @@
 }{
   \cs_new:Npn \stex_persist:n #1 {}
   \cs_new:Npn \stex_persist:e #1 {}
+}
+\stex_if_html_backend:TF{
+  \cs_new_protected:Nn \stex_style_apply: {}
+  \cs_new_protected:Nn \__stex_styles_patch:nnnn {} % #1 #2 #3 #4 {
+  %  \message{^^JHere:~\tl_to_str:n{1:#1~2:#2~3:#3~4:#4}}
+  %  \group_begin:
+  %  \catcode`\\=12\relax
+  %  \catcode`\#=12\relax
+  %  \catcode`\&=12\relax
+  %  \catcode`\$=12\relax
+  %  \catcode`\^=12\relax
+  %  \catcode`\_=12\relax
+  %  \catcode`\ =12\relax
+  %  \catcode`^^J=12\relax
+  %  \__stex_styles_patch_i:nnn{#1}{#2}
+  %}
+  %\cs_new_protected:Nn \__stex_styles_patch_i:nnn {
+  %  \message{^^JCSS:~\tl_to_str:n{1:#1~3:#2^^J#3}^^J}
+  %  \tl_if_empty:nTF {#2}{
+  %    \str_set:Nn \l__stex_styles_str { .shtml-#1 }
+  %  }{
+  %    \str_set:Nn \l__stex_styles_str { .shtml-#1-#2 }
+  %  }
+  %  \exp_after:wN \stex_css_literal:n \exp_after:wN { \l__stex_styles_str { #3 } }
+  %  \group_end:
+  %}
+  \stex_keys_define:nnnn{ csspatch }{
+    \str_clear:N \l_stex_keys_cls_id
+    \str_clear:N \l_stex_keys_counter_id
+    \str_clear:N \l_stex_keys_counter_parent
+  }{
+    counter    .str_set_x:N  = \l_stex_keys_counter_id,
+    parent     .str_set_x:N  = \l_stex_keys_counter_parent,
+    unknown    .code:n       = {
+      \str_set:Ne \l_stex_keys_cls_id {#1}
+    }
+  }{}
+  \cs_new_protected:Npn \__stex_styles_css_patch:nnnn #1 #2 {
+    \stex_keys_set:nn{ csspatch }{ #2 }
+    \group_begin:
+    \catcode`\ =12\relax
+    \catcode`^^J=12\relax
+    \__stex_styles_patch_i:nnn {#1}
+  }
+  \cs_new_protected:Nn \__stex_styles_patch_i:nnn {
+    \str_if_empty:NTF \l_stex_keys_cls_id {
+      \str_set:Nn \l_stex_keys_cls_id { .shtml-#1 }
+    }{
+      \str_set:Ne \l_stex_keys_cls_id { .shtml-#1-\l_stex_keys_cls_id }
+    }
+    \str_set:Ne \l__stex_styles_first_str { &~.shtml-title~ { display:inline-block;~#3 } }
+    \str_if_empty:NF \l_stex_keys_counter_id {
+      \str_put_left:Ne \l__stex_styles_first_str { counter-increment:~ shtml-\l_stex_keys_counter_id; }
+      \cs_if_eq:ccTF{@onlypreamble}{@notprerr}{
+        % in body
+      }{
+        % in preamble
+      }
+    }
+    \str_set:Ne \l__stex_styles_first_str { \l_stex_keys_cls_id { \l__stex_styles_first_str #2 } }
+    \exp_args:No \stex_css_literal:n \l__stex_styles_first_str
+
+    % TODO export counter reset somehow
+
+    \group_end:
+  }
+}{
+  \cs_new_protected:Nn \__stex_styles_patch:nnnn {
+    \str_if_empty:nTF {#2}{
+      \tl_set:cn{__stex_styles_style_#1_start:}{#3}
+      \tl_set:cn{__stex_styles_style_#1_end:}{#4}
+    }{
+      \tl_set:cn{__stex_styles_style_#1_#2_start:}{#3}
+      \tl_set:cn{__stex_styles_style_#1_#2_end:}{#4}
+    }
+  }
+  \cs_new_protected:Nn \__stex_styles_css_patch:nnnn {}
 }
 \str_if_empty:NTF\mathhub{
   \stex_get_env:Nn \l__stex_mathhub_str {MATHHUB}
@@ -1479,9 +1551,15 @@
   }{
     \int_set:Nn \l_stex_current_section_level_int 6
   }
-  \cs_if_eq:NNTF\@onlypreamble\@notprerr{
-    \stex_annotate_invisible:nn{data-shtml-sectionlevel={\int_use:N\l_stex_current_section_level_int}}{}
-  }{}
+  \stex_if_do_html:T{
+    \cs_if_eq:NNTF\@onlypreamble\@notprerr{
+      \stex_html_literal:n{<span~ data-shtml-sectionlevel="\int_use:N\l_stex_current_section_level_int"></span>}
+    }{
+      \AtBeginDocument{
+        \stex_html_literal:n{<span~ data-shtml-sectionlevel="\int_use:N\l_stex_current_section_level_int"></span>}
+      }
+    }
+  }
 }
 \stex_if_html_backend:T{
   \cs_new_protected:Nn \__stex_doc_check_topsect: {
@@ -2244,17 +2322,19 @@
 
 \cs_new_protected:Npn \__stex_smsmode_do:w #1 {
   \exp_args:Ne \tl_if_empty:nTF { \tl_tail:n{ #1 }}{
-    \__stex_smsmode_check_cs:NNn \__stex_smsmode_do_aux:N \__stex_smsmode_do:w { #1 }
+    %\__stex_smsmode_check_cs:NNn \__stex_smsmode_do_aux:N \__stex_smsmode_do:w { #1 }
+    \__stex_smsmode_check_cs:N {#1}
   }{
     \__stex_smsmode_do:w
   }
 }
 
-\cs_new:Nn \__stex_smsmode_check_cs:NNn {
-  \exp_after:wN\if\exp_after:wN\relax\exp_not:N#3
-  \exp_after:wN#1\exp_after:wN#3\else
-  \exp_after:wN#2\fi
+\cs_new_protected:Nn \__stex_smsmode_check_cs:N {
+  \exp_after:wN\if\exp_after:wN\relax\noexpand #1 ~
+  \exp_after:wN \__stex_smsmode_do_aux:N \exp_after:wN#1\else
+  \exp_after:wN \__stex_smsmode_do:w \fi
 }
+
 
 \cs_new_protected:Nn \__stex_smsmode_do_aux:N {
   \cs_if_eq:NNF #1 \q__stex_smsmode_break {
@@ -6547,7 +6627,10 @@
       \clist_set_eq:NN \thisfor \l_stex_key_for_str
       \stex_if_html_backend:TF {
         \noindent
-        \stex_annotate:nn{data-shtml-title={}}{\_stex_annotate_force_break:n\l_stex_key_title_tl}
+        \stex_annotate:nn{data-shtml-title={}, style:display={none}}{\_stex_annotate_force_break:n{
+          \tl_if_empty:NF \l_stex_key_title_tl{~}
+          \l_stex_key_title_tl
+        }}
       }
       \stex_style_apply:
     }
@@ -6871,7 +6954,7 @@
     \stex_debug:nn{definiens}{Adding~definiens~to~##1}
     \_stex_add_definiens:nn {##1}{\STEXinvisible{proven}}
   }
-  \stex_style_apply:
+  \stex_if_do_html:F\stex_style_apply:
   \_stex_do_id:
   \stex_reactivate_macro:N \subproof
   \stex_reactivate_macro:N \spfstep
@@ -6888,7 +6971,7 @@
 }
 
 \cs_new_protected:Nn \__stex_proof_html_env:n {
-  \exp_args:Nne \begin{stex_annotate_env}{
+  \par \exp_args:Nne \begin{stex_annotate_env}{
     data-shtml-#1={
       \seq_if_empty:NF \l_stex_fors_seq {
         \seq_map_function:NN \l_stex_fors_seq \stex_use_symbol_uri:N
@@ -6906,26 +6989,31 @@
   \bool_set_true:N\l__stex_proof_in_spfblock_bool\__stex_proof_start_list:n{}
   \group_begin:\stexcommentfont
 }{
-  \stex_style_apply:
-  \stex_if_do_html:T{\end{stex_annotate_env}\end{stex_annotate_env}}
+  \stex_if_do_html:TF{
+    \bool_if:NT\l__stex_proof_in_spfblock_bool {
+      \group_end:\__stex_proof_end_list:
+    }
+    \end{stex_annotate_env}\end{stex_annotate_env}
+  }\stex_style_apply:
 }{
   \emph{\sproofautorefname :}~
 }{
   \sproofend
 }{s}
 
+\stex_if_html_backend:F{
 \AddToHook{env/sproof/end}{
   \bool_if:NT\l__stex_proof_in_spfblock_bool {
     \group_end:\__stex_proof_end_list:
   }
+}
 }
 
 \stex_new_stylable_env:nnnnnnn{proof*}{O{}}{
   \__stex_proof_begin_proof:nn{#1}{}
   \bool_set_false:N\l__stex_proof_in_spfblock_bool
 }{
-  \stex_style_apply:
-  \stex_if_do_html:T{\end{stex_annotate_env}\end{stex_annotate_env}}
+  \stex_if_do_html:TF{\end{stex_annotate_env}\end{stex_annotate_env}}\stex_style_apply:
 }{
   \emph{Proof:}~
 }{
@@ -6945,14 +7033,17 @@
 }
 
 \cs_new_protected:Nn \__stex_proof_html: {
-  \stex_annotate_invisible:n{\hbox{
-    \tl_if_empty:NF \l_stex_key_term_tl {
-      $\stex_annotate:nn{data-shtml-proofterm={}}{\l_stex_key_term_tl}$
-    }
-    \tl_if_empty:NF \l_stex_key_method_tl {
-      \stex_annotate:nn{data-shtml-proofmethod={}}{\l_stex_key_method_tl}
-    }
-  }}
+  \tl_set:Ne\l_tmpa_tl {\l_stex_key_term_tl\l_stex_key_method_tl}
+  \tl_if_empty:NF\l_tmpa_tl{
+    \stex_annotate_invisible:n{\hbox{
+      \tl_if_empty:NF \l_stex_key_term_tl {
+        $\stex_annotate:nn{data-shtml-proofterm={}}{\l_stex_key_term_tl}$
+      }
+      \tl_if_empty:NF \l_stex_key_method_tl {
+        \stex_annotate:nn{data-shtml-proofmethod={}}{\l_stex_key_method_tl}
+      }
+    }}
+  }
 }
 \str_set_eq:NN \subproofautorefname \spfstepautorefname
 
@@ -6968,7 +7059,7 @@
   }
 
   \IfBooleanTF #1 {
-    \stex_style_apply:
+    \stex_if_do_html:F\stex_style_apply:
     \str_if_empty:NF \l_stex_key_id_str {
       \__stex_proof_number_as_string:N \@currentlabel
       \str_set:Ne \@currentHref{subproof.\@currentlabel}
@@ -6998,7 +7089,7 @@
   }
   \bool_if:NT \l__stex_proof_in_spfblock_bool {\group_begin:\stexcommentfont}
 }{
-  \stex_style_apply:
+  \stex_if_do_html:F\stex_style_apply:
   \bool_if:NT \l__stex_proof_in_spfblock_bool \__stex_proof_inc_counter:
   \stex_if_do_html:T{\end{stex_annotate_env}}
   \bool_if:NT\l__stex_proof_in_spfblock_bool \__stex_proof_end_list:

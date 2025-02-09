@@ -241,12 +241,13 @@
       data-shtml-language={ \l_stex_current_language_str},
       data-shtml-autogradable={\bool_if:NTF \l_stex_key_autogradable_bool {true}{false}}
     }
+    \noindent \stex_annotate:nn{data-shtml-title={}}{\_stex_annotate_force_break:n{\l_stex_key_title_tl}}
     \tl_if_empty:NF \l_stex_key_title_tl {
       \exp_args:No \stexdoctitle \l_stex_key_title_tl
     }
     \stex_annotate_invisible:nn{
       data-shtml-problempoints={\l_stex_key_pts_tl}
-    }{ \l_stex_key_pts_tl }
+    }{ \_stex_annotate_force_break:n{} }
   }
   \tl_set_eq:NN \thistitle \l_stex_key_title_tl
   
@@ -345,22 +346,27 @@
       data-shtml-language={ \l_stex_current_language_str},
       data-shtml-autogradable={\bool_if:NTF \l_stex_key_autogradable_bool {true}{false}}
     }
-    \stex_annotate_invisible:n{}
+    \noindent \stex_annotate:nn{data-shtml-title={}}{\_stex_annotate_force_break:n{\l_stex_key_title_tl}}
     \tl_if_empty:NF \l_stex_key_title_tl {
       \exp_args:No \stexdoctitle \l_stex_key_title_tl
     }
+    \tl_if_empty:NF \l_stex_key_title_tl {
+      \exp_args:No \stexdoctitle \l_stex_key_title_tl
+    }
+    \stex_annotate_invisible:nn{
+      data-shtml-problempoints={\l_stex_key_pts_tl}
+    }{ \_stex_annotate_force_break:n{} }
   }
   \int_gincr:N \g_@@_subproblem_int
   \bool_if:NF \l_@@_has_pts_bool {
-    \tl_gset:Nx \l_@@_pts_tl {\fp_to_decimal:n {\l_@@_pts_tl + \l_stex_key_pts_tl}}
+    \tl_gset:Ne \l_@@_pts_tl {\fp_to_decimal:n {\l_@@_pts_tl + \l_stex_key_pts_tl}}
   }
   \bool_if:NF \l_@@_has_min_bool {
-    \tl_gset:Nx \l_@@_min_tl {\fp_to_decimal:n {\l_@@_min_tl + \l_stex_key_min_tl}}
+    \tl_gset:Ne \l_@@_min_tl {\fp_to_decimal:n {\l_@@_min_tl + \l_stex_key_min_tl}}
   }
-  \stex_if_smsmode:F \stex_style_apply:
+  \stex_if_smsmode:F {\stex_if_do_html:F \stex_style_apply: }
 }{
-  \stex_if_smsmode:F \stex_style_apply:
-  \stex_if_do_html:T{ \end{stex_annotate_env} }
+  \stex_if_do_html:TF{ \end{stex_annotate_env} }{\stex_if_smsmode:F\stex_style_apply:}
 }{
   \begin{list}{}{
     \setlength\topsep{0pt}
@@ -721,6 +727,14 @@
 %    \begin{macrocode}
 \stex_new_stylable_env:nnnnnnn{mcb}{O{}}{
   \stex_keys_set:nn{style}{#1}
+  \cs_set:Nn \_@@_mccline:n{
+    \begin{list}{}{
+      \setlength\topsep{0pt}
+      \setlength\parsep{0pt}
+      \setlength\rightmargin{0pt}
+    }\item[\problem_mcc_box_tl] ##1 \end{list}
+  }
+
   \stex_if_do_html:T{
     \tl_set:Nn\problem_mcc_box_tl{}
     \_@@_maybe_inline:n{
@@ -731,6 +745,9 @@
         }
       }
     }
+    \clist_if_in:NnT \l_stex_key_style_clist {inline} {
+      \cs_set:Nn \_@@_mccline:n {##1}
+    }
   }
   \stex_deactivate_macro:Nn \mcb {sproblem~environments}
   \stex_deactivate_macro:Nn \scb {sproblem~environments}
@@ -739,20 +756,13 @@
   \stex_deactivate_macro:Nn \exnote {sproblem~environments}
   \stex_deactivate_macro:Nn \gnote {sproblem~environments}
   \stex_reactivate_macro:N \mcc
-  \cs_set:Nn \_@@_mccline:n{
-    \begin{list}{}{
-      \setlength\topsep{0pt}
-      \setlength\parsep{0pt}
-      \setlength\rightmargin{0pt}
-    }\item[\problem_mcc_box_tl] ##1 \end{list}
-  }
-  \stex_style_apply:
+  \stex_if_do_html:F \stex_style_apply:
 }{
-  \stex_style_apply:
-  \stex_if_do_html:T{
+  \stex_if_do_html:TF{
     \_@@_maybe_inline:n{\end{stex_annotate_env}}
-  }
+  }\stex_style_apply:
 }{\par}{}{}
+
 \stexstylemcb[inline]{
   {\Large[}\cs_set:Nn \_@@_mccline:n{\problem_mcc_box_tl{~} #1}
 }{{\Large]}}
@@ -877,11 +887,19 @@
     \cs_set:Nn\_@@_maybe_newline:{}
     #1
     \let\stex_par:\_@@_oldpar:
-  }{#1}
+  }{\par #1}
 }
 
 \stex_new_stylable_env:nnnnnnn{scb}{O{}}{
   \stex_keys_set:nn{style}{#1}
+  \cs_set:Nn \_@@_sccline:n{
+    \begin{list}{}{
+      \setlength\topsep{0pt}
+      \setlength\parsep{0pt}
+      \setlength\rightmargin{0pt}
+    }\item[\problem_scc_box_tl] ##1 \end{list}
+  }
+
   \stex_if_do_html:T{
     \_@@_maybe_inline:n{
       \exp_args:Nne\begin{stex_annotate_env}{
@@ -892,6 +910,9 @@
       }
     }
     \tl_set:Nn\problem_scc_box_tl{}
+    \clist_if_in:NnT \l_stex_key_style_clist {inline} {
+      \cs_set:Nn \_@@_sccline:n {##1}
+    }
   }
   \stex_deactivate_macro:Nn \mcb {sproblem~environments}
   \stex_deactivate_macro:Nn \scb {sproblem~environments}
@@ -900,19 +921,11 @@
   \stex_deactivate_macro:Nn \exnote {sproblem~environments}
   \stex_deactivate_macro:Nn \gnote {sproblem~environments}
   \stex_reactivate_macro:N \scc
-  \cs_set:Nn \_@@_sccline:n{
-    \begin{list}{}{
-      \setlength\topsep{0pt}
-      \setlength\parsep{0pt}
-      \setlength\rightmargin{0pt}
-    }\item[\problem_scc_box_tl] ##1 \end{list}
-  }
-  \stex_style_apply:
+  \stex_if_do_html:F \stex_style_apply:
 }{
-  \stex_style_apply:
-  \stex_if_do_html:T{
+  \stex_if_do_html:TF{
     \_@@_maybe_inline:n { \end{stex_annotate_env} }
-  }
+  }\stex_style_apply:
 }{\par}{}{}
 \stexstylescb[inline]{
   {\Large[}\cs_set:Nn \_@@_sccline:n{\problem_scc_box_tl{~} #1}

@@ -231,4 +231,86 @@
 %    \end{macrocode}
 % \end{implementation}
 %
+% and style patching:
+%    \begin{macrocode}
+%<@@=stex_styles>
+\stex_if_html_backend:TF{
+  \cs_new_protected:Nn \stex_style_apply: {}
+  \cs_new_protected:Nn \_@@_patch:nnnn {} % #1 #2 #3 #4 {
+  %  \message{^^JHere:~\tl_to_str:n{1:#1~2:#2~3:#3~4:#4}}
+  %  \group_begin:
+  %  \catcode`\\=12\relax
+  %  \catcode`\#=12\relax
+  %  \catcode`\&=12\relax
+  %  \catcode`\$=12\relax
+  %  \catcode`\^=12\relax
+  %  \catcode`\_=12\relax
+  %  \catcode`\ =12\relax
+  %  \catcode`^^J=12\relax
+  %  \_@@_patch_i:nnn{#1}{#2}
+  %}
+  %\cs_new_protected:Nn \_@@_patch_i:nnn {
+  %  \message{^^JCSS:~\tl_to_str:n{1:#1~3:#2^^J#3}^^J}
+  %  \tl_if_empty:nTF {#2}{
+  %    \str_set:Nn \l_@@_str { .shtml-#1 }
+  %  }{
+  %    \str_set:Nn \l_@@_str { .shtml-#1-#2 }
+  %  }
+  %  \exp_after:wN \stex_css_literal:n \exp_after:wN { \l_@@_str { #3 } }
+  %  \group_end:
+  %}
+  \stex_keys_define:nnnn{ csspatch }{
+    \str_clear:N \l_stex_keys_cls_id
+    \str_clear:N \l_stex_keys_counter_id
+    \str_clear:N \l_stex_keys_counter_parent
+  }{
+    counter    .str_set_x:N  = \l_stex_keys_counter_id,
+    parent     .str_set_x:N  = \l_stex_keys_counter_parent,
+    unknown    .code:n       = {
+      \str_set:Ne \l_stex_keys_cls_id {#1}
+    }
+  }{}
+  \cs_new_protected:Npn \_@@_css_patch:nnnn #1 #2 {
+    \stex_keys_set:nn{ csspatch }{ #2 }
+    \group_begin:
+    \catcode`\ =12\relax
+    \catcode`^^J=12\relax
+    \_@@_patch_i:nnn {#1}
+  }
+  \cs_new_protected:Nn \_@@_patch_i:nnn {
+    \str_if_empty:NTF \l_stex_keys_cls_id {
+      \str_set:Nn \l_stex_keys_cls_id { .shtml-#1 }
+    }{
+      \str_set:Ne \l_stex_keys_cls_id { .shtml-#1-\l_stex_keys_cls_id }
+    }
+    \str_set:Ne \l_@@_first_str { &~.shtml-title~ { display:inline-block;~#3 } }
+    \str_if_empty:NF \l_stex_keys_counter_id {
+      \str_put_left:Ne \l_@@_first_str { counter-increment:~ shtml-\l_stex_keys_counter_id; }
+      \cs_if_eq:ccTF{@onlypreamble}{@notprerr}{
+        % in body
+      }{
+        % in preamble
+      }
+    }
+    \str_set:Ne \l_@@_first_str { \l_stex_keys_cls_id { \l_@@_first_str #2 } }
+    \exp_args:No \stex_css_literal:n \l_@@_first_str
+
+    % TODO export counter reset somehow
+
+    \group_end:
+  }
+}{
+  \cs_new_protected:Nn \_@@_patch:nnnn {
+    \str_if_empty:nTF {#2}{
+      \tl_set:cn{_@@_style_#1_start:}{#3}
+      \tl_set:cn{_@@_style_#1_end:}{#4}
+    }{
+      \tl_set:cn{_@@_style_#1_#2_start:}{#3}
+      \tl_set:cn{_@@_style_#1_#2_end:}{#4}
+    }
+  }
+  \cs_new_protected:Nn \_@@_css_patch:nnnn {}
+}
+%    \end{macrocode}
+%
 % \end{sfragment}
