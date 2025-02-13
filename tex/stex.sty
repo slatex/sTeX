@@ -2745,6 +2745,19 @@
   }
 }
 
+\cs_new_protected:Nn \__stex_morphisms_definiens_impl:nn {
+  \tl_if_empty:nF {#1} {
+    \stex_get_in_morphism:n { #1 }
+    \tl_set_eq:NN \l_stex_current_def_uri \l_stex_get_symbol_uri
+  }
+  \tl_if_empty:NT \l_stex_current_def_uri {
+    \msg_error:nn{stex}{error/definiensfor}
+  }
+  \stex_debug:nn{definiens}{Checking~\stex_use_symbol_uri:N \l_stex_current_def_uri }
+
+  \exp_args:No \_stex_add_definiens:nn \l_stex_current_def_uri {#2}
+}
+
 \cs_new_protected:Nn \__stex_morphisms_add_definiens:nn {
   \tl_set:Nn \l_stex_get_symbol_uri {#1}
   \stex_debug:nn{morphisms}{Adding~definiens~\tl_to_str:n{#1~#2}}
@@ -2792,6 +2805,7 @@
   \stex_reactivate_macro:N \renamedecl
   \cs_set_eq:NN \_stex_do_for_list: \__stex_morphisms_do_for_list:
   \cs_set_eq:NN \_stex_add_definiens:nn \__stex_morphisms_add_definiens:nn
+  \cs_set_eq:NN \_stex_definiens_impl:nn \__stex_morphisms_definiens_impl:nn
 }
 \cs_new_protected:Nn \stex_iterate_morphisms:nn {
   \seq_clear:N \l__stex_morphisms_mods_seq
@@ -6673,7 +6687,7 @@
     }
   }
   \_stex_do_for_list:
-  \tl_clear:N \l__stex_statements_uri
+  \tl_clear:N \l_stex_current_def_uri
 
   \str_if_empty:NTF \l_stex_key_name_str \__stex_statements_setup_noname: {
     \__stex_statements_setup_named:n{#1}
@@ -6695,15 +6709,15 @@
     {#1}{}{}\stex_invoke_symbol:
   }
   \stex_if_do_html:T \_stex_symdecl_html:
-  \tl_set:Ne \l__stex_statements_uri {\exp_args:No \stex_new_symbol_uri:nn \l_stex_current_module_uri \l_stex_key_name_str }
-  \stex_debug:nn{statement}{name:~\stex_use_symbol_uri:N \l__stex_statements_uri}
+  \tl_set:Ne \l_stex_current_def_uri {\exp_args:No \stex_new_symbol_uri:nn \l_stex_current_module_uri \l_stex_key_name_str }
+  \stex_debug:nn{statement}{name:~\stex_use_symbol_uri:N \l_stex_current_def_uri}
 }
 
 \cs_new_protected:Nn \__stex_statements_setup_noname: {
   \stex_debug:nn{statement}{no~name}
   \int_compare:nNnTF {\seq_count:N \l_stex_fors_seq} = 1 {
-    \tl_set:Ne \l__stex_statements_uri {\seq_item:Nn \l_stex_fors_seq 1}
-    \stex_debug:nn{statement}{for:~\stex_use_symbol_uri:N \l__stex_statements_uri}
+    \tl_set:Ne \l_stex_current_def_uri {\seq_item:Nn \l_stex_fors_seq 1}
+    \stex_debug:nn{statement}{for:~\stex_use_symbol_uri:N \l_stex_current_def_uri}
   }{
     \stex_debug:nn{statement}{no~for}
   }
@@ -6762,19 +6776,22 @@
 }
 \NewDocumentCommand \definiens { O{} m }{
   \group_begin:
-  \tl_if_empty:nF {#1} {
-    \stex_get_symbol:n { #1 }
-    \tl_set_eq:NN \l__stex_statements_uri \l_stex_get_symbol_uri
-  }
-  \tl_if_empty:NT \l__stex_statements_uri {
-    \msg_error:nn{stex}{error/definiensfor}
-  }
-  \stex_debug:nn{definiens}{Checking~\stex_use_symbol_uri:N \l__stex_statements_uri }
-
-  \exp_args:No \_stex_add_definiens:nn \l__stex_statements_uri {#2}
-
+  \_stex_definiens_impl:nn{#1}{#2}
   \group_end:
   \stex_smsmode_do:
+}
+
+\cs_new_protected:Nn \_stex_definiens_impl:nn {
+  \tl_if_empty:nF {#1} {
+    \stex_get_symbol:n { #1 }
+    \tl_set_eq:NN \l_stex_current_def_uri \l_stex_get_symbol_uri
+  }
+  \tl_if_empty:NT \l_stex_current_def_uri {
+    \msg_error:nn{stex}{error/definiensfor}
+  }
+  \stex_debug:nn{definiens}{Checking~\stex_use_symbol_uri:N \l_stex_current_def_uri }
+
+  \exp_args:No \_stex_add_definiens:nn \l_stex_current_def_uri {#2}
 }
 
 \stex_deactivate_macro:Nn \definiens {definition~environments}
@@ -6816,12 +6833,12 @@
   \group_begin:
   \tl_if_empty:nF {#1} {
     \stex_get_symbol:n { #1 }
-    \tl_set_eq:NN \l__stex_statements_uri \l_stex_get_symbol_uri
+    \tl_set_eq:NN \l_stex_current_def_uri \l_stex_get_symbol_uri
   }
-  \tl_if_empty:NT \l__stex_statements_uri {
+  \tl_if_empty:NT \l_stex_current_def_uri {
     \msg_error:nn{stex}{error/conclusionfor}
   }
-  \stex_annotate:nn{ data-ftml-conclusion={\stex_use_symbol_uri:N \l__stex_statements_uri}}{
+  \stex_annotate:nn{ data-ftml-conclusion={\stex_use_symbol_uri:N \l_stex_current_def_uri}}{
     #2 %\_stex_annotate_force_break:n{ #2 }
   }
   \group_end:
