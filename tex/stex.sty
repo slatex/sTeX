@@ -726,7 +726,7 @@
     counter    .str_set_x:N  = \l_stex_keys_counter_id,
     parent     .str_set_x:N  = \l_stex_keys_counter_parent,
     unknown    .code:n       = {
-      \str_set:Ne \l_stex_keys_cls_id {\l_keys_key_tl}
+      \exp_args:NNo \str_set:Nn \l_stex_keys_cls_id {\l_keys_key_tl}
     }
   }{}
   \cs_new_protected:Npn \__stex_styles_css_patch:nnnn #1 #2 {
@@ -736,24 +736,65 @@
     \catcode`^^J=12\relax
     \__stex_styles_patch_i:nnn {#1}
   }
+
+  \seq_new:N \g__stex_styles_counters_seq
+
+  \cs_new:Nn \__stex_styles_patch_html_c: {
+    \stex_html_literal:n{
+      <span~data-ftml-counter="\l_stex_keys_counter_id"~style="display:none;"~
+        data-ftml-counter-parent="\l_stex_keys_counter_parent"
+      ></span>
+    }
+  }
+
+  \cs_new:Nn \__stex_styles_patch_html: {
+    \stex_html_literal:n{
+      <span~data-ftml-style="\l_stex_keys_cls_id"~style="display:none;"~
+        data-ftml-counter="\l_stex_keys_counter_id"
+      ></span>
+    }
+  }
+
   \cs_new_protected:Nn \__stex_styles_patch_i:nnn {
-    \stex_debug:nn{temp}{Here:~\l_stex_keys_cls_id}
     \str_if_empty:NTF \l_stex_keys_cls_id {
-      \str_set:Nn \l_stex_keys_cls_id { .ftml-#1 }
+      \str_set:Nn \l_stex_keys_cls_id { #1 }
     }{
-      \str_set:Ne \l_stex_keys_cls_id { .ftml-#1-\l_stex_keys_cls_id }
+      \str_set:Ne \l_stex_keys_cls_id { #1-\l_stex_keys_cls_id }
+    }
+    \exp_args:No \str_case:nnF \l_stex_keys_counter_parent {
+      {}{}
+      {part}{\str_set:Nn \l_stex_keys_counter_parent { 0 }}
+      {chapter}{\str_set:Nn \l_stex_keys_counter_parent { 1 }}
+      {section}{\str_set:Nn \l_stex_keys_counter_parent { 2 }}
+      {subsection}{\str_set:Nn \l_stex_keys_counter_parent { 3 }}
+      {subsubsection}{\str_set:Nn \l_stex_keys_counter_parent { 4 }}
+      {paragraph}{\str_set:Nn \l_stex_keys_counter_parent { 5 }}
+      {subparagraph}{\str_set:Nn \l_stex_keys_counter_parent { 6 }}
+    }{
+      \msg_error:nnx{stex}{error/notasection}\l_stex_keys_counter_parent
     }
     \str_set:Ne \l__stex_styles_first_str { &~.ftml-title~ { display:inline-block;~#3 } }
     \str_if_empty:NF \l_stex_keys_counter_id {
-      \str_put_left:Ne \l__stex_styles_first_str { counter-increment:~ ftml-\l_stex_keys_counter_id; }
+      %\str_put_left:Ne \l__stex_styles_first_str { counter-increment:~ ftml-\l_stex_keys_counter_id; }
+      \exp_args:NNo \seq_if_in:NnF \g__stex_styles_counters_seq \l_stex_keys_counter_id {
+        \seq_gpush:No \g__stex_styles_counters_seq \l_stex_keys_counter_id
+        \cs_if_eq:ccTF{@onlypreamble}{@notprerr}{
+          \__stex_styles_patch_html_c:
+          % in body
+        }{
+          \exp_args:Ne \AtBeginDocument \__stex_styles_patch_html_c:
+          % in preamble
+        }
+      }
       \cs_if_eq:ccTF{@onlypreamble}{@notprerr}{
-        % in body
+          \__stex_styles_patch_html:
+          % in body
       }{
+        \exp_args:Ne \AtBeginDocument \__stex_styles_patch_html:
         % in preamble
       }
     }
-    \str_set:Ne \l__stex_styles_first_str { \l_stex_keys_cls_id { \l__stex_styles_first_str #2 } }
-    \exp_args:No \stex_css_literal:n \l__stex_styles_first_str
+    \exp_args:Ne \stex_css_literal:n { .ftml-\l_stex_keys_cls_id { \l__stex_styles_first_str #2 } }
 
     % TODO export counter reset somehow
 
@@ -2012,7 +2053,7 @@
     \prop_gclear:c{ \_stex_notations_macro:N \l__stex_modules_uri }
   }
   \tl_set_eq:NN \l_stex_current_module_uri \l__stex_modules_uri
-  \seq_put_right:No \l_stex_all_modules_seq \l__stex_modules_uri
+  \seq_put_left:No \l_stex_all_modules_seq \l__stex_modules_uri
 }
 \cs_new_protected:Nn \stex_close_module: {
   \bool_if:NT \c_stex_persist_write_mode_bool \__stex_modules_persist_module:
@@ -6747,7 +6788,6 @@
       \stex_ref_new_sym_target:n{##1}
     }
   }
-  \stex_debug:nn{test}{reactivating~def~macros}
   \stex_reactivate_macro:N \definiendum
   \stex_reactivate_macro:N \defnotation
   \stex_reactivate_macro:N \definame
@@ -6810,11 +6850,11 @@
 \stex_deactivate_macro:Nn \definiens {definition~environments}
 \stex_sms_allow_escape:N \definiens
 \cs_new_protected:Nn \_stex_add_definiens:nn {
-  \stex_if_do_html:T {
+  \stex_if_do_html:TF {
     \stex_annotate:nn{data-ftml-definiens={\stex_use_symbol_uri:n{#1}}}{
       #2 %\_stex_annotate_force_break:n{ #2 }
     }
-  }
+  }{ \stex_if_smsmode:F{#2} }
   \stex_if_in_module:T {
     \exp_args:Ne \str_if_eq:noT {\stex_symbol_uri_module:n{#1}}\l_stex_current_module_uri{
       \__stex_statements_add_definiens:n{#1}
