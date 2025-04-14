@@ -1107,6 +1107,12 @@
 \cs_new:Nn \__stex_uris_with_language:nnnnnn {
   {#1}{#2}{#3}{#6}{}
 }
+\cs_new:Npn \stex_new_document_element_uri:n {
+  \exp_after:wN \__stex_uris_with_elem:nnnnnn \l_stex_current_document_uri
+}
+\cs_new:Nn \__stex_uris_with_elem:nnnnnn {
+  {#1}{#2}{#3}{#4}{ \tl_if_empty:nTF{#5}{#6}{#5/#6}}
+}
 \cs_new_protected:Nn \stex_document_uri_from_archive_file:Nn {
   \stex_file_set:Nn \l__stex_uris_file {#2}
   \stex_debug:nn{URI}{relative~path:~\stex_file_use:N \l__stex_uris_file}
@@ -1674,31 +1680,87 @@
   }
   \AtBeginDocument \__stex_doc_x_matter:
 }
-\int_new:N \l__stex_refs_unnamed_counter_int
-
-\cs_new_protected:Nn \_stex_ref_new_id:n {
-  \str_if_empty:nTF {#1}{
-    \int_gincr:N \l__stex_refs_unnamed_counter_int
-    \str_set:Ne \l__stex_refs_str {REF\int_use:N \l__stex_refs_unnamed_counter_int}
-  }{
-    \str_set:Nn \l__stex_refs_str {#1}
+\iow_new:N \c__stex_refs_iow
+\AtBeginDocument{ \iow_open:Nn \c__stex_refs_iow {\jobname.sref} }
+\AtEndDocument{\iow_close:N \c__stex_refs_iow}
+\stex_keys_define:nnnn{sref / 1}{
+  \tl_clear:N \l_stex_key_pre_tl
+  \tl_clear:N \l_stex_key_post_tl
+  \tl_clear:N \l_stex_key_fallback_tl
+}{
+  % TODO get rid of this
+  fallback  .code:n = {},
+  pre       .code:n = {},
+  post      .code:n = {}
+}{archive file}
+\stex_keys_define:nnnn{sref / 2}{}{}{archive file, title}
+\cs_new_protected:Nn \stex_ref_new_doc_target:n {
+  \stex_if_smsmode:F{
+    \tl_set:Ne \l__stex_refs_new_tl { \stex_new_document_element_uri:n { #1 } }
+    \exp_args:Ne \label { \stex_use_document_uri:N \l__stex_refs_new_tl }
+    \exp_args:Nne \STeXInternalNewSRefLabel{#1}{ \stex_use_document_uri:N \l__stex_refs_new_tl }
+    \iow_now:Ne \@auxout {
+      \STeXInternalNewSRefLabel{#1}{ \stex_use_document_uri:N \l__stex_refs_new_tl }
+    }
+    \iow_now:Ne \c__stex_refs_iow {
+      \exp_not:N \STeXInternalSRefLabel
+        { #1 }
+        { \stex_use_document_uri:N \l__stex_refs_new_tl }
+        { \exp_not:o \@currentHref}
+        { \exp_not:o \@currentlabelname }
+    }
   }
 }
 
-\cs_new_protected:Nn \stex_ref_new_doc_target:n {
-  \_stex_ref_new_id:n{#1}
+\NewDocumentCommand \sreflabel {m} { \stex_ref_new_doc_target:n{#1} }
+\cs_new_protected:Nn \stex_ref_new_sym_target:n {
+  \stex_if_smsmode:F{
+    \cs_if_exist:cF{r@\tl_to_str:n{#1}}{ \exp_args:Ne\label { \tl_to_str:n{#1} } }
+  }
+}
+\NewDocumentCommand \sref { O{} m O{}}{
+  \stex_keys_set:nn { sref / 1 }{ #1 }
+  \str_if_empty:NTF \l_stex_key_file_str {
+    \__stex_refs_local:n{#2}
+  }{
+    ??? % TODO
+  }
 }
 
-\NewDocumentCommand \sreflabel {m} {}
+\cs_new_protected:Nn \__stex_refs_local:n {
+  \tl_if_exist:cTF{ g_stex_sref_label_ #1 }{
+    %% TODO INSERT FTML ANNOTATION
+    \exp_args:Ne \__stex_refs_local_ref:n {\use:c{ g_stex_sref_label_ #1 }}
+  }{
+    \tl_if_empty:NTF \l_stex_key_fallback_tl { ??? }{ \l_stex_key_fallback_tl }
+  }
+}
+
+\cs_new_protected:Nn \__stex_refs_local_ref:n {
+  \cs_if_exist:cTF{autoref}{
+    \l_stex_key_pre_tl \autoref{#1} \l_stex_key_post_tl
+  }{
+    \message{^^J^^J
+      sTeX~Warning: \c_backslash_str sref ~ with ~ local ~ target ~ used ~ without ~ hyperref ~ loaded!
+    ^^J^^J}
+    \l_stex_key_pre_tl \ref{#1} \l_stex_key_post_tl
+  }
+}
+
+\cs_new:Npn \STeXInternalSRefLabel #1 #2 #3 #4 {}
+
+\cs_new_protected:Npn \STeXInternalNewSRefLabel #1 #2 {
+  \tl_gset:ce{ g_stex_sref_label_ #1 }{ \tl_to_str:n{ #2 } }
+}
+
 \newcommand\srefsetin[3][]{}
-\NewDocumentCommand \sref { O{} m O{}}{???}
 \NewDocumentCommand \extref { O{} m m}{???}
 
 \cs_new_protected:Nn \stex_ref_new_symbol:n {}
-\cs_new_protected:Nn \stex_ref_new_sym_target:n {}
-\cs_new_protected:Nn \stex_ref_new_sym_target:nn {}
+
 \NewDocumentCommand \srefsym { m m }{ #2 }
-\cs_new_protected:Npn \srefsymuri #1 {}
+
+\cs_new_protected:Npn \srefsymuri #1 { \use_none:n }
 \NewDocumentCommand \inputref { O{} m}{
   \stex_in_archive:nn{#1}{
     \stex_document_uri_from_archive_file:Nn \l__stex_inputs_uri {#2}
@@ -1775,7 +1837,7 @@
       \str_range:Nnn\l__stex_inputs_tmp_str 1 {-5}
     }
   }{
-    \msg_fatal:nnnn{stex}{error/nofile}{\libusepackage}{#1.sty}
+    \msg_fatal:nnnn{stex}{error/nofile}{\libusepackage}{#2.sty}
   }
 }
 \newcommand \libusetikzlibrary [2][] {
@@ -6802,15 +6864,15 @@
 }
 
 \cs_new_protected:Nn \__stex_statements_force_id: {
-  \str_if_empty:NT \l_stex_key_id_str {
-    \_stex_ref_new_id:n{}
-    \str_set_eq:NN \l_stex_key_id_str \l__stex_refs_str
-  }
+  %\str_if_empty:NT \l_stex_key_id_str {
+  %  \_stex_ref_new_id:n{}
+  %  \str_set_eq:NN \l_stex_key_id_str \l__stex_refs_str
+  %}
 }
 \cs_new_protected:Nn \__stex_statements_setup_def: {
   \stex_if_smsmode:F{
     \seq_map_inline:Nn \l_stex_fors_seq {
-      \stex_ref_new_sym_target:n{##1}
+      \exp_args:Ne \stex_ref_new_sym_target:n{\stex_use_symbol_uri:n{##1}}
     }
   }
   \stex_reactivate_macro:N \definiendum
@@ -6829,7 +6891,7 @@
   \__stex_statements_setup:n{assertion}
   \stex_if_smsmode:F{
     \seq_map_inline:Nn \l_stex_fors_seq {
-      \stex_ref_new_sym_target:n{##1}
+      \exp_args:Ne \stex_ref_new_sym_target:n{\stex_use_symbol_uri:n{##1}}
     }
   }
   \stex_reactivate_macro:N \varbind
@@ -7030,10 +7092,14 @@
   }
   \seq_map_inline:Nn \l_stex_fors_seq {
     \stex_debug:nn{definiens}{Adding~definiens~to~##1}
-    \_stex_add_definiens:nn {##1}{\STEXinvisible{proven}}
+    \stex_if_do_html:TF{
+      \STEXinvisible{\hbox{\_stex_add_definiens:nn {##1}{proven}}}
+    }{
+      \_stex_add_definiens:nn {##1}{\STEXinvisible{proven}}
+    }
   }
   \stex_if_do_html:F\stex_style_apply:
-  \_stex_do_id:
+  %\_stex_do_id:
   \stex_reactivate_macro:N \subproof
   \stex_reactivate_macro:N \spfstep
   \stex_reactivate_macro:N \conclude
@@ -7042,14 +7108,15 @@
   \stex_reactivate_macro:N \yield
   \stex_reactivate_macro:N \spfblock
   \stex_reactivate_macro:N \spfjust
-  \stex_annotate:nn{data-ftml-title={}}{#2}
+  \noindent\stex_annotate:nn{data-ftml-prooftitle={}}{\_stex_annotate_force_break:n{#2}}\par
   \stex_if_do_html:T{
-    \begin{stex_annotate_env}{data-ftml-proofbody={}}
+    \use:c{stex_annotate_env}{data-ftml-proofbody={}}
+    \_stex_annotate_force_break:n{}
   }
 }
 
 \cs_new_protected:Nn \__stex_proof_html_env:n {
-  \par \exp_args:Nne \begin{stex_annotate_env}{
+  \exp_args:Nne \use:c{stex_annotate_env}{
     data-ftml-#1={
       \seq_if_empty:NF \l_stex_fors_seq {
         \seq_map_function:NN \l_stex_fors_seq \stex_use_symbol_uri:N
@@ -7062,30 +7129,50 @@
   \__stex_proof_html:
 }
 
+\cs_new_protected:Nn \__stex_proof_html: {
+  \_stex_annotate_force_break:n{}
+  \tl_set:Ne\l_tmpa_tl {\l_stex_key_term_tl\l_stex_key_method_tl}
+  \tl_if_empty:NF\l_tmpa_tl{
+    \stex_annotate_invisible:n{\hbox{
+      \tl_if_empty:NF \l_stex_key_term_tl {
+        $\stex_annotate:nn{data-ftml-proofterm={}}{\l_stex_key_term_tl}$
+      }
+      \tl_if_empty:NF \l_stex_key_method_tl {
+        \stex_annotate:nn{data-ftml-proofmethod={}}{\l_stex_key_method_tl}
+      }
+    }}
+  }
+}
+
+\cs_new_protected:Nn \__stex_proof_start_comment: {
+  \par
+  \bool_if:NT \l__stex_proof_in_spfblock_bool {
+    \group_begin:\stexcommentfont
+  }
+}
+\cs_new_protected:Nn \__stex_proof_end_comment: {
+  \par
+  \bool_if:NT \l__stex_proof_in_spfblock_bool {
+    \group_end:
+  }
+}
+
 \stex_new_stylable_env:nnnnnnn{proof}{O{} m}{
   \__stex_proof_begin_proof:nn{#1}{#2}
-  \bool_set_true:N\l__stex_proof_in_spfblock_bool\__stex_proof_start_list:n{}
-  \group_begin:\stexcommentfont
+  \bool_set_true:N\l__stex_proof_in_spfblock_bool
+  %\__stex_proof_start_list:n{}
+  \__stex_proof_start_comment:
 }{
+  \__stex_proof_end_comment:
   \stex_if_do_html:TF{
-    \bool_if:NT\l__stex_proof_in_spfblock_bool {
-      \group_end:\__stex_proof_end_list:
-    }
-    \end{stex_annotate_env}\end{stex_annotate_env}
+    %\__stex_proof_end_list:
+    \use:c{endstex_annotate_env}\use:c{endstex_annotate_env}
   }\stex_style_apply:
 }{
   \emph{\sproofautorefname :}~
 }{
   \sproofend
 }{s}
-
-\stex_if_html_backend:F{
-\AddToHook{env/sproof/end}{
-  \bool_if:NT\l__stex_proof_in_spfblock_bool {
-    \group_end:\__stex_proof_end_list:
-  }
-}
-}
 
 \stex_new_stylable_env:nnnnnnn{proof*}{O{}}{
   \__stex_proof_begin_proof:nn{#1}{}
@@ -7099,7 +7186,8 @@
 }{s}
 
 \cs_new_protected:Nn \__stex_proof_start_list:n {
-  \begin{list}{}{
+  %\par
+  \group_begin:\list{}{
     \setlength\topsep{0pt}
     \setlength\parsep{0pt}
     \setlength\rightmargin{0pt}
@@ -7107,25 +7195,12 @@
 }
 
 \cs_new_protected:Nn \__stex_proof_end_list: {
-  \end{list}
-}
-
-\cs_new_protected:Nn \__stex_proof_html: {
-  \tl_set:Ne\l_tmpa_tl {\l_stex_key_term_tl\l_stex_key_method_tl}
-  \tl_if_empty:NF\l_tmpa_tl{
-    \stex_annotate_invisible:n{\hbox{
-      \tl_if_empty:NF \l_stex_key_term_tl {
-        $\stex_annotate:nn{data-ftml-proofterm={}}{\l_stex_key_term_tl}$
-      }
-      \tl_if_empty:NF \l_stex_key_method_tl {
-        \stex_annotate:nn{data-ftml-proofmethod={}}{\l_stex_key_method_tl}
-      }
-    }}
-  }
+  %\par
+  \endlist\group_end:
 }
 \str_set_eq:NN \subproofautorefname \spfstepautorefname
 
-\stex_new_stylable_env:nnnnnnn{subproof}{s O{} m}{\par
+\stex_new_stylable_env:nnnnnnn{subproof}{s O{} m}{
   \stex_keys_set:nn{spf}{#2}
   \_stex_do_for_list:
   \stex_if_do_html:T {
@@ -7133,82 +7208,87 @@
   }
   \seq_map_inline:Nn \l_stex_fors_seq {
     \stex_debug:nn{definiens}{Adding~definiens~to~##1}
-    \_stex_add_definiens:nn {##1}{\STEXinvisible{proven}}
+    \stex_if_do_html:TF{
+      \STEXinvisible{\hbox{\_stex_add_definiens:nn {##1}{proven}}}
+    }{
+      \_stex_add_definiens:nn {##1}{\STEXinvisible{proven}}
+    }
   }
 
   \IfBooleanTF #1 {
-    \stex_if_do_html:F\stex_style_apply:
+    \stex_if_do_html:F \stex_style_apply:
     \str_if_empty:NF \l_stex_key_id_str {
       \__stex_proof_number_as_string:N \@currentlabel
-      \str_set:Ne \@currentHref{subproof.\@currentlabel}
-      \_stex_do_id:
+      %\str_set:Ne \@currentHref{subproof.\@currentlabel}
+      %\_stex_do_id:
     }
     \bool_set_false:N \l__stex_proof_in_spfblock_bool
-    \stex_annotate:nn{data-ftml-title={}}{#3}
+    \stex_annotate:nn{data-ftml-subprooftitle={}}{#3}
   }{
     \bool_if:NTF \l__stex_proof_in_spfblock_bool {
-      \str_if_empty:NF \l_stex_key_id_str {
-        \__stex_proof_number_as_string:N \@currentlabel
-        \str_set:Ne \@currentHref{subproof.\@currentlabel}
-        \_stex_do_id:
-      }
-      \__stex_proof_start_list:n\__stex_proof_insert_number:
-        \stex_annotate:nn{data-ftml-title={}}{#3}
+      %\str_if_empty:NF \l_stex_key_id_str {
+        %\__stex_proof_number_as_string:N \@currentlabel
+        %\str_set:Ne \@currentHref{subproof.\@currentlabel}
+        %\_stex_do_id:
+      %}
+      \use:c{stex_annotate_env}{data-ftml-subprooftitle={}} \__stex_proof_start_list:n\__stex_proof_insert_number: #3 \par \use:c{endstex_annotate_env}
         \__stex_proof_add_counter:
-        \stex_style_apply:
+        \stex_if_do_html:F \stex_style_apply:
     }{
-      \stex_annotate:nn{data-ftml-title={}}{#3}
-      \stex_style_apply:
-      \_stex_do_id:
+      \noindent \stex_annotate:nn{data-ftml-subprooftitle={}}{#3} \par
+      \stex_if_do_html:F \stex_style_apply:
+      %\_stex_do_id:
     }
   }
   \stex_if_do_html:T{
-    \begin{stex_annotate_env}{data-ftml-proofbody={}}
+    \use:c{stex_annotate_env}{data-ftml-proofbody={}}
+    \_stex_annotate_force_break:n{}
   }
-  \bool_if:NT \l__stex_proof_in_spfblock_bool {\group_begin:\stexcommentfont}
+  \__stex_proof_start_comment:
 }{
-  \stex_if_do_html:F\stex_style_apply:
-  \bool_if:NT \l__stex_proof_in_spfblock_bool \__stex_proof_inc_counter:
-  \stex_if_do_html:T{\end{stex_annotate_env}}
-  \bool_if:NT\l__stex_proof_in_spfblock_bool \__stex_proof_end_list:
-  \stex_if_do_html:T{\end{stex_annotate_env}}
-  \aftergroup \__stex_proof_inblock_restore:
+  \__stex_proof_end_comment:
+  \bool_if:NT\l__stex_proof_in_spfblock_bool {
+    \__stex_proof_remove_counter:
+    \__stex_proof_inc_counter:
+  }
+
+  \stex_if_do_html:TF{
+    \use:c{endstex_annotate_env} %proofbody
+    \bool_if:NT\l__stex_proof_in_spfblock_bool \__stex_proof_end_list:
+    \use:c{endstex_annotate_env} % subproof
+  }{
+    \stex_style_apply:
+    \bool_if:NT \l__stex_proof_in_spfblock_bool {\__stex_proof_inc_counter:\__stex_proof_end_list:}
+  }
 }{}{}{}
 
 \AddToHook{env/subproof/before}{
-  \bool_if:NT \l__stex_proof_in_spfblock_bool \group_end:
+  \__stex_proof_end_comment:
 }
 
-\AddToHook{env/subproof/end}{
-  \bool_if:NT\l__stex_proof_in_spfblock_bool {
-    \group_end:\__stex_proof_remove_counter:
-    %\__stex_proof_end_list:
-  }
+\AddToHook{env/subproof/after}{
+  \__stex_proof_start_comment:
 }
 
 \stex_deactivate_macro:Nn \subproof {sproof~environments}
 
-\cs_new_protected:Nn \__stex_proof_inblock_restore: {
-  \bool_if:NT\l__stex_proof_in_spfblock_bool {
-    \group_begin:\stexcommentfont
-  }
-}
 \newenvironment{spfsketchenv}{}{}
 \stex_new_stylable_cmd:nnnn{spfsketch}{O{} m}{\par
   \begin{spfsketchenv}
   \stex_keys_set:nn{spf}{#1}
   \_stex_do_for_list:
   \_stex_do_id:
-  \exp_args:Ne \stex_annotate:nn{
+  \par
+  \exp_args:Nne \use:c{stex_annotate_env}{
     data-ftml-proofsketch={
       \seq_if_empty:NF \l_stex_fors_seq {
         \seq_map_function:NN \l_stex_fors_seq \stex_use_symbol_uri:N
       }
     }
-  }{
-    \stex_style_apply:
-    #2
   }
+    \stex_style_apply:
+    #2\par
+    \use:c{endstex_annotate_env}
   \end{spfsketchenv}
 }{
   \noindent\emph{\spfsketchenvautorefname :}~
@@ -7227,18 +7307,18 @@
 }{id,style,title}
 \cs_new_protected:Nn \__stex_proof_make_step_macro:Nnnnn {
   \NewDocumentCommand #1 {s O{} +m} {
-    \bool_if:NT \l__stex_proof_in_spfblock_bool \group_end:
+    \__stex_proof_end_comment:
     \stex_keys_set:nn{spfsteps}{##2}
     \str_if_empty:NF \l_stex_key_name_str {
       \exp_args:Nne\use:nn{\vardef}{{v\l_stex_key_name_str}[name=\l_stex_key_name_str]{\l_stex_key_name_str}}
     }
 
-    \begin{spfstepenv}
-      \str_if_empty:NF \l_stex_key_id_str {
-        \__stex_proof_number_as_string:N \@currentlabel
-        \str_set:Ne \@currentHref{spfstep.\@currentlabel}
-        \_stex_do_id:
-      }
+    \spfstepenv
+    \str_if_empty:NF \l_stex_key_id_str {
+      %\__stex_proof_number_as_string:N \@currentlabel
+      %\str_set:Ne \@currentHref{spfstep.\@currentlabel}
+      %\_stex_do_id:
+    }
 
     \bool_if:NTF \l__stex_proof_in_spfblock_bool {
       \IfBooleanTF ##1 {
@@ -7247,11 +7327,11 @@
         \__stex_proof_step_html:nn{#2}{\__stex_proof_start_list:n{#3} ##3 \__stex_proof_end_list:}
         #5
       }
-      \end{spfstepenv}
-      \group_begin:\stexcommentfont
+      \endspfstepenv
+      \__stex_proof_start_comment:
     }{
       \__stex_proof_step_html:nn{#2}{##3}
-      \end{spfstepenv}
+      \endspfstepenv
     }
   }
   \stex_deactivate_macro:Nn #1 {sproof~environments}
@@ -7259,7 +7339,8 @@
 
 \cs_new_protected:Nn \__stex_proof_step_html:nn {
   \stex_if_do_html:TF{
-    \exp_args:Ne \stex_annotate:nn{
+    %\group_begin:
+    \exp_args:Nne \use:c{stex_annotate_env}{
       data-ftml-spf#1={
         \seq_if_empty:NF \l_stex_fors_seq {
           \seq_map_function:NN \l_stex_fors_seq \stex_use_symbol_uri:N
@@ -7268,10 +7349,12 @@
       \str_if_empty:NF \l_stex_key_name_str {,
         data-ftml-stepname={\l_stex_key_name_str}
       }
-    }{
-      \__stex_proof_html:
-      #2
     }
+    \__stex_proof_html:
+    #2
+    \par
+    \use:c{endstex_annotate_env}
+    %\group_end:
   }{ #2 }
 }
 \newenvironment{spfstepenv}{
@@ -7280,27 +7363,31 @@
 \NewDocumentEnvironment{spfblock}{}{
   \bool_set_false:N \l__stex_proof_in_spfblock_bool
 }{
-  \aftergroup\__stex_proof_inblock_restore:
+  \aftergroup\__stex_proof_start_comment:
 }
 
 \stex_deactivate_macro:Nn \spfblock {sproof~environments}
 \AddToHook{env/spfblock/before}{
-  \bool_if:NT \l__stex_proof_in_spfblock_bool \group_end:
+  \__stex_proof_end_comment:
 }
 \__stex_proof_make_step_macro:Nnnnn \spfstep {step} \__stex_proof_insert_number: {} \__stex_proof_inc_counter:
 \__stex_proof_make_step_macro:Nnnnn \assumption {assumption} \__stex_proof_insert_number: {} \__stex_proof_inc_counter:
 \__stex_proof_make_step_macro:Nnnnn \conclude {conclusion} {$\Rightarrow$} {} {}
 \NewDocumentCommand \eqstep {s m}{
+  \__stex_proof_end_comment:
+  \spfstepenv
+
   \bool_if:NTF \l__stex_proof_in_spfblock_bool {
-    \group_end:
     \IfBooleanTF #1 {
       \__stex_proof_step_html:nn{eqstep}{$= #2$}
     }{
       \__stex_proof_step_html:nn{eqstep}{\__stex_proof_start_list:n{$=$} $#2$ \__stex_proof_end_list:}
     }
-    \group_begin:\stexcommentfont
+    \endspfstepenv
+    \__stex_proof_start_comment:
   }{
     \__stex_proof_step_html:nn{eqstep}{$= #2$}
+    \endspfstepenv
   }
 }
 \stex_deactivate_macro:Nn \eqstep {sproof~environments}

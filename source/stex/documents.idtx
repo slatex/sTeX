@@ -438,6 +438,14 @@
 %    \begin{macrocode}
 %<@@=stex_refs>
 %    \end{macrocode}
+%
+% The |.sref|-file:
+%    \begin{macrocode}
+\iow_new:N \c_@@_iow
+\AtBeginDocument{ \iow_open:Nn \c_@@_iow {\jobname.sref} }
+\AtEndDocument{\iow_close:N \c_@@_iow}
+%    \end{macrocode}
+%
 % \end{implementation}
 %
 % \begin{documentation}
@@ -446,33 +454,127 @@
 %
 % \begin{implementation}
 %
-%  TODO
+% Keys:
 %    \begin{macrocode}
-\int_new:N \l_@@_unnamed_counter_int
-
-\cs_new_protected:Nn \_stex_ref_new_id:n {
-  \str_if_empty:nTF {#1}{
-    \int_gincr:N \l_@@_unnamed_counter_int
-    \str_set:Ne \l_@@_str {REF\int_use:N \l_@@_unnamed_counter_int}
-  }{
-    \str_set:Nn \l_@@_str {#1}
+\stex_keys_define:nnnn{sref / 1}{
+  \tl_clear:N \l_stex_key_pre_tl
+  \tl_clear:N \l_stex_key_post_tl
+  \tl_clear:N \l_stex_key_fallback_tl
+}{
+  % TODO get rid of this
+  fallback  .code:n = {},
+  pre       .code:n = {},
+  post      .code:n = {}
+}{archive file}
+\stex_keys_define:nnnn{sref / 2}{}{}{archive file, title}
+%    \end{macrocode}
+%
+% Target declarations:
+%
+% \begin{sfunction}{\sreflabel,\stex_ref_new_doc_target:n}{}
+%
+%  Adds a new reference target in the current document (element) URI. Ultimately defers to \cs{label}.
+%
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_ref_new_doc_target:n {
+  \stex_if_smsmode:F{
+    \tl_set:Ne \l_@@_new_tl { \stex_new_document_element_uri:n { #1 } }
+    \exp_args:Ne \label { \stex_use_document_uri:N \l_@@_new_tl }
+    \exp_args:Nne \STeXInternalNewSRefLabel{#1}{ \stex_use_document_uri:N \l_@@_new_tl }
+    \iow_now:Ne \@auxout {
+      \STeXInternalNewSRefLabel{#1}{ \stex_use_document_uri:N \l_@@_new_tl }
+    }
+    \iow_now:Ne \c_@@_iow {
+      \exp_not:N \STeXInternalSRefLabel 
+        { #1 }
+        { \stex_use_document_uri:N \l_@@_new_tl }
+        { \exp_not:o \@currentHref}
+        { \exp_not:o \@currentlabelname }
+    }
   }
 }
 
-\cs_new_protected:Nn \stex_ref_new_doc_target:n {
-  \_stex_ref_new_id:n{#1}
+\NewDocumentCommand \sreflabel {m} { \stex_ref_new_doc_target:n{#1} }
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\stex_ref_new_sym_target:n}{}
+%
+% Adds a new reference target for the symbol with the given URI string; if not already defined;
+%
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_ref_new_sym_target:n {
+  \stex_if_smsmode:F{
+    \cs_if_exist:cF{r@\tl_to_str:n{#1}}{ \exp_args:Ne\label { \tl_to_str:n{#1} } }
+  }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+%
+% Inserting References:
+%
+% \begin{sfunction}{\sref}{}
+%
+% \StartImpl
+%    \begin{macrocode}
+\NewDocumentCommand \sref { O{} m O{}}{
+  \stex_keys_set:nn { sref / 1 }{ #1 }
+  \str_if_empty:NTF \l_stex_key_file_str {
+    \_@@_local:n{#2}
+  }{
+    ??? % TODO
+  } 
 }
 
-\NewDocumentCommand \sreflabel {m} {}
+\cs_new_protected:Nn \_@@_local:n {
+  \tl_if_exist:cTF{ g_stex_sref_label_ #1 }{
+    %% TODO INSERT FTML ANNOTATION
+    \exp_args:Ne \_@@_local_ref:n {\use:c{ g_stex_sref_label_ #1 }}
+  }{
+    \tl_if_empty:NTF \l_stex_key_fallback_tl { ??? }{ \l_stex_key_fallback_tl }
+  }
+}
+
+\cs_new_protected:Nn \_@@_local_ref:n {
+  \cs_if_exist:cTF{autoref}{
+    \l_stex_key_pre_tl \autoref{#1} \l_stex_key_post_tl
+  }{
+    \message{^^J^^J
+      sTeX~Warning: \c_backslash_str sref ~ with ~ local ~ target ~ used ~ without ~ hyperref ~ loaded!
+    ^^J^^J}
+    \l_stex_key_pre_tl \ref{#1} \l_stex_key_post_tl
+  }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+%
+%  TODO
+%    \begin{macrocode}
+%\int_new:N \l_@@_unnamed_counter_int
+
+
+
+
+\cs_new:Npn \STeXInternalSRefLabel #1 #2 #3 #4 {}
+
+\cs_new_protected:Npn \STeXInternalNewSRefLabel #1 #2 {
+  \tl_gset:ce{ g_stex_sref_label_ #1 }{ \tl_to_str:n{ #2 } }
+}
+
+
 \newcommand\srefsetin[3][]{}
-\NewDocumentCommand \sref { O{} m O{}}{???}
 \NewDocumentCommand \extref { O{} m m}{???}
 
 \cs_new_protected:Nn \stex_ref_new_symbol:n {}
-\cs_new_protected:Nn \stex_ref_new_sym_target:n {}
-\cs_new_protected:Nn \stex_ref_new_sym_target:nn {}
+
+
 \NewDocumentCommand \srefsym { m m }{ #2 }
-\cs_new_protected:Npn \srefsymuri #1 {}
+
+\cs_new_protected:Npn \srefsymuri #1 { \use_none:n }
 %    \end{macrocode}
 % \end{implementation}
 %
@@ -636,7 +738,7 @@
       \str_range:Nnn\l_@@_tmp_str 1 {-5}
     }
   }{
-    \msg_fatal:nnnn{stex}{error/nofile}{\libusepackage}{#1.sty}
+    \msg_fatal:nnnn{stex}{error/nofile}{\libusepackage}{#2.sty}
   }
 }
 %    \end{macrocode}
