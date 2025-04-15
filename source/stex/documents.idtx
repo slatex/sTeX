@@ -534,6 +534,7 @@
 }
 
 \cs_new_protected:Nn \_@@_local:n {
+  \stex_debug:nn{sref}{Checking~#1}
   \tl_if_exist:cTF{ g_stex_sref_label_ #1 }{
     %% TODO INSERT FTML ANNOTATION
     \exp_args:Ne \_@@_local_ref:n {\use:c{ g_stex_sref_label_ #1 }}
@@ -554,13 +555,14 @@
 }
 
 \cs_new_protected:Nn \_@@_remote:nn {
-  \str_set:Nn \l_@@_key { #1 }
-  \tl_set:Nn \l_@@_in { #2 }
+  \str_set:Nn \l_@@_key { #2 }
+  \tl_set:Nn \l_@@_in { #1 }
   \exp_args:No \stex_in_archive:nn \l_stex_key_archive_str {
     \exp_args:NNo \stex_document_uri_from_archive_file:Nn \l_@@_uri {\l_stex_key_file_str}
     %\message{^^J^^JComparing~\meaning\l_@@_uri^^J\meaning\c_stex_main_document_uri^^J^^J}
+    \stex_debug:nn{sref}{Checking~#2~from~\stex_use_document_uri:N \l_@@_uri}
     \tl_if_eq:NNTF \l_@@_uri \c_stex_main_document_uri {
-      \_@@_local:n{ #1 }
+      \_@@_local:n{ #2 }
     }{
       \str_set:Ne \l_@@_uri { \stex_use_document_uri:N \l_@@_uri }
       \str_set:Ne \l_@@_file { \exp_args:No \stex_source_path:n {\l_stex_key_file_str}.sref }
@@ -569,10 +571,11 @@
         \_@@_find:
       }{}
       \tl_if_empty:NTF \l_@@_tmp {
+        \stex_debug:nn{sref}{Not~found}
         \tl_if_empty:NTF \l_stex_key_fallback_tl { ??? }{ \l_stex_key_fallback_tl }
       }{
         %\message{^^J^^JFound:~\meaning\l_@@_tmp^^J^^J}
-        \str_set_eq:Nn \l_@@_uri \l_@@_tmp
+        \str_set_eq:NN \l_@@_uri \l_@@_tmp
         \_@@_maybe_in:
       }
     }
@@ -580,11 +583,11 @@
 }
 
 \cs_new_protected:Nn \_@@_find: {
-  \group_begin:
+  \setbox0\vbox\bgroup
     \cs_set_eq:NN \STeXInternalSRefLabel \_@@_check_i:nnnn
     \use:c{@ @ input}{\l_@@_file}
     \exp_args:NNe \use:nn
-  \group_end: {
+  \egroup {
     \tl_set:Nn \exp_not:N \l_@@_tmp { \l_@@_tmp }
   }
 }
@@ -599,6 +602,7 @@
 }
 
 \cs_new_protected:Nn \_@@_maybe_in: {
+  \stex_debug:nn{sref}{maybe~in...?}
   \tl_if_empty:NTF\l_@@_in {
     \cs_if_exist:cTF{r@\l_@@_uri}{
       \exp_args:No \_@@_local_ref:n \l_@@_uri
@@ -618,29 +622,48 @@
   }
 }
 
-\cs_new_protected:Nn \_@@_in: { ??? }
-%\cs_new_protected:Nn \_@@_in: {
-%  \exp_args:No \stex_in_archive:nn \l_stex_key_archive_str {
-%    \str_set:Ne \l_@@_file { \exp_args:No \stex_source_path:n {\l_stex_key_file_str}.sref }
-%    \tl_clear:N \l_@@_tmp
-%    \exp_args:No \IfFileExists \l_@@_file {
-%        \_@@_find_in:
-%    }{}
-%    \tl_if_empty:NTF\l_@@_tmp{
-%      ???
-%    }{
-%      \message{^^J^^JHERE:~\meaning\l_@@_tmp^^J}
-%      ??? %TODO
-%    }
-%  }
-%}
+\cs_new_protected:Nn \_@@_in: {
+  \exp_args:No \stex_in_archive:nn \l_stex_key_archive_str {
+    \str_set:Ne \l_@@_file { \exp_args:No \stex_source_path:n {\l_stex_key_file_str}.sref }
+    \tl_clear:N \l_@@_tmp
+    \exp_args:No \IfFileExists \l_@@_file {
+        \_@@_find_in:
+    }{}
+    \stex_debug:nn{sref}{Result:~\l_@@_tmp}
+    \tl_if_empty:NTF\l_@@_tmp{
+      \stex_debug:nn{sref}{Not~found}
+      \tl_if_empty:NTF \l_stex_key_fallback_tl { ??? }{ \l_stex_key_fallback_tl }
+    }{
+      \tl_set:Ne \l_@@_tmp {
+        \exp_after:wN \_@@_in_text:nn \l_@@_tmp
+      }
+      \cs_if_exist:NT \href {\exp_args:No \href \l_@@_uri } \l_@@_tmp
+    }
+  }
+}
+
+\cs_new:Nn \_@@_in_text:nn {
+  \_@@_in_text:w #1 \_@@_:
+  \tl_if_empty:nF{#2}{~(#2)}
+  \tl_if_empty:NF \l_stex_key_title_tl {
+    {}~in~\l_stex_key_title_tl
+  }
+}
+
+\cs_new:Npn \_@@_in_text:w #1.#2 \_@@_: {
+  \_@@_uppercase:n #1~#2~
+}
+
+\cs_new:Nn \_@@_uppercase:n { \uppercase{#1}}
 
 \cs_new_protected:Nn \_@@_find_in: {
-  \group_begin:
+  \stex_debug:nn{sref}{finding~in...?}
+  \setbox0\vbox\bgroup
+    \catcode`^^J=9\relax
     \cs_set_eq:NN \STeXInternalSRefLabel \_@@_check_in:nnnn
     \use:c{@ @ input}{\l_@@_file}
     \exp_args:NNe \use:nn
-  \group_end: {
+  \egroup {
     \tl_set:Nn \exp_not:N \l_@@_tmp { \l_@@_tmp }
   }
 }
