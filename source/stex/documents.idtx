@@ -449,7 +449,10 @@
 % \end{implementation}
 %
 % \begin{documentation}
-%  Work in Progress
+%  |[id=foo]| sets the current fragment's (e.g. |Definition 3.1 (Foo)|) name to |foo|, resulting in a DocumentElementURI
+%  |..&e=foo|. It then delegates to |\label{...&e=foo}| (which defines |\r@...&e=foo|),
+%  stores |:::&e=foo| in |\g_stex_sref_label_foo|, and writes
+%  |\STeXInternalSRefLabel{foo}{..&e=foo}{definition.3.1}{Foo}| to the sref file.
 % \end{documentation}
 %
 % \begin{implementation}
@@ -522,11 +525,12 @@
 %    \begin{macrocode}
 \NewDocumentCommand \sref { O{} m O{}}{
   \stex_keys_set:nn { sref / 1 }{ #1 }
+  \tl_clear:N \l_@@_tmp
   \str_if_empty:NTF \l_stex_key_file_str {
-    \_@@_local:n{#2}
+    \_@@_local:n
   }{
-    ??? % TODO
-  } 
+    \_@@_remote:nn{#3}
+  }{#2}
 }
 
 \cs_new_protected:Nn \_@@_local:n {
@@ -548,6 +552,105 @@
     \l_stex_key_pre_tl \ref{#1} \l_stex_key_post_tl
   }
 }
+
+\cs_new_protected:Nn \_@@_remote:nn {
+  \str_set:Nn \l_@@_key { #1 }
+  \tl_set:Nn \l_@@_in { #2 }
+  \exp_args:No \stex_in_archive:nn \l_stex_key_archive_str {
+    \exp_args:NNo \stex_document_uri_from_archive_file:Nn \l_@@_uri {\l_stex_key_file_str}
+    %\message{^^J^^JComparing~\meaning\l_@@_uri^^J\meaning\c_stex_main_document_uri^^J^^J}
+    \tl_if_eq:NNTF \l_@@_uri \c_stex_main_document_uri {
+      \_@@_local:n{ #1 }
+    }{
+      \str_set:Ne \l_@@_uri { \stex_use_document_uri:N \l_@@_uri }
+      \str_set:Ne \l_@@_file { \exp_args:No \stex_source_path:n {\l_stex_key_file_str}.sref }
+      %\message{^^J^^JHere:~\l_@@_uri^^J \meaning\l_@@_file^^J^^J }
+      \exp_args:No \IfFileExists \l_@@_file {
+        \_@@_find:
+      }{}
+      \tl_if_empty:NTF \l_@@_tmp {
+        \tl_if_empty:NTF \l_stex_key_fallback_tl { ??? }{ \l_stex_key_fallback_tl }
+      }{
+        %\message{^^J^^JFound:~\meaning\l_@@_tmp^^J^^J}
+        \str_set_eq:Nn \l_@@_uri \l_@@_tmp
+        \_@@_maybe_in:
+      }
+    }
+  }
+}
+
+\cs_new_protected:Nn \_@@_find: {
+  \group_begin:
+    \cs_set_eq:NN \STeXInternalSRefLabel \_@@_check_i:nnnn
+    \use:c{@ @ input}{\l_@@_file}
+    \exp_args:NNe \use:nn
+  \group_end: {
+    \tl_set:Nn \exp_not:N \l_@@_tmp { \l_@@_tmp }
+  }
+}
+
+\cs_new_protected:Nn \_@@_check_i:nnnn {
+  \exp_args:No \str_if_eq:nnT{ \l_@@_key }{#1}{
+    \exp_args:Nno \stex_str_if_starts_with:nnT{#2}{\l_@@_uri}{
+      \str_set:Nn \l_@@_tmp {#2}
+      \endinput
+    }
+  }
+}
+
+\cs_new_protected:Nn \_@@_maybe_in: {
+  \tl_if_empty:NTF\l_@@_in {
+    \cs_if_exist:cTF{r@\l_@@_uri}{
+      \exp_args:No \_@@_local_ref:n \l_@@_uri
+    }{
+      \tl_if_empty:NTF \l_@@_default_file {
+        \exp_args:No \_@@_local_ref:n \l_@@_uri
+      }{
+        \str_set_eq:NN \l_stex_key_archive_str \l_@@_default_archive
+        \str_set_eq:NN \l_stex_key_file_str \l_@@_default_file
+        \tl_set_eq:NN \l_stex_key_title_tl \l_@@_default_title
+        \_@@_in:
+      }
+    }
+  }{
+    \exp_after:Nno \stex_keys_set:nn{ sref / 2 }{ \l_@@_in }
+    \_@@_in:
+  }
+}
+
+\cs_new_protected:Nn \_@@_in: { ??? }
+%\cs_new_protected:Nn \_@@_in: {
+%  \exp_args:No \stex_in_archive:nn \l_stex_key_archive_str {
+%    \str_set:Ne \l_@@_file { \exp_args:No \stex_source_path:n {\l_stex_key_file_str}.sref }
+%    \tl_clear:N \l_@@_tmp
+%    \exp_args:No \IfFileExists \l_@@_file {
+%        \_@@_find_in:
+%    }{}
+%    \tl_if_empty:NTF\l_@@_tmp{
+%      ???
+%    }{
+%      \message{^^J^^JHERE:~\meaning\l_@@_tmp^^J}
+%      ??? %TODO
+%    }
+%  }
+%}
+
+\cs_new_protected:Nn \_@@_find_in: {
+  \group_begin:
+    \cs_set_eq:NN \STeXInternalSRefLabel \_@@_check_in:nnnn
+    \use:c{@ @ input}{\l_@@_file}
+    \exp_args:NNe \use:nn
+  \group_end: {
+    \tl_set:Nn \exp_not:N \l_@@_tmp { \l_@@_tmp }
+  }
+}
+
+\cs_new_protected:Nn \_@@_check_in:nnnn {
+  \exp_args:No \str_if_eq:nnT{ \l_@@_uri }{#2}{
+    \tl_set:Nn \l_@@_tmp { {#3}{#4} }
+    \endinput
+  }
+}
 %    \end{macrocode}
 % \end{sfunction}
 %
@@ -565,16 +668,36 @@
   \tl_gset:ce{ g_stex_sref_label_ #1 }{ \tl_to_str:n{ #2 } }
 }
 
+\tl_new:N \l_@@_default_title
+\str_new:N \l_@@_default_file
+\str_new:N \l_@@_default_archive
 
-\newcommand\srefsetin[3][]{}
+\newcommand\srefsetin[3][]{
+  \tl_if_empty:nTF{#1}{
+    \str_set:Ne \l_@@_default_archive { \stex_archive_id:N \c_stex_main_archive }
+  }{
+    \str_set:Nn \l_@@_default_archive { #1 }
+  }
+  \str_set:Ne \l_@@_default_file { #2 }
+  \str_set:Nn \l_@@_default_title { #3 }
+}
 \NewDocumentCommand \extref { O{} m m}{???}
 
 \cs_new_protected:Nn \stex_ref_new_symbol:n {}
 
 
-\NewDocumentCommand \srefsym { m m }{ #2 }
+\NewDocumentCommand \srefsym { m m }{ 
+  \stex_get_symbol:n { #1 }
+  \exp_args:Ne \srefsymuri { \stex_use_symbol_uri:N \l_stex_get_symbol_uri }{ #2 }
+}
 
-\cs_new_protected:Npn \srefsymuri #1 #2 { #2 }
+\cs_new_protected:Npn \srefsymuri #1 { 
+  \cs_if_exist:cTF{r@\tl_to_str:n{#1}}{
+    \cs_if_exist:NT \hyperlink { \hyperlink{#1} }
+  }{
+    \cs_if_exist:NT \href {\href{#1} }
+  }
+}
 %    \end{macrocode}
 % \end{implementation}
 %
