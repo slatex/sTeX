@@ -1683,6 +1683,7 @@
 \iow_new:N \c__stex_refs_iow
 \AtBeginDocument{ \iow_open:Nn \c__stex_refs_iow {\jobname.sref} }
 \AtEndDocument{\iow_close:N \c__stex_refs_iow}
+\str_set:Ne \c__stex_refs_iow_str { \stex_file_use:N \c_stex_pwd_file /  }
 \stex_keys_define:nnnn{sref / 1}{
   \tl_clear:N \l_stex_key_pre_tl
   \tl_clear:N \l_stex_key_post_tl
@@ -1754,14 +1755,13 @@
   \tl_set:Nn \l__stex_refs_in { #1 }
   \exp_args:No \stex_in_archive:nn \l_stex_key_archive_str {
     \exp_args:NNo \stex_document_uri_from_archive_file:Nn \l__stex_refs_uri {\l_stex_key_file_str}
-    %\message{^^J^^JComparing~\meaning\l__stex_refs_uri^^J\meaning\c_stex_main_document_uri^^J^^J}
     \stex_debug:nn{sref}{Checking~#2~from~\stex_use_document_uri:N \l__stex_refs_uri}
     \tl_if_eq:NNTF \l__stex_refs_uri \c_stex_main_document_uri {
+      \stex_debug:nn{sref}{From~current~document;~delegating~to~\string\autoref}
       \__stex_refs_local:n{ #2 }
     }{
       \str_set:Ne \l__stex_refs_uri { \stex_use_document_uri:N \l__stex_refs_uri }
       \str_set:Ne \l__stex_refs_file { \exp_args:No \stex_source_path:n {\l_stex_key_file_str}.sref }
-      %\message{^^J^^JHere:~\l__stex_refs_uri^^J \meaning\l__stex_refs_file^^J^^J }
       \exp_args:No \IfFileExists \l__stex_refs_file {
         \__stex_refs_find:
       }{}
@@ -1769,8 +1769,8 @@
         \stex_debug:nn{sref}{Not~found}
         \tl_if_empty:NTF \l_stex_key_fallback_tl { ??? }{ \l_stex_key_fallback_tl }
       }{
-        %\message{^^J^^JFound:~\meaning\l__stex_refs_tmp^^J^^J}
         \str_set_eq:NN \l__stex_refs_uri \l__stex_refs_tmp
+        \stex_debug:nn{sref}{Found~ \l__stex_refs_uri}
         \__stex_refs_maybe_in:
       }
     }
@@ -1797,7 +1797,6 @@
 }
 
 \cs_new_protected:Nn \__stex_refs_maybe_in: {
-  \stex_debug:nn{sref}{maybe~in...?}
   \tl_if_empty:NTF\l__stex_refs_in {
     \cs_if_exist:cTF{r@\l__stex_refs_uri}{
       \exp_args:No \__stex_refs_local_ref:n \l__stex_refs_uri
@@ -1805,61 +1804,68 @@
       \tl_if_empty:NTF \l__stex_refs_default_file {
         \exp_args:No \__stex_refs_local_ref:n \l__stex_refs_uri
       }{
-        \str_set_eq:NN \l_stex_key_archive_str \l__stex_refs_default_archive
-        \str_set_eq:NN \l_stex_key_file_str \l__stex_refs_default_file
         \tl_set_eq:NN \l_stex_key_title_tl \l__stex_refs_default_title
-        \__stex_refs_in:
+        \str_set_eq:NN \l__stex_refs_file \l__stex_refs_default_file
+        \str_if_eq:NNTF \l__stex_refs_default_file \c__stex_refs_iow_str {
+          \exp_args:No \__stex_refs_local_ref:n \l__stex_refs_uri
+        }{
+          \stex_debug:nn{sref}{in~title=\exp_args:No\exp_not:n\l_stex_key_title_tl,file=\l__stex_refs_default_file}
+          \__stex_refs_in:
+        }
       }
     }
   }{
+    \stex_debug:nn{sref}{in~\exp_args:No\exp_not:n\l__stex_refs_in}
+    \exp_args:No \stex_in_archive:nn \l_stex_key_archive_str {
+      \str_set:Ne \l__stex_refs_file { \exp_args:No \stex_source_path:n {\l_stex_key_file_str}.sref }
+    }
     \exp_args:Nno \stex_keys_set:nn{ sref / 2 }{ \l__stex_refs_in }
     \__stex_refs_in:
   }
 }
 
 \cs_new_protected:Nn \__stex_refs_in: {
-  \exp_args:No \stex_in_archive:nn \l_stex_key_archive_str {
-    \str_set:Ne \l__stex_refs_file { \exp_args:No \stex_source_path:n {\l_stex_key_file_str}.sref }
-    \tl_clear:N \l__stex_refs_tmp
-    \exp_args:No \IfFileExists \l__stex_refs_file {
-        \__stex_refs_find_in:
-    }{}
-    \stex_debug:nn{sref}{Result:~\l__stex_refs_tmp}
-    \tl_if_empty:NTF\l__stex_refs_tmp{
-      \stex_debug:nn{sref}{Not~found}
-      \tl_if_empty:NTF \l_stex_key_fallback_tl { ??? }{ \l_stex_key_fallback_tl }
-    }{
-      \tl_set:Ne \l__stex_refs_tmp {
-        \exp_after:wN \__stex_refs_in_text:nn \l__stex_refs_tmp
-      }
-      \cs_if_exist:NT \href {\exp_args:No \href \l__stex_refs_uri } \l__stex_refs_tmp
+  \tl_clear:N \l__stex_refs_tmp
+  \exp_args:No \IfFileExists \l__stex_refs_file {
+      \__stex_refs_find_in:
+  }{
+    \stex_debug:nn{sref}{not~found:~\l__stex_refs_file}
+  }
+  \tl_if_empty:NTF\l__stex_refs_tmp{
+    \stex_debug:nn{sref}{Not~found}
+    \tl_if_empty:NTF \l_stex_key_fallback_tl { ??? }{ \l_stex_key_fallback_tl }
+  }{
+    \stex_debug:nn{sref}{found:~\meaning\l__stex_refs_tmp}
+    \tl_set:Ne \l__stex_refs_tmp {
+      \exp_after:wN \__stex_refs_in_text:nn \l__stex_refs_tmp
     }
+    \cs_if_exist:NT \href {\exp_args:No \href \l__stex_refs_uri } \l__stex_refs_tmp
   }
 }
 
 \cs_new:Nn \__stex_refs_in_text:nn {
-  \__stex_refs_in_text:w #1 \__stex_refs_:
-  \tl_if_empty:nF{#2}{~(#2)}
+  \__stex_refs_in_text:w #1 \__stex_refs_stop:
+  \tl_if_empty:nF{#2}{~(\exp_not:n{#2})}
   \tl_if_empty:NF \l_stex_key_title_tl {
-    {}~in~\l_stex_key_title_tl
+    {}~in~\exp_args:No \exp_not:n \l_stex_key_title_tl
   }
 }
 
-\cs_new:Npn \__stex_refs_in_text:w #1.#2 \__stex_refs_: {
+\cs_new:Npn \__stex_refs_in_text:w #1.#2 \__stex_refs_stop: {
   \__stex_refs_uppercase:n #1~#2~
 }
 
 \cs_new:Nn \__stex_refs_uppercase:n { \uppercase{#1}}
 
 \cs_new_protected:Nn \__stex_refs_find_in: {
-  \stex_debug:nn{sref}{finding~in...?}
+  \stex_debug:nn{sref}{finding~\l__stex_refs_uri;~in~\l__stex_refs_file...?}
   \setbox0\vbox\bgroup
     \catcode`^^J=9\relax
     \cs_set_eq:NN \STeXInternalSRefLabel \__stex_refs_check_in:nnnn
     \use:c{@ @ input}{\l__stex_refs_file}
     \exp_args:NNe \use:nn
   \egroup {
-    \tl_set:Nn \exp_not:N \l__stex_refs_tmp { \l__stex_refs_tmp }
+    \tl_set:Nn \exp_not:N \l__stex_refs_tmp { \exp_args:No \exp_not:n \l__stex_refs_tmp }
   }
 }
 
@@ -1881,12 +1887,15 @@
 \str_new:N \l__stex_refs_default_archive
 
 \newcommand\srefsetin[3][]{
+  \str_set:Ne \l__stex_refs_default_file { #2 }
   \tl_if_empty:nTF{#1}{
     \str_set:Ne \l__stex_refs_default_archive { \stex_archive_id:N \c_stex_main_archive }
   }{
     \str_set:Nn \l__stex_refs_default_archive { #1 }
   }
-  \str_set:Ne \l__stex_refs_default_file { #2 }
+  \exp_args:No \stex_in_archive:nn \l__stex_refs_default_archive {
+    \str_set:Ne \l__stex_refs_default_file { \exp_args:No \stex_source_path:n {\l_stex_key_file_str}.sref }
+  }
   \str_set:Nn \l__stex_refs_default_title { #3 }
 }
 \NewDocumentCommand \extref { O{} m m}{???}
