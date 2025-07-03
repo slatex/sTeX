@@ -62,7 +62,7 @@ git clone https://github.com/slatex/sTeX.git
 ```
 Then update your  `TEXINPUTS` environment variable, e.g. by placing the following line in your `.bashrc`:
 ```
-export TEXINPUTS="$(TEXINPUTS):<sTeXDIR>//:
+export TEXINPUTS="$(TEXINPUTS):<sTeXDIR>//:"
 ```
 
 Similarly, set your `MATHHUB` environment variable to where you intend to keep your sTeX
