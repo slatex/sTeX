@@ -646,6 +646,7 @@
   }{
     \tl_set:Ne \l_stex_struct_this_tl {{
       \bool_set_true:N \l_stex_allow_semantic_bool
+      \bool_set_true:N \l_stex_in_this_bool
       \tl_set:Nn \exp_not:N \this {
         \exp_args:No \exp_not:n \this
       }
@@ -1232,14 +1233,17 @@
 %    \begin{macrocode}
 \stex_if_html_backend:TF {
   \cs_new_protected:Nn \_stex_term_oms:nn {
-    \tl_if_empty:NTF \l_stex_current_term_tl {
-      \_@@_annotate:nnn{OMID}{#1}{#2}
-    }{
-      \_@@_do_headterm:nn{#1}{#2}
+    \bool_if:NTF\l_stex_in_this_bool{#2}{
+      \_@@_check_comp:
+      \tl_if_empty:NTF \l_stex_current_term_tl {
+        \_@@_annotate:nnn{OMID}{#1}{#2}
+      }{
+        \_@@_do_headterm:nn{#1}{#2}
+      }
     }
   }
 }{
-  \cs_new_protected:Nn \_stex_term_oms:nn {#2}
+  \cs_new_protected:Nn \_stex_term_oms:nn {\bool_if:NF\l_stex_in_this_bool\_@@_check_comp: #2}
 }
 
 \cs_set_eq:NN \_stex_term_oms_or_omv:nn \_stex_term_oms:nn
@@ -1254,14 +1258,17 @@
 %    \begin{macrocode}
 \stex_if_html_backend:TF {
   \cs_new_protected:Nn \_stex_term_omv:nn {
-    \tl_if_empty:NTF \l_stex_current_term_tl {
-      \_@@_annotate:nnn{OMV}{#1}{#2}
-    }{
-      \_@@_do_headterm:nn{#1}{#2}
+    \bool_if:NTF\l_stex_in_this_bool{#2}{
+      \_@@_check_comp:
+      \tl_if_empty:NTF \l_stex_current_term_tl {
+        \_@@_annotate:nnn{OMV}{#1}{#2}
+      }{
+        \_@@_do_headterm:nn{#1}{#2}
+      }
     }
   }
 }{
-  \cs_new_protected:Nn \_stex_term_omv:nn {#2}
+  \cs_new_protected:Nn \_stex_term_omv:nn {\bool_if:NF\l_stex_in_this_bool\_@@_check_comp: #2}
 }
 %    \end{macrocode}
 % \end{sfunction}
@@ -1300,18 +1307,21 @@
 %    \begin{macrocode}
 \stex_if_html_backend:TF {
   \cs_new_protected:Nn \_stex_term_oma:nn {
-    \_@@_annotate:nnn{OMA}{#1}{
-      \tl_if_empty:NF \l_stex_current_term_tl {
-        \stex_annotate_invisible:nn{data-ftml-headterm={}}{{
-          \bool_set_true:N \l_stex_allow_semantic_bool
-          \l_stex_current_term_tl
-        }}
+    \bool_if:NTF\l_stex_in_this_bool{#2}{
+      \_@@_check_comp:
+      \_@@_annotate:nnn{OMA}{#1}{
+        \tl_if_empty:NF \l_stex_current_term_tl {
+          \stex_annotate_invisible:nn{data-ftml-headterm={}}{{
+            \bool_set_true:N \l_stex_allow_semantic_bool
+            \l_stex_current_term_tl
+          }}
+        }
+        #2
       }
-      #2
     }
   }
 }{
-  \cs_new_protected:Nn \_stex_term_oma:nn {#2}
+  \cs_new_protected:Nn \_stex_term_oma:nn {\bool_if:NF\l_stex_in_this_bool\_@@_check_comp: #2}
 }
 %    \end{macrocode}
 % \end{sfunction}
@@ -1322,18 +1332,21 @@
 %    \begin{macrocode}
 \stex_if_html_backend:TF {
   \cs_new_protected:Nn \_stex_term_omb:nn {
-    \_@@_annotate:nnn{OMBIND}{#1}{
-      \tl_if_empty:NF \l_stex_current_term_tl {
-        \stex_annotate_invisible:nn{data-ftml-headterm={}}{{
-          \bool_set_true:N \l_stex_allow_semantic_bool
-          \l_stex_current_term_tl
-        }}
+    \bool_if:NTF\l_stex_in_this_bool{#2}{
+      \_@@_check_comp:
+      \_@@_annotate:nnn{OMBIND}{#1}{
+        \tl_if_empty:NF \l_stex_current_term_tl {
+          \stex_annotate_invisible:nn{data-ftml-headterm={}}{{
+            \bool_set_true:N \l_stex_allow_semantic_bool
+            \l_stex_current_term_tl
+          }}
+        }
+        #2
       }
-      #2
     }
   }
 }{
-  \cs_new_protected:Nn \_stex_term_omb:nn {#2}
+  \cs_new_protected:Nn \_stex_term_omb:nn {\bool_if:NF\l_stex_in_this_bool\_@@_check_comp: #2}
 }
 %    \end{macrocode}
 % \end{sfunction}
@@ -1405,21 +1418,29 @@
 %
 % \StartImpl
 %    \begin{macrocode}
+\cs_new_protected:Nn \_@@_check_comp: {
+  \bool_if:NT \g_stex_in_comp_bool {
+    \msg_error:nn{stex}{error/argincomp}
+  }
+}
 \stex_if_html_backend:TF {
   \cs_new_protected:Nn \_stex_term_arg:nnn {
     \stex_if_do_html:TF{
-      \_stex_annotate_force_break:n{ 
-        \stex_annotate:nn{ 
-          data-ftml-arg={#2}, data-ftml-argmode={#1}
-        }{ 
-          \_stex_annotate_force_break:n{}
-          #3
+      \bool_if:NTF\l_stex_in_this_bool{#3}{
+        \_stex_annotate_force_break:n{ 
+          \stex_annotate:nn{ 
+            data-ftml-arg={#2}, data-ftml-argmode={#1}
+          }{ 
+            \_stex_annotate_force_break:n{}
+            \_@@_check_comp:
+            #3
+          }
         }
       }
     }{ #3 }
   }
 }{
-  \cs_new_protected:Nn \_stex_term_arg:nnn {#3}
+  \cs_new_protected:Nn \_stex_term_arg:nnn {\bool_if:NF\l_stex_in_this_bool\_@@_check_comp: #3}
 }
 %    \end{macrocode}
 % \end{sfunction}
@@ -1696,6 +1717,7 @@
   {\tl_set:cn{this}{{}}#1{#2}\c_math_subscript_token{
     \group_begin:
     \bool_set_true:N \l_stex_allow_semantic_bool
+    \bool_set_true:N \l_stex_in_this_bool
     \l_stex_struct_this_tl
     \group_end:
   }
@@ -1761,9 +1783,12 @@
 %
 % \StartImpl
 %    \begin{macrocode}
+\bool_new:N \g_stex_in_comp_bool
+
 \cs_new_protected:Nn \_do_comp:nnNn {
   \stex_pseudogroup_with:nn{\comp}{
     \def\comp##1{##1}
+    \bool_set_true:N \g_stex_in_comp_bool
     \stex_if_html_backend:TF {
       \stex_annotate:nn { data-ftml-#1 = {#2}}{ #4 }
     }{
@@ -1774,6 +1799,7 @@
 
       }
     }
+    \bool_set_false:N \g_stex_in_comp_bool
   }
 }
 %    \end{macrocode}

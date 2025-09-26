@@ -18,6 +18,7 @@
 \ProcessOptions
 
 \RequirePackage{stex}
+\str_set:Nn \g_stex_document_kind_str{fragment}
 
 \LoadClass{article}
 \endinput
