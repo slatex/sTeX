@@ -1,0 +1,785 @@
+% \iffalse
+%<*driver>
+\def\stexdocpath{../../doc}
+\input{\stexdocpath/stex-docheader}
+\stextoptitle{The \sTeX Package}{stex}
+\docmodule
+%</driver>
+%<*package>
+% \fi
+%
+% \begin{sfragment}{Theory Morphisms}
+%
+% \begin{implementation}
+%    \begin{macrocode}
+%<@@=stex_morphisms>
+%    \end{macrocode}
+% \end{implementation}
+%
+% \begin{sfunction}{\stex_structural_feature_morphism:nnnnn,\stex_structural_feature_morphism_with_macros:nnnnn,\stex_structural_feature_morphism_end:}{}
+% \begin{arguments}
+%   \item name
+%   \item kind
+%   \item [archive ID]
+%   \item module spec
+%   \item additional attributes
+% \end{arguments}
+% \StartImpl
+%    \begin{macrocode}
+\tl_new:N \l_stex_current_domain_uri
+\bool_new:N \l_@@_with_macros_bool
+
+\cs_new_protected:Npn \stex_structural_feature_morphism_with_macros:nnnnn {
+  \bool_set_true:N \l_@@_with_macros_bool
+  \_@@_morphism:nnnnn
+}
+\cs_new_protected:Npn \stex_structural_feature_morphism:nnnnn {
+  \bool_set_false:N \l_@@_with_macros_bool
+  \_@@_morphism:nnnnn
+}
+
+\cs_new_protected:Nn \_@@_morphism:nnnnn {
+  \tl_clear:N \l_stex_current_domain_uri
+  \stex_debug:nn{morphisms}{new~morphism:{#1}{#2}{#3}{#4}{#5}}
+  \tl_if_empty:nT{#3}{
+    \stex_get_mathstructure:n{#4}
+    \tl_set_eq:NN \l_stex_current_domain_uri \l_stex_get_structure_module_uri
+  }
+  \tl_if_empty:NT \l_stex_current_domain_uri {
+    \stex_uri_from_pair:Nnn \l_stex_import_uri { #3 }{ #4 }
+    \group_begin:
+    \stex_require_module:N \l_stex_import_uri
+    \exp_args:Nne \use:nn \group_end: {
+      \tl_set:Nn \exp_not:N\l_stex_current_domain_uri {\l_stex_import_uri}
+    }
+  }
+  \tl_if_empty:nT{#1}{
+    \msg_error:nn{stex}{error/morphism-needs-name}
+  }
+  \str_set:Nn \l_tmpa_str {#1}
+
+  \stex_debug:nn{morphisms}{#2:~\l_tmpa_str;~for~\stex_use_module_uri:N \l_stex_current_domain_uri}
+
+  \str_set:Nn \l_@@_feature_str {#2}
+  \str_set_eq:NN \l_stex_feature_name_str \l_tmpa_str
+
+  \stex_if_do_html:TF {
+    \begin{stex_annotate_env} {
+      data-ftml-feature-#2={\l_tmpa_str},
+      data-ftml-domain={\stex_use_module_uri:N \l_stex_current_domain_uri}
+      #5
+    }
+    \stex_annotate_invisible:n{}
+  }\group_begin:
+  \_@@_setup:
+  \_@@_reactivate:
+  \stex_metagroup_new:
+}
+
+\cs_new_protected:Nn \_@@_setup: {
+  \seq_clear:N \l_stex_morphism_symbols_seq
+  \seq_clear:N \l_stex_morphism_renames_seq
+  \seq_clear:N \l_stex_morphism_morphisms_seq
+  \seq_clear:N \l_stex_morphism_assigns_seq
+  \_@@_do_decls:
+  \exp_args:No \_@@_do:n \l_stex_current_domain_uri
+}
+
+\cs_new_protected:Nn \_@@_do_decls: {
+  \exp_args:No \stex_iterate_symbols:nn \l_stex_current_domain_uri {
+    \exp_args:NNe \seq_put_right:Nn \l_stex_morphism_symbols_seq {
+      { \stex_new_symbol_uri:nn{##1}{##3} }
+      { {##2}{##4}{##5}{##6}{##7}{##8}##9 }
+    }
+  }
+}
+
+
+\cs_new_protected:Nn \_@@_do:n {
+  %\seq_clear:N \l_@@_dones_seq
+    \prop_map_inline:cn {\_stex_morphisms_macro:n{#1}}{
+      %\seq_if_in:NnF \l_@@_dones_seq {##2}{
+      %  \seq_push:Nn \l_@@_dones_seq {##2}
+        \stex_debug:nn{morphisms}{Doing ~ \tl_to_str:n{##2}}
+        \_@@_do_morph:nnnn ##2
+     % }
+    }
+}
+
+\cs_new_protected:Nn \_@@_do_morph:nnnn {
+    \tl_if_empty:nF{#3}{
+      \seq_put_right:Nn \l_stex_morphism_morphisms_seq {{#1}{#2}{#3}}
+    }
+    \_@@_do:n{#2}
+}
+
+
+\cs_new_protected:Nn \stex_structural_feature_morphism_end: {
+  \tl_gset_eq:NN \l_stex_current_domain_uri \l_stex_current_domain_uri
+  \seq_gset_eq:NN \l_stex_morphism_symbols_seq \l_stex_morphism_symbols_seq
+  \seq_gset_eq:NN \l_stex_morphism_renames_seq \l_stex_morphism_renames_seq
+  \seq_gset_eq:NN \l_stex_morphism_assigns_seq \l_stex_morphism_assigns_seq
+  \seq_gset_eq:NN \l_stex_morphism_morphisms_seq \l_stex_morphism_morphisms_seq
+  \bool_gset_eq:NN \l_@@_with_macros_bool \l_@@_with_macros_bool
+  \stex_if_do_html:TF{
+    \end{stex_annotate_env}
+  }\group_end:
+  \_@@_do_elaboration:
+}
+
+\cs_new_protected:Nn \_@@_do_elaboration: {
+  \stex_debug:nn{morphisms}{
+    Elaborating:^^J\meaning \l_stex_morphism_symbols_seq
+    ^^J^^J
+    Renamings:^^J
+    \meaning \l_stex_morphism_renames_seq
+    ^^J^^J
+    Assignments:^^J
+    \meaning \l_stex_morphism_assigns_seq
+  }
+  
+  \seq_map_inline:Nn \l_stex_morphism_symbols_seq {
+    \_@@_elab:nn ##1
+  }
+
+  \stex_add_morphism:oooe
+    \l_stex_feature_name_str
+    \l_stex_current_domain_uri
+    \l_@@_feature_str
+    {\seq_map_function:NN \l_stex_morphism_renames_seq \_@@_rename:n}
+}
+
+\cs_new:Nn \_@@_rename:n{
+  \_@@_rename:nn #1
+}
+
+\cs_new:Nn \_@@_rename:nn{
+  {#1}{\use_ii:nn#2}
+}
+
+\cs_new_protected:Nn \_@@_elab:nn {
+  \tl_clear:N \l_@@_tmp
+  \seq_map_inline:Nn \l_stex_morphism_renames_seq {
+    \_@@_elab_check_rename:nnn{#1}##1
+  }
+  \tl_if_empty:NTF \l_@@_tmp {
+    \exp_args:Ne \_@@_elab_i:nnn {\stex_symbol_uri_name:n {#1}}{#1}
+  }{ 
+    \stex_debug:nn{morphisms}{Generating~1~\l_@@_tmp}
+    \use_i:nn{ \exp_args:Nno \use:nn {\_@@_add_symbol:nnnnnnnnN {#1}} \l_@@_tmp}
+  }#2
+
+  \exp_args:No\stex_iterate_notations:nn\l_stex_current_domain_uri {
+    \str_if_eq:nnT{#1}{##1}{
+      \exp_args:Ne \stex_add_notation:nnnnn {
+        \exp_args:Ne \stex_new_symbol_uri:n {\exp_after:wN \use_ii:nn \l_@@_tmp }
+      }{##2}{##3}{##4}{##5}
+    }
+  }
+}
+
+\cs_new_protected:Nn \_@@_elab_i:nnn {
+  \tl_set:Ne \l_@@_tmp {{}{\l_stex_feature_name_str / #1}}
+  \stex_debug:nn{morphisms}{Generating~2~\l_stex_feature_name_str / #1}
+  \bool_if:NTF \l_@@_with_macros_bool {
+    \exp_args:Nnno \_@@_add_symbol:nnnnnnnnN {#2} {#3}
+  }{
+    \exp_args:Nnno \_@@_add_symbol:nnnnnnnnN {#2} {}
+  }
+  {\l_stex_feature_name_str / #1}
+}
+
+\cs_new_protected:Npn \_@@_add_symbol:nnnnnnnnN #1 {
+  \tl_clear:N \l_@@_tmp_b
+  \seq_map_inline:Nn \l_stex_morphism_assigns_seq {
+    \_@@_elab_check_assign:nnnnn{#1}##1
+  }
+  \tl_if_empty:NTF \l_@@_tmp_b
+  \stex_add_symbol:nnnnnnnN
+  \_@@_add_symbol_i:nnnnnnnN
+}
+
+\cs_new_protected:Npn \_@@_add_symbol_i:nnnnnnnN #1 #2 #3 #4 #5 {
+  \stex_add_symbol:nnnnnnnN {#1}{#2}{#3}{#4}{assigned}
+}
+
+\cs_new_protected:Nn \_@@_elab_check_assign:nnnnn {
+  \tl_if_eq:nnT{#1}{{#2}{#3}{#4}{#5}}{
+    \seq_map_break:n{
+      \tl_set:Nn \l_@@_tmp_b {assigned}
+    }
+  }
+}
+
+\cs_new_protected:Nn \_@@_elab_check_rename:nnn {
+  \tl_if_eq:nnT{#1}{#2}{
+    \seq_map_break:n{
+      \tl_set:Nn \l_@@_tmp {#3}
+    }
+  }
+}
+
+\cs_new_protected:Nn \_@@_do_for_list: {
+  \seq_clear:N \l_stex_fors_seq
+  \clist_map_inline:Nn \l_stex_key_for_clist {
+    \exp_args:Ne\stex_get_in_morphism:n{\tl_to_str:n{##1}}
+    \seq_put_right:No \l_stex_fors_seq 
+      {\l_stex_get_symbol_uri}
+  }
+}
+
+
+\cs_new_protected:Nn \_@@_definiens_impl:nn {
+  \tl_if_empty:nF {#1} {
+    \stex_get_in_morphism:n { #1 }
+    \tl_set_eq:NN \l_stex_current_def_uri \l_stex_get_symbol_uri
+  }
+  \tl_if_empty:NT \l_stex_current_def_uri {
+    \msg_error:nn{stex}{error/definiensfor}
+  } 
+  \stex_debug:nn{definiens}{Checking~\stex_use_symbol_uri:N \l_stex_current_def_uri }
+  \stex_if_do_html:TF{
+    \exp_after:wN \stex_metagroup_do_in:n \exp_after:wN {
+      \exp_after:wN \seq_put_right:Nn \exp_after:wN  \l_stex_morphism_assigns_seq
+      \exp_after:wN { \l_stex_current_def_uri }
+    }
+    \mode_leave_vertical: \stex_annotate:nn{data-ftml-assign={\stex_use_symbol_uri:N  \l_stex_current_def_uri}}{
+      \_stex_annotate_force_break:n{
+        \stex_annotate:nn{data-ftml-definiens={}}{#2}
+      }
+    }
+  }{
+    \exp_args:No \_@@_add_definiens:nn \l_stex_current_def_uri {#2}
+    \stex_if_smsmode:F{#2}
+  }
+}
+
+\cs_new_protected:Nn \_@@_add_definiens:nn {
+  \tl_set:Nn \l_stex_get_symbol_uri {#1}
+  \stex_debug:nn{morphisms}{Adding~definiens~\tl_to_str:n{#1~#2}}
+  %\_@@_set_definiens_macros: #1\_@@_break:
+  \_stex_assign_do:n{#2}
+}
+
+%\cs_new_protected:Npn \_@@_set_definiens_macros: #1?#2?#3\_@@_break: {
+%  \str_set:Nn \l_stex_get_symbol_uri { #1?#2} % TODO
+%  \str_set:Nn \l_stex_get_symbol_name_str {#3}
+%  \exp_args:Nne\use:nn{\_@@_set_definiens_macros_i:nnnnnnn}{
+%    \prop_item:Nn \l_stex_morphism_symbols_prop {[#1?#2]/[#3]}
+%  }
+%}
+
+%\cs_new_protected:Nn \_@@_set_definiens_macros_i:nnnnnnn {
+%  \tl_set:Nn \l_stex_get_symbol_def_tl{#4}
+%}
+
+
+\cs_new_protected:Nn \_@@_rename_all: {
+    % TODO
+}
+
+
+\cs_new_protected:Nn \stex_structural_feature_morphism_check_total: {
+  \seq_map_inline:Nn \l_stex_morphism_symbols_seq {
+    \_@@_total_check:nn ##1
+  }
+}
+
+\cs_new_protected:Nn \_@@_total_check:nn {
+  \_@@_total_check:nnnnnnnN {#1} #2
+}
+
+\cs_new_protected:Nn \_@@_total_check:nnnnnnnN {
+  \tl_if_empty:nT{#5}{
+    \seq_if_in:NnF \l_stex_morphism_assigns_seq {#1} {
+      \msg_error:nnxx{stex}{error/needsdefiniens}{\stex_use_symbol_uri:n {#1}}{total~morphism}
+    }
+  }
+}
+
+\cs_new:Npn \_@@_split_qm:w #1 ? #2 ? #3 { #3 }
+
+
+
+\cs_new_protected:Npn \_@@_reactivate: {
+  \stex_deactivate_macro:Nn \symdecl {module~environments}
+  \stex_deactivate_macro:Nn \textsymdecl {module~environments}
+  \stex_deactivate_macro:Nn \symdef {module~environments}
+  \stex_deactivate_macro:Nn \notation {module~environments}
+  \stex_deactivate_macro:Nn \importmodule {module~environments}
+  \stex_deactivate_macro:Nn \requiremodule {module~environments}
+  \stex_deactivate_macro:Nn \smodule {outside~of~morphisms}
+  \stex_reactivate_macro:N \assign
+  \stex_reactivate_macro:N \assignMorphism
+  \stex_reactivate_macro:N \renamedecl
+  \cs_set_eq:NN \_stex_do_for_list: \_@@_do_for_list:
+  \cs_set_eq:NN \_stex_add_definiens:nn \_@@_add_definiens:nn
+  \cs_set_eq:NN \_stex_definiens_impl:nn \_@@_definiens_impl:nn
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\stex_iterate_morphisms:nn}{}
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_iterate_morphisms:nn {
+  \seq_clear:N \l_@@_mods_seq
+  \bool_set_true:N \l_@@_continue_bool
+  \cs_set:Npn \_@@_cs:nnnn ##1 ##2 ##3 ##4 ##5 { 
+    #2 
+    \bool_if:NT \l_@@_continue_bool {
+      \str_if_eq:nnTF{##1}{[##2]}{
+        \tl_put_right:Nn \l_@@_todo_tl {
+          \_@@_iterate:nn{##5}{##2}
+        }
+      }{
+        \tl_put_right:Nn \l_@@_todo_tl {
+          \_@@_iterate:nn{##5 / ##1}{##2}
+        }
+      }
+    }
+  }
+  \cs_set:Npn \stex_iterate_break:n ##1 {
+    \bool_set_false:N \l_@@_continue_bool
+    \prop_map_break:n{##1}
+  }
+  \_@@_iterate:nn{}{#1}
+}
+\cs_new_protected:Nn \_@@_iterate:nn {
+  \tl_clear:N \l_@@_todo_tl
+  \seq_if_in:NnF \l_@@_mods_seq {#1 #2}{
+    \seq_put_right:Nn \l_@@_mods_seq {#1 #2}
+    \prop_map_inline:cn{\_stex_morphisms_macro:n{#2}}{
+      \_@@_cs:nnnn ##2 {#1}
+      % TODO
+      % ##1: name or [mpath]
+      % ##2 = {####1}{####2}{####3}{####4}
+      % ####1 = name
+      % ####2 = mpath
+      % ####3 = type
+      % ####4 = {origname}{newname}*
+    }
+    \bool_if:NT \l_@@_continue_bool \l_@@_todo_tl
+  }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\stex_get_in_morphism:n}{}
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_get_in_morphism:n {
+  \stex_debug:nn{morphisms}{Getting~in~morphism:~#1}
+  \tl_clear:N \l_stex_get_symbol_uri
+  \str_set:Nn \l_@@_get_str {#1}
+  \seq_map_inline:Nn \l_stex_morphism_symbols_seq {
+    \_@@_get_check:nn ##1
+  }
+  \tl_if_empty:NT \l_stex_get_symbol_uri {
+    \seq_map_inline:Nn \l_stex_morphism_renames_seq {
+      \_@@_renamed_check:nn##1
+    }
+    \tl_if_empty:NT \l_stex_get_symbol_uri {
+      \msg_error:nnxx{stex}{error/unknownsymbolin}{#1}{
+        morphism~\l_stex_feature_name_str
+      }
+    }
+  }
+}
+
+
+\cs_new_protected:Nn \_@@_get_check:nn {
+  \_@@_check_name:nnnn #1 #2
+}
+
+\cs_new_protected:Nn \_@@_check_name:nnnn {
+  % TODO module name, path, archive, macroname ?
+  \exp_args:No \str_if_eq:nnTF \l_@@_get_str {#4} {
+    \tl_set:Nn \l_stex_get_symbol_uri {{#1}{#2}{#3}{#4}}
+    \_@@_set:nnnnnnN
+  }{
+    \_@@_macro:nnnnnnnN{{#1}{#2}{#3}{#4}}
+  }
+}
+
+\cs_new_protected:Nn \_@@_set:nnnnnnN {
+  \seq_map_break:n{
+    \str_set:Nn \l_stex_get_symbol_macro_str{#1}
+    \int_set:Nn \l_stex_get_symbol_arity_int {#2}
+    \tl_set:Nn \l_stex_get_symbol_args_tl {#3}
+    \tl_set:Nn \l_stex_get_symbol_def_tl {#4}
+    \tl_set:Nn \l_stex_get_symbol_type_tl {#5}
+    \tl_set:Nn \l_stex_get_symbol_return_tl {#6}
+    \tl_set:Nn \l_stex_get_symbol_invoke_cs {#7}
+  }
+}
+
+\cs_new_protected:Npn \_@@_macro:nnnnnnnN #1 #2 {
+  \exp_args:No \str_if_eq:nnTF \l_@@_get_str {#2}{
+    \tl_set:Nn \l_stex_get_symbol_uri{#1}
+    \_@@_set:nnnnnnN
+  }\_@@_gobble:nnnnnnN
+  {#2}
+}
+
+\cs_new_protected:Nn \_@@_gobble:nnnnnnN {}
+
+\cs_new_protected:Nn \_@@_renamed_check:nn {
+  \stex_debug:nn{here}{\tl_to_str:n{{#1}{#2}}:~\l_@@_get_str}
+  \_@@_renamed_check:nnnnnn #1 #2
+}
+
+\cs_new_protected:Nn \_@@_renamed_check:nnnnnn {
+  \exp_args:No \str_if_eq:nnTF \l_@@_get_str{#5}{
+    \seq_map_break:n{
+      \str_set:Nn \l_@@_get_str {#4}
+      \seq_map_inline:Nn \l_stex_morphism_symbols_seq {
+        \_@@_get_check:nn ##1
+      }
+    }
+  }{
+    \exp_args:No \str_if_eq:nnT \l_@@_get_str{#6}{
+      \seq_map_break:n{
+        \str_set:Nn \l_@@_get_str {#4}
+        \seq_map_inline:Nn \l_stex_morphism_symbols_seq {
+          \_@@_get_check:nn ##1
+        }
+      }
+    }
+  }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{senvironment}{copymodule} (and \cs{copymod})
+% \StartImpl
+%    \begin{macrocode}
+\stex_new_stylable_env:nnnnnnn {copymodule}{m O{} m}{
+  \_@@_begin_copy:Nnnn\stex_structural_feature_morphism:nnnnn {#1}{#2}{#3}
+}{
+  \stex_if_smsmode:F {
+    \stex_style_apply:
+  }
+  \stex_structural_feature_morphism_end:
+}{}{}{}
+
+\stex_new_stylable_env:nnnnnnn {copymodule*}{m O{} m}{
+  \cs_set:Npn \stex_style_apply: {
+    \_stex_apply_patch_begin:n{copymodule}
+  }
+  \_@@_begin_copy:Nnnn\stex_structural_feature_morphism_with_macros:nnnnn {#1}{#2}{#3}
+}{
+  \cs_set:Npn \stex_style_apply: {
+    \_stex_apply_patch_end:n{copymodule}
+  }
+  \stex_if_smsmode:F {
+    \stex_style_apply:
+  }
+  \stex_structural_feature_morphism_end:
+}{}{}{}
+
+\cs_new_protected:Nn \_@@_begin_copy:Nnnn {
+  #1{#2}{morphism}{#3}{#4}{,data-ftml-total=false}
+  \stex_if_smsmode:F {
+    \tl_set:Nn \thiscopyname { #2 }
+    \tl_set:Nn \thismoduleuri {\stex_use_module_uri:N \l_stex_current_domain_uri}
+    \stex_style_apply:
+  }
+  \stex_smsmode_do:
+}
+
+
+\stex_deactivate_macro:Nn \copymodule {module~environments}
+\stex_every_module:n {
+  \stex_reactivate_macro:N \copymodule
+}
+\stex_sms_allow_env:n{copymodule}
+
+\exp_after:wN \stex_deactivate_macro:Nn \csname copymodule*\endcsname {module~environments}
+\stex_every_module:n {
+  \exp_after:wN\stex_reactivate_macro:N \csname copymodule*\endcsname
+}
+\stex_sms_allow_env:n{copymodule*}
+
+\stex_new_stylable_cmd:nnnn{copymod}{s m O{} m m}{
+  \IfBooleanTF#1\stex_structural_feature_morphism_with_macros:nnnnn
+  \stex_structural_feature_morphism:nnnnn{#2}{morphism}{#3}{#4}{,data-ftml-total={false}}
+  \clist_map_function:nN{#5}\_@@_parse_assign:n
+  \stex_if_smsmode:F {
+    \tl_set:Nn \thiscopyname { #2 }
+    \tl_set:Nn \thismoduleuri {\stex_use_module_uri:N \l_stex_current_domain_uri}
+    \stex_style_apply:
+  }
+  \stex_structural_feature_morphism_end:
+  \stex_smsmode_do:
+}{}
+
+\stex_deactivate_macro:Nn \copymod {module~environments}
+\stex_every_module:n {
+  \stex_reactivate_macro:N \copymod
+}
+\stex_sms_allow_escape:N\copymod
+%    \end{macrocode}
+% \end{senvironment}
+%
+% \begin{senvironment}{interpretmodule} (and \cs{interpretmod})
+% \StartImpl
+%    \begin{macrocode}
+\stex_new_stylable_env:nnnnnnn {interpretmodule}{m O{} m}{
+  \_@@_begin_interpret:Nnnn\stex_structural_feature_morphism:nnnnn {#1}{#2}{#3}
+}{
+  \stex_structural_feature_morphism_check_total:
+  \stex_if_smsmode:F {
+    \stex_style_apply:
+  }
+  \stex_structural_feature_morphism_end:
+}{}{}{}
+
+\stex_new_stylable_env:nnnnnnn {interpretmodule*}{m O{} m}{
+  \cs_set:Npn \stex_style_apply: {
+    \_stex_apply_patch_begin:n{interpretmodule}
+  }
+  \_@@_begin_interpret:Nnnn\stex_structural_feature_morphism_with_macros:nnnnn {#1}{#2}{#3}
+}{
+  \cs_set:Npn \stex_style_apply: {
+    \_stex_apply_patch_end:n{interpretmodule}
+  }
+  \stex_structural_feature_morphism_check_total:
+  \stex_if_smsmode:F {
+    \stex_style_apply:
+  }
+  \stex_structural_feature_morphism_end:
+}{}{}{}
+
+\cs_new_protected:Nn \_@@_begin_interpret:Nnnn {
+  #1{#2}{morphism}{#3}{#4}{,data-ftml-total=true}
+  \stex_if_smsmode:F {
+    \tl_set:Nn \thiscopyname { #2 }
+    \tl_set:Nn \thismoduleuri {\stex_use_module_uri:N \l_stex_current_domain_uri}
+    \stex_style_apply:
+  }
+  \stex_smsmode_do:
+}
+
+\stex_deactivate_macro:Nn \interpretmodule {module~environments}
+\stex_every_module:n {
+  \stex_reactivate_macro:N \interpretmodule
+}
+\stex_sms_allow_env:n{interpretmodule}
+
+\exp_after:wN \stex_deactivate_macro:Nn \csname interpretmodule*\endcsname {module~environments}
+\stex_every_module:n {
+  \exp_after:wN \stex_reactivate_macro:N \csname interpretmodule*\endcsname
+}
+\stex_sms_allow_env:n{interpretmodule*}
+
+\stex_new_stylable_cmd:nnnn{interpretmod}{s m O{} m m}{
+  \IfBooleanTF#1\stex_structural_feature_morphism_with_macros:nnnnn
+  \stex_structural_feature_morphism:nnnnn{#2}{morphism}{#3}{#4}{,data-ftml-total=true}
+  \clist_map_function:nN{#5}\_@@_parse_assign:n
+  \stex_if_smsmode:F {
+    \tl_set:Nn \thiscopyname { #2 }
+    \tl_set:Nn \thismoduleuri {\stex_use_module_uri:N \l_stex_current_domain_uri}
+    \stex_style_apply:
+  }
+  \stex_structural_feature_morphism_check_total:
+  \stex_structural_feature_morphism_end:
+  \stex_smsmode_do:
+}{}
+
+\stex_deactivate_macro:Nn \interpretmod {module~environments}
+\stex_every_module:n {
+  \stex_reactivate_macro:N \interpretmod
+}
+\stex_sms_allow_escape:N\interpretmod
+%    \end{macrocode}
+% \end{senvironment}
+%
+% \begin{sfunction}{\assign}{}
+% \StartImpl
+%    \begin{macrocode}
+\stex_new_stylable_cmd:nnnn {assign} { m m }{
+  \stex_get_in_morphism:n{#1}
+  \stex_if_do_html:TF{
+    \stex_annotate_invisible:n{\hbox{$\_stex_assign_do:n{#2}$}}
+  }{
+    \_stex_assign_do:n{#2}
+  }
+  \stex_smsmode_do:
+}{}
+\stex_sms_allow_escape:N\assign
+\stex_deactivate_macro:Nn \assign {morphism~environments}
+
+\cs_new_protected:Nn \_stex_assign_do:n{
+  \stex_debug:nn{assign}{Assigning~\stex_use_symbol_uri:N \l_stex_get_symbol_uri~to~\tl_to_str:n{#1}}
+  \stex_check_term:nn{assignment}{#1}
+  \stex_if_do_html:T{
+    \stex_annotate_invisible:nn{data-ftml-assign={\stex_use_symbol_uri:N \l_stex_get_symbol_uri}}{
+      \_stex_annotate_force_break:n{
+        \mode_if_math:TF{\stex_annotate:nn{data-ftml-definiens={}}{#1}}{\hbox{$\stex_annotate:nn{data-ftml-definiens={}}{#1}$}}
+      }
+    }
+  }
+  \exp_after:wN \stex_metagroup_do_in:n \exp_after:wN {
+    \exp_after:wN \seq_put_right:Nn \exp_after:wN  \l_stex_morphism_assigns_seq
+    \exp_after:wN { \l_stex_get_symbol_uri }
+  }
+}
+
+\cs_new_protected:Nn \_@@_parse_assign:n {
+  \str_clear:N \l_@@_name_str
+  \str_clear:N \l_@@_newname_str
+  \tl_clear:N \l_@@_ass_tl
+  \stex_debug:nn{morphisms}{Parsing~#1}
+  \exp_args:NNe \seq_set_split:Nnn \l_@@_seq {\tl_to_str:n{@}} {#1}
+  \int_compare:nNnTF {\seq_count:N \l_@@_seq} = 1 {
+    \stex_debug:nn{morphisms}{No~@}
+    \seq_pop_left:NN \l_@@_seq \l_@@_next_tl
+  }{
+    \seq_pop_left:NN \l_@@_seq \l_@@_name_str
+    \stex_debug:nn{morphisms}{Name:~\l_@@_name_str}
+    \exp_args:NNo \str_set:Nn \l_@@_name_str \l_@@_name_str
+    \tl_set:Ne \l_@@_next_tl {\seq_use:Nn \l_@@_seq @}
+  }
+  \exp_args:NNNo \seq_set_split:Nnn \l_@@_seq = \l_@@_next_tl
+  \str_if_empty:NTF \l_@@_name_str {
+    \seq_pop_left:NN \l_@@_seq \l_@@_name_str
+    \exp_args:NNo \str_set:Nn \l_@@_name_str \l_@@_name_str
+    \tl_set:Ne \l_@@_ass_tl {\seq_use:Nn \l_@@_seq =}
+  }{
+    \seq_pop_left:NN \l_@@_seq \l_@@_newname_str
+    \exp_args:NNo \str_set:Nn \l_@@_newname_str \l_@@_newname_str
+    \tl_set:Ne \l_@@_ass_tl {\seq_use:Nn \l_@@_seq =}
+  }
+  \_@@_do_parsed_assign:
+}
+
+\cs_new_protected:Nn \_@@_do_parsed_assign: {
+  \exp_args:No \stex_get_in_morphism:n \l_@@_name_str
+  \str_if_empty:NF \l_@@_newname_str {
+    \stex_debug:nn{morphisms}{renaming~\l_@@_name_str;~to~\l_@@_newname_str}
+    \exp_after:wN \_@@_do_parsed_newname: \l_@@_newname_str \_@@_end:
+  }
+  \tl_if_empty:NF \l_@@_ass_tl {
+    \stex_debug:nn{morphisms}{assigning~\l_@@_name_str;~to~\exp_args:No \tl_to_str:n \l_@@_ass_tl}
+    \exp_args:No \_stex_assign_do:n \l_@@_ass_tl
+  }
+}
+
+\cs_new_protected:Nn \_@@_do_parsed_newname: {
+  \peek_charcode:NTF [ {
+    \_@@_do_parsed_newname:w
+  }{
+    \_@@_do_parsed_newname:w []
+  }
+}
+
+\cs_new_protected:Npn \_@@_do_parsed_newname:w [#1] #2 \_@@_end: {
+  \_stex_renamedecl_do:nn{#1}{#2}
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\renamedecl}{}
+% \StartImpl
+%    \begin{macrocode}
+\stex_new_stylable_cmd:nnnn {renamedecl} { m O{} m }{
+  \stex_get_in_morphism:n{#1}
+  \_stex_renamedecl_do:nn{#2}{#3}
+  \stex_smsmode_do:
+}{}
+\stex_sms_allow_escape:N\renamedecl
+\stex_deactivate_macro:Nn \renamedecl {morphism~environments}
+
+\cs_new_protected:Nn \_stex_renamedecl_do:nn {
+  \stex_debug:nn{renamedecl}{Renaming~\stex_use_symbol_uri:N \l_stex_get_symbol_uri~to~[#1]{#2}}
+  \stex_if_do_html:T{
+    \exp_args:Ne \stex_annotate_invisible:nn{
+      data-ftml-rename={\stex_use_symbol_uri:N \l_stex_get_symbol_uri},
+      data-ftml-macroname={#2}
+      \str_if_empty:nF{#1}{ ,data-ftml-to={#1} }
+    }{}
+  }
+  \stex_metagroup_do_in:e {
+    \seq_push:Nn \exp_not:N \l_stex_morphism_renames_seq 
+    {{\l_stex_get_symbol_uri}{{#2}{
+      \tl_if_empty:nTF{#1}{
+        \l_stex_feature_name_str/\stex_symbol_uri_name:N \l_stex_get_symbol_uri
+      }{#1}
+    }}}
+  }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\assignMorphism}{}
+% \StartImpl
+%    \begin{macrocode}
+\stex_new_stylable_cmd:nnnn {assignMorphism} { m m }{
+  \str_clear:N \l_@@_morphism_dom_str
+  \exp_args:No \stex_iterate_morphisms:nn\l_stex_current_domain_uri{
+    \stex_debug:nn{assignMorphism}{
+      Checking:~#1~vs:^^J##1^^J##2^^J##3^^J##4
+    }
+    \str_if_eq:nnTF{#1}{##1}{
+      \_@@_do_morph_assign:nnn{##1}{##2}{##4}
+    }{
+      \stex_str_if_ends_with:nnT{##2}{#1}{
+        \_@@_do_morph_assign:nnn{##1}{##2}{##4}
+      }
+    }
+  }
+  \str_if_empty:NT \l_@@_morphism_dom_str {
+    \msg_error:nnn{stex}{error/nomorphism}{#1}
+  }
+  \bool_set_false:N \l_tmpa_bool
+  \stex_iterate_morphisms:nn \l_stex_current_module_str {
+    \stex_debug:nn{assignMorphism}{
+      Checking:~#2~vs:^^J##1^^J##2^^J##3^^J##4
+    }
+    \str_if_eq:nnTF{#2}{##1}{
+      \stex_debug:nn{assignMorphism}{match!}
+      \stex_iterate_break:n{
+        \stex_annotate_invisible:nn{
+          data-ftml-assignmorphismfrom={\l_@@_morphism_dom_str}
+          data-ftml-assignmorphismto={\l_stex_current_module_str?##1}
+        }{}
+        \bool_set_true:N \l_tmpa_bool
+      }
+    }{
+      \stex_str_if_ends_with:nnT{##2}{#2}{
+        \stex_debug:nn{assignMorphism}{match!}
+        \stex_iterate_break:n{
+          \stex_annotate_invisible:nn{
+            data-ftml-assignmorphismfrom={\l_@@_morphism_dom_str},
+            data-ftml-assignmorphismto={\l_stex_current_module_str?##1}
+          }{}
+          \bool_set_true:N \l_tmpa_bool
+        }
+      }
+    }
+  }
+  \bool_if:NF \l_tmpa_bool {
+    \msg_error:nnn{stex}{error/nomorphism}{#2}
+  }
+}{}
+\stex_sms_allow_escape:N \assignMorphism
+\stex_deactivate_macro:Nn \assignMorphism {morphism~environments}
+
+\cs_new_protected:Nn \_@@_do_morph_assign:nnn {
+  \stex_iterate_break:n{
+    \str_set:Ne \l_@@_morphism_dom_str { \l_stex_current_domain_str ? #1 }
+    \stex_debug:nn{assignMorphism}{match!}
+    \stex_iterate_symbols:nn{#2}{
+      \stex_debug:nn{assignMorphism}{removing~##1?##3}
+      % TODO: non-trivial assignments
+      \prop_remove:Nn \l_stex_morphism_symbols_prop {
+        [##1]/[##3]
+      }
+    }
+  }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \end{sfragment}

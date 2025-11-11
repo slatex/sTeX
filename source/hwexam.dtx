@@ -13,13 +13,13 @@
 \def\stexdocpath{../doc}
 \input{\stexdocpath/stex-docheader}
 \stextoptitle{The \texttt{hwexam} Package}{hwexam}
-\docmodule
+\docmodule{chapter}
 %</driver>
 % \fi
 %
 % \begin{stexmanual}
 %    \begin{sfragment}{HWExam Manual}
-	%      \input{\stexdocpath/packages/stex-hwexam}
+%      \input{\stexdocpath/packages/stex-hwexam}
 %    \end{sfragment}
 % \end{stexmanual}
 %
@@ -41,7 +41,7 @@
 %
 %    \begin{macrocode}
 %<*package>
-\ProvidesExplPackage{hwexam}{2023/10/13}{3.4.0}{homework assignments and exams}
+\ProvidesExplPackage{hwexam}{2025/11/11}{4.0.0}{homework assignments and exams}
 \RequirePackage{l3keys2e}
 
 \keys_define:nn {hwexam / pkg}{
@@ -275,7 +275,7 @@
 			]\c_right_brace_str
 		}
 		\par\rule[.3em]{\linewidth}{0.4pt}\newline
-	}{}
+	}
 
 	\renewcommand \anscls [2][] {
 		\stex_keys_set:nn{ anscls }{#1}
@@ -304,15 +304,15 @@
 		}\item[\l_stex_key_id_str] 
 			\stex_if_do_html:TF{
 				\exp_args:Ne \stex_annotate:nn{
-					shtml:answerclass={\l_stex_key_id_str}
+					data-ftml-answerclass={\l_stex_key_id_str}
 					\str_if_empty:NF \l_stex_key_pts_str{
-						,shtml:answerclass-pts={\l_stex_key_pts_str}
+						,data-ftml-answerclass-pts={\l_stex_key_pts_str}
 					}
 				}{
 					#2
 					\tl_if_empty:NF \l_stex_key_feedback_tl{
 						\stex_annotate_invisible:nn{
-							shtml:answerclass-feedback={true}
+							data-ftml-answerclass-feedback={true}
 						}{\l_stex_key_feedback_tl}
 					}
 				}
@@ -382,6 +382,11 @@
 	\global\refstepcounter{assignment}
 	\setcounter{sproblem}{0}
 	\def\thesproblem{\theassignment.\arabic{sproblem}}
+	\stex_if_do_html:T{
+		\tl_if_empty:NF \l_stex_key_title_tl {
+			\stexdoctitle \l_stex_key_title_tl
+		}
+	}
 	\stex_style_apply:
 	\_stex_do_id:
 }{
@@ -425,14 +430,14 @@
 %
 %    \begin{macrocode}
 \prop_new:N \c_@@_problems_prop
-\tl_set:Nn \c_@@_total_mins_tl {0}
-\tl_set:Nn \c_@@_total_pts_tl {0}
+\tl_set:Nn \c_@@_total_mins_tl {0pt}
+\tl_set:Nn \c_@@_total_pts_tl {0pt}
 \int_new:N \c_@@_total_problems_int
 \cs_set_protected:Npn \problem@restore #1 #2 #3 {
 	\int_gincr:N \c_@@_total_problems_int
 	\prop_gput:Nnn \c_@@_problems_prop {#1}{{#2}{#3}}
-	\tl_gset:Nx \c_@@_total_pts_tl { \int_eval:n { \c_@@_total_pts_tl + #2 }}
-	\tl_gset:Nx \c_@@_total_mins_tl { \int_eval:n { \c_@@_total_mins_tl + #2 }}
+	\tl_gset:Ne \c_@@_total_pts_tl { \dim_eval:n { \c_@@_total_pts_tl + #2pt }}
+	\tl_gset:Ne \c_@@_total_mins_tl { \dim_eval:n { \c_@@_total_mins_tl + #2pt }}
 }
 %    \end{macrocode}
 %
@@ -457,7 +462,7 @@
 &\exp_args:Ne \multicolumn{\int_eval:n{ \c_@@_total_problems_int + 1}}{c||}
 {\footnotesize\hwexam@kw@forgrading} &\\\hline
 \hwexam@kw@probs & \l_tmpa_tl \hwexam@kw@sum & \hwexam@kw@grade\\\hline
-\hwexam@kw@pts & \l_tmpb_tl \c_@@_total_pts_tl & \\\hline
+\hwexam@kw@pts & \l_tmpb_tl \dim_to_decimal:n\c_@@_total_pts_tl & \\\hline
 \hwexam@kw@reached & \l_tmpc_tl & \\[.7cm]\hline
 \end{tabular}}}
 %    \end{macrocode}
@@ -490,16 +495,16 @@
 \newenvironment{testheading}[1][]{
 	\stex_keys_set:nn { hwexam / testheading}{#1}
 
-	\tl_set_eq:NN \hwexam@totalpts \c_@@_total_pts_tl
-	\tl_set_eq:NN \hwexam@totalmin \c_@@_total_mins_tl
-	\tl_set:Nx \hwexam@checktime {\int_eval:n { \hwexam@min - \hwexam@totalmin }}
+	\tl_set:Nx \hwexam@totalpts {\dim_to_decimal:n \c_@@_total_pts_tl}
+	\tl_set:Nx \hwexam@totalmin {\dim_to_decimal:n \c_@@_total_mins_tl}
+	\tl_set:Nx \hwexam@checktime {\dim_to_decimal:n { \hwexam@min pt - \hwexam@totalmin pt }}
 
 	\newif\if@bonuspoints
 	\tl_if_empty:NTF \hwexam@reqpts {
 		\@bonuspointsfalse
 	}{
 		\tl_set:Nx \hwexam@bonuspts {
-			\int_eval:n{\hwexam@totalpts - \hwexam@reqpts}
+			\dim_to_decimal:n{\hwexam@totalpts pt - \hwexam@reqpts pt}
 		}
 		\@bonuspointstrue
 	}
@@ -509,6 +514,92 @@
 	\newpage
 }
 %    \end{macrocode}
+% \end{macro}
+% 
+% \begin{macro}{examdata,quizdata,homeworkdata}
+% 
+%    \begin{macrocode}
+\bool_new:N \g_@@_allow_data_bool
+\bool_gset_true:N \g_@@_allow_data_bool
+\AtBeginDocument{
+	\bool_gset_false:N \g_@@_allow_data_bool
+}
+
+\msg_set:nnn{stex}{hwexam/doubledata}{
+  Exam/Homework/Quiz~Data~already~set
+}
+
+\msg_set:nnn{stex}{hwexam/nodate}{
+  Exam/Homework/Quiz~Data~missing~date~value
+}
+
+\msg_set:nnn{stex}{hwexam/nocourse}{
+  Exam/Homework/Quiz~Data~missing~course~value
+}
+
+\stex_keys_define:nnnn{ hwexam / commondata }{
+	% https://docs.rs/dateparser/latest/dateparser/#accepted-date-formats
+	\str_clear:N \l_@@_key_exam_date_str
+	\str_clear:N \l_@@_key_exam_course_id_str
+	\str_clear:N \l_@@_key_exam_term_str
+	\int_set:Nn \l_@@_key_exam_num_int {1}
+}{
+	date     .str_set:N = \l_@@_key_exam_date_str,
+	course   .str_set:N = \l_@@_key_exam_course_id_str,
+	term     .str_set:N = \l_@@_key_exam_term_str,
+	num      .int_set:N = \l_@@_key_exam_num_int
+}{}
+
+\stex_keys_define:nnnn{ hwexam / examdata }{
+	\bool_set_false:N \l_@@_key_exam_retake_bool
+}{
+	retake   .bool_set:N = \l_@@_key_exam_retake_bool
+}{hwexam/commondata}
+
+\cs_set_protected:Nn \_@@_do_metadata:nnnn {
+	\bool_if:NF \g_@@_allow_data_bool {
+		\msg_fatal:nn{stex}{hwexam/doubledata}
+	}
+	\bool_gset_false:N \g_@@_allow_data_bool
+	\stex_keys_set:nn { hwexam / #1}{#2}
+	\str_set:Nn \g_stex_document_kind_str{#4}
+	\str_if_empty:NT\l_@@_key_exam_date_str{
+		\msg_fatal:nn{stex}{hwexam/nodate}
+	}
+	\str_if_empty:NT\l_@@_key_exam_course_id_str{
+		\msg_fatal:nn{stex}{hwexam/nocourse}
+	}
+	\cs_if_exist:NT \date {
+		\exp_args:No \date \l_@@_key_exam_date_str
+	}
+
+	\tl_set:Ne \g_stex_document_kind_parameters_tl{
+		,data-ftml-document-kind-date={\l_@@_key_exam_date_str}
+		,data-ftml-document-kind-num=\int_use:N \l_@@_key_exam_num_int 
+		,data-ftml-document-kind-course=\l_@@_key_exam_course_id_str
+		\str_if_empty:NF \l_@@_key_exam_term_str{
+			,data-ftml-document-kind-term=\l_@@_key_exam_term_str
+		}
+		#3
+	}
+}
+
+\newcommand\examdata[1]{
+	\_@@_do_metadata:nnnn{examdata}{#1}{
+		,data-ftml-document-kind-retake=\bool_if:NTF \l_@@_key_exam_retake_bool{true}{false}
+	}{exam}
+}
+
+\newcommand\homeworkdata[1]{
+	\_@@_do_metadata:nnnn{commondata}{#1}{}{homework}
+}
+
+\newcommand\quizdata[1]{
+	\_@@_do_metadata:nnnn{commondata}{#1}{}{quiz}
+}
+
+%    \end{macrocode}
+% 
 % \end{macro}
 %
 %

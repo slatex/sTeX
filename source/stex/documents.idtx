@@ -1,0 +1,1165 @@
+% \iffalse
+%<*driver>
+\def\stexdocpath{../../doc}
+\input{\stexdocpath/stex-docheader}
+\stextoptitle{The \sTeX Package}{stex}
+\docmodule
+%</driver>
+%<*package>
+% \fi
+%
+% \begin{sfragment}{Documents}
+%
+% \begin{implementation}
+%    \begin{macrocode}
+%<@@=stex_doc>
+%    \end{macrocode}
+% \end{implementation}
+%
+% \begin{sfunction}{\STEXftmllink,\STEXlinkftml,\STEXsetlinkftml}{}
+%
+% \cs{STEXlinkftml} inserts the following link/disclaimer:
+% \begin{framed}
+%  \STEXlinkftml
+% \end{framed}
+%
+% The precise text can be set using \cs{STEXsetlinkftml}\marg{text};
+% The link on its own can be inserted using \cs{STEXftmllink}.
+%
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Npn \STEXftmllink {
+  \exp_args:Ne\url{
+    \stex_use_document_uri:N \l_stex_current_document_uri
+  }
+}
+
+\cs_new_protected:Npn \STEXsetlinkftml #1 {
+  \tl_gset:Nn \g_@@_ftml_link_text_tl { #1 }
+}
+
+\tl_gset:Nn \g_@@_ftml_link_text_tl{
+  The~
+  \stex_get_symbol:nF{FTML}{}
+  \tl_if_empty:NTF \l_stex_get_symbol_uri {FTML}{\sn{FTML}}
+  {}~ version ~ of ~ this ~ document ~ can ~ be ~ found ~ at\\
+  \STEXftmllink
+}
+
+\NewDocumentCommand \STEXlinkftml { O{} } {
+  \ifstexhtml\else
+    \begin{center}
+      \emph{
+        \tl_if_empty:nTF{#1}\g_@@_ftml_link_text_tl{#1}
+      }
+    \end{center}
+  \fi
+}
+%    \end{macrocode}
+%
+% \end{sfunction}
+%
+%
+% \begin{sfunction}{\stexdoctitle}{\cs{stexdoctitle} \marg{title}}
+%  Sets \meta{title} to be the title of the document. Only
+% the first call of this command does something.
+%
+% \StartImpl
+% Initial definition (before |\begin{document}|):
+%    \begin{macrocode}
+\tl_new:N \g_@@_title_tl
+
+\str_new:N \g_stex_document_kind_str
+\tl_new:N \g_stex_document_kind_parameters_tl
+\str_set:Nn \g_stex_document_kind_str{article}
+\stex_if_html_backend:T{
+  \AtBeginDocument{
+    \exp_args:Nne\stex_html_node:nnn{span}{
+      data-ftml-document-kind=\g_stex_document_kind_str
+      \g_stex_document_kind_parameters_tl
+    }{}
+  }
+}
+
+\cs_new_protected:Npn \stexdoctitle #1 {
+  \tl_gset:Nn \g_@@_title_tl { #1 }
+  \global\def\stexdoctitle##1{}
+}
+%    \end{macrocode}
+%
+% At begin document, we switch to:
+%    \begin{macrocode}
+\cs_new_protected:Nn \_@@_set_title:n {
+  \stex_if_smsmode:F{
+    \gdef\stexdoctitle##1{}
+    \stex_debug:nn{title}{Setting~title~to:~\tl_to_str:n{#1}}
+    \tl_gset:Nn \g_@@_title_tl { #1 }
+    \_@@_title_html:
+  }
+}
+
+\cs_new_protected:Nn \_@@_title_html: {
+  \stex_if_do_html:T{
+    \stex_annotate_invisible:nn{data-ftml-doctitle={}}{ \hbox{\g_@@_title_tl} }
+  }
+}
+
+\AtBeginDocument {
+  \tl_if_empty:NTF \g_@@_title_tl {
+    \cs_set_eq:NN \stexdoctitle \_@@_set_title:n
+  }{
+    \gdef\stexdoctitle#1{}
+    \_@@_title_html:
+  }
+
+  \cs_set_eq:NN \_@@_maketitle: \maketitle
+  \protected\gdef\maketitle{
+    \tl_if_empty:NF \@title {
+      \exp_args:No \stexdoctitle \@title
+    }
+    \_@@_maketitle:
+  }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% ^^A -------------------------------------------------------
+%
+% \begin{sfragment}{Sectioning}
+%
+% \begin{svariable}{\l_stex_current_section_level_int,\l_stex_current_section_level_str}
+%  integer keeping track of the current sectioning level:
+% \begin{itemize}
+%   \item[0] part
+%   \item[1] chapter
+%   \item[2] section
+%   \item[3] subsection
+%   \item[4] subsubsection
+%   \item[5] paragraph
+%   \item[$>$5] subparagraph
+% \end{itemize}
+% \cs{setsectionlevel} sets \cs{l_stex_current_section_level_int} to the corresponding
+% integer value. \cs{l_stex_current_section_level_str} stores a string
+% representation of the same value, but will initially contain |document|.
+%
+% \StartImpl
+%    \begin{macrocode}
+\int_new:N \l_stex_current_section_level_int
+\str_set:Nn \l_stex_current_section_level_str {document}
+%    \end{macrocode}
+% \end{svariable}
+%
+% \begin{sfunction}{\currentsectionlevel,\Currentsectionlevel}{}
+%  will leave the current section level as text in the token input.
+% The variant \cs{Currentsectionlevel} will produce the capitalized version.
+%
+% If the \pkg{xspace} package is loaded, this will insert an \cs{xspace}
+% afterwards.
+%
+% In HTML mode, this will insert an annotation, so it can be adapted dynamically.
+%
+% \StartImpl
+%    \begin{macrocode}
+\cs_set_protected:Npn \currentsectionlevel {
+  \stex_if_do_html:TF{
+    \mode_if_vertical:T{\hbox_unpack:N\c_empty_box}
+    \stex_annotate:nn{data-ftml-currentsectionlevel={},data-ftml-capitalize=false}{}
+  }{
+   \l_stex_current_section_level_str
+  }
+  \tl_if_exist:NT\xspace\xspace
+}
+
+\cs_set_protected:Npn \Currentsectionlevel {
+  \stex_if_do_html:TF{
+    \mode_if_vertical:T{\hbox_unpack:N\c_empty_box}
+    \stex_annotate:nn{data-ftml-currentsectionlevel={},data-ftml-capitalize=true}{}
+  }{
+    \exp_after:wN \str_uppercase:n \l_stex_current_section_level_str
+  }
+  \tl_if_exist:NT\xspace\xspace
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{senvironment}{sfragment}
+% A section at the current section level; preferred over the
+% primitives \cs{section}, \cs{subsection}, etc., because
+% a) environments are better suited for such structuring, and
+% b) it allows for adapting the inserted section header based
+% on document context, rather than it being hardcoded --
+% e.g. what's a subsection in one document may be a section in
+% another.
+%
+% \StartImpl
+%    \begin{macrocode}
+\stex_keys_define:nnnn{ sfragment }{
+  \tl_clear:N \l_stex_key_short_tl
+}{
+  short   .tl_set:N   = \l_stex_key_short_tl
+}{id}
+
+\NewDocumentEnvironment{sfragment}{ O{} m}{
+  \stex_keys_set:nn{sfragment}{#1}
+  \_@@_do_section:n{#2}
+  \_stex_do_id: % TODO
+}{
+  \_sfragment_end:
+}
+
+\cs_new_protected:Npn \_@@_do_section:n {
+  \int_case:nnF \l_stex_current_section_level_int {
+    {0}{\cs_if_exist:NTF \thepart {\_sfragment_do_level:nn{part}}{
+      \int_incr:N \l_stex_current_section_level_int
+      \_@@_do_section:n
+    }}
+    {1}{\cs_if_exist:NTF \thechapter {\_sfragment_do_level:nn{chapter}}{
+      \int_incr:N \l_stex_current_section_level_int
+      \_@@_do_section:n
+    }}
+    {2}{\_sfragment_do_level:nn{section}}
+    {3}{\_sfragment_do_level:nn{subsection}}
+    {4}{\_sfragment_do_level:nn{subsubsection}}
+    {5}{\_sfragment_do_level:nn{paragraph}}
+  }{\_sfragment_do_level:nn{subparagraph}}
+}
+
+\stex_if_html_backend:TF {
+  \cs_new_protected:Nn \_sfragment_do_level:nn {
+    \stexdoctitle{#2}
+    \par
+    \begin{stex_env_node}{section}{data-ftml-section={\int_use:N \l_stex_current_section_level_int}}
+      \noindent\stex_html_node:nnn{h1}{data-ftml-title={}}{
+        \_stex_annotate_force_break:n{#2}
+      }\par
+  }
+  \cs_new_protected:Nn \_sfragment_end: {
+    \end{stex_env_node}
+  }
+}{
+  \cs_new_protected:Nn \_sfragment_do_level:nn {
+    \stexdoctitle{#2}
+    \tl_if_empty:NTF \l_stex_key_short_tl {
+      \use:c{#1}
+    }{
+      \exp_args:Nne \use:nn{\use:c{#1}}{[\exp_args:No \exp_not:n \l_stex_key_short_tl]}
+    }{#2}
+
+    \int_compare:nNnF \l_stex_current_section_level_int = 6{
+      \int_incr:N \l_stex_current_section_level_int
+    }
+    \tl_set:Nn\l_stex_current_section_level_str{#1}
+  }
+  \cs_new_protected:Nn \_sfragment_end: {}
+}
+%    \end{macrocode}
+% \end{senvironment}
+%
+%
+% \begin{senvironment}{titlefragment}
+% like \env{sfragment}, but will use \cs{maketitle} instead
+% of (one of) the sectioning macros, if no title has been used
+% yet.
+%
+% \StartImpl
+%    \begin{macrocode}
+\bool_new:N \l_@@_titlefragment_bool
+
+\NewDocumentEnvironment{titlefragment}{ O{} m}{
+  \stex_keys_set:nn{sfragment}{#1}
+  \cs_if_exist:NTF \maketitle {
+    \bool_set_true:N \l_@@_titlefragment_bool
+    \title{#2}
+    \tl_if_empty:NF \l_stex_key_short_tl {
+      \cs_if_exist:NT \shorttitle {
+        \exp_args:No \shorttitle \l_stex_key_short_tl
+      }
+    }
+    \stexdoctitle{#2}
+    \maketitle
+  }{
+    \bool_set_false:N \l_@@_titlefragment_bool
+    \_@@_do_section:n{#2}
+    \_stex_do_id:
+  }
+}{
+    \bool_if:NF \l_@@_titlefragment_bool \_sfragment_end:
+}
+%    \end{macrocode}
+% \end{senvironment}
+%
+% \begin{senvironment}{blindfragment}
+% skips one sectioning level in its body so that e.g. subsection 0.1 can be
+% used before the first section
+%
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Nn \_@@_skip_section_i: {
+  \int_case:nn \l_stex_current_section_level_int {
+    {0}{\cs_if_exist:NF \thepart {
+      \int_incr:N \l_stex_current_section_level_int \_@@_skip_section_i:
+    }}
+    {1}{\cs_if_exist:NF \thechapter {
+      \int_incr:N \l_stex_current_section_level_int \_@@_skip_section_i:
+    }}
+  }
+  \int_compare:nNnF \l_stex_current_section_level_int = 6{
+    \int_incr:N \l_stex_current_section_level_int
+  }
+}
+
+\stex_if_html_backend:TF {
+  \cs_new_protected:Nn \_@@_skip_section: {
+    \_@@_skip_section_i:
+    \begin{stex_annotate_env}{data-ftml-skipsection={\int_use:N \l_stex_current_section_level_int}}
+    \_stex_annotate_force_break:n{}
+  }
+}{
+  \cs_set_eq:NN \_@@_skip_section: \_@@_skip_section_i:
+}
+
+\NewDocumentEnvironment{blindfragment}{}{
+  \_@@_skip_section:
+}{
+  \stex_if_html_backend:T{
+    \stex_annotate_invisible:n{~}
+    \end{stex_annotate_env}
+  }
+}
+%    \end{macrocode}
+% \end{senvironment}
+%
+% \begin{sfunction}{\skipfragment}{}
+% Skips one counter at the current sectioning level;
+% e.g. increase the subsection counter to 2 if called immediately
+% after \cs{section} (or, rather, after \cs{begin}|{|\env{sfragment}|}|).
+%
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Npn \skipfragment {
+  \int_case:nnF \l_stex_current_section_level_int {
+    {0}{\cs_if_exist:NTF \thepart {\stepcounter{part}}{
+      \int_incr:N \l_stex_current_section_level_int
+      \skipfragment
+    }}
+    {1}{\cs_if_exist:NTF \thechapter {\stepcounter{chapter}}{
+      \int_incr:N \l_stex_current_section_level_int
+      \skipfragment
+    }}
+    {2}{\stepcounter{section}}
+    {3}{\stepcounter{subsection}}
+    {4}{\stepcounter{subsubsection}}
+    {5}{\stepcounter{paragraph}}
+  }{\stepcounter{subparagraph}}
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\setsectionlevel}{\cs{setsectionlevel} \marg{name}}
+%  Sets the current section level to the one specified
+% (e.g. \cs{setsectionlevel}|{subsection}|). Should ideally be called at most
+% once in the preamble of a document.
+%
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Npn \setsectionlevel #1 {
+  \str_case:nnF{#1}{
+    {part}{\int_set:Nn \l_stex_current_section_level_int 0}
+    {chapter}{\int_set:Nn \l_stex_current_section_level_int 1}
+    {section}{\int_set:Nn \l_stex_current_section_level_int 2}
+    {subsection}{\int_set:Nn \l_stex_current_section_level_int 3}
+    {subsubsection}{\int_set:Nn \l_stex_current_section_level_int 4}
+    {paragraph}{\int_set:Nn \l_stex_current_section_level_int 5}
+  }{
+    \int_set:Nn \l_stex_current_section_level_int 6
+  }
+  \stex_if_do_html:T{
+    \cs_if_eq:NNTF\@onlypreamble\@notprerr{
+      \stex_html_literal:n{<span~ data-ftml-sectionlevel="\int_use:N\l_stex_current_section_level_int"></span>}
+    }{
+      \AtBeginDocument{
+        \stex_html_literal:n{<span~ data-ftml-sectionlevel="\int_use:N\l_stex_current_section_level_int"></span>}
+      }
+    }
+  }
+}
+%    \end{macrocode}
+%
+% In HTML mode, we make sure to record the top section level:
+%    \begin{macrocode}
+\stex_if_html_backend:T{
+  \cs_new_protected:Nn \_@@_check_topsect: {
+    \int_case:nnF \l_stex_current_section_level_int {
+      {0}{\cs_if_exist:NTF \thepart {
+        \stex_annotate_invisible:nn{data-ftml-sectionlevel=0}{}
+      }{
+        \int_incr:N \l_stex_current_section_level_int
+        \_@@_check_topsect:
+      }}
+      {1}{\cs_if_exist:NTF \thechapter {
+        \stex_annotate_invisible:nn{data-ftml-sectionlevel=1}{}
+      }{
+        \int_incr:N \l_stex_current_section_level_int
+        \_@@_check_topsect:
+      }}
+    }{
+      \stex_annotate_invisible:nn{data-ftml-sectionlevel={\int_use:N\l_stex_current_section_level_int}}{}
+    }
+  }
+  \AtBeginDocument{\_@@_check_topsect:
+    \cs_if_exist:NTF \thechapter {
+      \int_case:nnT \l_stex_current_section_level_int{
+        {0}{}
+        {1}{}
+      }{
+        \stex_css_literal:n {
+          .ftml-section {
+            &~.ftml-title-section { &::before {
+              content:~counter(ftml-chapter)~"."~counter(ftml-section)~"~";
+            } }
+          }
+          .ftml-subsection {
+            &~.ftml-title-subsection { &::before {
+              content:~counter(ftml-chapter)~"."~counter(ftml-section)~"."~counter(ftml-subsection)~"~";
+            } }
+          }
+          .ftml-subsubsection {
+            &~.ftml-title-subsubsection { &::before {
+              content:~counter(ftml-chapter)~"."~counter(ftml-section)~"."~counter(ftml-subsection)~"."~counter(ftml-subsubsection)~"~";
+            } }
+          }
+        }
+      }
+    }
+  }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{implementation}
+%  We make sure \cs{frontmatter} and \cs{backmatter} are
+%  always defined. \textcolor{red}{TODO: this seems like
+%  a hack and probably shouldn't be here}
+%    \begin{macrocode}
+\bool_if:NF \c_stex_no_frontmatter_bool {
+  \cs_new_protected:Nn \_@@_x_matter: {
+    \cs_if_exist:NTF\frontmatter{
+      \let\_@@_orig_frontmatter\frontmatter
+      \let\frontmatter\relax
+    }{
+      \tl_set:Nn\_@@_orig_frontmatter{
+        \clearpage
+        %\@mainmatterfalse
+        \pagenumbering{roman}
+      }
+    }
+    \cs_if_exist:NTF\backmatter{
+      \let\_@@_orig_backmatter\backmatter
+      \let\backmatter\relax
+    }{
+      \tl_set:Nn\_@@_orig_backmatter{
+        \clearpage
+        %\@mainmatterfalse
+        \pagenumbering{roman}
+      }
+    }
+    \newenvironment{frontmatter}{
+      \_@@_orig_frontmatter
+    }{
+      \cs_if_exist:NTF\mainmatter{
+        \mainmatter
+      }{
+        \clearpage
+        %\@mainmattertrue
+        \pagenumbering{arabic}
+      }
+    }
+    \newenvironment{backmatter}{
+      \_@@_orig_backmatter
+    }{
+      \cs_if_exist:NTF\mainmatter{
+        \mainmatter
+      }{
+        \clearpage
+        %\@mainmattertrue
+        \pagenumbering{arabic}
+      }
+    }
+  }
+  \AtBeginDocument \_@@_x_matter:
+}
+%    \end{macrocode}
+% \end{implementation}
+%
+% \end{sfragment}
+%
+% ^^A -------------------------------------------------------
+%
+% \begin{sfragment}{Inter-Document References}
+%
+% \begin{implementation}
+%    \begin{macrocode}
+%<@@=stex_refs>
+%    \end{macrocode}
+%
+% The |.sref|-file:
+%    \begin{macrocode}
+\iow_new:N \c_@@_iow
+\AtBeginDocument{ \iow_open:Nn \c_@@_iow {\jobname.sref} }
+\AtEndDocument{\iow_close:N \c_@@_iow}
+\str_set:Ne \c_@@_iow_str { \stex_file_use:N \c_stex_pwd_file /  }
+%    \end{macrocode}
+%
+% \end{implementation}
+%
+% \begin{documentation}
+%  |[id=foo]| sets the current fragment's (e.g. |Definition 3.1 (Foo)|) name to |foo|, resulting in a DocumentElementURI
+%  |..&e=foo|. It then delegates to |\label{...&e=foo}| (which defines |\r@...&e=foo|),
+%  stores |:::&e=foo| in |\g_stex_sref_label_foo|, and writes
+%  |\STeXInternalSRefLabel{foo}{..&e=foo}{definition.3.1}{Foo}| to the sref file.
+% \end{documentation}
+%
+% \begin{implementation}
+%
+% Keys:
+%    \begin{macrocode}
+\stex_keys_define:nnnn{sref / 1}{
+  \tl_clear:N \l_stex_key_pre_tl
+  \tl_clear:N \l_stex_key_post_tl
+  \tl_clear:N \l_stex_key_fallback_tl
+}{
+  % TODO get rid of this
+  fallback  .code:n = {},
+  pre       .code:n = {},
+  post      .code:n = {}
+}{archive file}
+\stex_keys_define:nnnn{sref / 2}{}{}{archive file, title}
+%    \end{macrocode}
+%
+% Target declarations:
+%
+% \begin{sfunction}{\sreflabel,\stex_ref_new_doc_target:n}{}
+%
+%  Adds a new reference target in the current document (element) URI. Ultimately defers to \cs{label}.
+%
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_ref_new_doc_target:n {
+  \stex_if_smsmode:F{
+    \tl_set:Ne \l_@@_new_tl { \stex_new_document_element_uri:n { #1 } }
+    \exp_args:Ne \label { \stex_use_document_uri:N \l_@@_new_tl }
+    \exp_args:Nne \STeXInternalNewSRefLabel{#1}{ \stex_use_document_uri:N \l_@@_new_tl }
+    \iow_now:Ne \@auxout {
+      \STeXInternalNewSRefLabel{#1}{ \stex_use_document_uri:N \l_@@_new_tl }
+    }
+    \iow_now:Ne \c_@@_iow {
+      \exp_not:N \STeXInternalSRefLabel
+        { #1 }
+        { \stex_use_document_uri:N \l_@@_new_tl }
+        { \exp_not:o \@currentHref}
+        { \exp_not:o \@currentlabelname }
+    }
+  }
+}
+
+\NewDocumentCommand \sreflabel {m} { \stex_ref_new_doc_target:n{#1} }
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\stex_ref_new_sym_target:n}{}
+%
+% Adds a new reference target for the symbol with the given URI string; if not already defined;
+%
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_ref_new_sym_target:n {
+  \stex_if_smsmode:F{
+    \cs_if_exist:cTF{r@\tl_to_str:n{#1}}{
+      \cs_if_exist:cT{__stex_sref_aux_sym_ \tl_to_str:n{#1}}{
+        \cs_undefine:c{__stex_sref_aux_sym_ \tl_to_str:n{#1}}
+        \exp_args:Ne\label { \tl_to_str:n{#1} }
+      }
+    }{ \exp_args:Ne\label { \tl_to_str:n{#1} } }
+  }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+%
+% Inserting References:
+%
+% \begin{sfunction}{\sref}{}
+%
+% \StartImpl
+%    \begin{macrocode}
+\NewDocumentCommand \sref { O{} m O{}}{
+  \stex_keys_set:nn { sref / 1 }{ #1 }
+  \tl_clear:N \l_@@_tmp
+  \str_if_empty:NTF \l_stex_key_file_str {
+    \_@@_local:n
+  }{
+    \_@@_remote:nn{#3}
+  }{#2}
+}
+
+\cs_new_protected:Nn \_@@_local:n {
+  \stex_debug:nn{sref}{Checking~#1}
+  \tl_if_exist:cTF{ g_stex_sref_label_ #1 }{
+    %% TODO INSERT FTML ANNOTATION
+    \exp_args:Ne \_@@_local_ref:n {\use:c{ g_stex_sref_label_ #1 }}
+  }{
+    \tl_if_empty:NTF \l_stex_key_fallback_tl { ??? }{ \l_stex_key_fallback_tl }
+  }
+}
+
+\cs_new_protected:Nn \_@@_local_ref:n {
+  \cs_if_exist:cTF{autoref}{
+    \l_stex_key_pre_tl \autoref{#1} \l_stex_key_post_tl
+  }{
+    \message{^^J^^J
+      sTeX~Warning: \c_backslash_str sref ~ with ~ local ~ target ~ used ~ without ~ hyperref ~ loaded!
+    ^^J^^J}
+    \l_stex_key_pre_tl \ref{#1} \l_stex_key_post_tl
+  }
+}
+
+\cs_new_protected:Nn \_@@_remote:nn {
+  \str_set:Nn \l_@@_key { #2 }
+  \tl_set:Nn \l_@@_in { #1 }
+  \exp_args:No \stex_in_archive:nn \l_stex_key_archive_str {
+    \exp_args:NNo \stex_document_uri_from_archive_file:Nn \l_@@_uri {\l_stex_key_file_str}
+    \stex_debug:nn{sref}{Checking~#2~from~\stex_use_document_uri:N \l_@@_uri}
+    \tl_if_eq:NNTF \l_@@_uri \c_stex_main_document_uri {
+      \stex_debug:nn{sref}{From~current~document;~delegating~to~\string\autoref}
+      \_@@_local:n{ #2 }
+    }{
+      \str_set:Ne \l_@@_uri { \stex_use_document_uri:N \l_@@_uri }
+      \str_set:Ne \l_@@_file { \exp_args:No \stex_source_path:n {\l_stex_key_file_str}.sref }
+      \exp_args:No \IfFileExists \l_@@_file {
+        \_@@_find:
+      }{}
+      \tl_if_empty:NTF \l_@@_tmp {
+        \stex_debug:nn{sref}{Not~found}
+        \tl_if_empty:NTF \l_stex_key_fallback_tl { ??? }{ \l_stex_key_fallback_tl }
+      }{
+        \str_set_eq:NN \l_@@_uri \l_@@_tmp
+        \stex_debug:nn{sref}{Found~ \l_@@_uri}
+        \_@@_maybe_in:
+      }
+    }
+  }
+}
+
+\cs_new_protected:Nn \_@@_find: {
+  \setbox0\vbox\bgroup
+    \cs_set_eq:NN \STeXInternalSRefLabel \_@@_check_i:nnnn
+    \use:c{@ @ input}{\l_@@_file}
+    \exp_args:NNe \use:nn
+  \egroup {
+    \tl_set:Nn \exp_not:N \l_@@_tmp { \l_@@_tmp }
+  }
+}
+
+\cs_new_protected:Nn \_@@_check_i:nnnn {
+  \exp_args:No \str_if_eq:nnT{ \l_@@_key }{#1}{
+    \exp_args:Nno \stex_str_if_starts_with:nnT{#2}{\l_@@_uri}{
+      \str_set:Nn \l_@@_tmp {#2}
+      \endinput
+    }
+  }
+}
+
+\cs_new_protected:Nn \_@@_maybe_in: {
+  \tl_if_empty:NTF\l_@@_in {
+    \cs_if_exist:cTF{r@\l_@@_uri}{
+      \exp_args:No \_@@_local_ref:n \l_@@_uri
+    }{
+      \tl_if_empty:NTF \l_@@_default_file {
+        \exp_args:No \_@@_local_ref:n \l_@@_uri
+      }{
+        \tl_set_eq:NN \l_stex_key_title_tl \l_@@_default_title
+        \str_set_eq:NN \l_@@_file \l_@@_default_file
+        \str_if_eq:NNTF \l_@@_default_file \c_@@_iow_str {
+          \exp_args:No \_@@_local_ref:n \l_@@_uri
+        }{
+          \stex_debug:nn{sref}{in~title=\exp_args:No\exp_not:n\l_stex_key_title_tl,file=\l_@@_default_file}
+          \_@@_in:
+        }
+      }
+    }
+  }{
+    \stex_debug:nn{sref}{in~\exp_args:No\exp_not:n\l_@@_in}
+    \exp_args:No \stex_in_archive:nn \l_stex_key_archive_str {
+      \str_set:Ne \l_@@_file { \exp_args:No \stex_source_path:n {\l_stex_key_file_str}.sref }
+    }
+    \exp_args:Nno \stex_keys_set:nn{ sref / 2 }{ \l_@@_in }
+    \_@@_in:
+  }
+}
+
+\cs_new_protected:Nn \_@@_in: {
+  \tl_clear:N \l_@@_tmp
+  \exp_args:No \IfFileExists \l_@@_file {
+      \_@@_find_in:
+  }{
+    \stex_debug:nn{sref}{not~found:~\l_@@_file}
+  }
+  \tl_if_empty:NTF\l_@@_tmp{
+    \stex_debug:nn{sref}{Not~found}
+    \tl_if_empty:NTF \l_stex_key_fallback_tl { ??? }{ \l_stex_key_fallback_tl }
+  }{
+    \stex_debug:nn{sref}{found:~\meaning\l_@@_tmp}
+    \tl_set:Ne \l_@@_tmp {
+      \exp_after:wN \_@@_in_text:nn \l_@@_tmp
+    }
+    \cs_if_exist:NT \href {\exp_args:No \href \l_@@_uri } \l_@@_tmp
+  }
+}
+
+\cs_new:Nn \_@@_in_text:nn {
+  \_@@_in_text:w #1 \_@@_stop:
+  \tl_if_empty:nF{#2}{~(\exp_not:n{#2})}
+  \tl_if_empty:NF \l_stex_key_title_tl {
+    {}~in~\exp_args:No \exp_not:n \l_stex_key_title_tl
+  }
+}
+
+\cs_new:Npn \_@@_in_text:w #1.#2 \_@@_stop: {
+  \_@@_uppercase:n #1~#2~
+}
+
+\cs_new:Nn \_@@_uppercase:n { \uppercase{#1}}
+
+\cs_new_protected:Nn \_@@_find_in: {
+  \stex_debug:nn{sref}{finding~\l_@@_uri;~in~\l_@@_file...?}
+  \setbox0\vbox\bgroup
+    \catcode`^^J=9\relax
+    \cs_set_eq:NN \STeXInternalSRefLabel \_@@_check_in:nnnn
+    \use:c{@ @ input}{\l_@@_file}
+    \exp_args:NNe \use:nn
+  \egroup {
+    \tl_set:Nn \exp_not:N \l_@@_tmp { \exp_args:No \exp_not:n \l_@@_tmp }
+  }
+}
+
+\cs_new_protected:Nn \_@@_check_in:nnnn {
+  \exp_args:No \str_if_eq:nnT{ \l_@@_uri }{#2}{
+    \tl_set:Nn \l_@@_tmp { {#3}{#4} }
+    \endinput
+  }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+%
+%  TODO
+%    \begin{macrocode}
+%\int_new:N \l_@@_unnamed_counter_int
+
+
+
+
+\cs_new:Npn \STeXInternalSRefLabel #1 #2 #3 #4 {}
+
+\cs_new_protected:Npn \STeXInternalNewSRefLabel #1 #2 {
+  \tl_gset:ce{ g_stex_sref_label_ #1 }{ \tl_to_str:n{ #2 } }
+}
+
+\tl_new:N \l_@@_default_title
+\str_new:N \l_@@_default_file
+\str_new:N \l_@@_default_archive
+
+\newcommand\srefsetin[3][]{
+  \str_set:Ne \l_@@_default_file { #2 }
+  \tl_if_empty:nTF{#1}{
+    \str_set:Ne \l_@@_default_archive { \stex_archive_id:N \c_stex_main_archive }
+  }{
+    \str_set:Nn \l_@@_default_archive { #1 }
+  }
+  \exp_args:No \stex_in_archive:nn \l_@@_default_archive {
+    \str_set:Ne \l_@@_default_file { \exp_args:No \stex_source_path:n {\l_stex_key_file_str}.sref }
+  }
+  \str_set:Nn \l_@@_default_title { #3 }
+}
+\NewDocumentCommand \extref { O{} m m}{???}
+
+\cs_new_protected:Nn \stex_ref_new_symbol:n {}
+
+
+\NewDocumentCommand \srefsym { m m }{
+  \stex_get_symbol:n { #1 }
+  \exp_args:Ne \srefsymuri { \stex_use_symbol_uri:N \l_stex_get_symbol_uri }{ #2 }
+}
+
+\cs_new_protected:Npn \srefsymuri #1 {
+  \cs_if_exist:cTF{r@\tl_to_str:n{#1}}{
+    \cs_if_exist:NT \hyperlink { \hyperlink{#1} }
+  }{
+    \cs_if_exist:NT \href {\href{#1} }
+  }
+}
+%    \end{macrocode}
+% \end{implementation}
+%
+% \end{sfragment}
+%
+% ^^A -------------------------------------------------------
+%
+% \begin{sfragment}{Inputting From MathHub Resources}
+%
+% \begin{implementation}
+%    \begin{macrocode}
+%<@@=stex_inputs>
+%    \end{macrocode}
+% \end{implementation}
+%
+% \begin{sfunction}{\inputref}{\cs{inputref} \oarg{archive id} \marg{filepath}}
+%
+% Inputs the referenced file in the referenced archive (or current
+% archive, if empty) in a tex group, while setting all the relevant macros
+% for the current archive, document URI, etc.
+%
+% In HTML, will instead just insert an annotation, so that
+% the HTML of the referenced document can be dynamically inserted instead.
+%
+% \StartImpl
+%    \begin{macrocode}
+\NewDocumentCommand \inputref { O{} m}{
+  \stex_in_archive:nn{#1}{
+    \stex_document_uri_from_archive_file:Nn \l_@@_uri {#2}
+    \_@@_ref:n{#2}
+  }
+}
+
+\stex_if_html_backend:TF{
+  \str_set:Nn \c_@@_ref_pre_str {<span~data-ftml-inputref="}
+  \str_set:Nn \c_@@_ref_post_str {"~><!-----></span>}
+  \cs_new_protected:Nn \_@@_ref:n {
+    \IfFileExists{\stex_source_path:n {#1}}{
+      \relax
+      \exp_args:Ne\stex_html_literal:n{
+        \c_@@_ref_pre_str
+        \stex_use_document_uri:N\l_@@_uri
+        \c_@@_ref_post_str
+      }
+    }{
+      \stex_input_with_hooks:Ne\l_@@_uri {\stex_source_path:n {#1}}
+    }
+  }
+}{
+  \cs_new_protected:Nn \_@@_ref:n {
+    \begingroup
+      \inputreftrue
+      \let \l_stex_metatheory_uri \c_stex_default_metatheory
+      %\seq_clear:N \l_stex_all_modules_seq
+      \stex_undefine:N \l_stex_current_module_uri
+      \stex_debug:nn{inputref}{Inputrefing~document~\stex_use_document_uri:N \l_@@_uri{}~at~\stex_source_path:n{#1}}
+      \stex_input_with_hooks:Ne\l_@@_uri{\stex_source_path:n {#1}}
+    \endgroup
+  }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\mhinput}{\cs{inputref} \oarg{archive id} \marg{filepath}}
+% Like \cs{inputref}, but \emph{always} actually inputs the referenced
+% file (also in HTML mode!) and without opening a tex group.
+%
+% \StartImpl
+%    \begin{macrocode}
+\NewDocumentCommand \mhinput { O{} m}{
+  \stex_in_archive:nn {#1} {
+    \stex_document_uri_from_archive_file:Nn \l_@@_uri {#2}
+    \ifinputref
+      \stex_input_with_hooks:Ne\l_@@_uri{\stex_source_path:n {#2}}
+    \else
+      \inputreftrue
+      \stex_input_with_hooks:Ne\l_@@_uri{\stex_source_path:n {#2}}
+      \inputreffalse
+    \fi
+  }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\ifinputref}{}
+% \LaTeX2 conditional; is true, if we currently are in an
+% \cs{inputref} or \cs{mhinput}.
+%
+% \StartImpl
+%    \begin{macrocode}
+\newif \ifinputref \inputreffalse
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\IfInputref}{\cs{IfInputref} \marg{true} \marg{false}}
+% Executes \meta{true} if we currently are in an
+% \cs{inputref} or \cs{mhinput}, otherwise executes \meta{false}.
+%
+% In HTML, \emph{both} branches are executed(!) and inserted in the
+% HTML with corresponding attributes, so that the relevant
+% parts can be shown or hidden.
+%
+% \StartImpl
+%    \begin{macrocode}
+\stex_if_html_backend:TF{
+  \newcommand \IfInputref[2]{
+    \stex_annotate:nn{data-ftml-ifinputref=true}{#1}
+    \stex_annotate:nn{data-ftml-ifinputref=false}{#2}
+  }
+}{
+  \newcommand \IfInputref[2]{
+    \ifinputref #1 \else #2 \fi
+  }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\libinput}{ \cs{libinput} \oarg{archive id} \marg{file name}}
+% inputs all files \meta{file name}|.tex| in the |lib| directories
+% of the current archive. Will throw an error if we are not
+% in an archive or no suitable file is found.
+%
+% \StartImpl
+%    \begin{macrocode}
+\newcommand \libinput [2][] {
+  \stex_in_archive:nn{#1}{
+    \_@@_up_archive:nn{#2}{tex}
+    \stex_debug:nn{lib}{Result:~\seq_use:Nn \l_@@_libinput_files_seq ,}
+    \seq_if_empty:NTF \l_@@_libinput_files_seq {
+      \msg_error:nnnn{stex}{error/nofile}{\libinput}{#2.tex}
+    }{
+      \seq_map_function:NN \l_@@_libinput_files_seq \input
+    }
+  }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\libusepackage}{ \cs{libusepackage} \oarg{package options} \marg{package name}}
+% inputs all packages \meta{package name}|.sty| in the |lib| directories
+% of the current archive. Will throw an error if we are not
+% in an archive, or there is not \emph{exactly one} file
+% \meta{package name}|.sty| somewhere in the |lib| directories.
+%
+% Note that unlike \cs{libinput}, the optional argument does
+% \emph{not} refer to an archive ID, since this would conflict with
+% package options.
+%
+% Will give a spurious warning that package |mathhub/directory/foo| was
+% requested, but package |foo| was found. This is a side-effect
+% of using absolute file paths, which is necessary to make the
+% package findable in the first place.
+%
+% \StartImpl
+%    \begin{macrocode}
+\newcommand\libusepackage[2][]{
+  \_@@_up_archive:nn{#2}{sty}
+  \int_compare:nNnTF {\seq_count:N \l_@@_libinput_files_seq} = 1 {
+    \str_set:Ne \l_@@_tmp_str {\seq_item:Nn \l_@@_libinput_files_seq 1}
+    \exp_args:Nne \use:n {\usepackage[#1]} {
+      \str_range:Nnn\l_@@_tmp_str 1 {-5}
+    }
+  }{
+    \msg_fatal:nnnn{stex}{error/nofile}{\libusepackage}{#2.sty}
+  }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\libusetikzlibrary}{ \cs{libusetikzlibrary} \oarg{archive id} \marg{name}}
+% like \cs{libusepackage}, but for \cs{usetikzlibrary}.
+%
+% \StartImpl
+%    \begin{macrocode}
+\newcommand \libusetikzlibrary [2][] {
+  \cs_if_exist:NF \usetikzlibrary {
+    \msg_error:nnx{stex}{error/notikz}{\tl_to_str:n{\libusetikzlibrary}}
+  }
+  \tl_if_empty:nTF{#1}{
+    \_@@_usetikzlibrary:n{#2}
+  }{
+    \stex_in_archive:nn{#1}{\_@@_usetikzlibrary:n{#2}}
+  }
+}
+
+\cs_new_protected:Nn \_@@_usetikzlibrary:n{
+  \_@@_up_archive:nn{tikzlibrary#1}{code.tex}
+  \int_compare:nNnTF {\seq_count:N \l_@@_libinput_files_seq} = 1 {
+    \exp_args:Nne \_@@_usetikzlibrary_i:nn{#1}{ \seq_item:Nn \l_@@_libinput_files_seq 1 }
+  }{
+    \msg_fatal:nnnn{stex}{error/nofile}{\libusetikzlibrary}{tikzlibrary#1.code.tex}
+  }
+}
+
+\cs_new_protected:Nn \_@@_usetikzlibrary_i:nn {
+  \pgfkeys@spdef\pgf@temp{#1}
+  \expandafter\ifx\csname tikz@library@\pgf@temp @loaded\endcsname\relax%
+  \expandafter\global\expandafter\let\csname tikz@library@\pgf@temp @loaded\endcsname=\pgfutil@empty%
+  \expandafter\edef\csname tikz@library@#1@atcode\endcsname{\the\catcode`\@}
+  \expandafter\edef\csname tikz@library@#1@barcode\endcsname{\the\catcode`\|}
+  \expandafter\edef\csname tikz@library@#1@dollarcode\endcsname{\the\catcode`\$}
+  \catcode`\@=11
+  \catcode`\|=12
+  \catcode`\$=3
+  \pgfutil@InputIfFileExists{#2}{}{}
+  \catcode`\@=\csname tikz@library@#1@atcode\endcsname
+  \catcode`\|=\csname tikz@library@#1@barcode\endcsname
+  \catcode`\$=\csname tikz@library@#1@dollarcode\endcsname
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\addmhbibresource}{ \cs{addmhbibresource} \oarg{archive id} \marg{file name}}
+% Calls \cs{addbibresource} on all \meta{file name}|.bib| files in the |lib| directories
+% of the current archive. Will throw an error if we are not
+% in an archive or no suitable file is found.
+%
+% \StartImpl
+%    \begin{macrocode}
+\newcommand \addmhbibresource [2][] {
+  \stex_in_archive:nn{#1}{
+    \_@@_up_archive:nn{#2}{bib}
+    \stex_debug:nn{lib}{Result:~\seq_use:Nn \l_@@_libinput_files_seq ,}
+    \seq_if_empty:NTF \l_@@_libinput_files_seq {
+      \msg_error:nnnn{stex}{error/nofile}{\addmhbibresource}{#2.bib}
+    }{
+      \seq_map_function:NN \l_@@_libinput_files_seq \addbibresource
+    }
+  }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{implementation}
+% \begin{macro}{\_@@_up_archive:nn}
+% Iterates up the current archive's directory in search for
+% |lib| files with name |#1.#2|
+%    \begin{macrocode}
+\cs_new_protected:Nn \_@@_up_archive:nn {
+  \tl_if_exist:NF \l_stex_current_archive {
+    \msg_error:nnn{stex}{error/notinarchive}\libinput
+  }
+  \seq_clear:N \l_@@_libinput_files_seq
+  \seq_set_split:Nne \l_@@_path_seq / {\stex_archive_path:N \l_stex_current_archive}
+  \seq_set_split:Nne \l_@@_id_seq / {\stex_archive_id:N \l_stex_current_archive}
+  \seq_map_inline:Nn \l_@@_id_seq {
+    \seq_pop_right:NN \l_@@_path_seq \l_tmpa_tl
+  }
+  \stex_debug:nn{lib}{Checking~#1~in~\seq_use:Nn \l_@@_path_seq /}
+
+  \bool_while_do:nn { ! \seq_if_empty_p:N \l_@@_id_seq }{
+    \str_set:Ne \l_@@_path_str {\stex_file_use:N \l_@@_path_seq / meta-inf / lib / #1.#2}
+    \stex_debug:nn{lib}{Checking~\l_@@_path_str}
+    \IfFileExists{ \l_@@_path_str }{
+      \exp_args:NNo \seq_if_in:NnF \l_@@_libinput_files_seq \l_@@_path_str {
+        \seq_put_right:No \l_@@_libinput_files_seq \l_@@_path_str
+      }
+    }{}
+    \seq_pop_left:NN \l_@@_id_seq \l_@@_path_str
+    \seq_put_right:No \l_@@_path_seq \l_@@_path_str
+  }
+
+  \str_set:Ne \l_@@_path_str {\stex_file_use:N \l_@@_path_seq / lib / #1.#2}
+  \stex_debug:nn{lib}{Checking~\l_@@_path_str}
+  \IfFileExists{ \l_@@_path_str }{
+    \exp_args:NNo \seq_if_in:NnF \l_@@_libinput_files_seq \l_@@_path_str {
+      \seq_put_right:No \l_@@_libinput_files_seq \l_@@_path_str
+    }
+  }{}
+}
+%    \end{macrocode}
+% \end{macro}
+% \end{implementation}
+%
+% \begin{sfunction}{\mhgraphics,\cmhgraphics}{}
+% \cs{mhgraphics} adds the |archive| key to the optional
+% arguments of \cs{includegraphics} to allow for using images in
+% math archives (relative to its source directory).
+% \cs{cmhgraphics} additionally wraps the image in a
+% |\begin{center}|.
+%
+% Only defined if the \pkg{graphicx} package is loaded
+% (but may be loaded after the \pkg{stex} package).
+%
+% \StartImpl
+%    \begin{macrocode}
+\ltx@ifpackageloaded{graphicx}{\use:n}{\AtEndOfPackageFile{graphicx}}{
+  \define@key{Gin}{archive}{
+    \stex_in_archive:nn{#1}{}
+    \str_set:Ne \Gin@mhrepos {
+      \stex_source_path:nn{#1}{}
+    }
+  }
+  \providecommand\mhgraphics[2][]{
+    \str_set:Ne \Gin@mhrepos {
+      \stex_source_path:n{}
+    }
+    \setkeys{Gin}{#1}
+    \includegraphics[#1]{ \Gin@mhrepos / #2 }
+  }
+  \providecommand\cmhgraphics[2][]{\begin{center}\mhgraphics[#1]{#2}\end{center}}
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\lstinputmhlisting,\clstinputmhlisting}{}
+% like \cs{mhgraphics}, but for \cs{lstinputlisting}.
+%
+% Only defined if the \pkg{listings} package is loaded
+% (but may be loaded after the \pkg{stex} package).
+%
+% \StartImpl
+%    \begin{macrocode}
+\ltx@ifpackageloaded{listings}{\use:n}{\AtEndOfPackageFile{listings}}{
+  \define@key{lst}{archive}{
+    \stex_in_archive:nn{#1}{}
+    \str_set:Ne \lst@mhrepos{
+      \stex_source_path:nn{#1}{}
+    }
+  }
+  \newcommand\lstinputmhlisting[2][]{%
+    \str_set:Ne \lst@mhrepos{
+      \stex_source_path:n{}
+    }
+    \setkeys{lst}{#1}%
+    \lstinputlisting[#1]{\lst@mhrepos / #2}}
+  \newcommand\clstinputmhlisting[2][]{\begin{center}\lstinputmhlisting[#1]{#2}\end{center}}
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\mhtikzinput,\cmhtikzinput}{}
+% like \cs{mhgraphics}, but for \cs{tikzinput}.
+%
+% Only defined if the \pkg{tikzinput} package is loaded
+% (but may be loaded after the \pkg{stex} package).
+%
+% \StartImpl
+%    \begin{macrocode}
+\ltx@ifpackageloaded{tikzinput}{\use:n}{\AtEndOfPackageFile{tikzinput}}{
+  \define@key{Gin}{archive}{
+    \stex_in_archive:nn{#1}{}
+    \str_set:Ne \Gin@mhrepos{
+      \stex_source_path:nn{#1}{}
+    }
+    \str_set:Ne \l_@@_gin_repo_str {#1}
+  }
+  \newcommand\mhtikzinput[2][]{%
+    \str_clear:N \l_@@_gin_repo_str
+    \str_set:Ne \Gin@mhrepos{
+      \stex_source_path:n{}
+    }
+    \setkeys{Gin}{#1}%
+    \exp_args:No \stex_in_archive:nn \l_@@_gin_repo_str {
+      \tikzinput[#1]{\Gin@mhrepos / #2}
+    }
+  }
+  \newcommand\cmhtikzinput[2][]{\begin{center}\mhtikzinput[#1]{#2}\end{center}}
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \end{sfragment}
+%
+% \end{sfragment}

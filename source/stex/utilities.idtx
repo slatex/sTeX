@@ -1,0 +1,1184 @@
+% \iffalse
+%<*driver>
+\def\stexdocpath{../../doc}
+\input{\stexdocpath/stex-docheader}
+\stextoptitle{The \sTeX Package}{stex}
+\docmodule
+%</driver>
+%<*package>
+% \fi
+%
+% \begin{sfragment}{Utilities}
+%
+% \begin{documentation}
+% Various utility methods
+% \end{documentation}
+%
+% \begin{sfunction}{\stex_ignore_spaces_and_pars:}{}
+% Ignores space characters and empty lines (which would close the
+% current paragraph)
+%
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_ignore_spaces_and_pars:{
+  \begingroup\catcode13=10\relax
+  \@ifnextchar\par{
+    \endgroup\expandafter\stex_ignore_spaces_and_pars:\@gobble
+  }{
+    \endgroup
+  }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\stex_undefine:N,\stex_undefine:c}{}
+% Locally undefines a macro
+%
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_undefine:N {
+  \cs_set_eq:NN #1 \tex_undefined:D
+}
+\cs_generate_variant:Nn \stex_undefine:N {c}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}[pTF]{\stex_str_if_starts_with:nn}{\cs{stex_str_if_starts_with:nn} \marg{str1} \marg{str2}}
+% Tests if \meta{str1} starts with \meta{str2}.
+%
+% \StartImpl
+%    \begin{macrocode}
+\prg_new_conditional:Nnn \stex_str_if_starts_with:nn {p,T,F,TF} {
+  \exp_args:Ne \str_if_eq:nnTF {
+    \str_range:nnn{#1}{1}{\str_count:n{#2}}
+  }{#2}\prg_return_true: \prg_return_false:
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}[pTF]{\stex_str_if_ends_with:nn}{\cs{stex_str_if_ends_with:nn} \marg{str1} \marg{str2}}
+% Tests if \meta{str1} ends with \meta{str2}.
+%
+% \StartImpl
+%    \begin{macrocode}
+\prg_new_conditional:Nnn \stex_str_if_ends_with:nn {p,T,F,TF} {
+  \exp_args:Ne \str_if_eq:nnTF {
+    \str_range:nnn{#1}{- \str_count:n{#2}}{-1}
+  }{#2}\prg_return_true: \prg_return_false:
+}
+%    \end{macrocode}
+% \end{sfunction}
+
+% \begin{sfunction}{\stex_deactivate_macro:Nn, \stex_reactivate_macro:N}
+%    {\cs{stex_deactivate_macro:Nn} \cs{macro} \marg{scope}}
+% redefines \cs{macro} to throw an error, that the \cs{macro}
+% is only allowed in \meta{scope}. This allows for more informative
+% error messages than |undefined control sequence|.
+%
+% \cs{stex_reactivate_macro:N} makes the macro valid again.
+%
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_deactivate_macro:Nn {
+  \tl_set_eq:cN{\tl_to_str:n{#1}~-~orig}#1
+  \cs_set_protected:Npn#1{
+    \msg_error:nnnn{stex}{error/deactivated-macro}{#1}{#2}
+  }
+}
+\cs_new_protected:Nn \stex_reactivate_macro:N {
+  \cs_set_eq:Nc #1{\tl_to_str:n{#1}~-~orig}
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% ^^A -------------------------------------------------------
+%
+% \begin{sfragment}{\texttt{kpsewhich} and Environment Variables}
+%
+% \begin{implementation}
+%    \begin{macrocode}
+%<@@=stex_kpse>
+%    \end{macrocode}
+%\end{implementation}
+%
+% \begin{sfunction}{\stex_kpsewhich:Nn}
+%   {\cs{stex_kpsewhich:Nn} \cs{macro} \marg{args}}
+% Calls ``|kpsewhich| \meta{args}'' and stores the result in \cs{macro},
+% \begin{texnote} 
+%   (Usually) does not require |shell-escape|, since by default, 
+%   |kpsewhich| is in the list of ``allowed'' commands.
+% \end{texnote}
+%
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_kpsewhich:Nn {
+  \group_begin:
+    \catcode`\ =12
+    \sys_get_shell:nnN { kpsewhich ~ #2 } { } \l_tmpa_tl
+    \tl_gset_eq:NN \l_tmpa_tl \l_tmpa_tl
+  \group_end:
+  \exp_args:NNo\str_set:Nn #1 \l_tmpa_tl
+  \tl_trim_spaces:N #1
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\stex_get_env:Nn}
+%   {\cs{stex_get_env:Nn} \cs{macro} \marg{envvar}}
+%  Stores the value of the environment variable \meta{envvar}
+%  in \cs{macro}.
+%
+% \StartImpl
+%    \begin{macrocode}
+\sys_if_platform_windows:TF{
+  \cs_new_protected:Nn \stex_get_env:Nn {\group_begin:
+    \escapechar=-1\catcode`\\=12
+    \exp_args:NNe \stex_kpsewhich:Nn #1 {-expand-var~\c_percent_str#2\c_percent_str}
+    \exp_args:NNx \str_if_eq:VnT #1 {\c_percent_str #2 \c_percent_str}{
+      \str_clear:N #1
+    }
+    \exp_args:NNx\use:nn\group_end:{
+      \str_set:Nn \exp_not:N #1 { #1 }
+    }
+  }
+}{
+  \cs_new_protected:Nn \stex_get_env:Nn {
+    \stex_kpsewhich:Nn #1 {-var-value~#2}
+  }
+}
+%    \end{macrocode}
+%
+% \end{sfunction}
+%
+% \end{sfragment}
+%
+% ^^A -------------------------------------------------------
+%
+% \begin{sfragment}{Logging}
+%
+% \begin{implementation}
+%    \begin{macrocode}
+%<@@=stex_debug>
+%    \end{macrocode}
+%\end{implementation}
+%
+% \begin{sfunction}{\stex_debug:nn}{\cs{stex_debug:nn} \marg{prefix} \marg{msg}}
+%
+% Logs the debug message \marg{msg} under the prefix
+% \marg{prefix}. A message is shown if its prefix
+% is in a list of prefixes given either via the
+% package option |debug=|\meta{prefixes} or
+% the environment variable |STEX_DEBUG=|\meta{prefixes},
+% where the latter overrides the former.
+%
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_debug:nn {
+  \exp_args:NNo \clist_if_in:NnTF \c_stex_debug_clist { \tl_to_str:n{all} }{
+    \_@@_:nn{#1}{#2}
+  }{
+    \exp_args:NNo \clist_if_in:NnT \c_stex_debug_clist { \tl_to_str:n{#1} }{
+      \_@@_:nn{#1}{#2}
+    }
+  }
+}
+
+\cs_new_protected:Nn \_@@_:nn {
+  \msg_set:nnn{stex}{debug / #1}{
+    \\Debug~#1:~#2\\
+  }
+  \msg_none:nn{stex}{debug / #1}
+}
+%    \end{macrocode}
+%
+% We check an environment variable for debugging and 
+% set things up:
+%
+%    \begin{macrocode}
+\stex_get_env:Nn\_@@_env_str{STEX_DEBUG}
+\str_if_empty:NTF\_@@_env_str {
+  \clist_set_eq:NN \l_@@_cl \c_stex_debug_clist
+}{
+  \clist_set:No \l_@@_cl {\_@@_env_str}
+}
+\clist_clear:N \c_stex_debug_clist
+\clist_map_inline:Nn \l_@@_cl {
+  \exp_args:NNo \clist_put_right:Nn \c_stex_debug_clist
+  { \tl_to_str:n{#1} }
+}
+
+\exp_args:NNo \clist_if_in:NnTF \c_stex_debug_clist {\tl_to_str:n{all}} {
+    \msg_redirect_module:nnn{ stex }{ none }{ warning }
+    \stex_debug:nn{all}{Logging~everything!}
+}{
+  \clist_map_inline:Nn \c_stex_debug_clist {
+    \msg_redirect_name:nnn{ stex }{ debug / #1 }{ warning }
+    \stex_debug:nn{#1}{Logging~#1}
+  }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \end{sfragment}
+%
+% ^^A -------------------------------------------------------
+%
+% \begin{sfragment}{File Paths}
+%
+% \begin{documentation}
+%   Since \stex needs to handle files from various \emph{math archives}
+%   in a user-file-system-independent manner in arbitrary \emph{MathHub}
+%   directories, we primarily use \emph{absolute} file paths,
+%   for operations such as \cs{inputref}, \cs{usemodule}, \cs{importmodule},
+%   etc.
+%
+%   We therefore provide macros to explicitly handle file paths
+%   independent of the underlying operating system, resolving
+%   and canonicalizing |..| segments and relative paths, etc.
+% \end{documentation}
+%
+% \begin{implementation}
+%    \begin{macrocode}
+%<@@=stex_path>
+%    \end{macrocode}
+%
+% \end{implementation}
+%
+% \begin{sfunction}{\stex_file_set:Nn, \stex_file_set:No, \stex_file_set:Ne}
+%    {\cs{stex_file_set:Nn} \cs{macro} \marg{string}}
+%
+% represents an already canonicalized file path string as a
+% \LaTeX3 sequence and stores it in \cs{macro}.
+%
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_file_set:Nn {
+  \str_if_empty:nTF {#2} { \seq_clear:N #1 }{
+    \exp_args:NNno \seq_set_split:Nnn #1 / { \tl_to_str:n{#2} }
+  }
+}
+\cs_generate_variant:Nn \stex_file_set:Nn {No, Ne}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\stex_file_resolve:Nn, \stex_file_resolve:No, \stex_file_resolve:Ne}
+%    {\cs{stex_file_resolve:Nn} \cs{macro} \marg{string}}
+%
+% resolves and canonicalizes the file path string \meta{string} and
+% stores the result in \cs{macro}. 
+%
+% \StartImpl
+%    \begin{macrocode}
+\sys_if_platform_windows:TF{
+  \cs_new_protected:Npn \_@@_win_take:w #1#2#3 \_@@_: {
+    \uppercase{ \str_set:Nn \l_@@_str{#1}}
+    \str_set:Ne \l_@@_win_drive {\l_@@_str #2}
+    \str_set:Nn \l_@@_str{#3}
+  }
+  \cs_new_protected:Nn \stex_file_resolve:Nn {
+    \str_set:Nn \l_@@_str {#2}
+    \str_clear:N \l_@@_win_drive
+    \exp_args:NNo \str_replace_all:Nnn \l_@@_str \c_backslash_str /
+    \exp_args:Ne \str_if_eq:nnT {\str_item:Nn \l_@@_str 2} : {
+      \exp_after:wN \_@@_win_take:w \l_@@_str \_@@_:
+    }
+    \stex_file_set:No #1 \l_@@_str
+    \_@@_canonicalize:N #1
+    \str_if_empty:NF \l_@@_win_drive {
+      \seq_pop_left:NN #1 \l_@@_str
+      \seq_put_left:No #1 \l_@@_win_drive
+    }
+    %\stex_debug:nn{files}{Set~\tl_to_str:n{#1}~to~\stex_file_use:N #1}
+  }
+}{
+  \cs_new_protected:Nn \stex_file_resolve:Nn {
+    \str_set:Nn \l_@@_str {#2}
+    \stex_file_set:No #1 \l_@@_str
+    \_@@_canonicalize:N #1
+    % \stex_debug:nn{files}{Set~\tl_to_str:n{#1}~to~\stex_file_use:N #1}
+  }
+}
+\cs_generate_variant:Nn \stex_file_resolve:Nn {No, Ne}
+%    \end{macrocode}
+%
+% Auxiliary methods:
+%    \begin{macrocode}
+\cs_new_protected:Nn \_@@_canonicalize:N {
+  \seq_if_empty:NF #1 {
+    \seq_pop:NN #1 \l_@@_can_str
+    \seq_clear:N \l_@@_can_seq
+    \str_if_empty:NTF \l_@@_can_str {
+      \seq_map_function:NN #1 \_@@_dodots:n
+      \seq_put_left:Nn \l_@@_can_seq {}
+    }{
+      \seq_push:No #1 \l_@@_can_str
+      \seq_map_function:NN #1 \_@@_dodots:n
+    }
+    \seq_set_eq:NN #1 \l_@@_can_seq
+  }
+}
+
+\cs_new_protected:Nn \_@@_dodots:n {
+  \str_if_empty:nF{#1}{
+    \str_if_eq:nnF {#1} {.} {
+      \str_if_eq:nnTF {#1} {..} {
+        \seq_if_empty:NF \l_@@_can_seq {
+          \seq_pop_right:NN \l_@@_can_seq \l_@@_can_str
+        }
+      }{
+        \seq_put_right:Nn \l_@@_can_seq {#1}
+      }
+    }
+  }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}[EXP]{\stex_file_use:N}{}
+% expands to a string representation of the given file path 
+% (using |/| as separator, regardless of file system).
+%
+% \StartImpl
+%    \begin{macrocode}
+\cs_new:Nn \stex_file_use:N {
+  \seq_use:Nn #1 /
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\stex_file_split_off_ext:NN}
+%   {\cs{stex_file_split_off_ext:NN} \cs{target} \cs{source}}
+%
+% splits off the file extension of \cs{source} and stores the resulting
+% file path in \cs{target}.
+%
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_file_split_off_ext:NN {
+  \seq_set_eq:NN #1 #2
+  \seq_pop_right:NN #1 \l_@@_str
+  \seq_set_split:NnV \l_@@_seq . \l_@@_str
+  \seq_pop_right:NN \l_@@_seq \l_@@_str
+  \seq_put_right:Ne #1 {\seq_use:Nn \l_@@_seq .}
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\stex_file_split_off_lang:NN}
+%   {\cs{stex_file_split_off_lang:NN} \cs{target} \cs{source}}
+%
+% splits off \emph{both} the file extension \emph{and} language component of \cs{source} and stores the resulting
+% file path in \cs{target}; e.g. if \cs{source} is |foo.en.tex|,
+% \cs{target} will be |foo|. Explicitly checks that the segment before the file
+% extension is a valid language identifier; otherwise, it will
+% not be stripped.
+%
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_file_split_off_lang:NN {
+  \seq_set_eq:NN #1 #2
+  \seq_pop_right:NN #1 \l_@@_str
+  \seq_set_split:NnV \l_@@_seq . \l_@@_str
+  \seq_pop_right:NN \l_@@_seq \l_@@_str
+
+  \seq_pop_right:NN \l_@@_seq \l_@@_str
+  \exp_args:NNo \prop_if_in:NnF \c_stex_languages_prop \l_@@_str {
+    \seq_put_right:No \l_@@_seq \l_@@_str
+  }
+
+  \seq_put_right:Ne #1 {\seq_use:Nn \l_@@_seq .}
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{svariable}{\c_stex_pwd_file,\c_stex_main_file}
+% represent the \emph{parent working directory} and absolute path
+% to the top-level |.tex| file currently being processed
+% (as absolute, canonicalized paths)
+%
+% \StartImpl
+% We determine the pwd
+%    \begin{macrocode}
+\sys_if_platform_windows:TF{
+  \stex_get_env:Nn\l_@@_str{CD}
+}{
+  \stex_get_env:Nn\l_@@_str{PWD}
+}
+\stex_file_resolve:No \c_stex_pwd_file \l_@@_str
+\seq_set_eq:NN \c_stex_main_file \c_stex_pwd_file
+\seq_put_right:Ne \c_stex_main_file {\jobname\tl_to_str:n{.tex}}
+
+\stex_debug:nn {files} {PWD:~\stex_file_use:N \c_stex_pwd_file}
+%    \end{macrocode}
+% \end{svariable}
+%
+% \begin{svariable}{\c_stex_home_file}
+% represents the absolute path of the user's home directory
+% (as absolute, canonicalized path)
+%
+% \StartImpl
+%    \begin{macrocode}
+\sys_if_platform_windows:TF{
+  \stex_get_env:Nn \l_@@_str {homedrive\c_percent_str\c_percent_str homepath}
+}{
+  \stex_get_env:Nn \l_@@_str {HOME}
+}
+\stex_file_resolve:No \c_stex_home_file \l_@@_str
+%    \end{macrocode}
+% \end{svariable}
+%
+% \begin{svariable}{\g_stex_current_file}
+% the current file (as absolute, canonicalized path)
+%
+% \StartImpl
+%    \begin{macrocode}
+\seq_gset_eq:NN \g_stex_current_file \c_stex_main_file
+%    \end{macrocode}
+% \end{svariable}
+%
+% \begin{sfunction}{\stex_input_with_hooks:Nn,\stex_input_with_hooks:Ne}
+%   {\cs{stex_input_with_hooks:Nn} \cs{document-URI} \marg{file string}}
+% Inputs the given file (as a string) by passing it on to
+% \cs{input}, setting \cs{g_stex_current_file}, \cs{l_stex_current_language_str}
+%  and \cs{l_stex_current_document_uri}, and reverting them again
+% afterwards
+%
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_input_with_hooks:Nn {
+  \stex_with_file_hooks:Nnn #1 {#2} {\input{#2}}
+}
+\cs_generate_variant:Nn \stex_input_with_hooks:Nn {Ne}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\stex_with_file_hooks:Nnn}
+%   {\cs{stex_with_file_hooks:Nnn} \cs{document-URI} \marg{file string} \marg{code}}
+%  sets \cs{g_stex_current_file}, \cs{l_stex_current_language_str}
+%  and \cs{l_stex_current_document_uri}, executes \meta{code}, and reverts them again
+%  afterwards
+%
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_with_file_hooks:Nnn {
+  \stex_pseudogroup:nn {
+    \stex_file_resolve:Nn \l_@@_seq {#2}
+    \seq_gset_eq:NN \g_stex_current_file \l_@@_seq
+    \tl_set_eq:NN \l_stex_current_document_uri #1
+    \str_set:Ne \l_stex_current_language_str { \stex_document_uri_language:N \l_stex_current_document_uri}
+    #3
+  }{
+    \tl_gset:Nn \exp_not:N \g_stex_current_file { \exp_args:No \exp_not:n \g_stex_current_file }
+    \stex_pseudogroup_restore:N \l_stex_current_language_str
+    \stex_pseudogroup_restore:N \l_stex_current_document_uri
+  }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}[pTF]{\stex_if_file_absolute:N}{}
+% tests whether the given file path (represented as a canonicalized
+% \LaTeX3 sequence) is absolute.
+%
+% \StartImpl
+%    \begin{macrocode}
+\sys_if_platform_windows:TF {
+  \prg_new_conditional:Nnn \stex_if_file_absolute:N {p, T, F, TF} {
+    \seq_if_empty:NTF #1 \prg_return_false: {
+      \exp_args:Ne \tl_if_empty:nTF {\seq_item:Nn #1 1} \prg_return_true: {
+        \exp_args:Ne \str_if_eq:nnTF { \exp_args:Ne \str_item:nn {\seq_item:Nn #1 1} 2} :
+          \prg_return_true: \prg_return_false:
+      }
+    }
+  }
+}{
+  \prg_new_conditional:Nnn \stex_if_file_absolute:N {p, T, F, TF} {
+    \seq_if_empty:NTF #1 \prg_return_false: {
+      \exp_args:Ne \tl_if_empty:nTF {\seq_item:Nn #1 1}
+        \prg_return_true: \prg_return_false:
+    }
+  }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}[TF]{\stex_if_file_starts_with:NN}
+%   {\cs{stex_if_file_starts_with:NN} \cs{child} \cs{parent}}
+% tests whether the file path \cs{child} is a child of 
+% \cs{parent}.
+%
+% \StartImpl
+%    \begin{macrocode}
+\prg_new_protected_conditional:Nnn \stex_if_file_starts_with:NN {T,F,TF} {
+  \seq_set_eq:NN \l_@@_a_seq #1
+  \seq_set_eq:NN \l_@@_b_seq #2
+  \tl_clear:N \l_@@_return_tl
+  \bool_while_do:nn{
+    \bool_not_p:n{
+      \bool_lazy_any_p:n{
+        {\seq_if_empty_p:N \l_@@_a_seq}
+        {\seq_if_empty_p:N \l_@@_b_seq}
+        {\bool_not_p:n{\tl_if_empty_p:N \l_@@_return_tl}}
+      }
+    }
+  }{
+    \seq_pop_left:NN \l_@@_a_seq \l_@@_a_tl
+    \seq_pop_left:NN \l_@@_b_seq \l_@@_b_tl
+    \str_if_eq:NNF \l_@@_a_tl \l_@@_b_tl {
+      \tl_set:Nn \l_@@_return_tl {\prg_return_false:}
+    }
+  }
+  \tl_if_empty:NTF \l_@@_return_tl {
+    \seq_if_empty:NTF \l_@@_b_seq \prg_return_true: \prg_return_false:
+  } \l_@@_return_tl
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \end{sfragment}
+%
+% ^^A -------------------------------------------------------
+%
+% \begin{sfragment}{Group-like Behaviours}
+%
+% \begin{implementation}
+%    \begin{macrocode}
+%<@@=stex_groups>
+%    \end{macrocode}
+% \end{implementation}
+%
+% \begin{documentation}
+% Macros for mimicking the behaviour of \TeX\ groups without
+% actually opening a \TeX\ group. This is relevant for two
+% purposes:
+%
+% \begin{itemize}
+%   \item Temporarily redefining a macro, doing a bunch of 
+%    stuff, and then reverting it to its previous definition;
+%    that is what a ``\emph{pseudogroup}'' does.
+%   \item Defining macros at a specific group level further up.
+%     That is what a ``\emph{metagroup}'' does -- code wrapped
+%     in \cs{stex_metagroup_do_in:n} will be repeatedly 
+%     executed in \cs{aftergroup} calls, up to the group level
+%     of the innermost metagroup. That allows for e.g.
+%     declaring new symbols in \env{sdefinition} paragraphs
+%     that are valid in the entire \env{mathstructure} or
+%     \env{module}.
+% \end{itemize}
+% \end{documentation}
+%
+% \begin{sfunction}{\stex_pseudogroup:nn}{\cs{stex_pseudogroup:nn} \marg{code} \marg{reset code}}
+% will \emph{expand} \meta{reset code} first, then process \meta{code},
+% then process the expanded \meta{reset code}.
+%
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Npn \stex_pseudogroup:nn {
+  \exp_args:Nne \use:nn
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}[EXP]{\stex_pseudogroup_restore:N}{\cs{stex_pseudogroup_restore:N} \cs{macro}}
+% will expand to code that will redefine \cs{macro} as its current definition.
+% Only works for \emph{token lists} and similar macros that do not take arguments.
+%
+% In combination, that allows for things like 
+% \begin{sexample}
+%    \begin{stexcode}
+%  |\cs{stex_pseudogroup:nn}|{
+%    \def \foo {..}
+%    ...
+%  }{|\cs{stex_pseudogroup_restore:N}| \foo}
+%    \end{stexcode}
+% \end{sexample}
+%
+% \StartImpl
+%    \begin{macrocode}
+\cs_new:Nn \stex_pseudogroup_restore:N {
+  \tl_if_exist:NTF #1 {
+    \tl_set:Nn \exp_not:N #1 { \exp_args:No \exp_not:n #1 }
+  }{
+    \stex_undefine:N \exp_not:N #1
+  }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\stex_pseudogroup_with:nn}{\cs{stex_pseudogroup_with:nn} \marg{macro-list} \marg{code}}
+% will store the definitions of the macros in \meta{macro-list},
+% execute \meta{code}, and then revert the macros to their previous
+% definitions without opening a \TeX\ group.
+% \textcolor{red}{TODO: this might be unnecessary? Check/profile}
+%
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_pseudogroup_with:nn {
+  \tl_map_inline:nn{#1}{
+    \cs_set_eq:cN{_@@_\tl_to_str:n{##1}}##1
+  }
+  #2
+  \tl_map_inline:nn{#1}{
+    \cs_set_eq:Nc##1{_@@_\tl_to_str:n{##1}}
+    \stex_undefine:c{_@@_\tl_to_str:n{##1}}
+  }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\stex_metagroup_new:}{}
+% opens a new \emph{metagroup}. All code executed in 
+% \cs{stex_metagroup_do_in:n} will survive up to the current group
+% level. Metagroups can be nested.
+%
+% \StartImpl
+% Current metagroup group level
+%    \begin{macrocode}
+\int_new:N \l_@@_lvl_int
+%    \end{macrocode}
+% start a new metagroup at the current group level
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_metagroup_new: {
+  \int_set_eq:NN \l_@@_lvl_int \currentgrouplevel
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\stex_metagroup_do_in:n,\stex_metagroup_do_in:e}{}
+% Executes the given code in the current metagroup. If there
+% is no metagroup currently, the code will simply be executed
+% once, so there is little danger in calling this spuriously.
+%
+% \begin{texnote} 
+%   This repeatedly stores the provided code in a macro
+%   and uses \cs{aftergroup} until the group level of the 
+%   current metagroup is reached.
+% \end{texnote}
+%
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Npn \stex_metagroup_do_in:n {
+  \int_compare:nNnTF \l_@@_lvl_int = \currentgrouplevel
+    \use:n \_@@_do_in:n
+}
+\cs_generate_variant:Nn \stex_metagroup_do_in:n {e}
+
+\cs_new_protected:Nn \_@@_do_in:n {
+  \tl_if_exist:cTF{g_@@_\the\currentgrouplevel _tl}{
+    \exp_args:Nno \tl_gput_right:cn{g_@@_\the\currentgrouplevel _tl}
+  }{
+    \exp_args:Nno \tl_gset:cn{g_@@_\the\currentgrouplevel _tl}
+  }{ #1 }
+  \bool_if_exist:cF {l_@@_\the\currentgrouplevel _bool} {
+      \group_insert_after:N \_@@_do:
+      \bool_set_true:c {l_@@_\the\currentgrouplevel _bool}
+  }
+  #1
+}
+
+\cs_new_protected:Nn \_@@_do: {
+  \tl_if_exist:cT{g_@@_\int_eval:n{\currentgrouplevel+1}_tl}{
+    \exp_args:NNo \exp_args:No \stex_metagroup_do_in:n {
+      \csname g_@@_\int_eval:n{\currentgrouplevel+1}_tl \endcsname
+    }
+    \cs_undefine:c{g_@@_\int_eval:n{\currentgrouplevel+1}_tl}
+  }
+  \bool_if_exist:cF {l_@@_\the\currentgrouplevel _bool} {
+    \group_insert_after:N \_@@_do:
+    \bool_set_true:c {l_@@_\the\currentgrouplevel _bool}
+  }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \end{sfragment}
+%
+% ^^A -------------------------------------------------------
+%
+% \begin{sfragment}{Key Handling}
+%
+% \begin{implementation}
+%    \begin{macrocode}
+%<@@=stex_keys>
+%    \end{macrocode}
+% \end{implementation}
+%
+% \begin{documentation}
+%    Key handling mechanisms on top of \pkg{l3keys} for 
+%    inheriting key sets and initializing
+%    the associated macros
+% \end{documentation}
+%
+% \begin{sfunction}{\stex_keys_define:nnnn}
+%    {\cs{stex_keys_define:nnnn} \marg{id} \marg{init} \marg{spec} \marg{exts} }
+%  defined the key set \meta{id} with the \pkg{l3keys}-style
+%  key-parsing code \marg{spec}; \meta{init} is called every time
+%  before parsing and is intended to e.g. clear the relevant macros.
+% \meta{exts} may be a comma-separated list of key set ids from
+% which this key set inherits.
+%
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_nopar:Nn \stex_keys_define:nnnn {
+  \tl_gset:cn {_@@_keys_#1_pre_tl}{#2}
+  \tl_gset:cn {_@@_keys_#1_def_tl}{#3}
+  \tl_if_empty:nF{#4}{
+    \clist_map_inline:nn{#4}{
+      \tl_set_eq:Nc \l_@@_tl {_@@_keys_##1_pre_tl}
+      \tl_gput_left:co{_@@_keys_#1_pre_tl} \l_@@_tl
+      \tl_set_eq:Nc \l_@@_tl {_@@_keys_##1_def_tl}
+      \tl_gput_left:cn{_@@_keys_#1_def_tl} ,
+      \tl_gput_left:co{_@@_keys_#1_def_tl} \l_@@_tl
+    }
+  }
+  \tl_set_eq:Nc \l_@@_tl {_@@_keys_#1_def_tl}
+  \exp_args:Nno \keys_define:nn {stex / #1} {\l_@@_tl}
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\stex_keys_set:nn}{}
+% Like \cs{keys_set:nn}, but additionally calling the relevant
+% initialization code.
+%
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_nopar:Nn \stex_keys_set:nn {
+  \use:c{_@@_keys_#1_pre_tl}
+  \keys_set:nn {stex / #1} { #2 }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{implementation}
+%
+% Some ubiquitous key sets:
+%    \begin{macrocode}
+\stex_keys_define:nnnn{archive file}{
+  \str_clear:N \l_stex_key_archive_str
+  \str_clear:N \l_stex_key_file_str
+}{
+  archive .str_set_x:N = \l_stex_key_archive_str ,
+  file    .str_set_x:N = \l_stex_key_file_str
+}{}
+
+\stex_keys_define:nnnn{id}{
+  \str_clear:N \l_stex_key_id_str
+}{
+  id .str_set_x:N = \l_stex_key_id_str
+}{}
+
+\stex_keys_define:nnnn{title}{
+  \tl_clear:N \l_stex_key_title_tl
+}{
+  title .tl_set:N = \l_stex_key_title_tl
+}{}
+
+\stex_keys_define:nnnn{style}{
+  \clist_clear:N \l_stex_key_style_clist
+}{
+  style .clist_set:N = \l_stex_key_style_clist
+}{}
+
+\stex_keys_define:nnnn{deprecate}{
+  \str_clear:N \l_stex_key_deprecate_str
+}{
+  deprecate     .str_set_x:N  = \l_stex_key_deprecate_str
+}{}
+
+\stex_keys_define:nnnn{uses}{}{
+  uses .code:n = {
+    \clist_map_inline:nn{#1}{
+      \stex_str_if_starts_with:nnTF{##1}[{
+        \_@@_split_at_bracket:w ##1 \_stex_end:
+      }{
+        \usemodule{##1}
+      }
+    }
+  }
+}{}
+
+\cs_new_protected:Npn \_@@_split_at_bracket:w [ #1 ] #2 \_stex_end: {
+  \usemodule[#1]{#2}
+}
+%    \end{macrocode}
+% \end{implementation}
+%
+% \end{sfragment}
+%
+% ^^A -------------------------------------------------------
+%
+% \begin{sfragment}{Languages}
+%
+% \begin{implementation}
+%    \begin{macrocode}
+%<@@=stex_lang>
+%    \end{macrocode}
+% \end{implementation}
+%
+% \begin{svariable}{\c_stex_languages_prop,\c_stex_language_abbrevs_prop}
+%
+% Two inverse property lists; \cs{c_stex_languages_prop} maps 
+% language abbreviations (e.g. |en|, |de|) to their (\pkg{babel})
+% names (e.g. |english|, |ngerman|), \cs{c_stex_language_abbrevs_prop}
+% does the inverse.
+% 
+% \StartImpl
+%    \begin{macrocode}
+\exp_args:NNx \prop_const_from_keyval:Nn \c_stex_languages_prop { \tl_to_str:n {
+  en = english ,
+  de = ngerman ,
+  ar = arabic ,
+  bg = bulgarian ,
+  ru = russian ,
+  fi = finnish ,
+  ro = romanian ,
+  tr = turkish ,
+  fr = french ,
+  sl = slovenian
+}}
+
+\exp_args:NNx \prop_const_from_keyval:Nn \c_stex_language_abbrevs_prop { \tl_to_str:n {
+  english   = en ,
+  ngerman   = de ,
+  arabic    = ar ,
+  bulgarian = bg ,
+  russian   = ru ,
+  finnish   = fi ,
+  romanian  = ro ,
+  turkish   = tr ,
+  french    = fr ,
+  slovenian = sl ,
+}}
+% todo: chinese simplified (zhs)
+%       chinese traditional (zht)
+%    \end{macrocode}
+% \end{svariable}
+%
+% \begin{svariable}{\l_stex_current_language_str}
+%
+% The language of the current file; may change, if a file
+% with a different language is imported.
+%
+% \StartImpl
+%    \begin{macrocode}
+\str_new:N \l_stex_current_language_str
+%    \end{macrocode}
+% \end{svariable}
+%
+%
+% \begin{implementation}
+%
+% Loading babel (if necessary), depending on the |lang| package option:
+%    \begin{macrocode}
+\clist_if_empty:NF \c_stex_languages_clist {
+  \bool_set_false:N \l_@@_turkish_bool
+  \seq_clear:N \l_tmpa_seq
+  \clist_map_inline:Nn \c_stex_languages_clist {
+    \str_if_empty:NF \l_stex_current_language_str {
+      \str_set:Nn \l_stex_current_language_str {#1}
+    }
+    \str_set:Ne \l_tmpa_str {#1}
+    \str_if_eq:nnT {#1}{tr}{
+      \bool_set_true:N \l_@@_turkish_bool
+    }
+    \prop_get:NoNTF \c_stex_languages_prop \l_tmpa_str \l_tmpa_str {
+      \tl_set_rescan:Nno \l_tmpa_str {} \l_tmpa_str
+      \seq_put_right:No \l_tmpa_seq \l_tmpa_str
+    } {
+      \msg_error:nnx{stex}{error/unknownlanguage}{\l_tmpa_str}
+    }
+  }
+  \stex_debug:nn{lang} {Languages:~\seq_use:Nn \l_tmpa_seq {,~} }
+  \bool_if:NTF \l_@@_turkish_bool {
+    \exp_args:NNe \use:nn \RequirePackage
+      {[main=\seq_use:Nn \l_tmpa_seq, ,shorthands=:!]}{babel}
+  }{
+    \exp_args:NNe \use:nn \RequirePackage
+      {[main=\seq_use:Nn \l_tmpa_seq, ]}{babel}
+  }
+}
+%    \end{macrocode}
+%
+%
+% \end{implementation}
+%
+% \end{sfragment}
+%
+% ^^A -------------------------------------------------------
+%
+% \begin{sfragment}{Styling}
+%
+% \begin{implementation}
+%    \begin{macrocode}
+%<@@=stex_styles>
+%    \end{macrocode}
+% \end{implementation}
+%
+% \begin{sfunction}{\stex_new_stylable_cmd:nnnn,\stex_style_apply:}
+%    {\cs{stex_new_stylable_cmd:nnnn} \marg{macroname} \marg{argument spec} \marg{definition} \marg{default}}
+%   Defines a new stylable command \cs{macroname} with \meta{argument spec} (passed
+%   on to \cs{NewDocumentCommand}) with \meta{definition} as its macro body
+%   and default typesetting style \meta{default}.
+%
+%   \meta{default} may be empty. \meta{definition} should at some point
+%   use \cs{stex_style_apply:} to do the typesetting according to the chosen
+%   style for this macro, which by default will be defined as \meta{default}.
+%
+%   Also generates the macro \cs{stexstyle\meta{macroname}}[\meta{name}]\marg{code} to define a new 
+%   typesetting style for \cs{macroname}.
+%
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_new_stylable_cmd:nnnn {
+  \exp_after:wN \newcommand \cs:w stexstyle#1 \cs_end:[2][]{
+    \_@@_patch:nnn{#1}{##1}{##2}
+  }
+  \exp_after:wN \NewDocumentCommand\cs:w #1\cs_end:{#2}{
+    \cs_set:Npn \stex_style_apply: {
+      \_@@_apply_patch:n{#1}
+    }
+    #3
+  }
+  \tl_set:cn {_@@_style_#1:} { #4 }
+}
+
+\cs_new_protected:Nn \_@@_patch:nnn {
+  \str_if_empty:nTF {#2}{
+    \tl_set:cn{_@@_style_#1:}{#3}
+  }{
+    \tl_set:cn{_@@_style_#1_#2:}{#3}
+  }
+}
+
+\cs_new_protected:Nn \_@@_apply_patch:n {
+  \clist_if_empty:NTF \l_stex_key_style_clist {
+    \tl_clear:N \thisstyle
+    \use:c{_@@_style_#1:}
+  }{
+    \clist_get:NN \l_stex_key_style_clist \thisstyle
+    \tl_if_exist:cTF{_@@_style_#1_\thisstyle :}{
+      \use:c{_@@_style_#1_\thisstyle :}
+    }{
+      \use:c{_@@_style_#1:}
+    }
+  }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\stex_new_stylable_env:nnnnnnn}
+%    {\cs{stex_new_stylable_env:nnnnnnn} \marg{environment name} \marg{argument spec} \marg{begin code} \marg{end code} \marg{default begin} \marg{default end} \marg{prefix}}
+%   Defines a new stylable environment \meta{prefix}\meta{environment name} with \meta{argument spec} (passed
+%   on to \cs{NewDocumentEnironment}) with \meta{begin code} and \meta{end code} as its macro body
+%   and default typesetting style dictated by \meta{default begin} and \meta{default end}.
+%
+%   \meta{begin code} and \meta{end code} should at some point
+%   use \cs{stex_style_apply:} to do the typesetting according to the chosen
+%   style for this environment.
+%
+%   Also generates the macro \cs{stexstyle\meta{environmentname}}[\meta{name}]\marg{begin}\marg{end} to define a new 
+%   typesetting style for \env{environment name}.
+%
+%   A prefix |s| is e.g. used to generate the environment \env{sparagraph}
+%  and the macro \cs{stexstyleparagraph}.
+%
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_new_stylable_env:nnnnnnn {
+  \exp_after:wN \newcommand \cs:w stexstyle#1 \cs_end:[3][]{
+    \_@@_patch:nnnn{#1}{##1}{##2}{##3} % <- defined after \stex_if_html_backend
+  }
+  \exp_after:wN \newcommand \cs:w stexcss#1 \cs_end:[1][]{
+    \_@@_css_patch:nnnn{#1}{##1}
+  }
+  \NewDocumentEnvironment{#7#1}{#2}{
+    \cs_set:Npn \stex_style_apply: {
+      \_stex_apply_patch_begin:n{#1}
+    }
+    #3
+  }{
+    \stex_if_html_backend:F{
+      \cs_set:Npn \stex_style_apply: {
+        \_stex_apply_patch_end:n{#1}
+      }
+    }
+    #4
+  }
+  \tl_set:cn {_@@_style_#1_start:} { #5 }
+  \tl_set:cn {_@@_style_#1_end:} { #6 }
+}
+
+
+\cs_new_protected:Nn \_stex_apply_patch_begin:n {
+  \clist_if_empty:NTF \l_stex_key_style_clist {
+    \tl_clear:N \thisstyle
+    \use:c{_@@_style_#1_start:}
+  }{
+    \clist_get:NN \l_stex_key_style_clist \thisstyle
+    \stex_debug:nn{styling}{dominant~style:~\thisstyle}
+    \tl_if_exist:cTF{_@@_style_#1_\thisstyle _start:}{
+      \use:c{_@@_style_#1_\thisstyle _start:}
+    }{
+      \use:c{_@@_style_#1_start:}
+    }
+  }
+}
+
+\cs_new_protected:Nn \_stex_apply_patch_end:n {
+  \tl_if_empty:NTF \thisstyle {
+    \use:c{_@@_style_#1_end:}
+  }{
+    \tl_if_exist:cTF{_@@_style_#1_\thisstyle _end:}{
+      \use:c{_@@_style_#1_\thisstyle _end:}
+    }{
+      \use:c{_@@_style_#1_end:}
+    }
+  }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \end{sfragment}
+%
+% ^^A -------------------------------------------------------
+%
+% \begin{sfragment}{Persisting Dependencies}
+%
+% \begin{implementation}
+%    \begin{macrocode}
+%<@@=stex_persist>
+%    \end{macrocode}
+%
+% We check the environment variables:
+%    \begin{macrocode}
+\stex_get_env:Nn\_@@_env_str{STEX_USESMS}
+\str_if_empty:NF\_@@_env_str{
+  \exp_args:No \str_if_eq:nnF \_@@_env_str{false}{
+    \bool_set_true:N \c_stex_persist_mode_bool
+  }
+}
+\stex_get_env:Nn\_@@_env_str{STEX_WRITESMS}
+\str_if_empty:NF\_@@_env_str{
+  \exp_args:No \str_if_eq:nnF \_@@_env_str{false}{
+    \bool_set_true:N \c_stex_persist_write_mode_bool
+  }
+}
+
+\bool_if:NT \c_stex_persist_force_bool {
+  \bool_set_false:N \c_stex_persist_mode_bool
+}
+
+\iow_new:N \c_@@_sms_iow
+%    \end{macrocode}
+%
+% \end{implementation}
+%
+% \begin{sfunction}{\stex_persist:n,\stex_persist:e}{}
+%
+% Writes the given code in the |.sms|-file (if smsmode is on)
+%
+% \StartImpl
+% defined later; requires \cs{stex_if_html_backend:TF}
+% \end{sfunction}
+%
+% \begin{implementation}
+%
+% Is called at the end of the |.sty|-file:
+%
+%    \begin{macrocode}
+\cs_new_protected:Nn \_stex_persist_read_now: {
+  \bool_if:NTF \c_stex_persist_mode_bool {
+    \bool_if:NTF \c_stex_persist_write_mode_bool 
+      \_@@_read_and_write: 
+      {
+        \_@@_load_file:n{\jobname.sms}
+      }
+  }{
+    \bool_if:NT \c_stex_persist_write_mode_bool \_@@_write_only:
+  }
+}
+
+\cs_new_protected:Nn \_@@_load_file:n {
+  \file_if_exist:nT{#1}{
+    \group_begin:
+    \cs_set:Npn \stex_persist:n ##1 {}
+    \cs_set:Npn \stex_persist:e ##1 {}
+      \stex_debug:nn{persist}{restoring~from~sms~file}
+      \catcode`\ =10\relax
+      \cs:w @ @ input \cs_end:#1\relax
+    \group_end:
+  }
+}
+
+\cs_new_protected:Nn \_@@_write_only: {
+  \iow_open:Nn \c_@@_sms_iow {\jobname.sms}
+  \AtEndDocument{ \iow_close:N \c_@@_sms_iow }
+}
+
+\cs_new_protected:Nn \_@@_read_and_write: {
+  \file_if_exist:nTF{\jobname.sms}{
+    \ior_open:Nn \g_tmpa_ior {\jobname.sms}
+    \iow_open:Nn \g_tmpa_iow {\jobname.sms2}
+    \ior_str_map_inline:Nn \g_tmpa_ior {
+      \iow_now:Nn \g_tmpa_iow {##1}
+    }
+    \iow_close:N \g_tmpa_iow
+    \ior_close:N \g_tmpa_ior
+    \_@@_write_only:
+    \ior_open:Nn \g_tmpa_ior {\jobname.sms2}
+    \ior_str_map_inline:Nn \g_tmpa_ior {
+      \iow_now:Nn \c_@@_sms_iow {##1}
+    }
+    \ior_close:N \g_tmpa_ior
+    \_@@_load_file:n{\jobname.sms2}
+  }\_@@_write_only:
+}
+%    \end{macrocode}
+%  
+% \end{implementation}
+%
+% \end{sfragment}
+%
+%
+% ^^A -------------------------------------------------------
+%
+%
+% \begin{implementation}
+%
+% \begin{sfragment}{Auxiliary Methods}
+%    \begin{macrocode}
+%<@@=stex_aux>
+%    \end{macrocode}
+%
+%
+% \begin{macro}{\_stex_do_deprecation:n}
+%    \begin{macrocode}
+\cs_new:Nn \_stex_do_deprecation:n {
+  \str_if_empty:NF \l_stex_key_deprecate_str {
+    \msg_warning:nnxx{stex}{warning/deprecated}{#1}{\l_stex_key_deprecate_str}
+  }
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\_stex_do_id:}
+%    \begin{macrocode}
+\cs_new_protected:Nn \_stex_do_id: {
+  \stex_if_smsmode:F {
+    \str_if_empty:NF \l_stex_key_id_str {
+      \exp_args:No \stex_ref_new_doc_target:n \l_stex_key_id_str
+    }
+  }
+}
+%    \end{macrocode}
+% \end{macro}
+%
+%
+% \end{sfragment}
+%
+% \end{implementation}
+%
+%
+% \end{sfragment}
+%

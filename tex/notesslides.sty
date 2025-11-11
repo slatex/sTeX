@@ -6,7 +6,7 @@
 %%
 %% notesslides.dtx  (with options: `package')
 %% 
-\ProvidesExplPackage{notesslides}{2023/10/13}{3.4.0}{notesslides Package}
+\ProvidesExplPackage{notesslides}{2025/11/11}{4.0.0}{notesslides Package}
 \RequirePackage{l3keys2e}
 
 \keys_define:nn{notesslides / pkg}{
@@ -82,15 +82,15 @@
       \tl_if_exist:cT{c@##1}{\stepcounter{##1}}
       \addcontentsline{toc}{##1}{\protect\numberline{\use:c{the##1}}##2}
       \__notesslides_do_label:n{##1}
-      \pdfbookmark[\int_use:N \l_stex_docheader_sect]{\l__notesslides_num\ ##2}{##1.\l__notesslides_num}
+      \pdfbookmark[\int_use:N \l_stex_current_section_level_int]{\l__notesslides_num\ ##2}{##1.\l__notesslides_num}
       \begin{frame}[noframenumbering]
         \vfill\centering
         \sectiontitleemph{
           \use:c{@ @ label} ##2
         }
       \end{frame}
-      \int_incr:N \l_stex_docheader_sect
-      \tl_set:Nn \stex_current_section_level{##1}
+      \int_incr:N \l_stex_current_section_level_int
+      \str_set:Nn \l_stex_current_section_level_str{##1}
     }
   }
 
@@ -233,14 +233,27 @@
   }
 }
 \stex_if_html_backend:TF {
+  %\stex_css_literal:n{
+  %  .stex-frame {
+  %    background-color:#fff;
+  %    margin:5px ~ 0;
+  %    border:2px ~ solid ~ #000;
+  %    border-radius:5px;
+  %    padding:5px;
+  %    padding-right:10px;
+  %    width: var(--rustex-curr-width);
+  %    display:block;
+  %  }
+  %}
+
   \cs_new_protected:Nn \__notesslides_frame_box_begin: {
     \vbox\bgroup
-    \begin{stex_annotate_env}{shtml:frame={}}
+    \begin{stex_annotate_env}{data-ftml-slide={}}%{class:stex-frame={}}
       \mdf@patchamsthm\notesslidesfont
   }
   \cs_new_protected:Nn \__notesslides_frame_box_end: {
     %^^A \notesslides@slidelabel
-    \medskip\par\noindent\tiny\notesslidesfooter
+    \medskip\par\hbox to \textwidth{\tiny\notesslidesfooter}
     \end{stex_annotate_env}\egroup
   }
 }{
@@ -250,7 +263,8 @@
       skipabove=1ex,
       skipbelow=1ex,
       userdefinedwidth=\slidewidth,
-      align=center
+      align=center,
+      %usetwoside=false
     ]\notesslidesfont
   }
   \cs_new_protected:Nn \__notesslides_frame_box_end: {
@@ -273,7 +287,12 @@
 }
 \renewcommand{\frametitle}[1]{
   \stexdoctitle { #1 }
-  \notesslidestitleemph{#1}\medskip
+  \stex_if_html_backend:TF{
+    \notesslidestitleemph{\noindent\stex_annotate:nn{data-ftml-title={}}{#1}}\par
+  }{
+    \notesslidestitleemph{#1}
+  }
+  \medskip
 }
 \newcommand\pause{}
 \renewenvironment{columns}[1][]{
@@ -368,13 +387,13 @@
 
 \stex_if_do_html:TF{
   \NewDocumentEnvironment{slideshow}{}{
-    \begin{stex_annotate_env}{shtml:slideshow={}}
+    \begin{stex_annotate_env}{data-ftml-slideshow={}}
     \cs_set_protected:Npn \nextslide ##1 {
-      \begin{stex_annotate_env}{shtml:slideshow-slide={}} ##1
+      \begin{stex_annotate_env}{data-ftml-slideshow-slide={}} ##1
       \end{stex_annotate_env}
     }
     \cs_set_protected:Npn \lastslide ##1 {
-      \begin{stex_annotate_env}{shtml:slideshow-slide={}} ##1
+      \begin{stex_annotate_env}{data-ftml-slideshow-slide={}} ##1
       \end{stex_annotate_env}
     }
   }{
@@ -424,7 +443,7 @@
     \hbox\bgroup\def\\{}\cs_if_exist:NT\beamer@shorttitle\beamer@shorttitle\egroup
   }
   \stex_if_html_backend:TF{
-    \def\insertframenumber{\stex_annotate:nn{shtml:framenumber={}}{}}
+    \def\insertframenumber{\stex_annotate:nn{data-ftml-slide-number={}}{}}
   }{
     \def\insertframenumber{\@arabic\c@framenumber}
   }

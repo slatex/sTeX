@@ -1,0 +1,826 @@
+% \iffalse
+%<*driver>
+\def\stexdocpath{../../doc}
+\input{\stexdocpath/stex-docheader}
+\stextoptitle{The \sTeX Package}{stex}
+\docmodule
+%</driver>
+%<*package>
+% \fi
+%
+% \begin{sfragment}{Symbols}
+%
+% \begin{implementation}
+%    \begin{macrocode}
+%<@@=stex_syms>
+%    \end{macrocode}
+% \end{implementation}
+%
+% \begin{sfragment}{Declarations}
+%
+% \begin{implementation}
+%
+% Keys used in various symbol declarations:
+%    \begin{macrocode}
+\stex_keys_define:nnnn{symargs}{
+  \str_clear:N \l_stex_key_args_str
+  \str_clear:N \l_stex_key_role_str
+  \str_clear:N \l_stex_key_reorder_str
+  \str_clear:N \l_stex_key_assoc_str
+}{
+  args      .str_set:N  = \l_stex_key_args_str ,
+  reorder   .str_set:N  = \l_stex_key_reorder_str ,
+  assoc     .choices:nn = {bin,binl,binr,pre,conj,pwconj}
+    {\str_set:Ne \l_stex_key_assoc_str \l_keys_choice_tl},
+  role      .str_set:N  = \l_stex_key_role_str
+}{}
+
+\stex_keys_define:nnnn{decl}{
+  \str_clear:N \l_stex_key_name_str
+  \str_clear:N \l_stex_key_args_str
+  \tl_clear:N \l_stex_key_type_tl
+  \tl_clear:N \l_stex_key_def_tl
+  \tl_clear:N \l_stex_key_return_tl
+  \str_clear:N \l_stex_key_wikidata_str
+  \clist_clear:N \l_stex_key_argtypes_clist
+}{
+  name      .str_set:N    = \l_stex_key_name_str ,
+  return    .tl_set:N     = \l_stex_key_return_tl ,
+  argtypes  .clist_set:N  = \l_stex_key_argtypes_clist ,
+  wikidata  .str_set:N    = \l_stex_key_wikidata_str ,
+  type      .tl_set:N     = \l_stex_key_type_tl  ,
+  def       .tl_set:N     = \l_stex_key_def_tl   ,
+  align     .code:n       = {},
+  gf        .code:n       = {}
+}{style,deprecate,symargs}
+%    \end{macrocode}
+% \end{implementation}
+%
+% \begin{sfunction}{\symdecl}{\cs{symdecl}[*] \marg{iname} \oarg{options}}
+% takes care of the optional arguments, styling, generates the symbol,
+% defines the relevant macros and adds them to the current module.
+% \StartImpl
+%    \begin{macrocode}
+\str_new:N \l_stex_macroname_str
+
+\stex_new_stylable_cmd:nnnn {symdecl} { s m O{}} {
+  \stex_keys_set:nn{decl}{#3}
+  \IfBooleanTF #1 {
+    \str_clear:N \l_stex_macroname_str
+  }{
+    \str_set:Ne \l_stex_macroname_str { #2 }
+  }
+  \_@@_top:n{#2}
+  \stex_if_smsmode:F \_@@_style:
+  \stex_smsmode_do:
+}{}
+
+\stex_deactivate_macro:Nn \symdecl {module~environments}
+\stex_every_module:n {\stex_reactivate_macro:N \symdecl}
+\stex_sms_allow_escape:N \symdecl
+
+\cs_new_protected:Nn \_@@_style: {
+  \group_begin:
+    \tl_set:Ne \thisdecluri {\stex_use_symbol_uri:N \l_stex_current_symbol_uri}
+    \tl_set_eq:NN \thisdeclname \l_stex_key_name_str
+    \tl_set_eq:NN \thistype \l_stex_key_type_tl
+    \tl_set_eq:NN \thisdefiniens \l_stex_key_def_tl
+    \tl_set_eq:NN \thisargs \l_stex_key_args_str
+    \tl_clear:N \thisstyle
+    \stex_style_apply:
+  \group_end:
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\symdef}{\cs{symdef} \marg{iname} \oarg{options} \marg{notation}}
+%
+% \StartImpl
+%    \begin{macrocode}
+\stex_new_stylable_cmd:nnnn {symdef} { m O{} m} {
+  \stex_keys_set:nn{symdef}{#2}
+  \str_set:Ne \l_stex_macroname_str { #1 }
+  \_@@_top:n{#1}
+  \stex_debug:nn{symdef}{Doing~\stex_use_symbol_uri:N \l_stex_current_symbol_uri}
+  \str_set_eq:NN \l_stex_get_symbol_uri \l_stex_current_symbol_uri
+  \stex_notation_parse:n{#3}
+  \stex_if_check_terms:T{ \_stex_notation_check: }
+  \_stex_notation_add:
+  \stex_if_do_html:T{
+    \_stex_notation_do_html:n{\stex_use_symbol_uri:N \l_stex_current_symbol_uri}
+  }
+  \stex_if_smsmode:F \_@@_def_style:
+  \stex_smsmode_do:
+}{}
+
+\stex_deactivate_macro:Nn \symdef {module~environments}
+\stex_every_module:n {\stex_reactivate_macro:N \symdef}
+\stex_sms_allow_escape:N \symdef
+
+\cs_new_protected:Nn \_@@_def_style: {
+  \group_begin:
+  \tl_set:Nx \thisdecluri {\stex_use_symbol_uri:N \l_stex_current_symbol_uri}
+  \tl_set_eq:NN \thisdeclname \l_stex_key_name_str
+  \tl_set_eq:NN \thistype \l_stex_key_type_tl
+  \tl_set_eq:NN \thisdefiniens \l_stex_key_def_tl
+  \tl_set_eq:NN \thisargs \l_stex_key_args_str
+  \tl_clear:N \thisstyle
+  \str_set_eq:NN\thisnotationvariant\l_stex_key_variant_str
+  \def\thisnotation{
+    \exp_args:Nne \use:nn{\l_stex_notation_macrocode_cs{}}{
+      \_stex_notation_make_args:
+    }
+  }
+  \stex_style_apply:
+  \group_end:
+}
+%    \end{macrocode}
+% (the symdef keyset is defined after notations as \\
+% |\stex_keys_define:nnnn{symdef}{}{}{decl,notation}| )
+% \end{sfunction}
+%
+% \begin{sfunction}{\textsymdecl}{}
+%
+% \StartImpl
+%    \begin{macrocode}
+\stex_keys_define:nnnn{textsymdecl}{
+  \str_clear:N \l_stex_key_name_str
+  \tl_clear:N \l_stex_key_type_tl
+  \tl_clear:N \l_stex_key_def_tl
+}{
+  name      .str_set:N  = \l_stex_key_name_str ,
+  type      .tl_set:N     = \l_stex_key_type_tl ,
+  def       .tl_set:N     = \l_stex_key_def_tl,
+  gf        .code:n       = {}
+}{style,deprecate}
+
+\stex_new_stylable_cmd:nnnn {textsymdecl} {m O{} m} {
+  \stex_keys_set:nn{symdef}{}
+  \stex_keys_set:nn{textsymdecl}{#2}
+  \str_set:Ne \l_stex_macroname_str { #1 }
+  \str_if_empty:NT \l_stex_key_name_str {
+    \str_set:Nn \l_stex_key_name_str {#1}
+  }%{
+  %  \str_set:Ne \l_stex_key_name_str {\l_stex_key_name_str-sym}
+  %}
+  \str_set:Nn \l_stex_key_role_str {textsymdecl}
+  \tl_set:Ne \l_stex_current_symbol_uri {
+    \exp_args:No \stex_new_symbol_uri:n \l_stex_key_name_str
+  }
+  \stex_symdecl_do:
+  \_stex_check_terms:
+  \exp_args:Nne \use:nn {\stex_add_symbol:nnnnnnnN}{
+    {\l_stex_macroname_str}
+    {\l_stex_key_name_str}
+    {0}{}
+    {\tl_if_empty:NF \l_stex_key_def_tl{DEFED} }
+    {}% type
+    {\use:c{#1name_nospace}}% return
+    \stex_invoke_text_symbol:
+  }
+  \exp_args:Ne \stex_ref_new_symbol:n
+    { \stex_use_symbol_uri:N \l_stex_current_symbol_uri }
+  \stex_if_do_html:T {
+    \_stex_symdecl_html:
+  }
+  
+  \int_set:Nn \l_stex_get_symbol_arity_int 0
+  \tl_clear:N \l_stex_key_op_tl
+  \str_clear:N \l_stex_key_intent_str
+  \str_clear:N \l_stex_key_prec_str
+  \tl_set_eq:NN \l_stex_get_symbol_uri \l_stex_current_symbol_uri
+  \stex_notation_parse:n{\hbox{#3}}
+  \_stex_notation_add:
+  \stex_if_do_html:T {
+    \def\comp{\_comp}
+    \_stex_notation_do_html:n{ \stex_use_symbol_uri:N \l_stex_current_symbol_uri }
+  }
+  \stex_execute_in_module:e{
+    \_@@_set_textsymdecl_macro:nnn{#1}{ \stex_use_symbol_uri:N \l_stex_current_symbol_uri }
+    \exp_not:n{{#3}}
+  }
+
+  \stex_if_smsmode:F{
+    \group_begin:
+    \tl_set:Ne \thisdecluri {\stex_use_symbol_uri:N \l_stex_current_symbol_uri}
+    \tl_set_eq:NN \thisdeclname \l_stex_key_name_str
+    \tl_clear:N \thisstyle
+    \stex_style_apply:
+    \group_end:
+  }
+  \stex_smsmode_do:
+}{}
+
+\stex_deactivate_macro:Nn \textsymdecl {module~environments}
+\stex_every_module:n {\stex_reactivate_macro:N \textsymdecl}
+\stex_sms_allow_escape:N \textsymdecl
+
+\cs_new_protected:Nn \_@@_set_textsymdecl_macro:nnn {
+  \cs_set_protected:cpn{#1name_nospace}{#3}
+  \cs_set_protected:cpn{#1name}{
+    \mode_if_vertical:T{\hbox_unpack:N\c_empty_box}
+    \mode_if_math:T\hbox{\let\xspace\relax #3}
+    \mode_if_math:F{\cs_if_exist:NT\xspace\xspace}
+  }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{implementation}
+% \begin{macro}{\_@@_top:n}{}
+% shared behaviour for \cs{symdecl} and \cs{symdef}; calls 
+% \cs{stex_symdecl_do:}, optionally checks the term components,
+% adds the symbol to the current module
+% and produces the FTML for the declaration.
+%    \begin{macrocode}
+\cs_new_protected:Nn \_@@_top:n {
+  \str_if_empty:NT \l_stex_key_name_str {
+    \str_set:Ne \l_stex_key_name_str { #1 }
+  }
+  \tl_set:Ne \l_stex_current_symbol_uri {
+    \exp_args:No \stex_new_symbol_uri:n \l_stex_key_name_str
+  }
+  
+  \stex_symdecl_do:
+  \_stex_check_terms:
+  \_@@_add_decl:
+  \stex_if_do_html:T \_stex_symdecl_html:
+}
+%    \end{macrocode}
+% \end{macro}
+% Adds the symbol to the current module:
+%    \begin{macrocode}
+\cs_new_protected:Nn \_@@_add_decl: {
+  \exp_args:Nne \use:nn {\stex_add_symbol:nnnnnnnN}{
+    {\l_stex_macroname_str}
+    {\l_stex_key_name_str}
+    {\int_use:N \l_stex_get_symbol_arity_int}
+    {\l_stex_get_symbol_args_tl}
+    {\tl_if_empty:NF \l_stex_key_def_tl{DEFED} }
+    {}
+    {\exp_args:No \exp_not:n \l_stex_key_return_tl}
+    \stex_invoke_symbol:
+  }
+  \exp_args:Ne \stex_ref_new_symbol:n
+    {\stex_use_symbol_uri:N \l_stex_current_symbol_uri}
+}
+%    \end{macrocode}
+% \end{implementation}
+%
+% \begin{sfunction}{\stex_symdecl_do:}{}
+% does the actual work. Requires all the \cs{l_stex_key_*}
+% macros are set.
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_symdecl_do: {
+  \_stex_do_deprecation:n \l_stex_key_name_str
+  \_@@_parse_arity:
+  \_@@_do_args:
+}
+
+\cs_new:Nn \_stex_return_args:nn {
+  {\svar{ARGUMENT_#1}\_stex_eat_exclamation_point:}
+}
+
+\cs_new_protected:Nn \_@@_do_args: {
+  \tl_clear:N \l_stex_get_symbol_args_tl
+  \int_step_inline:nn \l_stex_get_symbol_arity_int {
+    \tl_put_right:Nn \l_stex_get_symbol_args_tl {##1}
+    \tl_put_right:Ne \l_stex_get_symbol_args_tl {
+      \str_item:Nn \l_stex_key_args_str {##1}
+    }
+  }
+}
+%    \end{macrocode}
+%
+% Constructs the arity string of the symbol:
+%    \begin{macrocode}
+\int_new:N \l_stex_assoc_args_count
+
+\cs_new_protected:Nn \_@@_parse_arity: {
+  \int_zero:N \l_stex_get_symbol_arity_int
+  \int_zero:N \l_stex_assoc_args_count
+  \str_map_inline:Nn \l_stex_key_args_str {
+    \str_case:nnF ##1 {
+      0 { \str_map_break: }
+      1 { \str_map_break:n{
+        \int_set:Nn \l_stex_get_symbol_arity_int {1}
+        \str_set:Nn \l_stex_key_args_str {i}
+      } }
+      2 { \str_map_break:n{
+        \int_set:Nn \l_stex_get_symbol_arity_int {2}
+        \str_set:Nn \l_stex_key_args_str {ii}
+      } }
+      3 { \str_map_break:n{
+        \int_set:Nn \l_stex_get_symbol_arity_int {3}
+        \str_set:Nn \l_stex_key_args_str {iii}
+      } }
+      4 { \str_map_break:n{
+        \int_set:Nn \l_stex_get_symbol_arity_int {4}
+        \str_set:Nn \l_stex_key_args_str {iiii}
+      } }
+      5 { \str_map_break:n{
+        \int_set:Nn \l_stex_get_symbol_arity_int {5}
+        \str_set:Nn \l_stex_key_args_str {iiiii}
+      } }
+      6 { \str_map_break:n{
+        \int_set:Nn \l_stex_get_symbol_arity_int {6}
+        \str_set:Nn \l_stex_key_args_str {iiiiii}
+      } }
+      7 { \str_map_break:n{
+        \int_set:Nn \l_stex_get_symbol_arity_int {7}
+        \str_set:Nn \l_stex_key_args_str {iiiiiii}
+      } }
+      8 { \str_map_break:n{
+        \int_set:Nn \l_stex_get_symbol_arity_int {8}
+        \str_set:Nn \l_stex_key_args_str {iiiiiiii}
+      } }
+      9 { \str_map_break:n{
+        \int_set:Nn \l_stex_get_symbol_arity_int {9}
+        \str_set:Nn \l_stex_key_args_str {iiiiiiiii}
+      } }
+      i {\int_incr:N \l_stex_get_symbol_arity_int}
+      b {\int_incr:N \l_stex_get_symbol_arity_int}
+      a {\int_incr:N \l_stex_get_symbol_arity_int \int_incr:N \l_stex_assoc_args_count}
+      B {\int_incr:N \l_stex_get_symbol_arity_int \int_incr:N \l_stex_assoc_args_count}
+    }{
+      \msg_error:nnxx{stex}{error/wrongargs}{}{##1}
+    }
+  }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\_stex_symdecl_html:}{}
+% not namespaced so it can be reused in e.g. \env{sdefinition}s
+% that generate new symbols. Requires that the relevant \cs{l_stex_key_*}
+% macros and \cs{l_stex_macroname_str} are set.
+%
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Nn \_stex_symdecl_html: {
+  \stex_annotate_invisible:n{
+    \hbox{\exp_args:Ne \stex_annotate:nn {
+      data-ftml-symdecl = { \l_stex_key_name_str},
+      data-ftml-args = {\l_stex_key_args_str}
+      \str_if_empty:NF \l_stex_macroname_str {,
+        data-ftml-macroname={\l_stex_macroname_str}
+      }
+      \str_if_empty:NF \l_stex_key_wikidata_str {,
+        data-ftml-wikidata={\l_stex_key_wikidata_str}
+      }
+      \str_if_empty:NF \l_stex_key_assoc_str {,
+        data-ftml-assoctype={\l_stex_key_assoc_str}
+      }
+      \str_if_empty:NF \l_stex_key_reorder_str {,
+        data-ftml-reorderargs={\l_stex_key_reorder_str}
+      }
+      \str_if_empty:NF \l_stex_key_role_str {,
+        data-ftml-role={\l_stex_key_role_str}
+      }
+    }{\_stex_annotate_force_break:n{
+      \bool_set_true:N \stex_in_invisible_html_bool
+      \tl_if_empty:NF \l_stex_key_type_tl {
+        $\stex_annotate:nn{data-ftml-type={}}{\l_stex_key_type_tl}$
+      }
+      \tl_if_empty:NF \l_stex_key_def_tl {
+        $\stex_annotate:nn{data-ftml-definiens={}}{\l_stex_key_def_tl}$
+      }
+      \tl_if_empty:NF \l_stex_key_return_tl{
+        \exp_args:Nno \use:n{
+        \cs_generate_from_arg_count:NNnn \l_@@_cs
+        \cs_set:Npn \l_stex_get_symbol_arity_int} \l_stex_key_return_tl
+        \tl_set:Ne \l_@@_args_tl {\_stex_map_args:N \_stex_return_args:nn}
+        $\stex_annotate:nn{data-ftml-returntype={}}{
+          \exp_after:wN \l_@@_cs \l_@@_args_tl!
+        }$
+      }
+      \clist_if_empty:NF \l_stex_key_argtypes_clist {
+        \stex_annotate:nn{data-ftml-argtypes={}}{\_stex_annotate_force_break:n{
+          \clist_map_inline:Nn \l_stex_key_argtypes_clist {
+              $\stex_annotate:nn{data-ftml-type={}}{##1}$
+          }
+        }}
+      }
+    }}
+  }}
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\stex_add_symbol:nnnnnnN}{}
+% \begin{arguments}
+%   \item \Arg{Macro name}
+%   \item \Arg{Name}
+%   \item \Arg{arity}
+%   \item \{(\Arg{Arg num}\Arg{Arg str})$^\ast$\}
+%   \item Definiens
+%   \item type
+%   \item Return
+%   \item Command
+% \end{arguments}
+% adds a new symbol to the current module.
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_add_symbol:nnnnnnnN {
+  \stex_debug:nn{declaration}{New~declaration:~\stex_use_module_uri:N \l_stex_current_module_uri :~ #2^^J
+    Macro:#1^^JArity:#3~(#4)^^J
+    Def:~\tl_to_str:n{#5}^^J
+    Type:~\tl_to_str:n{#6}^^J
+    Returns:~\tl_to_str:n{#7}^^J
+    Invokes:~\tl_to_str:n{#8}
+  }
+  \prop_gput:cnn{ \_stex_symbol_macro:N \l_stex_current_module_uri }
+  {#2}{{#1}{#2}{#3}{#4}{#5}{#6}{#7}{#8}}
+  \tl_if_empty:nF{#1}{
+    \stex_do_up_to_module:n {
+      \_@@_activate_i:nnnnnnnn{#1}{#2}{#3}{#4}{#5}{#6}{#7}{#8}
+    }
+  }
+}
+%    \end{macrocode}
+% Generate semantic macros etc.:
+%    \begin{macrocode}
+\cs_new_protected:Nn \_stex_activate_symbols: {
+  \stex_debug:nn{activating}{All~symbols:~\cs_meaning:c{ \_stex_symbol_macro:N \l_stex_current_module_uri }}
+  \prop_map_inline:cn{ \_stex_symbol_macro:N \l_stex_current_module_uri }{
+    \_@@_maybe_activate:nnnnnnnn ##2
+  }
+}
+
+\cs_new_protected:Nn \_@@_maybe_activate:nnnnnnnn {
+  \str_if_empty:nF{#1}{
+    \_@@_activate_i:nnnnnnnn {#1}{#2}{#3}{#4}{#5}{#6}{#7}{#8}
+  }
+}
+
+\cs_new_protected:Nn \_@@_activate_i:nnnnnnnn {
+  \stex_debug:nn{activating}{macro~#1:\stex_use_module_uri:N \l_stex_current_module_uri ? #2^^J
+    \tl_to_str:n{{#3}{#4}{#5}{#6}{#7}#8}
+  }
+  \cs_set:cpe{#1} {
+    \_stex_invoke_symbol:nnnnnnN 
+    {\exp_args:No \stex_new_symbol_uri:nn {\l_stex_current_module_uri} {#2} }
+    \exp_not:n{{#3}{#4}{#5}{#6}{#7}{#8}}
+  }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}[pTF]{\stex_has_definiens:N,\stex_has_definiens:n}{}
+% \StartImpl
+%    \begin{macrocode}
+\prg_new_conditional:Nnn \stex_has_definiens:N { p, T, F, TF } {
+  \exp_args:No \stex_has_definiens:nTF #1 \prg_return_true: \prg_return_false:
+}
+\prg_new_conditional:Nnn \stex_has_definiens:n { p, T, F, TF } {
+  \exp_args:Nne \use:nn{\_@@_has_definiens:nnnnnnnN}{\exp_args:Nne \prop_item:cn{
+    \exp_args:Ne \_stex_symbol_macro:n {\stex_symbol_uri_module:n{#1}} 
+  }{
+    \stex_symbol_uri_name:n {#1}
+  }}
+}
+
+\cs_new:Nn \_@@_has_definiens:nnnnnnnN {
+  \tl_if_empty:nTF{#5}\prg_return_false:\prg_return_true:
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \end{sfragment}
+%
+% \begin{sfragment}{Retrieval}
+%
+% \begin{sfunction}{\stex_iterate_symbols:n,\stex_iterate_break:,\stex_iterate_break:n}{}
+% iterates over all symbols currently in scope. The provided
+% code will receive nine arguments: The URI of the containing
+% module and the eight parameters as in \cs{stex_add_symbol:nnnnnnnN}.
+%
+% iteration is stopped in the code using \cs{stex_iterate_break:}
+% or \cs{stex_iterate_break:n}.
+%
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_iterate_symbols:n {
+  \stex_pseudogroup_with:nn{\_@@_sym_cs:nnnnnnnnN\stex_iterate_break:\stex_iterate_break:n}{
+    \cs_set:Npn \_@@_sym_cs:nnnnnnnnN 
+    ##1 ##2 ##3 ##4 ##5 ##6 ##7 ##8 ##9 { #1 }
+    \cs_set:Npn \stex_iterate_break: {
+      \prop_map_break:n{\seq_map_break:}
+    }
+    \cs_set:Npn \stex_iterate_break:n ##1 {
+      \prop_map_break:n{\seq_map_break:n{##1}}
+    }
+    \seq_map_inline:Nn \l_stex_all_modules_seq {
+      \prop_map_inline:cn{\_stex_symbol_macro:n {##1}}{
+        \_@@_sym_cs:nnnnnnnnN {##1} ####2
+      }
+    }
+  }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\stex_iterate_symbols:nn}
+%    {\cs{stex_iterate_symbols:nn} \marg{modules} \marg{code}}
+% iterates over all symbols in the comma-separated list
+% of module URIs in \meta{modules}. The provided
+% code will receive nine arguments: The URI of the containing
+% module and the eight parameters as in \cs{stex_add_symbol:nnnnnnnN}.
+%
+% iteration is stopped in the code using \cs{stex_iterate_break:}
+% or \cs{stex_iterate_break:n}.
+%
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_iterate_symbols:nn {
+  \seq_clear:N \l_@@_mods_seq
+  \stex_pseudogroup_with:nn{\_@@_sym_cs:nnnnnnnnN}{
+    \cs_set:Npn \_@@_sym_cs:nnnnnnnnN 
+    ##1 ##2 ##3 ##4 ##5 ##6 ##7 ##8 ##9 { #2 }
+    \clist_map_function:nN {#1} \_@@_it_decl_i:n
+  }
+}
+
+\cs_new_protected:Nn \_@@_it_decl_i:n {
+  \seq_if_in:NnF \l_@@_mods_seq {#1} {
+    \seq_put_left:Nn \l_@@_mods_seq {#1}
+    \prop_map_inline:cn{\_stex_morphisms_macro:n {#1} }{
+      \_@@_it_decl_check:nnnn ##2
+    }
+    \prop_map_inline:cn{\_stex_symbol_macro:n {#1} }{
+      \_@@_sym_cs:nnnnnnnnN {#1} ##2
+    }
+  }
+}
+
+\cs_new_protected:Nn \_@@_it_decl_check:nnnn {
+  \tl_if_empty:nT{#1}{
+    \_@@_it_decl_i:n {#2}
+  }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\stex_get_symbol:n,\stex_get_symbol:nF}{}
+% attempts fo find the symbol with the given name/id/URI suffix.
+% If not successful, will execute the |F| code or throw an error.
+% Otherwise, defines the following macros:
+%
+% \begin{itemize}
+%   \item \cs{l_stex_get_symbol_uri},
+%   \item \cs{l_stex_get_symbol_arity_int},
+%   \item \cs{l_stex_get_symbol_args_tl},
+%   \item \cs{l_stex_get_symbol_def_tl},
+%   \item \cs{l_stex_get_symbol_type_tl},
+%   \item \cs{l_stex_get_symbol_return_tl},
+%   \item \cs{l_stex_get_symbol_invoke_cs}
+% \end{itemize}
+%
+% \StartImpl
+%    \begin{macrocode}
+\int_new:N \l_stex_get_symbol_arity_int
+
+\cs_new_protected:Nn \stex_get_symbol:n {
+  \stex_get_symbol:nF{ #1 }{
+    \msg_error:nnn{stex}{error/unknownsymbol}{#1}
+  }
+}
+
+\cs_new_protected:Npn \stex_get_symbol:nF #1 #2 {
+  \tl_clear:N \l_stex_get_symbol_uri
+  \cs_if_exist:cTF { #1 }{
+    \cs_set_eq:Nc \l_@@_cs { #1 }
+    % command name
+    \exp_args:Ne \tl_if_empty:nTF { \cs_argument_spec:N \l_@@_cs }{
+      % ...that takes no arguments
+      \exp_args:Ne \cs_if_eq:NNTF {\tl_head:N \l_@@_cs}
+        \_stex_invoke_symbol:nnnnnnN
+        \_@@_get_symbol_from_cs:
+        {\_@@_get_symbol_from_string:n { #1 }}
+    }{
+      \_@@_get_symbol_from_string:n { #1 }
+    }
+  }{
+    \_@@_get_symbol_from_string:n { #1 }
+  }
+  \tl_if_empty:NT \l_stex_get_symbol_uri { #2 }
+}
+
+\cs_new_protected:Nn \_@@_get_symbol_from_cs: {
+  \stex_pseudogroup_with:nn{\_stex_invoke_symbol:nnnnnnN}{
+    \cs_set:Npn \_stex_invoke_symbol:nnnnnnN ##1 ##2 ##3 ##4 ##5 ##6 ##7 {
+      \tl_set:Nn \l_stex_get_symbol_uri { ##1 }
+      \int_set:Nn \l_stex_get_symbol_arity_int {##2}
+      \tl_set:Nn \l_stex_get_symbol_args_tl {##3}
+      \tl_set:Nn \l_stex_get_symbol_def_tl {##4}
+      \tl_set:Nn \l_stex_get_symbol_type_tl {##5}
+      \tl_set:Nn \l_stex_get_symbol_return_tl {##6}
+      \tl_set:Nn \l_stex_get_symbol_invoke_cs {##7}
+    }
+    \l_@@_cs
+  }
+}
+
+\cs_new_protected:Nn \_@@_get_symbol_from_string:n {
+  \stex_debug:nn{symbols}{Getting~from~string~#1...}
+  \seq_set_split:Nnn \l_@@_seq ? {#1}
+  \seq_pop_right:NN \l_@@_seq \l_@@_name
+  \seq_if_empty:NTF \l_@@_seq {
+    \exp_args:No \_@@_get_from_one_string:n {#1}
+  }{
+    \exp_args:NNe \exp_args:Nno \_@@_get_symbol_from_modules:nn {
+      \seq_use:Nn \l_@@_seq ?
+    } \l_@@_name
+  }
+}
+
+\cs_new_protected:Nn \_@@_sym_from_str_i:nnnn {
+  \bool_lazy_any:nTF{
+    {\str_if_eq_p:nn{#2}{#3}}
+    {\str_if_eq_p:nn{#2}{#4}}
+    {\stex_str_if_ends_with_p:nn{#4}{/#2}}
+    }{
+      \_@@_sym_i_finish:nnnnnnnN{#1}{#4}
+    }{
+      \_@@_sym_i_gobble:nnnnnn
+    }
+}
+\cs_new_protected:Nn \_@@_sym_i_gobble:nnnnnn {}
+
+\cs_new_protected:Nn \_@@_sym_i_finish:nnnnnnnN {
+  \prop_map_break:n{\seq_map_break:n{
+    \tl_set:Ne \l_stex_get_symbol_uri { \stex_new_symbol_uri:nn {#1} {#2}}
+    \int_set:Nn \l_stex_get_symbol_arity_int {#3}
+    \tl_set:Nn \l_stex_get_symbol_args_tl {#4}
+    \tl_set:Nn \l_stex_get_symbol_def_tl {#5}
+    \tl_set:Nn \l_stex_get_symbol_type_tl {#6}
+    \tl_set:Nn \l_stex_get_symbol_return_tl {#7}
+    \tl_set:Nn \l_stex_get_symbol_invoke_cs {#8}
+  }}
+}
+
+\cs_new_protected:Nn \_@@_get_symbol_from_modules:nn {
+  %\seq_set_split:Nnn \l_tmpa_seq ? {#1}
+  %\seq_pop_right:NN \l_tmpa_seq \l_@@_name_str
+  %\str_set:Ne \l_@@_path_str {\seq_use:Nn \l_tmpa_seq ?}
+  \stex_debug:nn{symbols}{Getting~#2~in~#1...}
+  \seq_map_inline:Nn \l_stex_all_modules_seq {
+    %\stex_debug:nn{symbols}{comparing~\stex_module_uri_as_qm:n{##1}~and~#1}
+    \exp_args:Ne \stex_str_if_ends_with:nnT{\stex_module_uri_as_qm:n{##1}}{#1}{
+      \prop_map_inline:cn{\_stex_symbol_macro:n {##1} }{
+        \_@@_sym_from_str_i:nnnn{##1}{#2} ####2
+      }
+    }
+
+    %\str_if_empty:NTF \l_@@_path_str {
+    %  \exp_args:NNe \exp_args:Nno \stex_str_if_ends_with:nnT {\stex_module_uri_name:n{##1}} \l_@@_name_str
+    %}{
+    %  \exp_args:NNNe \exp_args:No \str_if_eq:nnT\l_@@_name_str{
+    %    \stex_module_uri_name:n {##1}
+    %  }
+    %}{
+    %  \str_if_empty:NTF \l_@@_path_str {
+    %    \prop_map_inline:cn{\_stex_symbol_macro:n {##1} }{
+    %      \_@@_sym_from_str_i:nnnn{##1}{#2} ####2
+    %    }
+    %  }{
+    %    \stex_debug:nn{symbols}{Comparing~\l_@@_path_str;~with~\tl_to_str:n{##1}}
+    %    \exp_args:NNe \exp_args:Nno \stex_str_if_ends_with:nnT{\stex_module_uri_path:n {##1}}\l_@@_path_str {
+    %      \prop_map_inline:cn{\_stex_symbol_macro:n {##1} }{
+    %        \_@@_sym_from_str_i:nnnn{##1}{#2} ####2
+    %      }
+    %    }
+    %  }
+    %}
+  }
+}
+
+\prg_new_conditional:Nnn \_@@_uri_match:n {T,F,TF} {
+  \str_if_eq:nnT
+}
+
+
+\cs_new_protected:Nn \_@@_get_from_one_string:n {
+  \stex_debug:nn{symbols}{Getting~#1~anywhere...}
+  \stex_iterate_symbols:n{
+    %\stex_debug:nn{symbols}{>#1==##2~|~#1==##3<...}
+    \bool_lazy_any:nT{
+      {\str_if_eq_p:nn{#1}{##2}}
+      {\str_if_eq_p:nn{#1}{##3}}
+      {\stex_str_if_ends_with_p:nn{##3}{/#1}}
+      }{
+        \stex_iterate_break:n{
+          \tl_set:Ne \l_stex_get_symbol_uri { \stex_new_symbol_uri:nn {##1} {##3}}
+          \int_set:Nn \l_stex_get_symbol_arity_int {##4}
+          \tl_set:Nn \l_stex_get_symbol_args_tl {##5}
+          \tl_set:Nn \l_stex_get_symbol_def_tl {##6}
+          \tl_set:Nn \l_stex_get_symbol_type_tl {##7}
+          \tl_set:Nn \l_stex_get_symbol_return_tl {##8}
+          \tl_set:Nn \l_stex_get_symbol_invoke_cs {##9}
+        }
+    }
+  }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \end{sfragment}
+%
+%
+% \input{\sourcepath stex/variables.idtx}
+%
+% \input{\sourcepath stex/expressions.idtx}
+%
+% \begin{sfragment}{Checking}
+%
+% \begin{sfunction}[pTF]{\stex_if_check_terms:}{}
+% conditional whether terms (types and definientia of symbols) 
+% should get syntactically checked. In HTML mode,
+% this is always false, since they get written to the HTML anyway.
+% 
+% \StartImpl
+%    \begin{macrocode}
+%<@@=stex_check>
+\stex_if_html_backend:TF {
+  \prg_new_conditional:Nnn \stex_if_check_terms: {p, T, F, TF} {
+    \prg_return_false:
+  }
+}{
+  \stex_get_env:Nn\_@@_env_str{STEX_CHECKTERMS}
+  \str_if_empty:NF\_@@_env_str{
+    \exp_args:No \str_if_eq:nnF \_@@_env_str{false}{
+      \bool_set_true:N \c_stex_check_terms_bool
+    }
+  }
+  \bool_if:NTF \c_stex_check_terms_bool {
+    \prg_new_conditional:Nnn \stex_if_check_terms: {p, T, F, TF} {
+      \prg_return_true:
+    }
+  }{
+    \prg_new_conditional:Nnn \stex_if_check_terms: {p, T, F, TF} {
+      \prg_return_false:
+    }
+  }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\stex_check_term:nn}{}
+% typesets the given expression in a \cs{tiny}\cs{marginpar},
+% checking its syntactic validity. Does nothing, if
+% term checking is not explicitly activated.
+% 
+% \StartImpl
+%    \begin{macrocode}
+\stex_if_check_terms:TF{
+  \cs_new_protected:Nn \stex_check_term:nn {
+    \marginpar {\tiny Checking~#1:~
+      \group_begin:
+        $#2$
+      \group_end:
+    }
+  }
+}{
+  \cs_new_protected:Nn \stex_check_term:nn {}
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\_stex_check_terms:}{}
+% checks the type and definiens components of a symbol
+% declaration (i.e. \cs{stex_key_type_tl}, \cs{stex_key_def_tl}
+% and \cs{stex_key_return_tl}|!|).
+% 
+% \StartImpl
+%    \begin{macrocode}
+\stex_if_check_terms:TF{
+  \cs_new_protected:Nn \_stex_check_terms: {
+    \stex_debug:nn{check_terms}{Checking~type...}
+    \tl_if_empty:NF \l_stex_key_type_tl {
+      \stex_check_term:nn{type}\l_stex_key_type_tl
+    }
+    \stex_debug:nn{check_terms}{Checking~definiens...}
+    \tl_if_empty:NF \l_stex_key_def_tl {
+      \stex_check_term:nn{definiens}\l_stex_key_def_tl
+    }
+    \stex_debug:nn{check_terms}{Checking~return...}
+    \tl_if_empty:NF \l_stex_key_return_tl {
+      \stex_check_term:nn{return}{\l_stex_key_return_tl!}
+    }
+    \stex_debug:nn{check_terms}{Checking~argument~types...}
+    \group_begin:\l_stex_key_argtypes_clist\group_end:
+    \tl_if_empty:NF \l_stex_key_argtypes_clist {
+      \stex_check_term:nn{argument~types}{\l_stex_key_argtypes_clist}
+    }
+  }
+}{
+  \cs_new_protected:Nn \_stex_check_terms: {}
+}
+
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \end{sfragment}
+%
+% \end{sfragment}

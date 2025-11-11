@@ -1,0 +1,328 @@
+% \iffalse
+%<*driver>
+\def\stexdocpath{../../doc}
+\input{\stexdocpath/stex-docheader}
+\stextoptitle{The \sTeX Package}{stex}
+\docmodule
+%</driver>
+%<*package>
+% \fi
+%
+% \begin{sfragment}{Variables}
+%
+% \begin{implementation}
+%    \begin{macrocode}
+%<@@=stex_vars>
+%    \end{macrocode}
+% \end{implementation}
+%
+% \begin{svariable}{\l_stex_variables_prop}
+% contains all variables currently in scope.
+% \StartImpl
+%    \begin{macrocode}
+\prop_new:N \l_stex_variables_prop
+%    \end{macrocode}
+% \end{svariable}
+%
+% \begin{sfunction}{\vardef}{}
+%
+% \StartImpl
+%    \begin{macrocode}
+\bool_new:N \l_@@_bind_bool
+\cs_new_protected:Nn \_stex_variable:nnnnnnnN {}
+
+\stex_new_stylable_cmd:nnnn {vardef} { m O{} m} {
+  \stex_keys_set:nn{vardef}{#2}
+  \str_set:Ne \l_stex_macroname_str { #1 }
+  \str_if_empty:NT \l_stex_key_name_str {
+    \str_set:Ne \l_stex_key_name_str { #1 }
+  }
+
+  \stex_symdecl_do:
+  \stex_if_check_terms:T \_stex_check_terms:
+  \_@@_add:
+  \_@@_macro:
+  \stex_if_do_html:T \_@@_html:
+
+  \int_set:Nn \l_stex_get_symbol_arity_int {\l_stex_get_symbol_arity_int}
+  \stex_debug:nn{vardef}{Doing~\l_stex_key_name_str}
+  \tl_set_eq:NN \l_stex_get_symbol_return_tl \l_stex_key_return_tl
+  \stex_notation_parse:n{#3}
+  \stex_if_check_terms:T{ \_stex_notation_check: }
+  \_stex_var_notation_macro:
+  \stex_if_do_html:T {
+    \def\comp{\_varcomp}
+    \_stex_notation_do_html:n \l_stex_key_name_str
+  }
+  \group_begin:
+  \tl_set_eq:NN \thisvarname \l_stex_key_name_str
+  \tl_clear:N \thisstyle
+  \str_set_eq:NN\thisnotationvariant\l_stex_key_variant_str
+  \def\thisnotation{
+    \exp_args:Nne \use:nn{\l_stex_notation_macrocode_cs{}}{
+      \_stex_notation_make_args:
+    }
+  }
+  \stex_style_apply:
+  \group_end:\ignorespaces
+}{}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{implementation}
+% Adds a new variable to the current scope:
+%    \begin{macrocode}
+\cs_new_protected:Nn \_@@_add: {
+  \exp_args:NNNo \exp_args:NNne
+  \prop_put:Nnn \l_stex_variables_prop \l_stex_key_name_str {
+    {\l_stex_macroname_str}
+    {\l_stex_key_name_str}
+    {\int_use:N \l_stex_get_symbol_arity_int}
+    {\l_stex_get_symbol_args_tl}
+    {\exp_args:No \exp_not:n \l_stex_key_def_tl}
+    {\exp_args:No \exp_not:n \l_stex_key_type_tl}
+    {\exp_args:No \exp_not:n \l_stex_key_return_tl}
+    \stex_invoke_symbol:
+  }
+}
+%    \end{macrocode}
+%
+% Defines the macro for a variable:
+%    \begin{macrocode}
+\cs_new_protected:Nn \_@@_macro: {
+  \tl_set:ce{\l_stex_macroname_str}{
+    \_stex_invoke_variable:nnnnnnN
+      {\l_stex_key_name_str}
+      {\int_use:N \l_stex_get_symbol_arity_int}
+      {\l_stex_get_symbol_args_tl}
+      {\exp_args:No \exp_not:n \l_stex_key_def_tl}
+      {\exp_args:No \exp_not:n \l_stex_key_type_tl}
+      {\exp_args:No \exp_not:n \l_stex_key_return_tl}
+      \stex_invoke_symbol:
+  }
+}
+%    \end{macrocode}
+%
+% Insert the HTML for a variable declaration:
+%    \begin{macrocode}
+
+\cs_new_protected:Nn \_@@_html: {
+  \stex_if_do_html:T {
+    \hbox\bgroup\exp_args:Ne \stex_annotate_invisible:nn {
+      data-ftml-vardef = {\l_stex_key_name_str},
+      data-ftml-args = {\l_stex_key_args_str}
+      \str_if_empty:NF \l_stex_macroname_str {,
+        data-ftml-macroname={\l_stex_macroname_str}
+      }
+      \str_if_empty:NF \l_stex_key_assoc_str {,
+        data-ftml-assoctype={\l_stex_key_assoc_str}
+      }
+      \str_if_empty:NF \l_stex_key_role_str {,
+        data-ftml-role={\l_stex_key_role_str}
+      }
+      \str_if_empty:NF \l_stex_key_reorder_str {,
+        data-ftml-reorderargs={\l_stex_key_reorder_str}
+      }
+      \bool_if:NT \l_@@_bind_bool {,
+        data-ftml-bind={}
+      }
+    }{
+      \_stex_annotate_force_break:n{
+        \bool_set_true:N \stex_in_invisible_html_bool
+        \tl_if_empty:NF \l_stex_key_type_tl {
+          \stex_annotate:nn{data-ftml-type={}}{$\l_stex_key_type_tl$}
+        }
+        \tl_if_empty:NF \l_stex_key_def_tl {
+          \stex_annotate:nn{data-ftml-definiens={}}{$\l_stex_key_def_tl$}
+        }
+        \tl_if_empty:NF \l_stex_key_return_tl{
+          \exp_args:Nno \use:n{
+          \cs_generate_from_arg_count:NNnn \l_@@_cs
+          \cs_set:Npn \l_stex_get_symbol_arity_int} \l_stex_key_return_tl
+          \tl_set:Ne \l_@@_args_tl {\_stex_map_args:N \_stex_return_args:nn}
+          $\stex_annotate:nn{data-ftml-returntype={}}{
+            \exp_after:wN \l_@@_cs \l_@@_args_tl!}$
+        }
+        \tl_if_empty:NF \l_stex_key_argtypes_clist {
+          \stex_annotate:nn{data-ftml-argtypes={}}{
+            \_stex_annotate_force_break:n{
+              \clist_map_inline:Nn \l_stex_key_argtypes_clist {
+                $\stex_annotate:nn{data-ftml-type={}}{##1}$
+              }
+            }
+          }
+        }
+      }
+    }\egroup
+  }
+}
+%    \end{macrocode}
+% \end{implementation}
+%
+% \begin{sfunction}{\stex_get_var:n}{}
+%
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_get_var:n {
+  \str_clear:N \l_stex_get_variable_str
+  \_@@_get_var:n{#1}
+  \str_if_empty:NT \l_stex_get_variable_str {
+    \msg_error:nnn{stex}{error/unknownsymbol}{#1}
+  }
+}
+
+\cs_new_protected:Nn \_@@_get_var:n {
+  \prop_map_inline:Nn \l_stex_variables_prop {
+    \_@@_check_var:nnnnnnnnN {#1} ##2
+  }
+}
+
+\cs_new_protected:Nn \_@@_check_var:nnnnnnnnN {
+  \str_if_eq:nnTF{#1}{#2}{
+    \prop_map_break:n{\_@@_set_vars:nnnnnnN {#3}{#4}{#5}{#6}{#7}{#8}#9}
+  }{
+    \str_if_eq:nnT{#1}{#3}{
+      \prop_map_break:n{\_@@_set_vars:nnnnnnN {#3}{#4}{#5}{#6}{#7}{#8}#9}
+    }
+  }
+}
+
+\cs_new_protected:Nn \_@@_set_vars:nnnnnnN {
+  \stex_debug:nn{symbols}{Variable~#1~found}
+  \cs_set:Npn \_stex_variable:nnnnnnnN ##1 ##2 ##3 ##4 ##5 ##6 ##7 ##8 {}
+  \str_set:Nn \l_stex_get_variable_str {#1}
+  \int_set:Nn \l_stex_get_symbol_arity_int {#2}
+  \tl_set:Nn \l_stex_get_symbol_args_tl {#3}
+  \tl_set:Nn \l_stex_get_symbol_def_tl {#4}
+  \tl_set:Nn \l_stex_get_symbol_type_tl {#5}
+  \tl_set:Nn \l_stex_get_symbol_return_tl {#6}
+  \tl_set:Nn \l_stex_get_symbol_invoke_cs {#7}
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfragment}{Variable Sequences}
+%
+% \begin{implementation}
+%    \begin{macrocode}
+%<@@=stex_seqs>
+%    \end{macrocode}
+% \end{implementation}
+%
+% \begin{sfunction}{\varseq}{}
+%
+% \StartImpl
+%    \begin{macrocode}
+\stex_new_stylable_cmd:nnnn {varseq}{m O{} m m} {
+  \stex_keys_set:nn{symdef}{#2}
+  \str_set:Ne \l_stex_macroname_str { #1 }
+  \str_if_empty:NT \l_stex_key_name_str {
+    \str_set:Ne \l_stex_key_name_str { #1 }
+  }
+  \str_if_empty:NT \l_stex_key_args_str {
+    \str_set:Nn \l_stex_key_args_str {1}
+  }
+  \stex_symdecl_do:
+
+  \tl_set_eq:NN \l_stex_get_symbol_return_tl \l_stex_key_return_tl
+  \clist_set:Nn \l_@@_range_clist {#3}
+  \tl_if_empty:NTF \l_stex_key_op_tl {
+    \stex_notation_parse:n{#4}
+    \tl_clear:N \l_stex_key_op_tl
+  }{
+    \stex_notation_parse:n{#4}
+  }
+  \stex_if_do_html:T \_@@_html:
+  \stex_if_check_terms:T \_stex_check_terms:
+  \_@@_add:
+  \_@@_macro:
+  \stex_if_check_terms:T \_stex_notation_check:
+  \_stex_var_notation_macro:
+  \group_begin:
+  \tl_set_eq:NN \thisvarname \l_stex_key_name_str
+  \tl_clear:N \thisstyle
+  \str_set_eq:NN\thisnotationvariant\l_stex_key_variant_str
+  \def\thisnotation{
+    \l_stex_notation_macrocode_cs{}!
+  }
+  \stex_style_apply:
+  \group_end:\ignorespaces
+}{}
+
+\cs_new_protected:Nn \_@@_add: { 
+  \exp_args:NNNo \exp_args:NNne
+  \prop_put:Nnn \l_stex_variables_prop \l_stex_key_name_str {
+    {\l_stex_macroname_str}
+    {\l_stex_key_name_str}
+    {\int_use:N \l_stex_get_symbol_arity_int}
+    {\l_stex_get_symbol_args_tl}
+    {\exp_args:No \exp_not:n \l_stex_key_def_tl}
+    {\exp_args:No \exp_not:n \l_@@_range_clist}
+    {\exp_args:No \exp_not:n \l_stex_key_return_tl}
+    \stex_invoke_sequence:
+  }
+}
+
+\cs_new_protected:Nn \_@@_macro: { 
+  \tl_set:ce{\l_stex_macroname_str}{
+    \_stex_invoke_variable:nnnnnnN
+      {\l_stex_key_name_str}
+      {\int_use:N \l_stex_get_symbol_arity_int}
+      {\l_stex_get_symbol_args_tl}
+      {\exp_args:No \exp_not:n \l_stex_key_def_tl}
+      {\exp_args:No \exp_not:n \l_@@_range_clist}
+      {\exp_args:No \exp_not:n \l_stex_key_return_tl}
+      \stex_invoke_sequence:
+  }
+}
+
+\cs_new_protected:Nn \_@@_html: {
+    \exp_args:Ne \stex_annotate_invisible:nn {
+      data-ftml-varseq = {\l_stex_key_name_str},
+      data-ftml-args = {\l_stex_key_args_str}
+      \str_if_empty:NF \l_stex_macroname_str {,
+        data-ftml-macroname={\l_stex_macroname_str}
+      }
+      \str_if_empty:NF \l_stex_key_assoc_str {,
+        data-ftml-assoctype={\l_stex_key_assoc_str}
+      }
+      \str_if_empty:NF \l_stex_key_role_str {,
+        data-ftml-role={\l_stex_key_role_str}
+      }
+      \str_if_empty:NF \l_stex_key_reorder_str {,
+        data-ftml-reorderargs={\l_stex_key_reorder_str}
+      }
+    }{\hbox\bgroup
+      \_stex_annotate_force_break:n{
+        \tl_if_empty:NF \l_stex_key_type_tl {
+          \stex_annotate:nn{data-ftml-type={}}{$\l_stex_key_type_tl$}
+        }
+        \tl_if_empty:NF \l_stex_key_def_tl {
+          \stex_annotate:nn{data-ftml-definiens={}}{$\l_stex_key_def_tl$}
+        }
+        \tl_if_empty:NF \l_stex_key_return_tl{
+          \exp_args:Nno \use:n{
+          \cs_generate_from_arg_count:NNnn \l_@@_cs
+          \cs_set:Npn \l_stex_get_symbol_arity_int} \l_stex_key_return_tl
+          \tl_set:Nx \l_@@_args_tl {\_stex_map_args:N \_stex_return_args:nn}
+          \stex_annotate:nn{data-ftml-returntype={}}{
+            $\exp_after:wN \l_@@_cs \l_@@_args_tl!$}
+        }
+        \tl_if_empty:NF \l_stex_key_argtypes_clist {
+          \stex_annotate:nn{data-ftml-argtypes={}}{
+            \_stex_annotate_force_break:n{
+              \clist_map_inline:Nn \l_stex_key_argtypes_clist {
+                \stex_annotate:nn{data-ftml-type={}}{$##1$}
+              }
+            }
+          }
+        }
+      }
+    \egroup}
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \end{sfragment}
+%
+% \end{sfragment}

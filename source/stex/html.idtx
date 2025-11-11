@@ -1,0 +1,336 @@
+% \iffalse
+%<*driver>
+\def\stexdocpath{../../doc}
+\input{\stexdocpath/stex-docheader}
+\stextoptitle{The \sTeX Package}{stex}
+\docmodule
+%</driver>
+%<*package>
+% \fi
+%
+% \begin{sfragment}{HTML Output}
+%
+% \begin{implementation}
+%    \begin{macrocode}
+%<@@=stex_annotate>
+%    \end{macrocode}
+% \end{implementation}
+%
+% \begin{documentation}
+%  Macros for dealing with HTML output.
+% \end{documentation}
+%
+% \begin{svariable}{\stex@backend}
+% Which engine is running; possible values are
+% |pdflatex|, |rustex|, |tex4ht| (\textcolor{red}{TODO}) and
+% |latexml| (\textcolor{red}{TODO}).
+%
+% \StartImpl
+% We determine and \cs{input} the backend config file:
+%    \begin{macrocode}
+\ifcsname if@rustex\endcsname\else
+  \expandafter\newif\csname if@rustex\endcsname
+  \@rustexfalse
+\fi
+
+\stex_get_env:Nn\_@@_env_str{STEX_FORCE_PDF}
+\exp_args:No \str_if_eq:nnTF \_@@_env_str {true} {
+  \def\stex@backend{pdflatex}
+}{
+  \tl_if_exist:NF\stex@backend{
+    \if@rustex
+      \def\stex@backend{rustex}
+    \else
+      \cs_if_exist:NTF\HCode{
+        \def\stex@backend{tex4ht}
+      }{
+        \def\stex@backend{pdflatex}
+      }
+    \fi
+  }
+}
+
+\input{stex-backend-\stex@backend.cfg}
+%    \end{macrocode}
+% \end{svariable}
+%
+% \begin{sfunction}[pTF]{\stex_if_html_backend:}{}
+%  \LaTeX3 conditional testing whether the engine running
+%  compiles to HTML.
+% \StartImpl
+%  is provided by the backend config file.
+% \end{sfunction}
+%
+% \begin{sfunction}[EXP]{\ifstexhtml}{}
+%  \LaTeX2 conditional testing whether the engine running
+%  compiles to HTML.
+%
+% \StartImpl
+%    \begin{macrocode}
+\bool_new:N \l_@@_do_output_bool
+
+\newif\ifstexhtml
+\stex_if_html_backend:TF {
+  \stexhtmltrue
+  \bool_set_true:N \l_@@_do_output_bool
+}{
+  \stexhtmlfalse
+  \bool_set_false:N \l_@@_do_output_bool
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}[pTF]{\stex_if_do_html:}{}
+%  Whether to (locally) produce HTML output. May be turned off
+% locally even if the backend produces HTML; e.g. when parsing
+% dependencies in \cs{importmodule} or \cs{usemodule}.
+%
+% \StartImpl
+%    \begin{macrocode}
+\prg_new_conditional:Nnn \stex_if_do_html: {p,T,F,TF} {
+  \bool_if:NTF \l_@@_do_output_bool
+    \prg_return_true: \prg_return_false:
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\stex_suppress_html:n}{}
+%  temporarily suppresses HTML output when processing the provided
+%  code.
+%
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_suppress_html:n {
+  \stex_pseudogroup:nn{
+    \bool_set_false:N \l_@@_do_output_bool
+    #1
+  }{
+    \stex_if_do_html:T {
+      \bool_set_true:N \l_@@_do_output_bool
+    }
+  }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\stex_annotate:nn}
+%   {\cs{stex_annotate:nn} \marg{keyvals} {code}}
+%  attaches the provided comma-separated key-value-pairs 
+%  (as |key=val|) as HTML attributes to the HTML node(s)
+%  generated from \meta{code}. If \meta{code} results in multiple
+%  nodes, this needs to insert a new |<div>|, |<span>| or |<mrow>|
+%  node for the attributes. Multiple nested calls to \cs{stex_annotate:nn}
+%  may be merged into a single node. 
+% \StartImpl
+%  is provided by the backend config file.
+% \end{sfunction}
+%
+% \begin{senvironment}{stex_annotate_env}{}
+%  like \cs{stex_annotate:nn}, but as an environment; i.e.
+% \cs{begin}|{|\env{stex\_annotate\_env}|}{|\meta{keyvals}|}|\meta{code}\cs{end}|{|\env{stex\_annotate\_env}|}|
+% is equivalent to \cs{stex_annotate:nn}|{|\meta{keyvals}|}{|\meta{code}|}|
+% \StartImpl
+%  is provided by the backend config file.
+% \end{senvironment}
+%
+% \begin{sfunction}{\stex_html_node:nnn}
+%   {\cs{stex_html_node:nnn} \marg{tag} \marg{keyvals} {code}}
+%  like \cs{stex_annotate:nn}, but makes sure to wrap \meta{code}
+% in a new |<tag>| node.
+%  
+% \StartImpl
+%  is provided by the backend config file.
+% \end{sfunction}
+%
+% \begin{senvironment}{stex_env_node}{}
+%  like \cs{stex_html_node:nnn}, but as an environment; i.e.
+% \cs{begin}|{|\env{stex\_env\_node}|}{|\meta{tag}|}{|\meta{keyvals}|}|\meta{code}\cs{end}|{|\env{stex\_env\_node}|}|
+% is equivalent to \cs{stex_html_node:nnn}|{|\meta{tag}|}{|\meta{keyvals}|}{|\meta{code}|}|
+% \StartImpl
+%  is provided by the backend config file.
+% \end{senvironment}
+%
+% \begin{sfunction}{\stex_annotate_invisible:nn,\stex_annotate_invisible:n}
+%   {\cs{stex_annotate_invisible:nn} \marg{keyvals} {code}}
+%  like \cs{stex_annotate:nn}, but additionally adds the key values
+%  |data-ftml-invisible="true"| and |style="display:none;"|.
+% \cs{stex_annotate_invisible:n} does not take additional attribute-value-pairs. 
+% \StartImpl
+%  is provided by the backend config file.
+% \end{sfunction}
+%
+% \begin{sfunction}{\STEXinvisible}{}
+%  public wrapper for \cs{stex_annotate_invisible:n}.
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Npn \STEXinvisible #1 {
+  \stex_annotate_invisible:n { #1 }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\stex_css_link:n}{\cs{stex_css_link:n} \marg{url}}
+%  inserts a |<link rel="stylesheet" href="|\meta{url}|">| node in the header
+% of the generated HTML.
+% \StartImpl
+%  is provided by the backend config file.
+% \end{sfunction}
+%
+% \begin{sfunction}{\stex_css_literal:n}{\cs{stex_css_literal:n} \marg{text}}
+%  inserts a |<style>|\meta{text}|</style>| node in the header
+% of the generated HTML.
+% \StartImpl
+%  is provided by the backend config file.
+% \end{sfunction}
+%
+% \begin{sfunction}{\_stex_annotate_force_break:n}{}
+%   should guarantee that the HTML nodes generated by the provided
+%   code are not merged with any outer nodes with respect to
+% attached attributes.
+% \StartImpl
+%  is provided by the backend config file.
+% \end{sfunction}
+%
+% \begin{sfunction}{\mmlintent,\mmlarg}{\cs{mmlintent} \marg{value} \marg{code}}
+%  annotates \meta{code} with the provided MathML \emph{intent} 
+%  attribute (or \emph{intent} |arg| attribute, respectively).
+% \StartImpl
+%    \begin{macrocode}
+\stex_if_html_backend:TF {
+  \cs_new_protected:Npn \mmlintent #1 #2 { 
+    \stex_annotate:nn{mml:intent={#1}}{#2} 
+  }
+  \cs_new_protected:Npn \mmlarg #1 #2 { 
+    \stex_annotate:nn{mml:arg={#1}}{#2}
+  }
+}{
+  \cs_new_protected:Npn \mmlintent #1 #2 { #2 }
+  \cs_new_protected:Npn \mmlarg #1 #2 { #2 }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{implementation}
+% We can now define \cs{stex_persist:n}:
+%    \begin{macrocode}
+%<@@=stex_persist>
+\bool_if:NTF \c_stex_persist_write_mode_bool {
+  \stex_if_html_backend:TF{
+    \cs_new:Npn \stex_persist:n #1 {}
+    \cs_new:Npn \stex_persist:e #1 {}
+  }{
+    \cs_new_protected:Nn \stex_persist:n {
+      \iow_now:Nn \c_@@_sms_iow {#1}
+    }
+    \cs_generate_variant:Nn \stex_persist:n {e}
+  }
+}{
+  \cs_new:Npn \stex_persist:n #1 {}
+  \cs_new:Npn \stex_persist:e #1 {}
+}
+%    \end{macrocode}
+% \end{implementation}
+%
+% and style patching:
+%    \begin{macrocode}
+%<@@=stex_styles>
+\stex_if_html_backend:TF{
+  \cs_new_protected:Nn \stex_style_apply: {}
+  \cs_new_protected:Nn \_@@_patch:nnnn {}
+  \stex_keys_define:nnnn{ csspatch }{
+    \str_clear:N \l_stex_keys_cls_id
+    \str_clear:N \l_stex_keys_counter_id
+    \str_clear:N \l_stex_keys_counter_parent
+  }{
+    counter    .str_set_x:N  = \l_stex_keys_counter_id,
+    parent     .str_set_x:N  = \l_stex_keys_counter_parent,
+    unknown    .code:n       = {
+      \exp_args:NNo \str_set:Nn \l_stex_keys_cls_id {\l_keys_key_tl}
+    }
+  }{}
+  \cs_new_protected:Npn \_@@_css_patch:nnnn #1 #2 {
+    \stex_keys_set:nn{ csspatch }{ #2 }
+    \group_begin:
+    \catcode`\ =12\relax
+    \catcode`^^J=12\relax
+    \_@@_patch_i:nnn {#1}
+  }
+
+  \seq_new:N \g_@@_counters_seq
+
+  \cs_new:Nn \_@@_patch_html_c: {
+    \stex_html_literal:n{
+      <span~data-ftml-counter="\l_stex_keys_counter_id"~style="display:none;"~
+        data-ftml-counter-parent="\l_stex_keys_counter_parent"
+      ></span>
+    }
+  }
+
+  \cs_new:Nn \_@@_patch_html: {
+    \stex_html_literal:n{
+      <span~data-ftml-style="\l_stex_keys_cls_id"~style="display:none;"~
+        data-ftml-counter="\l_stex_keys_counter_id"
+      ></span>
+    }
+  }
+
+  \cs_new_protected:Nn \_@@_patch_i:nnn {
+    \str_if_empty:NTF \l_stex_keys_cls_id {
+      \str_set:Nn \l_stex_keys_cls_id { #1 }
+    }{
+      \str_set:Ne \l_stex_keys_cls_id { #1-\l_stex_keys_cls_id }
+    }
+    \exp_args:No \str_case:nnF \l_stex_keys_counter_parent {
+      {}{}
+      {part}{\str_set:Nn \l_stex_keys_counter_parent { 0 }}
+      {chapter}{\str_set:Nn \l_stex_keys_counter_parent { 1 }}
+      {section}{\str_set:Nn \l_stex_keys_counter_parent { 2 }}
+      {subsection}{\str_set:Nn \l_stex_keys_counter_parent { 3 }}
+      {subsubsection}{\str_set:Nn \l_stex_keys_counter_parent { 4 }}
+      {paragraph}{\str_set:Nn \l_stex_keys_counter_parent { 5 }}
+      {subparagraph}{\str_set:Nn \l_stex_keys_counter_parent { 6 }}
+    }{
+      \msg_error:nnx{stex}{error/notasection}\l_stex_keys_counter_parent
+    }
+    \str_set:Ne \l_@@_first_str { &~.ftml-title-paragraph~ { display:inline-block;~#3 } }
+    \str_if_empty:NF \l_stex_keys_counter_id {
+      %\str_put_left:Ne \l_@@_first_str { counter-increment:~ ftml-\l_stex_keys_counter_id; }
+      \exp_args:NNo \seq_if_in:NnF \g_@@_counters_seq \l_stex_keys_counter_id {
+        \seq_gpush:No \g_@@_counters_seq \l_stex_keys_counter_id
+        \cs_if_eq:ccTF{@onlypreamble}{@notprerr}{
+          \_@@_patch_html_c:
+          % in body
+        }{
+          \exp_args:Ne \AtBeginDocument \_@@_patch_html_c:
+          % in preamble
+        }
+      }
+      \cs_if_eq:ccTF{@onlypreamble}{@notprerr}{
+          \_@@_patch_html:
+          % in body
+      }{
+        \exp_args:Ne \AtBeginDocument \_@@_patch_html:
+        % in preamble
+      }
+    }
+    \exp_args:Ne \stex_css_literal:n { .ftml-\l_stex_keys_cls_id { \l_@@_first_str #2 } }
+
+    % TODO export counter reset somehow
+
+    \group_end:
+  }
+}{
+  \cs_new_protected:Nn \_@@_patch:nnnn {
+    \str_if_empty:nTF {#2}{
+      \tl_set:cn{_@@_style_#1_start:}{#3}
+      \tl_set:cn{_@@_style_#1_end:}{#4}
+    }{
+      \tl_set:cn{_@@_style_#1_#2_start:}{#3}
+      \tl_set:cn{_@@_style_#1_#2_end:}{#4}
+    }
+  }
+  \cs_new_protected:Nn \_@@_css_patch:nnnn {}
+}
+%    \end{macrocode}
+%
+% \end{sfragment}

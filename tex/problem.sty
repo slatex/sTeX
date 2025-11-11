@@ -6,7 +6,7 @@
 %%
 %% problem.dtx  (with options: `package')
 %% 
-\ProvidesExplPackage{problem}{2023/10/13}{3.4.0}{Semantic Markup for Problems}
+\ProvidesExplPackage{problem}{2025/11/11}{4.0.0}{Semantic Markup for Problems}
 \RequirePackage{l3keys2e}
 
 \keys_define:nn { problem / pkg }{
@@ -46,6 +46,53 @@
 }
 
 \RequirePackage{stex}
+
+\newcommand\precondition[2]{
+  \stex_get_symbol:n{#2}
+  \tl_if_empty:NF \l_stex_get_symbol_uri {
+    \str_case:nnTF {#1}{
+      {remember}{}
+      {understand}{}
+      {analyze}{}
+      {evaluate}{}
+      {apply}{}
+      {create}{}
+    }{
+      \ifstexhtml\else\bool_if:NT\c_stex_metadata_bool {
+        \marginpar{\tiny \textbf{Precondition:}~#1~
+          \exp_args:Ne\symrefemph@uri{\stex_symbol_uri_name:N \l_stex_get_symbol_uri}{\l_stex_get_symbol_uri}
+        }
+      }\fi
+      \stex_annotate_invisible:nn{
+        data-ftml-preconditionsymbol={\stex_use_symbol_uri:N \l_stex_get_symbol_uri},
+        data-ftml-preconditiondimension={#1}
+      }{}
+    }{\errmessage{Unknown~cognitive~dimension~#1}}
+  }
+}
+\newcommand\objective[2]{
+  \stex_get_symbol:n{#2}
+  \tl_if_empty:NF \l_stex_get_symbol_uri {
+    \str_case:nnTF {#1}{
+      {remember}{}
+      {understand}{}
+      {analyze}{}
+      {evaluate}{}
+      {apply}{}
+      {create}{}
+    }{
+      \ifstexhtml\else\bool_if:NT\c_stex_metadata_bool {
+        \marginpar{\tiny \textbf{Objective:}~#1~
+        \exp_args:Ne\symrefemph@uri{\stex_symbol_uri_name:N \l_stex_get_symbol_uri}{\l_stex_get_symbol_uri}
+        }
+      }\fi
+      \stex_annotate_invisible:nn{
+        data-ftml-objectivesymbol={\stex_use_symbol_uri:N \l_stex_get_symbol_uri},
+        data-ftml-objectivedimension={#1}
+      }{}
+    }{\errmessage{Unknown~cognitive~dimension~#1}}
+  }
+}
 \AddToHook{begindocument}{
   \ExplSyntaxOn\makeatletter
   \input{problem-english.ldf}
@@ -68,7 +115,7 @@
 }
 \bool_new:N \l_stex_key_autogradable_bool
 \stex_keys_define:nnnn{ problem }{
-  \tl_set:Nn \l_stex_key_pts_tl 0
+  \tl_clear:N \l_stex_key_pts_tl
   \tl_set:Nn \l_stex_key_min_tl 0
   \str_clear:N \l_stex_key_name_str
   \str_clear:N \l_stex_key_mhrepos_str
@@ -80,7 +127,7 @@
   autogradable .bool_set:N = \l_stex_key_autogradable_bool,
   archive  .code:n = {},
   %archive .str_set:N    = \l_stex_key_mhrepos_str,
-  creators .code:n = {}
+  %creators .code:n = {}
   %imports .tl_set:N     = \l__problems_prob_imports_tl,
   %refnum  .int_set:N    = \l__problems_prob_refnum_int,
 }{id,title,style,uses}
@@ -127,18 +174,19 @@
       \seq_get_right:NN \l__problems_path_seq \l_stex_key_name_str
     }
     \exp_args:Nne \begin{stex_annotate_env} {
-      shtml:problem={\l_stex_key_name_str},
-      shtml:language={ \l_stex_current_language_str},
-      shtml:autogradable={\bool_if:NTF \l_stex_key_autogradable_bool {true}{false}}
+      data-ftml-problem={\l_stex_key_name_str},
+      %data-ftml-language={ \l_stex_current_language_str},
+      data-ftml-autogradable={\bool_if:NTF \l_stex_key_autogradable_bool {true}{false}}
+      \tl_if_empty:NF \l_stex_key_pts_tl{,data-ftml-problempoints={\l_stex_key_pts_tl}}
     }
+    \noindent \stex_annotate:nn{data-ftml-title={}}{\_stex_annotate_force_break:n{\l_stex_key_title_tl}}
     \tl_if_empty:NF \l_stex_key_title_tl {
       \exp_args:No \stexdoctitle \l_stex_key_title_tl
     }
-    \stex_annotate_invisible:nn{
-      shtml:problempoints={\l_stex_key_pts_tl}
-    }{ \l_stex_key_pts_tl }
+    \_stex_annotate_force_break:n{}
   }
   \tl_set_eq:NN \thistitle \l_stex_key_title_tl
+  \tl_if_empty:NT \l_stex_key_pts_tl { \tl_set:Nn \l_stex_key_pts_tl{0} }
 
   \bool_set_true:N \l__problems_in_problem_bool
   \tl_set_eq:NN \l__problems_pts_tl \l_stex_key_pts_tl
@@ -151,14 +199,14 @@
     {\bool_set_true:N \l__problems_has_min_bool}
   \int_gzero:N \g__problems_subproblem_int
 
-  \stex_style_apply:
+  \stex_if_do_html:F\stex_style_apply:
   \_stex_do_id:
   \__problems_activate_macros:
 }{
   \fp_gadd:Nn \g_problem_total_pts_fp { \l__problems_pts_tl}
   \fp_gadd:Nn \g_problem_total_min_fp { \l__problems_min_tl}
   \__problems_record_problem:
-  \stex_style_apply:
+  \stex_if_do_html:F\stex_style_apply:
   \stex_if_do_html:T{ \end{stex_annotate_env} }
 }{
   \par\noindent\problemheader
@@ -183,7 +231,7 @@
 \tl_set:Nn \problemheader {
   \stex_if_do_html:TF{
     \tl_if_empty:NF \thistitle {
-      \stex_annotate:nn{shtml:problemtitle={}}{\textbf{\thistitle}}
+      \stex_annotate:nn{data-ftml-title={}}{\textbf{\thistitle}}
     }
   }{
     \textbf{\sproblemautorefname{~}\thesproblem
@@ -224,26 +272,31 @@
       \seq_get_right:NN \l__problems_path_seq \l_stex_key_name_str
     }
     \exp_args:Nne \begin{stex_annotate_env} {
-      shtml:subproblem={\l_stex_key_name_str},
-      shtml:language={ \l_stex_current_language_str},
-      shtml:autogradable={\bool_if:NTF \l_stex_key_autogradable_bool {true}{false}}
+      data-ftml-subproblem={\l_stex_key_name_str},
+      %data-ftml-language={ \l_stex_current_language_str},
+      data-ftml-autogradable={\bool_if:NTF \l_stex_key_autogradable_bool {true}{false}}
+      \tl_if_empty:NF \l_stex_key_pts_tl{,data-ftml-problempoints={\l_stex_key_pts_tl}}
     }
-    \stex_annotate_invisible:n{}
+    \noindent \stex_annotate:nn{data-ftml-title={}}{\_stex_annotate_force_break:n{\l_stex_key_title_tl}}
     \tl_if_empty:NF \l_stex_key_title_tl {
       \exp_args:No \stexdoctitle \l_stex_key_title_tl
     }
+    \tl_if_empty:NF \l_stex_key_title_tl {
+      \exp_args:No \stexdoctitle \l_stex_key_title_tl
+    }
+    \_stex_annotate_force_break:n{}
   }
+  \tl_if_empty:NT \l_stex_key_pts_tl { \tl_set:Nn \l_stex_key_pts_tl{0} }
   \int_gincr:N \g__problems_subproblem_int
   \bool_if:NF \l__problems_has_pts_bool {
-    \tl_gset:Nx \l__problems_pts_tl {\fp_to_decimal:n {\l__problems_pts_tl + \l_stex_key_pts_tl}}
+    \tl_gset:Ne \l__problems_pts_tl {\fp_to_decimal:n {\l__problems_pts_tl + \l_stex_key_pts_tl}}
   }
   \bool_if:NF \l__problems_has_min_bool {
-    \tl_gset:Nx \l__problems_min_tl {\fp_to_decimal:n {\l__problems_min_tl + \l_stex_key_min_tl}}
+    \tl_gset:Ne \l__problems_min_tl {\fp_to_decimal:n {\l__problems_min_tl + \l_stex_key_min_tl}}
   }
-  \stex_if_smsmode:F \stex_style_apply:
+  \stex_if_smsmode:F {\stex_if_do_html:F \stex_style_apply: }
 }{
-  \stex_if_smsmode:F \stex_style_apply:
-  \stex_if_do_html:T{ \end{stex_annotate_env} }
+  \stex_if_do_html:TF{ \end{stex_annotate_env} }{\stex_if_smsmode:F\stex_style_apply:}
 }{
   \begin{list}{}{
     \setlength\topsep{0pt}
@@ -260,6 +313,7 @@
       \marginpar{\smallskip\l_stex_key_min_tl{}~\problem@kw@minutes}
     }
   }
+  \ignorespaces
 }{
   \end{list}
 }{}
@@ -298,11 +352,10 @@
   }
   \stex_if_do_html:T{
     \begin{stex_annotate_env}{
-      shtml:solution=\l_stex_key_id_str,
-      shtml:answerclass={\l_stex_key_answerclass_str}
+      data-ftml-solution=\l_stex_key_id_str,
+      data-ftml-answerclass={\l_stex_key_answerclass_str}
     }
   }
-  \stex_style_apply:
 }
 
 \stex_new_stylable_env:nnnnnnn { solution }{ O{} }{
@@ -311,6 +364,7 @@
   }{
     \ifsolutions
       \__problems_solution_start:n{#1}
+      \stex_style_apply:
     \else
       \stex_keys_set:nn{ solution }{#1}
       \testspace{\l_stex_key_testspace_dim}
@@ -319,7 +373,6 @@
   }
 }{
   \stex_if_do_html:TF{
-    \stex_style_apply:
     \end{stex_annotate_env}
   }{
     \ifsolutions
@@ -362,10 +415,9 @@
   }
   \stex_if_do_html:T{
     \begin{stex_annotate_env}{
-      shtml:problemhint=\l_stex_key_id_str
+      data-ftml-problemhint=\l_stex_key_id_str
     }
   }
-  \stex_style_apply:
 }
 
 \stex_new_stylable_env:nnnnnnn { hint }{ O{} }{
@@ -374,13 +426,13 @@
   }{
     \bool_if:NTF \c__problems_hints_bool {
       \__problems_hint_start:n{#1}
+      \stex_style_apply:
     }{
       \setbox\l_tmpa_box\vbox\bgroup
     }
   }
 }{
   \stex_if_do_html:TF{
-    \stex_style_apply:
     \end{stex_annotate_env}
   }{
     \bool_if:NTF \c__problems_hints_bool {
@@ -411,10 +463,9 @@
   }
   \stex_if_do_html:T{
     \begin{stex_annotate_env}{
-      shtml:problemnote=\l_stex_key_id_str
+      data-ftml-problemnote=\l_stex_key_id_str
     }
   }
-  \stex_style_apply:
 }
 
 \stex_new_stylable_env:nnnnnnn { exnote }{ O{} }{
@@ -423,13 +474,13 @@
   }{
     \bool_if:NTF \c__problems_notes_bool {
       \__problems_exnote_start:n{#1}
+      \stex_style_apply:
     }{
       \setbox\l_tmpa_box\vbox\bgroup
     }
   }
 }{
   \stex_if_do_html:TF{
-    \stex_style_apply:
     \end{stex_annotate_env}
   }{
     \bool_if:NTF \c__problems_notes_bool {
@@ -462,9 +513,9 @@
     }
   }
 
-  \stex_if_do_html:T{
+  \stex_if_do_html:TF{
     \begin{stex_annotate_env}{
-      shtml:problemgnote=\l_stex_key_id_str
+      data-ftml-problemgnote=\l_stex_key_id_str
     }
   }
   \stex_style_apply:
@@ -483,7 +534,6 @@
   \stex_reactivate_macro:N \anscls
 }{
   \stex_if_do_html:TF{
-    \stex_style_apply:
     \end{stex_annotate_env}
   }{
     \bool_if:NTF \c__problems_gnotes_bool {
@@ -521,56 +571,77 @@
       AC\int_use:N \l__problems_anscls_int
     }
   }
-  \begin{list}{}{
-    \setlength\topsep{0pt}
-    \setlength\parsep{0pt}
-    \setlength\rightmargin{0pt}
-  }\item[\l_stex_key_id_str]
-    \stex_if_do_html:TF{
-      \exp_args:Ne \stex_annotate:nn{
-        shtml:answerclass={\l_stex_key_id_str}
-        \str_if_empty:NF \l_stex_key_pts_str{
-          ,shtml:answerclass-pts={\l_stex_key_pts_str}
-        }
-      }{
-        #2
-        \tl_if_empty:NF \l_stex_key_feedback_tl{
-          \stex_annotate_invisible:nn{
-            shtml:answerclass-feedback={true}
-          }{\l_stex_key_feedback_tl}
-        }
+  \stex_if_do_html:TF{
+    \begin{list}{}{
+      \setlength\topsep{0pt}
+      \setlength\parsep{0pt}
+      \setlength\rightmargin{0pt}
+    }\item[] \exp_args:Ne \stex_annotate:nn{
+      data-ftml-answerclass={\l_stex_key_id_str}
+      \str_if_empty:NF \l_stex_key_pts_str{
+        ,data-ftml-answerclass-pts={\l_stex_key_pts_str}
       }
     }{
-      #2
+      #2~
+      \tl_if_empty:NF \l_stex_key_feedback_tl{
+        \stex_annotate:nn{
+          data-ftml-answerclass-feedback={}
+        }{\l_stex_key_feedback_tl}
+      }
     }
-    \str_if_empty:NF \l_stex_key_pts_str {\par
-      ~ \problem@kw@points :~\l_stex_key_pts_str
-    }
-    \tl_if_empty:NF \l_stex_key_feedback_tl {\par
-      ~ \problem@kw@feedback :~\l_stex_key_feedback_tl
-    }
-  \end{list}
+    \end{list}
+  }{
+    \begin{list}{}{
+      \setlength\topsep{0pt}
+      \setlength\parsep{0pt}
+      \setlength\rightmargin{0pt}
+    }\item[\l_stex_key_id_str] #2
+      \str_if_empty:NF \l_stex_key_pts_str {\par
+        ~ \problem@kw@points :~\l_stex_key_pts_str
+      }
+      \tl_if_empty:NF \l_stex_key_feedback_tl {\par
+        ~ \problem@kw@feedback :~\l_stex_key_feedback_tl
+      }
+    \end{list}
+  }
 }
 \stex_deactivate_macro:Nn \anscls {gnote~environments}
 \def\pts#1{
   \bool_if:NT \c__problems_pts_bool {
-    \stex_annotate:nn{shtml:problempoints={#1}}{\marginpar{#1~\problem@kw@pts}}
+    \stex_annotate:nn{data-ftml-problempoints={#1}}{\marginpar{#1~\problem@kw@pts}}
   }\hbox_unpack:N\c_empty_box
 }
 \def\min#1{
   \bool_if:NT \c__problems_min_bool {
-    \stex_annotate:nn{shtml:problemminutes={}}{\marginpar{#1~\problem@kw@minutes}}
+    \stex_annotate:nn{data-ftml-problemminutes={}}{\marginpar{#1~\problem@kw@minutes}}
   }\hbox_unpack:N\c_empty_box
 }
 \stex_new_stylable_env:nnnnnnn{mcb}{O{}}{
   \stex_keys_set:nn{style}{#1}
+  \cs_set:Nn \__problems_mccline:n{
+    \begin{list}{}{
+      \setlength\topsep{0pt}
+      \setlength\parsep{0pt}
+      \setlength\rightmargin{0pt}
+    }\item[\problem_mcc_box_tl] ##1 \end{list}
+  }
+
   \stex_if_do_html:T{
     \tl_set:Nn\problem_mcc_box_tl{}
-    \exp_args:Nne \begin{stex_annotate_env}{
-      shtml:multiple-choice-block={}
-      \clist_if_empty:NF \l_stex_key_style_clist {,
-        shtml:styles={\l_stex_key_style_clist}
+    \__problems_maybe_inline:n{
+      \exp_args:Nne \begin{stex_annotate_env}{
+        data-ftml-multiple-choice-block={}
+        \clist_if_empty:NF \l_stex_key_style_clist {,
+          data-ftml-styles={\l_stex_key_style_clist}
+        }
       }
+    }
+    \clist_if_in:NnTF \l_stex_key_style_clist {inline} {
+      \cs_set:Nn \__problems_mccline:n {##1}
+    }{
+      \clist_if_in:NnT \l_stex_key_style_clist {dropdown} {
+      \cs_set:Nn \__problems_mccline:n {##1}
+    }
     }
   }
   \stex_deactivate_macro:Nn \mcb {sproblem~environments}
@@ -580,21 +651,18 @@
   \stex_deactivate_macro:Nn \exnote {sproblem~environments}
   \stex_deactivate_macro:Nn \gnote {sproblem~environments}
   \stex_reactivate_macro:N \mcc
-  \cs_set:Nn \__problems_mccline:n{
-    \begin{list}{}{
-      \setlength\topsep{0pt}
-      \setlength\parsep{0pt}
-      \setlength\rightmargin{0pt}
-    }\item[\problem_mcc_box_tl] ##1 \end{list}
-  }
-  \stex_style_apply:
+  \stex_if_do_html:F \stex_style_apply:
 }{
-  \stex_style_apply:
-  \stex_if_do_html:T{
-    \end{stex_annotate_env}
-  }
+  \stex_if_do_html:TF{
+    \__problems_maybe_inline:n{\end{stex_annotate_env}}
+  }\stex_style_apply:
 }{\par}{}{}
+
 \stexstylemcb[inline]{
+  {\Large[}\cs_set:Nn \__problems_mccline:n{\problem_mcc_box_tl{~} #1}
+}{{\Large]}}
+
+\stexstylemcb[dropdown]{
   {\Large[}\cs_set:Nn \__problems_mccline:n{\problem_mcc_box_tl{~} #1}
 }{{\Large]}}
 
@@ -621,31 +689,35 @@
 }{id}
 
 
+\cs_set:Nn \__problems_maybe_newline: { \\ }
+
 \stex_if_html_backend:TF{
   \tl_set:Nn \problem_mcc_box_tl {
     \ltx@ifpackageloaded{amssymb}{$\square$}{
       \hbox{\vrule\vbox{\hrule width 6 pt\vskip 6pt\hrule}\vrule}
     }
   }
+
   \newcommand\mcc[2][]{
     \stex_keys_set:nn{mcc}{#1}
-    \tl_set:Nn \l_tmpa_tl{
-      \bool_if:NTF \l_stex_key_T_bool {
-        \tl_if_empty:NTF \l_stex_key_Ttext_tl \problem@kw@correct \l_stex_key_Ttext_tl
-      }{
-        \tl_if_empty:NTF \l_stex_key_Ftext_tl \problem@kw@wrong \l_stex_key_Ftext_tl
-      }
-      \tl_if_empty:NF \l_stex_key_feedback_tl {
-        \\\emph{\l_stex_key_feedback_tl}
-      }
-    }
-
     \__problems_mccline:n{
       \stex_if_do_html:T{
-        \stex_annotate:nn{shtml:mcc={
+        \stex_annotate:nn{data-ftml-problem-choice={
           \bool_if:NTF \l_stex_key_T_bool {true}{false}
         }}{
-          #2\stex_annotate:nn{shtml:mcc-solution={}}{\l_tmpa_tl}
+          #2~
+          \stex_annotate:nn{data-ftml-problem-choice-verdict={}}{
+            \bool_if:NTF \l_stex_key_T_bool {
+              \tl_if_empty:NTF \l_stex_key_Ttext_tl \problem@kw@correct \l_stex_key_Ttext_tl
+            }{
+              \tl_if_empty:NTF \l_stex_key_Ftext_tl \problem@kw@wrong \l_stex_key_Ftext_tl
+            }
+          }
+          \tl_if_empty:NF \l_stex_key_feedback_tl {
+            \stex_annotate:nn{data-ftml-problem-choice-feedback={}}{
+              \l_stex_key_feedback_tl
+            }
+          }
         }
       }
     }
@@ -695,24 +767,48 @@
 \cs_new_protected:Nn \__problems_maybe_inline:n {
   \clist_if_in:NnTF \l_stex_key_style_clist {inline} {
     \let\__problems_oldpar:\stex_par:
-    \cs_set:Nn\stex_par:{}
+    \cs_set:Nn\stex_par:{~}
+    \cs_set:Nn\__problems_maybe_newline:{}
     #1
     \let\stex_par:\__problems_oldpar:
-  }{#1}
+  }{
+    \clist_if_in:NnTF \l_stex_key_style_clist {dropdown} {
+      \let\__problems_oldpar:\stex_par:
+      \cs_set:Nn\stex_par:{~}
+      \cs_set:Nn\__problems_maybe_newline:{}
+      #1
+      \let\stex_par:\__problems_oldpar:
+    }{\par #1}
+  }
 }
 
 \stex_new_stylable_env:nnnnnnn{scb}{O{}}{
   \stex_keys_set:nn{style}{#1}
+  \cs_set:Nn \__problems_sccline:n{
+    \begin{list}{}{
+      \setlength\topsep{0pt}
+      \setlength\parsep{0pt}
+      \setlength\rightmargin{0pt}
+    }\item[\problem_scc_box_tl] ##1 \end{list}
+  }
+
   \stex_if_do_html:T{
     \__problems_maybe_inline:n{
-      \exp_args:Nne\begin{stex_annotate_env}{
-        shtml:single-choice-block={}
+      \exp_args:Ne\stex_annotate_env{
+        data-ftml-single-choice-block={}
         \clist_if_empty:NF \l_stex_key_style_clist {,
-          shtml:styles={\l_stex_key_style_clist}
+          data-ftml-styles={\l_stex_key_style_clist}
         }
       }
     }
     \tl_set:Nn\problem_scc_box_tl{}
+    \clist_if_in:NnTF \l_stex_key_style_clist {inline} {
+      \cs_set:Nn \__problems_sccline:n {##1}
+    }{
+      \clist_if_in:NnT \l_stex_key_style_clist {dropdown} {
+        \cs_set:Nn \__problems_sccline:n {##1}
+      }
+    }
   }
   \stex_deactivate_macro:Nn \mcb {sproblem~environments}
   \stex_deactivate_macro:Nn \scb {sproblem~environments}
@@ -721,21 +817,18 @@
   \stex_deactivate_macro:Nn \exnote {sproblem~environments}
   \stex_deactivate_macro:Nn \gnote {sproblem~environments}
   \stex_reactivate_macro:N \scc
-  \cs_set:Nn \__problems_sccline:n{
-    \begin{list}{}{
-      \setlength\topsep{0pt}
-      \setlength\parsep{0pt}
-      \setlength\rightmargin{0pt}
-    }\item[\problem_scc_box_tl] ##1 \end{list}
-  }
-  \stex_style_apply:
+  \stex_if_do_html:F \stex_style_apply:
 }{
-  \stex_style_apply:
-  \stex_if_do_html:T{
-    \__problems_maybe_inline:n { \end{stex_annotate_env} }
-  }
+  \stex_if_do_html:TF{
+    \__problems_maybe_inline:n { \endstex_annotate_env }
+  }\stex_style_apply:
 }{\par}{}{}
+
 \stexstylescb[inline]{
+  {\Large[}\cs_set:Nn \__problems_sccline:n{\problem_scc_box_tl{~} #1}
+}{{\Large]}}
+
+\stexstylescb[dropdown]{
   {\Large[}\cs_set:Nn \__problems_sccline:n{\problem_scc_box_tl{~} #1}
 }{{\Large]}}
 
@@ -745,23 +838,24 @@
   \tl_set:Nn\problem_scc_box_tl{$\bigcirc$}
   \newcommand\scc[2][]{
     \stex_keys_set:nn{mcc}{#1}
-    \tl_set:Nn \l_tmpa_tl{
-      \bool_if:NTF \l_stex_key_T_bool {
-        \tl_if_empty:NTF \l_stex_key_Ttext_tl \problem@kw@correct \l_stex_key_Ttext_tl
-      }{
-        \tl_if_empty:NTF \l_stex_key_Ftext_tl \problem@kw@wrong \l_stex_key_Ftext_tl
-      }
-      \tl_if_empty:NF \l_stex_key_feedback_tl {
-        \\\emph{\l_stex_key_feedback_tl}
-      }
-    }
-
     \__problems_sccline:n{
       \stex_if_do_html:T{
-        \stex_annotate:nn{shtml:scc={
+        \stex_annotate:nn{data-ftml-problem-choice={
           \bool_if:NTF \l_stex_key_T_bool {true}{false}
         }}{
-          #2\stex_annotate:nn{shtml:scc-solution={}}{\l_tmpa_tl}
+          #2~
+          \stex_annotate:nn{data-ftml-problem-choice-verdict={}}{
+            \bool_if:NTF \l_stex_key_T_bool {
+              \tl_if_empty:NTF \l_stex_key_Ttext_tl \problem@kw@correct \l_stex_key_Ttext_tl
+            }{
+              \tl_if_empty:NTF \l_stex_key_Ftext_tl \problem@kw@wrong \l_stex_key_Ftext_tl
+            }
+          }
+          \tl_if_empty:NF \l_stex_key_feedback_tl {
+            \stex_annotate:nn{data-ftml-problem-choice-feedback={}}{
+              \l_stex_key_feedback_tl
+            }
+          }
         }
       }
     }
@@ -835,22 +929,35 @@
   regex    .code:n = {\__problems_parse_fillin_arg:nnnn{regex}#1 }
 }{}
 
+\tl_const:Nn \c__problems_true_tl{T}
+\tl_const:Nn \c__problems_false_tl{F}
+
+\msg_set:nnn{problem}{error/neither-true-nor-false}{
+  Fillinsol~verdict~#1~is~neither~T~nor~F!
+}
+
 \stex_if_html_backend:TF{
   \cs_new:Nn \__problems_parse_fillin_arg:nnnn {
     \tl_set:Nn \l_tmpa_tl{#3}
-    \tl_set:Nn \l_tmpb_tl{T}
-    \stex_annotate_invisible:nn{
-      shtml:fillin-case={#1},
-      shtml:fillin-case-value={#2},
-      shtml:fillin-case-verdict={
-        \tl_if_eq:NNTF\l_tmpa_tl\l_tmpb_tl{true}{false}
-      },
-    }{#4}
+    \tl_if_eq:NNF \l_tmpa_tl\c__problems_true_tl{
+      \tl_if_eq:NNF \l_tmpa_tl\c__problems_false_tl {
+        \msg_error:nnn{problem}{error/neither-true-nor-false}{#3}
+      }
+    }
+    \tl_put_right:Ne \l__problems_fillin_solution_tl {
+      \stex_annotate:nn{
+        data-ftml-fillin-case={#1},
+        data-ftml-fillin-case-value={\tl_to_str:n{#2}},
+        data-ftml-fillin-case-verdict={
+          \tl_if_eq:NNTF\l_tmpa_tl\c__problems_true_tl{true}{false}
+        },
+      }{\_stex_annotate_force_break:n{\exp_not:n{#4}}}
+    }
   }
 }{
   \cs_new:Nn \__problems_parse_fillin_arg:nnnn {
     \tl_put_right:Nn \l__problems_fillin_solution_tl {
-      #1 & #2 & #3 & #4 \crcr
+      #1 & \tl_to_str:n{#2} & #3 & #4 \crcr
     }
   }
 }
@@ -867,32 +974,43 @@
 
 \stex_if_html_backend:TF{
   \cs_new_protected:Nn \__problems_fillinsol:nn {
-    \exp_args:Ne \stex_annotate:nn{shtml:fillinsol={true}}{
     \stex_keys_set:nn{fillinsol}{#1}
-    \_stex_annotate_force_break:n{
-      #2
+    \tl_if_empty:nF{#2}{
+      \__problems_parse_fillin_arg:nnnn{exact}{#2}{T}{}
     }
-    \l__problems_fillin_solution_tl
+    \hbox_set:Nn \l_tmpa_box{\fbox{\huge{\texttt{\tl_to_str:n{#2}}}\hskip\l_stex_key_testspace_dim}}
+    \exp_args:Ne \stex_annotate:nn{
+      data-ftml-fillinsol={},
+      data-ftml-fillinsol-width={\dim_to_decimal:n{1.5 \box_wd:N \l_tmpa_box }}
+    }{
+      \_stex_annotate_force_break:n{
+        \l__problems_fillin_solution_tl
+        #2
+      }
     }
   }
 }{
   \cs_new_protected:Nn \__problems_fillinsol:nn {
     \stex_keys_set:nn{fillinsol}{#1}
     \ifsolutions
-      \textcolor{red}{\fbox{#2}}
+
+      \cs_if_exist:NT\textcolor{\textcolor{red}}{\fbox{\texttt{\tl_to_str:n{#2}}}}
       \tl_if_empty:NF \l__problems_fillin_solution_tl {
         \footnote{
           \halign{ ~##~\hfil & ~##~\hfil & ~##~\hfil & ~##~\hfil \cr
             \textbf{type}&\textbf{case}&\textbf{verdict}&\textbf{feedback}\cr
+            \tl_if_empty:nF{#2}{
+              exact & #2 & T & \cr
+            }
             \l__problems_fillin_solution_tl
           }
         }
       }
     \else
       \fbox{\dim_compare:nNnTF\l_stex_key_testspace_dim={0pt}{
-        \phantom{\huge{#2}}
+        \phantom{\huge{\tl_to_str:n{#2}}}
       }{
-        \hspace{\l_stex_key_testspace_dim}\vphantom{\huge{A #2}}
+        \hspace{\l_stex_key_testspace_dim}\vphantom{\huge{A \tl_to_str:n{#2}}}
       }}
     \fi
   }
@@ -907,6 +1025,8 @@
 \newcommand\testmedspace{\testspace{2cm}}
 \newcommand\testbigspace{\testspace{3cm}}
 \newcommand\testnewpage{\bool_if:NT \c__problems_test_bool {\newpage}}
+\newcommand{\testnewpageInProblem}%
+{\ifintest\vfill\begin{center}\emph{continued on next page}\end{center}\testnewpage\fi}%
 \endinput
 %%
 %% End of file `problem.sty'.

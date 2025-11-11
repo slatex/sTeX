@@ -1,0 +1,387 @@
+% \iffalse
+%<*driver>
+\def\stexdocpath{../../doc}
+\input{\stexdocpath/stex-docheader}
+\stextoptitle{The \sTeX Package}{stex}
+\docmodule
+%</driver>
+%<*package>
+% \fi
+%
+% \begin{sfragment}{Statements}
+%
+% \begin{implementation}
+%    \begin{macrocode}
+%<@@=stex_statements>
+%    \end{macrocode}
+%
+% Keys:
+%    \begin{macrocode}
+\stex_keys_define:nnnn{statement}{
+  \str_clear:N \l_stex_key_name_str
+  \str_clear:N \l_stex_key_macroname_str
+  \clist_clear:N \l_stex_key_for_clist
+  \str_clear:N \l_stex_key_args_str
+  \tl_clear:N \l_stex_key_type_tl
+  \tl_clear:N \l_stex_key_def_tl
+  \tl_clear:N \l_stex_key_return_tl
+  \clist_clear:N \l_stex_key_argtypes_clist
+}{
+  name     .str_set:N = \l_stex_key_name_str ,
+  for      .clist_set:N = \l_stex_key_for_clist ,
+  macro    .str_set:N = \l_stex_key_macroname_str ,
+  % start  .str_set:N = \l_stex_key_title_str , % TODO remove
+  type     .tl_set:N = \l_stex_key_type_tl ,
+  judgment .code:n = {},
+  from     .code:n= {}, % TODO remove
+  to       .code:n={} % TODO remove
+}{id,title,style,symargs}
+%    \end{macrocode}
+% \end{implementation}
+%
+% \begin{sfunction}{\_stex_do_for_list:}{}
+%  resolves each id in the |for={...}| comma-separated list of ids
+%  \cs{l_stex_key_for_clist}. Stores the full resolved URIs in \cs{l_stex_fors_seq}.
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Npn \_stex_do_for_list: {
+  \seq_clear:N \l_stex_fors_seq
+  \clist_map_inline:Nn \l_stex_key_for_clist {
+    \exp_args:Ne\stex_get_symbol:n{\tl_to_str:n{##1}}
+    \seq_put_right:No \l_stex_fors_seq 
+      {\l_stex_get_symbol_uri}
+  }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\stex_new_statement:nnn}{\cs{stex_new_statement:nnn} \marg{env name} \marg{macro name} \marg{code}}
+% defines a new statement environment |s|\meta{env name} and the optional macro-variant \cs{inline}\meta{macro name} (may be empty).
+% \marg{code} does arbitrary additional setup and is called in the \cs{begin} part of the environment and
+% the macro after optional arguments have been parsed.
+% e.g. \cs{stex_new_statement:nnn}|{definition}{def}{...}| defines the \env{sdefinition}
+% environment and the \cs{inlinedef} macro.
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_new_statement:nnn {
+  \stex_new_stylable_env:nnnnnnn {#1}{O{}}{
+    \stex_keys_set:nn{statement}{##1}
+    #3
+
+    \stex_if_smsmode:F {
+      \exp_args:Nne \begin{stex_annotate_env}{
+        \_@@_html_keyvals:nn{#1}{false}
+      }
+      \tl_set_eq:NN \thistitle \l_stex_key_title_tl
+      \str_set_eq:NN \thisname \l_stex_key_name_str
+      \clist_set_eq:NN \thisfor \l_stex_key_for_str
+      \stex_if_html_backend:TF {
+        \noindent
+        \stex_annotate:nn{data-ftml-title={}, style:display={none}}{\_stex_annotate_force_break:n{
+          \tl_if_empty:NF \l_stex_key_title_tl{~}
+          \l_stex_key_title_tl
+        }}
+      }
+      \stex_style_apply:
+    }
+    \_stex_do_id:
+    \stex_smsmode_do:
+  }{
+    \stex_if_smsmode:F {
+      \stex_if_html_backend:F \stex_style_apply:
+      \end{stex_annotate_env}
+    }
+  }{}{}{s}
+  \stex_sms_allow_env:n{s#1}
+  
+  \tl_if_empty:nF{#2}{\_@@_make_macro:nnn{#1}{#2}{#3}}
+}
+
+\cs_new_protected:Nn \_@@_make_macro:nnn {
+  \exp_after:wN \NewDocumentCommand \cs:w inline#2\cs_end: { O{} m}{
+    \group_begin:
+      \stex_keys_set:nn{statement}{##1}
+      #3
+      \_stex_do_id:
+      \stex_if_smsmode:F{
+        \exp_args:Ne \stex_annotate:nn{\_@@_html_keyvals:nn{#1}{true}}{
+          \_stex_annotate_force_break:n{##2}
+        }
+      }
+    \group_end:
+    %\stex_if_smsmode:TF \stex_smsmode_do: \stex_ignore_spaces_and_pars:
+    \stex_smsmode_do:
+  }
+  \exp_after:wN \stex_sms_allow_escape:N\cs:w inline#2\cs_end:
+}
+
+\cs_new:Nn \_@@_html_keyvals:nn {
+  data-ftml-#1={},
+  data-ftml-inline={#2},
+  \seq_if_empty:NF \l_stex_fors_seq {,
+    data-ftml-fors={\seq_map_indexed_function:NN \l_stex_fors_seq \_@@_comma_sep_uri:nn }
+  }
+  \str_if_empty:NF \l_stex_key_id_str {,
+    data-ftml-id={\l_stex_key_id_str}%{\stex_uri_use:N \l_stex_current_doc_uri ? \l_stex_key_id_str}
+  }
+  \clist_if_empty:NF \l_stex_key_style_clist {,
+    data-ftml-styles={\l_stex_key_style_clist}
+  }
+}
+
+\cs_new:Nn \_@@_comma_sep_uri:nn {
+  \int_compare:nNnF{#1}=1 {,}
+  \stex_use_symbol_uri:n{#2}
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{implementation}
+%
+% \begin{macro}{\_@@_setup:n}
+% sets up a statement that may declare a new symbol with the given |role| by processing the
+% optional arguments, calling \cs{stex_symdecl_do:}, etc. 
+%    \begin{macrocode}
+\cs_new_protected:Nn \_@@_setup:n {
+  \str_if_empty:NF \l_stex_key_macroname_str {
+    \str_if_empty:NT \l_stex_key_name_str {
+      \str_set_eq:NN \l_stex_key_name_str \l_stex_key_macroname_str
+    }
+  }
+  \_stex_do_for_list:
+  \tl_clear:N \l_stex_current_def_uri
+
+  \str_if_empty:NTF \l_stex_key_name_str \_@@_setup_noname: {
+    \_@@_setup_named:n{#1}
+  }
+}
+
+\cs_new_protected:Nn \_@@_setup_named:n {
+  \_@@_force_id:
+  \seq_put_right:Ne \l_stex_fors_seq {
+    \l_stex_current_module_uri {\l_stex_key_name_str}
+  }
+  \str_set_eq:NN \l_stex_macroname_str \l_stex_key_macroname_str
+  \str_set:Nn \l_stex_key_role_str {#1}
+  \stex_symdecl_do:
+  \exp_args:Nne \use:nn {\stex_add_symbol:nnnnnnnN}{
+    {\l_stex_key_macroname_str}{\l_stex_key_name_str}
+    {\int_use:N \l_stex_get_symbol_arity_int}
+    {\l_stex_get_symbol_args_tl}
+    {#1}{}{}\stex_invoke_symbol:
+  }
+  \stex_if_do_html:T \_stex_symdecl_html:
+  \tl_set:Ne \l_stex_current_def_uri {\exp_args:No \stex_new_symbol_uri:nn \l_stex_current_module_uri \l_stex_key_name_str }
+  \stex_debug:nn{statement}{name:~\stex_use_symbol_uri:N \l_stex_current_def_uri}
+}
+
+\cs_new_protected:Nn \_@@_setup_noname: {
+  \stex_debug:nn{statement}{no~name}
+  \int_compare:nNnTF {\seq_count:N \l_stex_fors_seq} = 1 {
+    \tl_set:Ne \l_stex_current_def_uri {\seq_item:Nn \l_stex_fors_seq 1}
+    \stex_debug:nn{statement}{for:~\stex_use_symbol_uri:N \l_stex_current_def_uri}
+  }{
+    \stex_debug:nn{statement}{no~for}
+  }
+}
+
+\cs_new_protected:Nn \_@@_force_id: {
+  %\str_if_empty:NT \l_stex_key_id_str {
+  %  \_stex_ref_new_id:n{}
+  %  \str_set_eq:NN \l_stex_key_id_str \l__stex_refs_str
+  %}
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\_@@_setup_def:}
+% Sets up all the macros allowed in definition-like environments: 
+%    \begin{macrocode}
+\cs_new_protected:Nn \_@@_setup_def: {
+  \stex_if_smsmode:F{
+    \seq_map_inline:Nn \l_stex_fors_seq {
+      \exp_args:Ne \stex_ref_new_sym_target:n{\stex_use_symbol_uri:n{##1}}
+    }
+  }
+  \stex_reactivate_macro:N \definiendum
+  \stex_reactivate_macro:N \defnotation
+  \stex_reactivate_macro:N \definame
+  \stex_reactivate_macro:N \Definame
+  \stex_reactivate_macro:N \varbind
+  \stex_reactivate_macro:N \definiens
+}
+%    \end{macrocode}
+% \end{macro}
+% \end{implementation}
+%
+% \begin{senvironment}{sdefinition} (and \cs{inlinedef})
+% \StartImpl
+%    \begin{macrocode}
+\stex_new_statement:nnn{definition}{def}{
+  \_@@_force_id:
+  \_@@_setup:n{}
+  \_@@_setup_def:
+}
+%    \end{macrocode}
+% \end{senvironment}
+%
+% \begin{senvironment}{sassertion} (and \cs{inlineass})
+% \StartImpl
+%    \begin{macrocode}
+\stex_new_statement:nnn{assertion}{ass}{
+  \_@@_setup:n{assertion}
+  \stex_if_smsmode:F{
+    \seq_map_inline:Nn \l_stex_fors_seq {
+      \exp_args:Ne \stex_ref_new_sym_target:n{\stex_use_symbol_uri:n{##1}}
+    }
+  }
+  \stex_reactivate_macro:N \varbind
+  \stex_reactivate_macro:N \conclusion
+  \stex_reactivate_macro:N \premise
+  \stex_reactivate_macro:N \definiendum
+  \stex_reactivate_macro:N \defnotation
+  \stex_reactivate_macro:N \definame
+  \stex_reactivate_macro:N \Definame
+}
+%    \end{macrocode}
+% \end{senvironment}
+%
+% \begin{senvironment}{sexample} (and \cs{inlineex})
+% \StartImpl
+%    \begin{macrocode}
+\stex_new_statement:nnn{example}{ex}{
+  \stex_if_smsmode:F {\_@@_setup:n{example}}
+}
+%    \end{macrocode}
+% \end{senvironment}
+%
+% \begin{senvironment}{sparagraph}
+% \StartImpl
+%    \begin{macrocode}
+\stex_new_statement:nnn{paragraph}{}{
+  \clist_if_in:NnTF \l_stex_key_style_clist {symdoc}{
+    \_@@_force_id:
+    \_@@_setup:n{}
+    \_@@_setup_def:
+  }{
+    \_@@_setup:n{}
+  }
+}
+%    \end{macrocode}
+% \end{senvironment}
+%
+% \begin{sfunction}{definiens}{}
+% \StartImpl
+%    \begin{macrocode}
+\NewDocumentCommand \definiens { O{} m }{
+  \group_begin:
+  \_stex_definiens_impl:nn{#1}{#2}
+  \group_end:
+  \stex_smsmode_do:
+}
+
+\cs_new_protected:Nn \_stex_definiens_impl:nn {
+  \tl_if_empty:nF {#1} {
+    \stex_get_symbol:n { #1 }
+    \tl_set_eq:NN \l_stex_current_def_uri \l_stex_get_symbol_uri
+  }
+  \tl_if_empty:NT \l_stex_current_def_uri {
+    \msg_error:nn{stex}{error/definiensfor}
+  } 
+  \stex_debug:nn{definiens}{Checking~\stex_use_symbol_uri:N \l_stex_current_def_uri }
+
+  \exp_args:No \_stex_add_definiens:nn \l_stex_current_def_uri {#2}
+}
+
+\stex_deactivate_macro:Nn \definiens {definition~environments}
+\stex_sms_allow_escape:N \definiens
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\_stex_add_definiens:nn}{}
+% marks |#2| as the definiens of the symbol with uri |#1|. Also
+% marks the symbol as being defined, iff the symbol
+% is declared in the current module.
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Nn \_stex_add_definiens:nn {
+  \stex_if_do_html:TF {
+    \stex_annotate:nn{data-ftml-definiens={\stex_use_symbol_uri:n{#1}}}{ 
+      #2 %\_stex_annotate_force_break:n{ #2 }
+    }
+  }{ \stex_if_smsmode:F{#2} }
+  \stex_if_in_module:T {
+    \exp_args:Ne \str_if_eq:noT {\stex_symbol_uri_module:n{#1}}\l_stex_current_module_uri{
+      \_@@_add_definiens:n{#1}
+    }
+  }
+}
+
+\cs_new_protected:Nn \_@@_add_definiens:n {
+  \stex_debug:nn{definiens}{Adding~definiens~to~\stex_use_symbol_uri:n{#1}}
+  \exp_args:Nne \prop_gput:cne{\exp_args:Ne \_stex_symbol_macro:n {\stex_symbol_uri_module:n{#1}} }
+    {\stex_symbol_uri_name:n {#1}} {
+      \exp_args:Nne \use:nn { \_@@_definiens_inner:nnnnnnnN }{ \exp_args:Nne \prop_item:cn {\exp_args:Ne \_stex_symbol_macro:n {\stex_symbol_uri_module:n{#1}} } {\stex_symbol_uri_name:n {#1}} }
+  }
+}
+
+\cs_new:Nn \_@@_definiens_inner:nnnnnnnN {
+  {#1}{#2}{#3}{#4}{defed}{#6}{#7}{#8}
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\varbind}{}
+%
+% \StartImpl
+%    \begin{macrocode}
+\NewDocumentCommand \varbind {m} {
+  \clist_map_inline:nn {#1} {
+    \stex_get_var:n {##1}
+    \stex_if_do_html:T {
+      \stex_annotate_invisible:nn {data-ftml-bind=\l_stex_get_variable_str}{}
+    }
+  }
+}
+\stex_deactivate_macro:Nn \varbind {definition~or~assertion~environments}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\conclusion}{}
+%
+% \StartImpl
+%    \begin{macrocode}
+\NewDocumentCommand \conclusion { O{} m} {
+  \group_begin:
+  \tl_if_empty:nF {#1} {
+    \stex_get_symbol:n { #1 }
+    \tl_set_eq:NN \l_stex_current_def_uri \l_stex_get_symbol_uri
+  }
+  \tl_if_empty:NT \l_stex_current_def_uri {
+    \msg_error:nn{stex}{error/conclusionfor}
+  } 
+  \stex_annotate:nn{ data-ftml-conclusion={\stex_use_symbol_uri:N \l_stex_current_def_uri}}{ 
+    #2 %\_stex_annotate_force_break:n{ #2 }
+  }
+  \group_end:
+}
+\stex_deactivate_macro:Nn \conclusion {assertion~environments}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\premise}{}
+%
+% \StartImpl
+%    \begin{macrocode}
+\NewDocumentCommand \premise {O{} m} {
+  \tl_if_empty:nF {#1} {
+    \stex_debug:nn{Here:}{Variable~#1}
+    \exp_args:Nne\use:nn{\vardef}{{v#1}[name=#1]{#1}}
+  }
+  \stex_annotate:nn{data-ftml-premise={#1}}{#2}
+}
+\stex_deactivate_macro:Nn \premise {assertion~environments}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \end{sfragment}

@@ -1,0 +1,588 @@
+% \iffalse
+%<*driver>
+\def\stexdocpath{../../doc}
+\input{\stexdocpath/stex-docheader}
+\stextoptitle{The \sTeX Package}{stex}
+\docmodule
+%</driver>
+%<*package>
+% \fi
+%
+% \begin{sfragment}{URIs}
+%
+% \begin{implementation}
+%    \begin{macrocode}
+%<@@=stex_uris>
+%    \end{macrocode}
+% \end{implementation}
+%
+% \begin{documentation}
+% There are kinds of URIs used in \immt/\OMDoc :
+% \begin{itemize}
+%   \item \emph{Base URIs}, i.e. namespaces,
+%   \item \emph{Archive URIs} of the form |<base uri>?a=<archive id>|,
+%   \item \emph{Document URIs} of the form |<archive uri>[&p=<path>]&d=<name>&l=<language>|,
+%   \item \emph{Document element URIs} of the form |<document uri>&e=<name>|,
+%   \item \emph{Module URIs} of the form |<archive uri>[&p=<path>]&m=<name>|, and
+%   \item \emph{Declaration URIs} of the form |<module uri>&s=<name>|.
+% \end{itemize}
+%
+% We do not need all of these in \stex itself: the \emph{base uri}
+% of any URI is uniquely determined by the archive ID, and
+% we conceptually merge document URIs and document element URIs.
+%
+% We therefore represent document (element) URIs as 5-tuples\\
+% |{<archive id>}{<path>}{<name>}{<language>}{<element name>}|,
+% where |<path>| and |<element name>| may be empty;
+% module URIs as triples |{<archive id>}{<path>}{<name>}|, and
+% declaration URIs as 4-tuples |{<archive id>}{<path>}{<module name>}{<name>}|.
+%
+% \end{documentation}
+%
+% \begin{sfunction}[EXP]{\stex_use_archive_uri:n}{}
+% expands to the string representation of the
+% archive URI of the archive with the given ID. Requires, that 
+% the archive has been loaded first
+% \StartImpl
+%    \begin{macrocode}
+\cs_new:Ne \stex_use_archive_uri:n {
+  \exp_not:N \stex_archive_base:n{#1} \tl_to_str:n{?a=} #1
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfragment}{Document URIs}
+%
+% \begin{sfunction}[EXP]{\stex_use_document_uri:N,\stex_use_document_uri:n}{}
+% expands to the string representation of the
+% document uri (represented as a macro containing a 5-tuple as
+% above). The variant \cs{stex_document_uri:n} expects a 5-tuple directly.
+% \StartImpl
+%    \begin{macrocode}
+\cs_new:Nn \stex_use_document_uri:N {
+  \exp_after:wN \_@@_doc:nnnnn #1
+}
+\cs_new:Nn \stex_use_document_uri:n {
+  \_@@_doc:nnnnn #1
+}
+\cs_new:Ne \_@@_doc:nnnnn { 
+  \exp_not:N \stex_archive_base:n{#1} \tl_to_str:n{?a=} #1
+  \exp_not:N \tl_if_empty:nF{#2}{
+    \c_ampersand_str\tl_to_str:n{p=}#2
+  }
+  \c_ampersand_str\tl_to_str:n{d=}#3
+  \c_ampersand_str\tl_to_str:n{l=}#4
+  \exp_not:N \tl_if_empty:nF{#5}{
+    \c_ampersand_str\tl_to_str:n{e=}#5
+  }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}[EXP]{\stex_document_uri_archive:N}{}
+%   expands to the archive ID of the document URI
+% \StartImpl
+%    \begin{macrocode}
+\cs_new:Nn \stex_document_uri_archive:N {
+  \exp_after:wN \use_i:nnnnn #1
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}[EXP]{\stex_document_uri_path:N}{}
+%   expands to the path of the document URI (possibly empty)
+% \StartImpl
+%    \begin{macrocode}
+\cs_new:Nn \stex_document_uri_path:N {
+  \exp_after:wN \use_ii:nnnnn #1
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}[EXP]{\stex_document_uri_name:N}{}
+%   expands to the document name of the document URI
+% \StartImpl
+%    \begin{macrocode}
+\cs_new:Nn \stex_document_uri_name:N {
+  \exp_after:wN \use_iii:nnnnn #1
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}[EXP]{\stex_document_uri_language:N}{}
+%   expands to the language of the document URI
+% \StartImpl
+%    \begin{macrocode}
+\cs_new:Nn \stex_document_uri_language:N {
+  \exp_after:wN \use_iv:nnnnn #1
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}[EXP]{\stex_document_uri_element:N}{}
+%   expands to the element name of the document (element) URI (possibly empty)
+% \StartImpl
+%    \begin{macrocode}
+\cs_new:Nn \stex_document_uri_element:N {
+  \exp_after:wN \use_v:nnnnn #1
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}[EXP]{\stex_document_uri_with_language:Nn}{}
+%   expands to the document URI with the given language
+% \StartImpl
+%    \begin{macrocode}
+\cs_new:Npn \stex_document_uri_with_language:Nn {
+  \exp_after:wN \_@@_with_language:nnnnnn
+}
+\cs_new:Nn \_@@_with_language:nnnnnn {
+  {#1}{#2}{#3}{#6}{}
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}[EXP]{\stex_new_document_element_uri:n}{}
+%   expands to a new document element URI in the current document
+% \StartImpl
+%    \begin{macrocode}
+\cs_new:Npn \stex_new_document_element_uri:n {
+  \exp_after:wN \_@@_with_elem:nnnnnn \l_stex_current_document_uri
+}
+\cs_new:Nn \_@@_with_elem:nnnnnn {
+  {#1}{#2}{#3}{#4}{ \tl_if_empty:nTF{#5}{#6}{#5/#6}}
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\stex_document_uri_from_archive_file:Nn}
+%   {\cs{stex_uri_from_archive_file:Nn} \cs{macro} \marg{relative path}}
+%
+% Constructs the document URI of the file \meta{relative path} 
+% in the current archive and stores it in \cs{macro}
+%
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_document_uri_from_archive_file:Nn {
+  \stex_file_set:Nn \l_@@_file {#2}
+  \stex_debug:nn{URI}{relative~path:~\stex_file_use:N \l_@@_file}
+  \_@@_doc_from_archive_file:NN #1 \l_@@_file
+}
+
+\cs_new_protected:Nn \_@@_doc_from_archive_file:NN {
+  \_@@_split_file:N #2
+  \prop_if_exist:NTF \l_stex_current_archive {
+    \str_set:Ne \l_@@_archive {
+      \stex_archive_id:N \l_stex_current_archive
+    }
+  }{
+    \str_set_eq:NN \l_@@_archive \c_stex_no_archive_str
+  }
+  \tl_set:Ne #1 {
+    { \l_@@_archive }
+    { \stex_file_use:N \l_@@_path_seq }
+    { \l_@@_name_str }
+    { \l_@@_lang_str }
+    {}
+  }
+}
+
+\cs_new_protected:Nn \_@@_split_file:N {
+  \seq_set_eq:NN \l_@@_path_seq #1
+  \seq_pop_right:NN \l_@@_path_seq \l_@@_name_str
+  \seq_set_split:NnV \l_tmpa_seq . \l_@@_name_str
+  \seq_pop_right:NN \l_tmpa_seq \l_@@_lang_str % .tex?
+  \seq_if_empty:NTF \l_tmpa_seq {
+    \str_set_eq:NN \l_@@_name_str \l_@@_lang_str
+    \str_set_eq:NN \l_@@_lang_str \l_stex_current_language_str
+  }{
+    \seq_pop_right:NN \l_tmpa_seq \l_@@_lang_str % actual language maybe?
+    \cs_if_eq:NNTF \l_@@_lang_str \q_no_value {
+      \str_set_eq:NN \l_@@_lang_str \l_stex_current_language_str
+    }{
+      \prop_if_in:NoF \c_stex_languages_prop \l_@@_lang_str {
+        \seq_put_right:No \l_tmpa_seq \l_@@_lang_str
+        \str_set:Nn \l_@@_lang_str {en}
+      }
+    }
+    \str_set:Ne \l_@@_name_str {\seq_use:Nn \l_tmpa_seq .}
+  }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{svariable}{\c_stex_main_document_uri,\l_stex_current_document_uri}
+% store the document URIs of the top-level file being processed
+% and the \emph{current} file, respectively.
+%
+% \StartImpl
+%    \begin{macrocode}
+\tl_if_exist:NTF \l_stex_current_archive {
+  \str_set:Ne \l_tmpa_str { \stex_archive_path:N \l_stex_current_archive }
+  \seq_set_split:NnV \l_tmpa_seq / \l_tmpa_str
+  \seq_set_eq:NN \l_tmpb_seq \c_stex_main_file
+  \seq_map_inline:Nn \l_tmpa_seq {
+    \seq_pop_left:NN \l_tmpb_seq \l_tmpa_tl
+  }
+  \seq_pop_left:NN \l_tmpb_seq \l_tmpa_tl
+  \_@@_doc_from_archive_file:NN \l_stex_current_document_uri \l_tmpb_seq
+}{
+  \_@@_doc_from_archive_file:NN \l_stex_current_document_uri \c_stex_main_file
+}
+
+\tl_set_eq:NN \c_stex_main_document_uri \l_stex_current_document_uri
+\str_set:Ne \l_stex_current_language_str { \stex_document_uri_language:N \l_stex_current_document_uri }
+
+\stex_debug:nn{URIs}{Current~document:~ \stex_use_document_uri:N \c_stex_main_document_uri}
+%    \end{macrocode}
+% \end{svariable}
+%
+% \end{sfragment}
+%
+% \begin{sfragment}{Module URIs}
+%
+% \begin{sfunction}[EXP]{\stex_use_module_uri:N,\stex_use_module_uri:n}{}
+% expands to the string representation of the
+% module uri (represented as a macro containing a triple as
+% above). The variant \cs{stex_module_uri:n} expects a triple directly.
+% \StartImpl
+%    \begin{macrocode}
+\cs_new:Nn \stex_use_module_uri:N {
+  \exp_after:wN \_@@_module:nnn #1
+}
+\cs_new:Nn \stex_use_module_uri:n {
+  \_@@_module:nnn #1
+}
+\cs_new:Ne \_@@_module:nnn { 
+  \exp_not:N \stex_archive_base:n{#1} \tl_to_str:n{?a=} #1
+  \exp_not:N \tl_if_empty:nF{#2}{
+    \c_ampersand_str\tl_to_str:n{p=}#2
+  }
+  \c_ampersand_str\tl_to_str:n{m=}#3
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}[EXP]{\stex_module_uri_archive:N}{}
+%   expands to the archive ID of the module URI
+% \StartImpl
+%    \begin{macrocode}
+\cs_new:Nn \stex_module_uri_archive:N {
+  \exp_after:wN \use_i:nnn #1
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}[EXP]{\stex_module_uri_path:N,\stex_module_uri_path:n}{}
+%   expands to the path of the module URI (possibly empty)
+% \StartImpl
+%    \begin{macrocode}
+\cs_new:Nn \stex_module_uri_path:N {
+  \exp_after:wN \use_ii:nnn #1
+}
+\cs_new:Nn \stex_module_uri_path:n {
+  \use_ii:nnn #1
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}[EXP]{\stex_module_uri_name:N,\stex_module_uri_name:n}{}
+%   expands to the name of the module URI
+% \StartImpl
+%    \begin{macrocode}
+\cs_new:Nn \stex_module_uri_name:N {
+  \exp_after:wN \use_iii:nnn #1
+}
+
+\cs_new:Nn \stex_module_uri_name:n {
+  \use_iii:nnn #1
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+%
+% \begin{sfunction}{\stex_module_uri_split_name:NNN,\stex_module_uri_split_name:NNn}{}
+%  sets |#1| as the parent module of the module URI and |#2| as the last name
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Npn \stex_module_uri_split_name:NNN #1 {
+  \exp_after:wN \_@@_parent:NNnnn \exp_after:wN #1 \exp_after:wN
+}
+
+\cs_new_protected:Nn \stex_module_uri_split_name:NNn {
+  \_@@_parent:NNnnn #1 #2 #3
+}
+
+\cs_new_protected:Nn \_@@_parent:NNnnn {
+  \seq_set_split:Nnn #1 / {#5}
+  \seq_pop_right:NN #1 #2
+  \seq_if_empty:NTF #1 {
+    \tl_set:Ne #1 { {#3} {#4} {#3}}
+    \tl_clear:N #2
+  }{
+    \tl_set:Ne #1 { {#3} {#4} {\seq_use:Nn #1 /} }
+  }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}[EXP]{\stex_module_uri_as_qm:n}{}
+% \StartImpl
+%    \begin{macrocode}
+\cs_new:Nn \stex_module_uri_as_qm:n {
+  \_@@_as_qm:nnn #1
+}
+\cs_new:Nn \_@@_as_qm:nnn {
+  #1 / #2 ? #3
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}[EXP]{\stex_new_module_uri:n}
+%    {\cs{stex_new_module_uri:n} \marg{name} }
+%   expands to a new module URI triple with the given \meta{name} 
+%   based on the current document URI or module URI, if existent
+% \StartImpl
+%    \begin{macrocode}
+\cs_new:Npn \stex_new_module_uri:n {
+  \stex_if_in_module:TF {
+    \exp_after:wN \_@@_new_nested_mod:nnnn \l_stex_current_module_uri
+  }{
+    \exp_after:wN \_@@_new_mod:nnnnnn \l_stex_current_document_uri
+  }
+}
+
+\cs_new:Nn \_@@_new_mod:nnnnnn {
+  {#1}
+  \str_if_eq:nnTF{#3}{#6}{
+    {#2}{#3} 
+  }{ 
+    {#2 \tl_if_empty:nF{#2}/ #3}{ \tl_to_str:n{ #6 } }
+  }
+}
+\cs_new:Nn \_@@_new_nested_mod:nnnn {
+  {#1}
+  {#2}
+  {#3 / \tl_to_str:n{#4}}
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\stex_uri_from_pair:Nnn}^^A,\stex_uri_from_pair:Nee}
+%    {\cs{stex_uri_from_pair:Nnn} \marg{archive id} \marg{module path}}
+% resolves the pair |[|\meta{archive id}|]{|\meta{module path}|}|
+% to a module URI and stores the result in |#1|
+% \StartImpl
+%    \begin{macrocode}
+\bool_new:N \l_stex_relative_import_bool
+\cs_new_protected:Nn \stex_uri_from_pair:Nnn {
+  \bool_set_false:N \l_stex_relative_import_bool
+  \stex_debug:nn{uri}{resolving~<#2,#3>~in~\stex_use_document_uri:N \l_stex_current_document_uri}
+  \seq_set_split:Nne \l_tmpa_seq ? { \tl_to_str:n {#3} }
+  \seq_pop_right:NN \l_tmpa_seq \l_@@_name_str
+  \str_clear:N \l_@@_path_str
+  \seq_if_empty:NF \l_tmpa_seq {
+    \seq_pop_right:NN \l_tmpa_seq \l_@@_path_str
+  }
+  \tl_if_empty:nTF { #2 }{
+    \str_if_empty:NTF \l_@@_path_str 
+      \_@@_maybe_relative:N \_@@_absolute:N
+    #1
+  }{
+    \_@@_pair_in_archive:Nn #1 { #2 }
+  }
+}
+%\cs_generate_variant:Nn \stex_uri_from_pair:Nnn {Nee}
+
+\cs_new_protected:Nn \_@@_maybe_relative:N {
+  \tl_set:Ne \l_tmpb_tl {
+    \stex_document_uri_path:N \l_stex_current_document_uri
+  }
+  \tl_set:Ne \l_tmpa_tl {
+    { 
+      \stex_document_uri_archive:N \l_stex_current_document_uri
+    }
+    { 
+      \l_tmpb_tl 
+      \exp_args:NNo \exp_args:Nne \str_if_eq:nnF \l_@@_name_str {
+        \stex_document_uri_name:N \l_stex_current_document_uri
+      }{
+        \str_if_empty:NF \l_tmpb_tl / \stex_document_uri_name:N \l_stex_current_document_uri
+      }
+    }
+    { \l_@@_name_str }
+  }
+  \stex_if_module_exists:NTF \l_tmpa_tl {
+    \tl_set_eq:NN #1 \l_tmpa_tl
+    \bool_set_true:N \l_stex_relative_import_bool
+    \stex_debug:nn{uri}{returning~relative~\stex_use_module_uri:N #1}
+  }{
+    \_@@_absolute:N #1
+  }
+}
+
+\cs_new_protected:Nn \_@@_absolute:N {
+  \tl_if_exist:NTF \l_stex_current_archive {
+    \tl_set:Ne #1 {
+      { \stex_archive_id:N \l_stex_current_archive }
+      { \l_@@_path_str }
+      { \l_@@_name_str }
+    }
+    \stex_debug:nn{uri}{returning~\stex_use_module_uri:N #1}
+  }{
+    \_@@_pair_no_archive:N #1
+  }
+} 
+
+\cs_new_protected:Nn \_@@_pair_no_archive:N {
+  \stex_file_resolve:Ne \l_tmpa_seq {
+    \stex_file_use:N \g_stex_current_file / .. / \l_@@_path_str
+  }
+  \tl_set:Ne #1 {
+    { \c_stex_no_archive_str }
+    { \stex_file_use:N \l_tmpa_seq }
+    { \l_@@_name_str }
+  }
+  \stex_debug:nn{uri}{returning~\stex_use_module_uri:N #1}
+}
+
+\cs_new_protected:Nn \_@@_pair_in_archive:Nn {
+ \tl_set:Ne #1 {
+    { \tl_to_str:n{ #2 } }
+    { \l_@@_path_str }
+    { \l_@@_name_str }
+ }
+ \stex_debug:nn{uri}{returning~\stex_use_module_uri:N #1}
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}{\stex_uri_from_pair:Nn}{}
+% like \cs{stex_uri_from_pair:Nnn}, but takes a token list as argument
+% that may or may not be of the form |[archive]module|
+% \StartImpl
+%    \begin{macrocode}
+\cs_new_protected:Nn \stex_uri_from_pair:Nn {
+  \peek_charcode:NTF [ {
+    \_@@_parse_i:Nw #1
+  }{
+    \_@@_parse_ii:Nw #1
+  } #2 \_@@_end:
+}
+
+\cs_new_protected:Npn \_@@_parse_i:Nw #1 [#2] #3 \_@@_end: {
+  \stex_uri_from_pair:Nnn #1 {#2} {#3}
+}
+
+\cs_new_protected:Npn \_@@_parse_ii:Nw #1 #2 \_@@_end: {
+  \stex_uri_from_pair:Nnn #1 {} {#2}
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+%
+% \end{sfragment}
+%
+% \begin{sfragment}{Symbol URIs}
+%
+% \begin{sfunction}[EXP]{\stex_use_symbol_uri:N,\stex_use_symbol_uri:n}{}
+% expands to the string representation of the
+% module uri (represented as a macro containing a 4-tuple as
+% above). The variant \cs{stex_symbol_uri:n} expects a 4-tuple directly.
+% \StartImpl
+%    \begin{macrocode}
+\cs_new:Nn \stex_use_symbol_uri:N {
+  \exp_after:wN \_@@_symbol:nnnn #1
+}
+\cs_new:Nn \stex_use_symbol_uri:n {
+  \_@@_symbol:nnnn #1
+}
+\cs_new:Ne \_@@_symbol:nnnn { 
+  \exp_not:N \stex_archive_base:n{#1} \tl_to_str:n{?a=} #1
+  \exp_not:N \tl_if_empty:nF{#2}{
+    \c_ampersand_str\tl_to_str:n{p=}#2
+  }
+  \c_ampersand_str\tl_to_str:n{m=}#3
+  \c_ampersand_str\tl_to_str:n{s=}#4
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}[EXP]{\stex_new_symbol_uri:n}
+%    {\cs{stex_new_symbol_uri:n} \marg{name} }
+%   expands to a new symbol URI tuple with the given \meta{name} 
+%   based on the current module URI, which is assumed to exist(!).
+% \StartImpl
+%    \begin{macrocode}
+\cs_new:Nn \stex_new_symbol_uri:n {
+  \l_stex_current_module_uri { \tl_to_str:n{ #1 } }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+%
+% \begin{sfunction}[EXP]{\stex_new_symbol_uri:nn}{}
+%   expands to a new symbol URI tuple with the given \meta{name} 
+%   based on the \emph{given} module URI (either as macro or as tuple), which is assumed to exist(!).
+% \StartImpl
+%    \begin{macrocode}
+\cs_new:Nn \stex_new_symbol_uri:nn {
+  #1 { #2 }
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+
+% \begin{sfunction}[EXP]{\stex_symbol_uri_archive:N}{}
+%   expands to the archive ID of the symbol URI
+% \StartImpl
+%    \begin{macrocode}
+\cs_new:Nn \stex_symbol_uri_archive:N {
+  \exp_after:wN \use_i:nnnn #1
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}[EXP]{\stex_symbol_uri_path:N}{}
+%   expands to the path of the symbol URI (possibly empty)
+% \StartImpl
+%    \begin{macrocode}
+\cs_new:Nn \stex_symbol_uri_path:N {
+  \exp_after:wN \use_ii:nnnn #1
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}[EXP]{\stex_symbol_uri_module:N,\stex_symbol_uri_module:n}{}
+%   expands to the URI of the containing module of the symbol URI
+% \StartImpl
+%    \begin{macrocode}
+\cs_new:Nn \stex_symbol_uri_module:N {
+  \exp_after:wN \_@@_first_three:nnnn #1
+}
+\cs_new:Nn \stex_symbol_uri_module:n {
+  \_@@_first_three:nnnn #1
+}
+
+\cs_new:Nn \_@@_first_three:nnnn {
+  {#1}{#2}{#3}
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \begin{sfunction}[EXP]{\stex_symbol_uri_name:N,\stex_symbol_uri_name:n}{}
+%   expands to the name of the symbol URI
+% \StartImpl
+%    \begin{macrocode}
+\cs_new:Nn \stex_symbol_uri_name:N {
+  \exp_after:wN \use_iv:nnnn #1
+}
+\cs_new:Nn \stex_symbol_uri_name:n {
+  \use_iv:nnnn #1
+}
+%    \end{macrocode}
+% \end{sfunction}
+%
+% \end{sfragment}
+%
+% \end{sfragment}

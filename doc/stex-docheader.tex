@@ -1,13 +1,13 @@
 \RequirePackage{paralist}
 \ifcsname stexdocpath\endcsname\else\def\stexdocpath{.}\fi
 \documentclass[full]{l3doc}
-%\RequirePackage{document-structure}
+
 \usepackage[hyperref=auto,style=alphabetic]{biblatex}
-%\usepackage[mathhub=\stexdocpath/mh,usedeps]{stex}
 \usepackage[lang={en,de}]{stex}
 \usepackage[show]{ed}
 \usepackage{rustex}
 \usepackage{stex-highlighting,stexthm}
+
 
 \srefsetin[sTeX/Documentation]{documentation}{the \stex Documentation}
 
@@ -26,17 +26,16 @@
                         \vss}%
         }%
         \kern-.15em%
-%        T\kern-.1667em\lower.5ex\hbox{E}\kern-.125em\relax
-%        {\tt XML}}
         T\kern-.1667em\lower.4ex\hbox{E}\kern-0.05em\relax
         {\scshape xml}\xspace}%
 \def\mmt{\textsc{Mmt}\xspace}
+\def\immt{\textsc{iMmt}\xspace}
 \makeatother
 
 
 \newif\ifhadtitle\hadtitlefalse
 
-\def\stexversion{3.4.0}
+\def\stexversion{4.0.0}
 \def\changedate{\today}
 \def\stextoptitle#1#2{\title{#1\thanks{Version {\stexversion} (last revised {\changedate})} }\def\thispkg{#2}}
 
@@ -45,50 +44,69 @@
  	\url{http://kwarc.info/}
 }
 
-\def\stexmaketitle{\ifhadtitle\else\hadtitletrue\maketitle\fi}
+\def\docmodule#1{
+  \begin{document}
+    \stexmaketitle
+    \setsectionlevel{#1}
+    \stexdocumentation
+    \steximplementation
+    \stexfooter
+  \end{document}
+}
+
 
 \ExplSyntaxOn
+\def\stexmaketitle{
+  \ifhadtitle\else
+    \hadtitletrue
+    \maketitle
+    \tableofcontents
+    \int_gincr:N \l_stex_current_section_level_int
 
-  \def\docmodule{
-    \begin{document}
-      \EnableManual
-      \EnableDocumentation
-      \EnableImplementation
-      \stexmaketitle
-      \tableofcontents
-      \int_gincr:N \l_stex_docheader_sect
-      \exp_args:Ne \__stex_mathhub_find_manifest:n {\stex_file_use:N \c_stex_mathhub_file / sTeX / Documentation}
-      \str_if_empty:NF \l__stex_mathhub_manifest_str {
-        \usemodule[sTeX/Documentation]{macros?AllMacros}
-      }
-      \DocInput{\jobname.dtx}
-      \clearpage
-      \PrintIndex
-      \printbibliography
-    \end{document}
-  }
+    \seq_map_inline:Nn \c_stex_mathhub_files {
+      \__stex_mathhub_find_manifest:nn {##1}{ sTeX / Documentation }
+      \str_if_empty:NF \l__stex_mathhub_manifest_str \seq_map_break:
+    }
+  %  \str_if_empty:NF \l__stex_mathhub_manifest_str {
+  %    \usemodule[sTeX/Documentation]{macros?AllMacros}
+  %  }
+  \fi
+}
 
-  \bool_new:N \g_stexdoc_typeset_manual_bool
-  \NewDocumentCommand \EnableManual {}{
-    \bool_gset_true:N \g_stexdoc_typeset_manual_bool
-  }
-  \NewDocumentCommand \DisableManual {}{
-    \bool_gset_false:N \g_stexdoc_typeset_manual_bool
-  }
-  \NewDocumentEnvironment {stexmanual} {} {
-    \bool_if:NTF \g_stexdoc_typeset_manual_bool
-      {\bool_set_false:N \l__codedoc_in_implementation_bool}
-      {\comment}
-  }{
-    \bool_if:NF \g_stexdoc_typeset_manual_bool {\endcomment}
-  }
+\def\stexdomanual{
+  \DisableDocumentation
+  \DisableImplementation
+  \EnableManual
+  \begin{sfragment}{Manual}
+    \DocInput{\jobname.dtx}
+  \end{sfragment}
+}
+
+\def\stexdocumentation{
+  \DisableManual
+  \DisableImplementation
+  \EnableDocumentation
+  \begin{sfragment}{Documentation}
+    \DocInput{\jobname.dtx}
+  \end{sfragment}
+}
+
+\def\steximplementation{
+  \DisableManual
+  \DisableDocumentation
+  \EnableImplementation
+  \begin{sfragment}{Implementation}
+    \DocInput{\jobname.dtx}
+  \end{sfragment}
+}
+
+\def\stexfooter{
+  \clearpage
+  \PrintIndex
+  \printbibliography
+}
+
 \ExplSyntaxOff
-
-%\usepackage{makeidx}
-%\makeindex
-
-%\usepackage{document-structure}
-
 
 \usepackage{lststex,mdframed}
 \usepackage[most]{tcolorbox}
@@ -103,6 +121,7 @@
     {ö}{{\"o}}1
     {~}{{\textasciitilde}}1
 }
+
 
 \newenvironment{framed}[1][]{
   \ifstexhtml\par\vbox\bgroup
@@ -120,9 +139,7 @@
       style:--current-width=var(--this-width);%
     }\csname stex_annotate_invisible:n\endcsname{ }
   \else\begin{mdframed}[#1]\fi
-  %\begin{center}%
 }{%
-  %\end{center}%
   \ifstexhtml
     \end{stex_annotate_env}\end{stex_annotate_env}\egroup\par
   \else\end{mdframed}\fi
@@ -147,7 +164,6 @@
 
 
 \NewDocumentCommand\stexexamplefile{O{} m O{} O{}}{
-  \stex_resolve_path_pair:Nxx \l_@@_filepath_str {\tl_to_str:n{#1}} {\tl_to_str:n{#2}}
   \doc_exbox:nnn{
     \hfill File~\str_if_empty:nTF{#1}{
       \prop_if_exist:NT \l_stex_current_archive_prop {
@@ -155,7 +171,9 @@
       }
     }{[#1]}\texttt{\tl_to_str:n{#2}}
     \_lststex_parse_args:n{#3}
-    \exp_args:Nno \use:nn{\lstinputlisting[} \l_lststex_return_tl ]{\l_@@_filepath_str}
+    \stex_in_archive:nn{#1}{
+      \exp_args:Nno \use:nn{\lstinputlisting[} \l_lststex_return_tl ]{\stex_source_path:n{#2}}
+    }
   }{
     \inputref[#1]{#2}
   }{#4}
@@ -230,8 +248,26 @@
 }{
     \end{exampleborderbox}
 }
-
 \ExplSyntaxOff\makeatother
+
+\stexcssexample[counter=example]{
+    border-left:3px solid blue;
+    padding-left:3px;
+    margin-left: -3px;
+    width:calc(var(--rustex-curr-width) + 3px);
+}{
+  font-weight: bold;
+  font-size:inherit;
+  color:blue;
+  display:block;
+  &::before {
+    content: "Example " counter(ftml-example) " ";
+  }
+  &::after {
+    content: ".";
+  }
+}
+
 
 \usetikzlibrary{calc}
 
@@ -290,6 +326,21 @@
     \end{problemborderbox}
 }
 \ExplSyntaxOff
+
+\stexcssproblem{
+    border-left:3px darkgreen solid;
+    padding-left:3px;
+    margin-left: -3px;
+    calc(var(--rustex-curr-width) + 3px);
+}{
+  font-weight: bold;
+  font-size:inherit;
+  color:darkgreen;
+  display:block;
+  &::before {
+    content: "Exercise";
+  }
+}
 
 \newtcolorbox{experimental}{
   breakable,
@@ -400,7 +451,160 @@
 }{
   \end{defibox}
 }
-
+\stexcssparagraph[defibox]{
+    border:3px solid orange;
+    padding:3px;
+    margin-left: -6px;
+    width: calc(var(--rustex-curr-width) + 6px);
+}{
+  font-weight: bold;
+  font-size:inherit;
+  color:orange;
+  display:block;
+  &::before {
+    font-size:larger;
+    content: "sTeX ";
+  }
+  &::after {
+    content: "";
+  }
+}
 
 \AtBeginDocument{\catcode`_=8}
 
+\ExplSyntaxOn
+
+\bool_new:N \g_stexdoc_typeset_manual_bool
+\NewDocumentCommand \EnableManual {}{
+  \bool_gset_true:N \g_stexdoc_typeset_manual_bool
+  \renewenvironment{sfunction}{\manualsfunction}{\endmanualsfunction}
+}
+
+\NewDocumentCommand \DisableManual {}{
+  \bool_gset_false:N \g_stexdoc_typeset_manual_bool
+  \renewenvironment{sfunction}{\realsfunction}{\endrealsfunction}
+}
+
+\NewDocumentEnvironment {stexmanual} {} {
+  \bool_if:NTF \g_stexdoc_typeset_manual_bool
+    {\bool_set_false:N \l__codedoc_in_implementation_bool}
+    {\comment}
+}{
+  \bool_if:NF \g_stexdoc_typeset_manual_bool {\endcomment}
+}
+
+
+\stex_sms_allow_escape:N \stexmacro
+\protected\def\stexmacro#1{
+  \stex_if_in_module:T{
+    \stex_execute_in_module:e{\tl_set:cn{l_stex_stexmacro_\tl_to_str:n{#1}_path}{\exp_args:Ne\stex_new_symbol_uri:n{\tl_to_str:n{#1}}}}
+    \exp_args:NNe\symdecl*{\tl_to_str:n{#1}}[type=\sn{TeX?macro}]
+    \exp_args:Ne\notation{\tl_to_str:n{#1}}{\comp{\texttt{\textbackslash\detokenize{#1}}}}
+  }
+}
+
+\ProvideDocumentEnvironment {manualsfunction}{m O{} +v}{
+  \seq_set_split:Nnn \_stexdoc_sfunction_seq , {#1}
+  \seq_map_inline:Nn \_stexdoc_sfunction_seq {
+    \stex_pseudogroup_with:nn{\stex_smsmode_do:}{\def\stex_smsmode_do:{}\stexmacro{##1}}
+  }
+  \cs_set_eq:NN \dcs \_stexdoc_dcs:
+  \ifstexhtml 
+    \def\box_move_up:nn##1##2{\tex_raise:D\__box_dim_eval:n{0pt}##2}
+    \renewenvironment{syntax}{\noindent}{\par}
+  \fi
+  \begin{sparagraph}[style=symdoc,for={#1}]
+    \__codedoc_function:nnw{#2}{#3}
+}{
+  \stex_if_smsmode:F{\__codedoc_function_end:}
+  \end{sparagraph}
+}
+
+\NewDocumentEnvironment{ realsfunction }{ O{} +v m }{
+    \protected\def \StartImpl {\_start_impl_fun:nn{#1}{#2}}
+    \bool_if:NTF \g__codedoc_typeset_documentation_bool {
+      \__codedoc_function:nnw{#1}{#2}
+      \tl_if_empty:nF{#3}{ \begin{syntax} #3 \end{syntax} }
+    }{
+      \bool_if:NTF \g_stexdoc_typeset_manual_bool {
+        \__codedoc_function:nnw{#1}{#2}
+        \tl_if_empty:nF{#3}{ \begin{syntax} #3 \end{syntax} }
+      }
+      {
+        \exp_after:wN \StartImpl \_skip_doc:
+      }
+    }
+}{
+    \bool_if:NT \g_stexdoc_in_comment_bool {
+      \bool_gset_false:N \g_stexdoc_in_comment_bool
+      \endcomment
+    }
+    \bool_if:NTF \g__codedoc_typeset_implementation_bool {
+      \__codedoc_macro_end:
+    }
+}
+\newenvironment{sfunction}{\realsfunction}{\endrealsfunction}
+\stex_sms_allow_env:n{sfunction}
+
+\NewDocumentEnvironment{ svariable }{ O{} +v }{
+  \protected\def \StartImpl {\_start_impl_fun:nn{var, #1}{#2}}
+  \bool_if:NTF \g__codedoc_typeset_documentation_bool {
+    \bool_set_false:N \l__codedoc_in_implementation_bool
+    \__codedoc_function:nnw{#1}{#2}
+  }{
+    \exp_after:wN \StartImpl \_skip_doc:
+  }
+}{
+  \bool_if:NTF \g__codedoc_typeset_implementation_bool {
+    \__codedoc_macro_end:
+  }{
+    \endcomment
+  }
+}
+
+\NewDocumentEnvironment{ senvironment }{ +v }{
+  \protected\def \StartImpl {\_start_env_fun:n{#1}}
+  \bool_if:NTF \g__codedoc_typeset_documentation_bool {
+    \bool_set_false:N \l__codedoc_in_implementation_bool
+    \vskip10pt
+    \DescribeEnv{#1}
+  }{
+    \exp_after:wN \StartImpl \_skip_doc:
+  }
+}{
+  \bool_if:NTF \g__codedoc_typeset_implementation_bool {
+    \endenvironment
+  }{
+    \endcomment
+  }
+}
+
+\cs_new:Npn \_skip_doc: #1 \StartImpl {}
+
+\cs_new_protected:Nn \_start_impl_fun:nn {
+  \bool_if:NT \g__codedoc_typeset_documentation_bool {
+    \__codedoc_function_end:
+  }
+  \bool_if:NTF \g__codedoc_typeset_implementation_bool {
+    \__codedoc_macro:nnw{#1}{#2}
+  }{ 
+    \bool_gset_true:N \g_stexdoc_in_comment_bool
+    \comment 
+  }
+}
+
+\cs_new_protected:Nn \_start_env_fun:n {
+  \bool_if:NT \g__codedoc_typeset_documentation_bool {
+    \par
+  }
+  \bool_if:NTF \g__codedoc_typeset_implementation_bool {
+    \environment{#1}
+  }{ 
+    \bool_gset_true:N \g_stexdoc_in_comment_bool
+    \comment 
+  }
+}
+
+\bool_new:N \g_stexdoc_in_comment_bool
+
+\ExplSyntaxOff

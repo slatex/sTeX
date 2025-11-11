@@ -6,7 +6,7 @@
 %%
 %% notesslides.dtx  (with options: `cls')
 %% 
-\ProvidesExplClass{notesslides}{2023/10/13}{3.4.0}{notesslides Class}
+\ProvidesExplClass{notesslides}{2025/11/11}{4.0.0}{notesslides Class}
 \RequirePackage{l3keys2e}
 
 \str_const:Nn \c__notesslides_class_str {article}
