@@ -866,12 +866,12 @@
 \cs_new:Nn \stex_archive_base:n {
   \exp_args:NNe \use:nn \use_ii:nnn { \use:c {c_stex_mathhub_#1_archive} }
 }
-\cs_new:Npn \stex_archive_path:N {
-  \exp_after:wN \use_iii:nnn
+\cs_new:Nn \stex_archive_path:N {
+  \exp_args:NNe \seq_item:Nn \c_stex_mathhub_files {\exp_after:wN \use_iii:nnn #1} / \stex_archive_id:N #1
 }
 
 \cs_new:Nn \stex_archive_path:n {
-  \exp_args:NNe \use:nn \use_iii:nnn { \use:c {c_stex_mathhub_#1_archive} }
+  \exp_args:NNe \seq_item:Nn \c_stex_mathhub_files {\exp_args:NNe \use:nn \use_iii:nnn { \use:c {c_stex_mathhub_#1_archive} }} / \exp_args:NNe \use:nn \use_i:nnn { \use:c {c_stex_mathhub_#1_archive} }
 }
 \cs_new_protected:Nn \stex_in_archive:nn {
   \stex_pseudogroup:nn{
@@ -917,9 +917,12 @@
   }
 }
 \cs_new_protected:Nn \__stex_mathhub_do_manifest:nn {
-  \seq_map_inline:Nn \c_stex_mathhub_files {
-    \__stex_mathhub_find_manifest:nn {##1}{#1}
-    \str_if_empty:NF \l__stex_mathhub_manifest_str \seq_map_break:
+  \seq_map_indexed_inline:Nn \c_stex_mathhub_files {
+    \__stex_mathhub_find_manifest:nn {##2}{#1}
+    \str_if_empty:NF \l__stex_mathhub_manifest_str {
+      \tl_set:Nn \l__stex_mathhub_mh_index_tl {##1}
+      \seq_map_break:
+    }
   }
   %\exp_args:Ne \__stex_mathhub_find_manifest:n {\stex_file_use:N \c_stex_mathhub_file / #1}
   \str_if_empty:NTF \l__stex_mathhub_manifest_str { #2 }{
@@ -991,7 +994,7 @@
   \exp_args:No \stex_str_if_starts_with:nnT \l__stex_mathhub_base_str {https://} {
     \str_set:Ne \l__stex_mathhub_base_str { \exp_after:wN \__stex_mathhub_replace_https:w \l__stex_mathhub_base_str \__stex_mathhub: }
   }
-  \tl_gset:ce { c_stex_mathhub_#1_archive } { {\l__stex_mathhub_id_str} {\l__stex_mathhub_base_str} {\l__stex_mathhub_file_str} }
+  \tl_gset:ce { c_stex_mathhub_#1_archive } { {\l__stex_mathhub_id_str} {\l__stex_mathhub_base_str} {\l__stex_mathhub_mh_index_tl} }
   \stex_debug:nn{mathhub}{Result:~\use:c{c_stex_mathhub_#1_archive}}
   \str_if_eq:nnF {#1}{main}{
     \stex_persist:e {
@@ -1019,12 +1022,13 @@
 }
 
 \tl_set_eq:cN {c_stex_mathhub_ no/archive _ archive}\c_stex_no_archive_uri
-\seq_map_inline:Nn \c_stex_mathhub_files {
-  \seq_set_split:Nnn \l_tmpa_seq / {#1}
+\seq_map_indexed_inline:Nn \c_stex_mathhub_files {
+  \tl_set:Nn \l__stex_mathhub_mh_index_tl {#1}
+  \seq_set_split:Nnn \l_tmpa_seq / {#2}
   \stex_if_file_starts_with:NNT \c_stex_pwd_file \l_tmpa_seq {
     \seq_set_eq:NN \l_tmpb_seq \c_stex_pwd_file
     \seq_map_inline:Nn \l_tmpa_seq { \seq_pop_left:NN \l_tmpb_seq \l_tmpa_tl }
-    \exp_args:Nne \__stex_mathhub_find_manifest:nn {#1} { \stex_file_use:N \l_tmpb_seq }
+    \exp_args:Nne \__stex_mathhub_find_manifest:nn {#2} { \stex_file_use:N \l_tmpb_seq }
     \str_if_empty:NTF \l__stex_mathhub_manifest_str {
       \stex_debug:nn{mathhub}{Not~currently~in~a~MathHub~archive}
     }{
@@ -1984,18 +1988,29 @@
 \stex_if_html_backend:TF{
   \str_set:Nn \c__stex_inputs_ref_pre_str {<span~data-ftml-inputref="}
   \str_set:Nn \c__stex_inputs_ref_post_str {"~><!-----></span>}
-  \cs_new_protected:Nn \__stex_inputs_ref:n {
+  \cs_new_protected:Nn \__stex_inputs_ref_i:n {
     \IfFileExists{\stex_source_path:n {#1}}{
-      \relax
-      \exp_args:Ne\stex_html_literal:n{
-        \c__stex_inputs_ref_pre_str
-        \stex_use_document_uri:N\l__stex_inputs_uri
-        \c__stex_inputs_ref_post_str
-      }
+      %\relax
+      %\noindent\vbox{
+        \exp_args:Ne\stex_html_literal:n{
+          \c__stex_inputs_ref_pre_str
+          \stex_use_document_uri:N\l__stex_inputs_uri
+          \c__stex_inputs_ref_post_str
+        }
+      %}
     }{
       \stex_input_with_hooks:Ne\l__stex_inputs_uri {\stex_source_path:n {#1}}
     }
   }
+  \cs_new_protected:Nn \__stex_inputs_ref:n {
+    \ifnum\@listdepth>0
+      \noindent\vbox{\vskip-26pt\relax\__stex_inputs_ref_i:n{#1}}\par
+      %\begin{stex_env_node}{div}{style:foo=bar}\vskip-700pt\end{stex_env_node}
+    \else
+      \__stex_inputs_ref_i:n{#1}
+    \fi
+  }
+
 }{
   \cs_new_protected:Nn \__stex_inputs_ref:n {
     \begingroup
@@ -2005,7 +2020,7 @@
       \stex_undefine:N \l_stex_current_module_uri
       \stex_debug:nn{inputref}{Inputrefing~document~\stex_use_document_uri:N \l__stex_inputs_uri{}~at~\stex_source_path:n{#1}}
       \stex_input_with_hooks:Ne\l__stex_inputs_uri{\stex_source_path:n {#1}}
-    \endgroup
+    \endgroup\medskip
   }
 }
 \NewDocumentCommand \mhinput { O{} m}{
