@@ -123,12 +123,12 @@
 %   requires the archive to be loaded beforehand!
 % \StartImpl
 %    \begin{macrocode}
-\cs_new:Nn \stex_archive_path:N {
-  \exp_args:NNe \seq_item:Nn \c_stex_mathhub_files {\exp_after:wN \use_iii:nnn #1} / \stex_archive_id:N #1
+\cs_new:Npn \stex_archive_path:N {
+  \exp_after:wN \use_iii:nnn
 }
 
 \cs_new:Nn \stex_archive_path:n {
-  \exp_args:NNe \seq_item:Nn \c_stex_mathhub_files {\exp_args:NNe \use:nn \use_iii:nnn { \use:c {c_stex_mathhub_#1_archive} }} / \exp_args:NNe \use:nn \use_i:nnn { \use:c {c_stex_mathhub_#1_archive} }
+  \exp_args:NNe \use:nn \use_iii:nnn { \use:c {c_stex_mathhub_#1_archive} }
 }
 %    \end{macrocode}
 % \end{sfunction}
@@ -195,12 +195,9 @@
 % Attempts to find the archive's manifest file:
 %    \begin{macrocode}
 \cs_new_protected:Nn \_@@_do_manifest:nn {
-  \seq_map_indexed_inline:Nn \c_stex_mathhub_files {
-    \_@@_find_manifest:nn {##2}{#1}
-    \str_if_empty:NF \l_@@_manifest_str {
-      \tl_set:Nn \l_@@_mh_index_tl {##1}
-      \seq_map_break:
-    }
+  \seq_map_inline:Nn \c_stex_mathhub_files {
+    \_@@_find_manifest:nn {##1}{#1}
+    \str_if_empty:NF \l_@@_manifest_str \seq_map_break:
   }
   %\exp_args:Ne \_@@_find_manifest:n {\stex_file_use:N \c_stex_mathhub_file / #1}
   \str_if_empty:NTF \l_@@_manifest_str { #2 }{
@@ -276,7 +273,7 @@
   \exp_args:No \stex_str_if_starts_with:nnT \l_@@_base_str {https://} {
     \str_set:Ne \l_@@_base_str { \exp_after:wN \_@@_replace_https:w \l_@@_base_str \_@@: }
   }
-  \tl_gset:ce { c_stex_mathhub_#1_archive } { {\l_@@_id_str} {\l_@@_base_str} {\l_@@_mh_index_tl} }
+  \tl_gset:ce { c_stex_mathhub_#1_archive } { {\l_@@_id_str} {\l_@@_base_str} {\l_@@_file_str} }
   \stex_debug:nn{mathhub}{Result:~\use:c{c_stex_mathhub_#1_archive}}
   \str_if_eq:nnF {#1}{main}{
     \stex_persist:e {
@@ -332,13 +329,12 @@
 %
 % \StartImpl
 %    \begin{macrocode}
-\seq_map_indexed_inline:Nn \c_stex_mathhub_files {
-  \tl_set:Nn \l_@@_mh_index_tl {#1}
-  \seq_set_split:Nnn \l_tmpa_seq / {#2}
+\seq_map_inline:Nn \c_stex_mathhub_files {
+  \seq_set_split:Nnn \l_tmpa_seq / {#1}
   \stex_if_file_starts_with:NNT \c_stex_pwd_file \l_tmpa_seq {
     \seq_set_eq:NN \l_tmpb_seq \c_stex_pwd_file
     \seq_map_inline:Nn \l_tmpa_seq { \seq_pop_left:NN \l_tmpb_seq \l_tmpa_tl }
-    \exp_args:Nne \_@@_find_manifest:nn {#2} { \stex_file_use:N \l_tmpb_seq }
+    \exp_args:Nne \_@@_find_manifest:nn {#1} { \stex_file_use:N \l_tmpb_seq }
     \str_if_empty:NTF \l_@@_manifest_str {
       \stex_debug:nn{mathhub}{Not~currently~in~a~MathHub~archive}
     }{
