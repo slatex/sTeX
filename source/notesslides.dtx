@@ -679,21 +679,38 @@
 %  defined before formatting the file in the argument. 
 %    \begin{macrocode}
 \gdef\printexcursions{}
-\newcommand\excursionref[2]{% label, text
-  \bool_if:NT \c_notesslides_notes_bool {
+
+
+
+\stex_if_html_backend:TF{
+  \newcommand\excursionref[4][]{% repos, label, path, text
     \begin{sparagraph}[title=Excursion]
-      #2 \sref[fallback=the appendix]{#1}.
+      #4~
+      \stex_in_archive:nn{#1}{
+        \stex_document_uri_from_archive_file:Nn \l_@@_uri {#3}
+        \exp_args:Ne\href{\stex_use_document_uri:N\l_@@_uri}{here}
+      }
     \end{sparagraph}
   }
-}
-\newcommand\activate@excursion[2][]{
-  \tl_gput_right:Nn\printexcursions{\inputref[#1]{#2}}
-}
-\newcommand\excursion[4][]{% repos, label, path, text
-  \bool_if:NT \c_notesslides_notes_bool {
-    \activate@excursion[#1]{#3}
-    \excursionref{#2}{#4}
+  \def\excursion{\excursionref}
+}{
+  \newcommand\excursionref[4][]{% repos, label, path, text
+    \bool_if:NT \c_notesslides_notes_bool {
+      \begin{sparagraph}[title=Excursion]
+        #4~\sref[fallback=the appendix]{#2}.
+      \end{sparagraph}
+    }
   }
+  \newcommand\activate@excursion[2][]{
+    \tl_gput_right:Nn\printexcursions{\inputref[#1]{#2}}
+  }
+  \newcommand\excursion[4][]{% repos, label, path, text
+    \bool_if:NT \c_notesslides_notes_bool {
+      \activate@excursion[#1]{#3}
+      \excursionref[#1]{#2}{#3}{#4}
+    }
+  }
+
 }
 %    \end{macrocode}
 % \end{macro}
@@ -711,20 +728,27 @@
   \str_clear:N \l_@@_excursion_mhrepos_str
   \keys_set:nn {notesslides / excursiongroup }{ #1 }
 }
-\newcommand\excursiongroup[1][]{
-  \_@@_excursion_args:n{ #1 }
-  \tl_if_empty:NF\printexcursions
-  {\IfInputref{}{\begin{note}
-    \begin{sfragment}{Excursions}% TODO pass on id
-      \ifdefempty\l_@@_excursion_intro_tl{}{
-        \exp_args:NNe \use:nn \inputref{[\l_@@_excursion_mhrepos_str]{
-          \l_@@_excursion_intro_tl
-        }}
-      }
-      \printexcursions%
-    \end{sfragment}
-  \end{note}}}
+
+
+\stex_if_html_backend:TF{
+  \newcommand\excursiongroup[1][]{}
+}{
+  \newcommand\excursiongroup[1][]{
+    \_@@_excursion_args:n{ #1 }
+    \tl_if_empty:NF\printexcursions
+    {\IfInputref{}{\begin{note}
+      \begin{sfragment}{Excursions}% TODO pass on id
+        \ifdefempty\l_@@_excursion_intro_tl{}{
+          \exp_args:NNe \use:nn \inputref{[\l_@@_excursion_mhrepos_str]{
+            \l_@@_excursion_intro_tl
+          }}
+        }
+        \printexcursions%
+      \end{sfragment}
+    \end{note}}}
+  }
 }
+
 \ifcsname beameritemnestingprefix\endcsname\else\def\beameritemnestingprefix{}\fi
 %    \end{macrocode}
 % \end{macro}
