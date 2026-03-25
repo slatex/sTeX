@@ -2921,6 +2921,29 @@
   \stex_reactivate_macro:N \importmodule
   \let \__stex_import_import_module:nn \__stex_import_import_module_presms:nn
 }
+\stex_new_stylable_cmd:nnnn {requiremodule} { O{} m } {
+  \stex_uri_from_pair:Nnn \l_stex_import_uri { #1 }{ #2 }
+  \stex_require_module:N \l_stex_import_uri
+  \__stex_import_requiremodule:
+}{}%{\aftergroup\ignorespaces}
+\stex_deactivate_macro:Nn \requiremodule {module~environments}
+\stex_every_module:n {\stex_reactivate_macro:N \requiremodule}
+
+\cs_new_protected:Nn \__stex_import_requiremodule: {
+  \stex_debug:nn{requiremodule}{Done.}
+  \stex_if_do_html:T {
+    \hbox{\stex_annotate_invisible:nn
+      {data-ftml-import=\stex_use_module_uri:N \l_stex_import_uri } {}}
+  }
+  \stex_if_smsmode:F{
+    \group_begin:
+    \str_set:Ne \thismoduleuri {\stex_use_module_uri:N \l_stex_import_uri }
+    \str_set:Ne \thismodulename {\stex_module_uri_name:N \l_stex_import_uri}
+    \tl_clear:N \thisstyle
+    \stex_style_apply:
+    \group_end:
+  }
+}
 \cs_new_protected:Nn \stex_add_morphism:nnnn {
   \exp_args:Nne \prop_gput:cnn{ \_stex_morphisms_macro:N \l_stex_current_module_uri }{
     \tl_if_empty:nTF{#1}{[\stex_use_module_uri:n {#2}]}{#1}
@@ -4319,7 +4342,7 @@
         data-ftml-reorderargs={\l_stex_key_reorder_str}
       }
       \bool_if:NT \l__stex_vars_bind_bool {,
-        data-ftml-bind={}
+        data-ftml-bind={true}
       }
     }{
       \_stex_annotate_force_break:n{
@@ -6509,6 +6532,13 @@
       }
     }
     \seq_set_eq:NN \l_stex_aB_args_seq \l__stex_expr_old_seq
+  \tl_set:Ne \l_tmpa_tl {
+    \symuse{Metatheory?bind}{
+      \svar[MAP_DUMMY]{\exp_not:N\mathrm{MAPDUMMY}}
+    }{
+      \exp_args:No\exp_not:n{\l_tmpa_cs{\svar[MAP_DUMMY]{\mathrm{MAPDUMMY}}}}
+    }
+  }
   \exp_args:NNe \use:nn \group_end: {
     \seq_put_right:Nn \exp_not:N \l_stex_aB_args_seq {
       \_stex_is_sequentialized:n{
@@ -6517,9 +6547,9 @@
           \tl_set:Nn \exp_not:N \l_stex_current_full_tl
             {\l_stex_current_full_tl}
           \tl_set:Nn \exp_not:N \l_stex_current_term_tl {
-            \symuse{Metatheory?sequence~map}
+            \exp_not:N \symuse{Metatheory?sequence~map}
+            {\exp_not:n{#2}}
             {\exp_args:No \exp_not:n \l_tmpa_tl}
-            {\_stex_term_do_aB_clist:}
           }
           \__stex_expr_do_headterm:nn{}{
             \_stex_term_do_aB_clist:
@@ -6791,6 +6821,26 @@
   #2
   }{
     \__stex_comps_slash:w #2 / #3 \_stex_args_end:
+  }
+}
+\stex_if_html_backend:TF {
+  \NewDocumentCommand \foldexpr { O{} mm } {
+    \stex_annotate:nn{
+      data-ftml-fold-expression={\exp_args:Ne \str_if_eq:nnT{#1}{show}{show}}
+    }{
+      \stex_annotate:nn{
+        data-ftml-fold-short={}
+      }{#2}
+      #3
+    }
+  }
+}{
+  \NewDocumentCommand \foldexpr { O{} mm } {
+    \exp_args:Ne \str_if_eq:nnTF{#1}{hide}{
+      \underbrace{...}{#2}
+    }{
+      \underbrace{#3}{#2}
+    }
   }
 }
 \stex_keys_define:nnnn{mathstructure}{
@@ -7099,7 +7149,7 @@
   data-ftml-#1={},
   data-ftml-inline={#2},
   \seq_if_empty:NF \l_stex_fors_seq {,
-    data-ftml-fors={\seq_map_indexed_function:NN \l_stex_fors_seq \__stex_statements_comma_sep_uri:nn }
+    data-ftml-fors={\seq_map_indexed_function:NN \l_stex_fors_seq \_stex_comma_sep_uri:nn }
   }
   \str_if_empty:NF \l_stex_key_id_str {,
     data-ftml-id={\l_stex_key_id_str}%{\stex_uri_use:N \l_stex_current_doc_uri ? \l_stex_key_id_str}
@@ -7109,7 +7159,7 @@
   }
 }
 
-\cs_new:Nn \__stex_statements_comma_sep_uri:nn {
+\cs_new:Nn \_stex_comma_sep_uri:nn {
   \int_compare:nNnF{#1}=1 {,}
   \stex_use_symbol_uri:n{#2}
 }
@@ -7285,25 +7335,76 @@
   \stex_annotate:nn{data-ftml-premise={#1}}{#2}
 }
 \stex_deactivate_macro:Nn \premise {assertion~environments}
-\stex_keys_define:nnnn{ spf }{
+
+\stex_keys_define:nnnn{ spfcommon }{
   \tl_clear:N \l_stex_key_for_clist
-  \tl_clear:N \l_stex_key_from_tl
-  \tl_set_eq:NN \l_stex_key_proofend_tl \__stex_proof_proof_box_tl
-  \tl_clear:N \l_stex_key_continues_tl
   \tl_clear:N \l_stex_key_term_tl
-  \tl_clear:N \l_stex_key_functions_tl
   \tl_clear:N \l_stex_key_method_tl
-  \bool_set_false:N \l_stex_key_hide_bool
+  \tl_clear:N \l_stex_key_just_tl
 }{
   for         .clist_set:N  = \l_stex_key_for_clist ,
-  from        .tl_set:N     = \l_stex_key_from_tl ,
-  proofend    .tl_set:N     = \l_stex_key_proofend_tl,
-  continues   .tl_set:N     = \l_stex_key_continues_tl,
-  functions   .tl_set:N     = \l_stex_key_functions_tl,
   term        .tl_set:N     = \l_stex_key_term_tl,
   method      .tl_set:N     = \l_stex_key_method_tl,
-  hide        .bool_set:N   = \l_stex_key_hide_bool
+  just        .tl_set:N     = \l_stex_key_just_tl,
 }{id,style,title}
+
+\bool_set_false:N \l_stex_key_showname_bool
+
+\stex_keys_define:nnnn{ spfnamed }{
+  \str_clear:N \l_stex_key_name_str
+  \str_clear:N \l_stex_key_numname_str
+  \bool_set_false:N \l_stex_key_showname_bool
+}{
+  name        .str_set_x:N  = \l_stex_key_name_str,
+  numname     .str_set_x:N  = \l_stex_key_numname_str,
+  showname    .bool_set:N   = \l_stex_key_showname_bool
+}{spfcommon}
+
+\cs_new_protected:Nn \__stex_proof_do_spf_name: {
+  \str_if_empty:NTF \l_stex_key_numname_str {
+    \str_if_empty:NTF \l_stex_key_name_str {
+      \bool_set_false:N \l_stex_key_showname_bool
+    } {
+      \exp_args:Nne\use:nn{\vardef}{{v\l_stex_key_name_str}[name=\l_stex_key_name_str]{\l_stex_key_name_str}}
+    }
+  }{
+    \bool_set_false:N \l_stex_key_showname_bool
+    \__stex_proof_number_as_string:N \l__stex_proof_counter_str
+    \exp_args:Nne \use:nn {\vardef}{{\l_stex_key_numname_str}[name=\l__stex_proof_counter_str]{\l__stex_proof_counter_str}}
+  }
+}
+
+\cs_new_protected:Nn \__stex_proof_do_spf_name_i: {
+  \str_if_empty:NTF \l__stex_proof_key_numname_str {
+    %\str_if_empty:NF \l__stex_proof_key_name_str {
+      \exp_args:Nne\use:nn{\vardef}{{v\l__stex_proof_key_name_str}[name=\l__stex_proof_key_name_str]{\l__stex_proof_key_name_str}}
+    %}
+  }{
+    \exp_args:Nne \use:nn {\vardef}{{\l__stex_proof_key_numname_str}[name=\l__stex_proof_counter_str]{\l__stex_proof_counter_str}}
+  }
+}
+
+\cs_new_protected:Nn \__stex_proof_do_spf_varname: {
+  \bool_if:NT \l_stex_key_showname_bool {
+    ~($\csname v\l_stex_key_name_str\endcsname$)~
+  }
+}
+
+\stex_keys_define:nnnn{ spftop }{
+  \tl_set_eq:NN \l_stex_key_proofend_tl \__stex_proof_proof_box_tl
+  \bool_set_false:N \l_stex_key_hide_bool
+  \tl_clear:N \l_stex_key_continues_tl
+  \tl_clear:N \l_stex_key_functions_tl
+  \tl_clear:N \l_stex_key_from_tl
+}{
+  proofend    .tl_set:N     = \l_stex_key_proofend_tl,
+  hide        .bool_set:N   = \l_stex_key_hide_bool,
+  continues   .tl_set:N     = \l_stex_key_continues_tl, % <- unused
+  functions   .tl_set:N     = \l_stex_key_functions_tl, % <- unused
+  from        .tl_set:N     = \l_stex_key_from_tl % <- unused
+}{spfcommon}
+
+\stex_keys_define:nnnn{ subproof }{}{}{spftop,spfnamed}
 
 \bool_set_true:N \l__stex_proof_inc_counter_bool
 \intarray_new:Nn\l__stex_proof_counter_intarray{50}
@@ -7327,7 +7428,7 @@
       \intarray_item:Nn \l__stex_proof_counter_intarray \l_tmpa_int
     } > 0
   }{
-    \str_put_right:Nx #1 {\intarray_item:Nn \l__stex_proof_counter_intarray \l_tmpa_int .}
+    \str_put_right:Ne #1 {\intarray_item:Nn \l__stex_proof_counter_intarray \l_tmpa_int .}
     \int_incr:N \l_tmpa_int
   }
 }
@@ -7378,10 +7479,10 @@
 \cs_new_protected:Nn \__stex_proof_begin_proof:nn {\par
   \intarray_gzero:N \l__stex_proof_counter_intarray
   \intarray_gset:Nnn \l__stex_proof_counter_intarray 1 1
-  \stex_keys_set:nn{spf}{#1}
+  \stex_keys_set:nn{spftop}{#1}
   \_stex_do_for_list:
   \stex_if_do_html:T {
-    \__stex_proof_html_env:n{proof}
+    \__stex_proof_html_env_proof:
   }
   \seq_map_inline:Nn \l_stex_fors_seq {
     \stex_debug:nn{definiens}{Adding~definiens~to~##1}
@@ -7399,8 +7500,11 @@
   \stex_reactivate_macro:N \assumption
   \stex_reactivate_macro:N \eqstep
   \stex_reactivate_macro:N \yield
+  \stex_reactivate_macro:N \spfescape
   \stex_reactivate_macro:N \spfblock
   \stex_reactivate_macro:N \spfjust
+  \stex_reactivate_macro:N \spfby
+  \stex_reactivate_macro:N \spfarg
   \noindent\stex_annotate:nn{data-ftml-title={}}{\_stex_annotate_force_break:n{#2}}\par
   \stex_if_do_html:TF{
     \use:c{stex_annotate_env}{data-ftml-proofbody={}}
@@ -7410,12 +7514,11 @@
   }
 }
 
-\cs_new_protected:Nn \__stex_proof_html_env:n {
+\cs_new_protected:Nn \__stex_proof_html_env_proof: {
   \exp_args:Nne \use:c{stex_annotate_env}{
-    data-ftml-#1={
-      \seq_if_empty:NF \l_stex_fors_seq {
-        \seq_map_function:NN \l_stex_fors_seq \stex_use_symbol_uri:N
-      }
+    data-ftml-proof={}
+    \seq_if_empty:NF \l_stex_fors_seq {,
+      data-ftml-fors={\seq_map_indexed_function:NN \l_stex_fors_seq \_stex_comma_sep_uri:nn }
     }
     \bool_if:NT \l_stex_key_hide_bool {,
       data-ftml-proofhide=true
@@ -7424,13 +7527,39 @@
   \__stex_proof_html:
 }
 
+\cs_new_protected:Nn \__stex_proof_html_env_subproof: {
+  \str_if_empty:NF \l_stex_key_numname_str {
+    \__stex_proof_number_as_string:N \l__stex_proof_counter_str
+  }
+  \exp_args:Nne \use:c{stex_annotate_env}{
+    data-ftml-subproof={}
+    \seq_if_empty:NF \l_stex_fors_seq {,
+      data-ftml-fors={\seq_map_indexed_function:NN \l_stex_fors_seq \_stex_comma_sep_uri:nn }
+    }
+    \bool_if:NT \l_stex_key_hide_bool {,
+      data-ftml-proofhide=true
+    }
+    \str_if_empty:NTF \l_stex_key_numname_str {
+      \str_if_empty:NF \l_stex_key_name_str {,
+        data-ftml-stepname={\l_stex_key_name_str}
+      }
+    }{
+      , data-ftml-stepname={\l__stex_proof_counter_str}
+    }
+  }
+  \__stex_proof_html:
+}
+
 \cs_new_protected:Nn \__stex_proof_html: {
   \_stex_annotate_force_break:n{}
-  \tl_set:Ne\l_tmpa_tl {\l_stex_key_term_tl\l_stex_key_method_tl}
+  \tl_set:Ne\l_tmpa_tl {\l_stex_key_term_tl\l_stex_key_method_tl\l_stex_key_just_tl}
   \tl_if_empty:NF\l_tmpa_tl{
     \stex_annotate_invisible:n{\hbox{
       \tl_if_empty:NF \l_stex_key_term_tl {
         $\stex_annotate:nn{data-ftml-proofterm={}}{\l_stex_key_term_tl}$
+      }
+      \tl_if_empty:NF \l_stex_key_just_tl {
+        $\stex_annotate:nn{data-ftml-spfjust={}}{\l_stex_key_just_tl}$
       }
       \tl_if_empty:NF \l_stex_key_method_tl {
         \stex_annotate:nn{data-ftml-proofmethod={}}{\l_stex_key_method_tl}
@@ -7440,17 +7569,21 @@
 }
 
 \cs_new_protected:Nn \__stex_proof_start_comment: {
-  \par
   \bool_if:NT \l__stex_proof_in_spfblock_bool {
+    \par
     \group_begin:\stexcommentfont
   }
 }
 \cs_new_protected:Nn \__stex_proof_end_comment: {
-  \par
   \bool_if:NT \l__stex_proof_in_spfblock_bool {
+    \par
     \group_end:
   }
 }
+\cs_new_protected:Npn \spfescape #1{
+  \__stex_proof_end_comment: #1 \__stex_proof_start_comment:
+}
+\stex_deactivate_macro:Nn \spfescape {sproof~environments}
 
 \stex_new_stylable_env:nnnnnnn{proof}{O{} m}{
   \__stex_proof_begin_proof:nn{#1}{#2}
@@ -7499,11 +7632,49 @@
 }
 \str_set_eq:NN \subproofautorefname \spfstepautorefname
 
+\cs_new_protected:Nn \__stex_proof_do_after_subgroup:N {
+  \bgroup
+    \expandafter \__stex_proof_do_after_subgroup_i:nn #1
+  \egroup
+  \__stex_proof_do_spf_name_i:
+}
+\cs_new_protected:Nn \__stex_proof_do_after_subgroup_i:nn {
+    \exp_args:Nno \stex_keys_set:nn{subproof}{#1}
+    \str_gset_eq:NN \l__stex_proof_key_name_str \l_stex_key_name_str
+    \str_gset_eq:NN \l__stex_proof_key_numname_str \l_stex_key_numname_str
+    \bool_gset_eq:NN \l__stex_proof_key_showname_bool \l_stex_key_showname_bool
+    \str_gset:Nn \l__stex_proof_counter_str {#2}
+}
+\cs_new_protected:Npn \__stex_proof_set_after_subgroup:n {
+  \str_if_empty:NTF \l_stex_key_numname_str {
+    \str_if_empty:NTF \l_stex_key_name_str \use_none:n \__stex_proof_set_after_subgroup_i:n
+  }\__stex_proof_set_after_subgroup_i:n
+}
+\cs_new_protected:Npn \__stex_proof_set_after_subgroup_with_number:n {
+  \str_if_empty:NTF \l_stex_key_numname_str {
+    \str_if_empty:NTF \l_stex_key_name_str \use_none:n \__stex_proof_set_after_subgroup_with_number_i:n
+  }\__stex_proof_set_after_subgroup_with_number_i:n
+}
+\cs_new_protected:Nn \__stex_proof_set_after_subgroup_i:n {
+  \tl_gset:cn{subproof_arg_ \int_use:N \currentgrouplevel}{{#1}{}}
+
+  \__stex_proof_set_aftergroup: % \bool_if:NTF \l__stex_proof_in_spfblock_bool \__stex_proof_set_aftergroup: \__stex_proof_set_aftergroup_double:
+}
+\cs_new_protected:Nn \__stex_proof_set_after_subgroup_with_number_i:n {
+  \__stex_proof_number_as_string:N \l__stex_proof_counter_str
+  \tl_gset:ce{subproof_arg_ \int_use:N \currentgrouplevel}{{\exp_not:n{#1}}{\l__stex_proof_counter_str}}
+  \__stex_proof_set_aftergroup:
+}
+\cs_new_protected:Nn \__stex_proof_set_aftergroup: {
+    \aftergroup \__stex_proof_do_after_subgroup:N
+    \expandafter \aftergroup \csname subproof_arg_ \int_use:N \currentgrouplevel\endcsname
+}
+
 \stex_new_stylable_env:nnnnnnn{subproof}{s O{} m}{
-  \stex_keys_set:nn{spf}{#2}
+  \stex_keys_set:nn{subproof}{#2}
   \_stex_do_for_list:
   \stex_if_do_html:T {
-    \__stex_proof_html_env:n{subproof}
+    \__stex_proof_html_env_subproof:
   }
   \seq_map_inline:Nn \l_stex_fors_seq {
     \stex_debug:nn{definiens}{Adding~definiens~to~##1}
@@ -7515,27 +7686,35 @@
   }
 
   \IfBooleanTF #1 {
+    \bool_set_false:N \l__stex_proof_in_spfblock_bool
+    \__stex_proof_set_after_subgroup:n{#2}
     \stex_if_do_html:F \stex_style_apply:
     \str_if_empty:NF \l_stex_key_id_str {
       \__stex_proof_number_as_string:N \@currentlabel
       %\str_set:Ne \@currentHref{subproof.\@currentlabel}
       %\_stex_do_id:
     }
-    \bool_set_false:N \l__stex_proof_in_spfblock_bool
+
     \stex_annotate:nn{data-ftml-title={}}{#3}
   }{
     \bool_if:NTF \l__stex_proof_in_spfblock_bool {
+
+      \__stex_proof_set_after_subgroup_with_number:n{#2}
+
       %\str_if_empty:NF \l_stex_key_id_str {
         %\__stex_proof_number_as_string:N \@currentlabel
         %\str_set:Ne \@currentHref{subproof.\@currentlabel}
         %\_stex_do_id:
       %}
-      \use:c{stex_annotate_env}{data-ftml-title={}} \__stex_proof_start_list:n\__stex_proof_insert_number: #3 \par \use:c{endstex_annotate_env}
+      \use:c{stex_annotate_env}{data-ftml-title={}} \__stex_proof_start_list:n{\__stex_proof_insert_number:\__stex_proof_do_spf_varname:} #3 \par \use:c{endstex_annotate_env}
         \__stex_proof_add_counter:
         \stex_if_do_html:F \stex_style_apply:
     }{
       \noindent \stex_annotate:nn{data-ftml-title={}}{#3} \par
       \stex_if_do_html:F \stex_style_apply:
+
+      \__stex_proof_set_after_subgroup:n{#2}
+
       %\_stex_do_id:
     }
   }
@@ -7578,7 +7757,7 @@
 \newenvironment{spfsketchenv}{}{}
 \stex_new_stylable_cmd:nnnn{spfsketch}{O{} m}{\par
   \begin{spfsketchenv}
-  \stex_keys_set:nn{spf}{#1}
+  \stex_keys_set:nn{spftop}{#1}
   \_stex_do_for_list:
   \_stex_do_id:
   \par
@@ -7597,24 +7776,18 @@
   \noindent\emph{\spfsketchenvautorefname :}~
 }
 \stex_keys_define:nnnn { spfsteps } {
-  \clist_clear:N \l_stex_key_for_clist
-  \str_clear:N \l_stex_key_name_str
-  \tl_clear:N \l_stex_key_method_tl
-  \tl_clear:N \l_stex_key_term_tl
+  %\str_clear:N \l_stex_key_name_str
 }{
-  for         .clist_set:N  = \l_stex_key_for_clist ,
-  method      .tl_set:N     = \l_stex_key_method_tl,
-  term        .tl_set:N     = \l_stex_key_term_tl,
-  name        .str_set_x:N  = \l_stex_key_name_str
-  % todo: style=inline
-}{id,style,title}
+  %name        .str_set_x:N  = \l_stex_key_name_str
+}{spfcommon,spfnamed}
 \cs_new_protected:Nn \__stex_proof_make_step_macro:Nnnnn {
   \NewDocumentCommand #1 {s O{} +m} {
     \__stex_proof_end_comment:
     \stex_keys_set:nn{spfsteps}{##2}
-    \str_if_empty:NF \l_stex_key_name_str {
-      \exp_args:Nne\use:nn{\vardef}{{v\l_stex_key_name_str}[name=\l_stex_key_name_str]{\l_stex_key_name_str}}
-    }
+    %\str_if_empty:NF \l_stex_key_name_str {
+    %  \exp_args:Nne\use:nn{\vardef}{{v\l_stex_key_name_str}[name=\l_stex_key_name_str]{\l_stex_key_name_str}}
+    %}
+    \__stex_proof_do_spf_name:
 
     \spfstepenv
     \str_if_empty:NF \l_stex_key_id_str {
@@ -7625,7 +7798,7 @@
 
     \bool_if:NTF \l__stex_proof_in_spfblock_bool {
       \IfBooleanTF ##1 {
-        \__stex_proof_step_html:nn{#2}{##3}
+        \__stex_proof_step_html_i:nn{#2}{##3}
       }{
         \__stex_proof_step_html:nn{#2}{\__stex_proof_start_list:n{#3} ##3 \__stex_proof_end_list:}
         #5
@@ -7633,7 +7806,7 @@
       \endspfstepenv
       \__stex_proof_start_comment:
     }{
-      \__stex_proof_step_html:nn{#2}{##3}
+      \__stex_proof_step_html_i:nn{#2}{##3}
       \endspfstepenv
     }
   }
@@ -7641,6 +7814,9 @@
 }
 
 \cs_new_protected:Nn \__stex_proof_step_html:nn {
+  \str_if_empty:NF \l_stex_key_numname_str {
+    \__stex_proof_number_as_string:N \l__stex_proof_counter_str
+  }
   \stex_if_do_html:TF{
     %\group_begin:
     \exp_args:Nne \use:c{stex_annotate_env}{
@@ -7649,14 +7825,42 @@
           \seq_map_function:NN \l_stex_fors_seq \stex_use_symbol_uri:N
         }
       }
-      \str_if_empty:NF \l_stex_key_name_str {,
-        data-ftml-stepname={\l_stex_key_name_str}
+      \str_if_empty:NTF \l_stex_key_numname_str {
+        \str_if_empty:NF \l_stex_key_name_str {,
+          data-ftml-stepname={\l_stex_key_name_str}
+        }
+      }{
+        , data-ftml-stepname={\l__stex_proof_counter_str}
       }
     }
     \__stex_proof_html:
     #2
     \par
     \use:c{endstex_annotate_env}
+    %\group_end:
+  }{ #2 }
+}
+\cs_new_protected:Nn \__stex_proof_step_html_i:nn {
+  \stex_if_do_html:TF{
+    \noindent
+    %\group_begin:
+    \exp_args:Ne \stex_annotate:nn{
+      data-ftml-spf#1={
+        \seq_if_empty:NF \l_stex_fors_seq {
+          \seq_map_function:NN \l_stex_fors_seq \stex_use_symbol_uri:N
+        }
+      }
+      \str_if_empty:NTF \l_stex_key_numname_str {
+        \str_if_empty:NF \l_stex_key_name_str {,
+          data-ftml-stepname={\l_stex_key_name_str}
+        }
+      }{
+        , data-ftml-stepname={\l__stex_proof_counter_str}
+      }
+    }{
+      \__stex_proof_html:
+      #2
+    }
     %\group_end:
   }{ #2 }
 }
@@ -7673,8 +7877,8 @@
 \AddToHook{env/spfblock/before}{
   \__stex_proof_end_comment:
 }
-\__stex_proof_make_step_macro:Nnnnn \spfstep {step} \__stex_proof_insert_number: {} \__stex_proof_inc_counter:
-\__stex_proof_make_step_macro:Nnnnn \assumption {assumption} \__stex_proof_insert_number: {} \__stex_proof_inc_counter:
+\__stex_proof_make_step_macro:Nnnnn \spfstep {step} {\__stex_proof_insert_number:\__stex_proof_do_spf_varname:} {} \__stex_proof_inc_counter:
+\__stex_proof_make_step_macro:Nnnnn \assumption {assumption} {\__stex_proof_insert_number:\__stex_proof_do_spf_varname:} {} \__stex_proof_inc_counter:
 \__stex_proof_make_step_macro:Nnnnn \conclude {conclusion} {$\Rightarrow$} {} {}
 \NewDocumentCommand \eqstep {s m}{
   \__stex_proof_end_comment:
@@ -7682,14 +7886,14 @@
 
   \bool_if:NTF \l__stex_proof_in_spfblock_bool {
     \IfBooleanTF #1 {
-      \__stex_proof_step_html:nn{eqstep}{$= #2$}
+      \__stex_proof_step_html_i:nn{eqstep}{$= #2$}
     }{
       \__stex_proof_step_html:nn{eqstep}{\__stex_proof_start_list:n{$=$} $#2$ \__stex_proof_end_list:}
     }
     \endspfstepenv
     \__stex_proof_start_comment:
   }{
-    \__stex_proof_step_html:nn{eqstep}{$= #2$}
+    \__stex_proof_step_html_i:nn{eqstep}{$= #2$}
     \endspfstepenv
   }
 }
@@ -7699,9 +7903,17 @@
 }
 \stex_deactivate_macro:Nn \yield {sproof~environments}
 \newcommand\spfjust[1]{
-  \stex_annotate:nn{spfjust={}}{ #1 }
+  \stex_annotate:nn{data-ftml-spfjust={}}{ #1 }
 }
 \stex_deactivate_macro:Nn \spfjust {sproof~environments}
+\newcommand\spfby[1]{
+  \stex_annotate:nn{data-ftml-proofmethod={}}{ #1 }
+}
+\stex_deactivate_macro:Nn \spfby {sproof~environments}
+\newcommand\spfarg[2][]{
+  \stex_annotate:nn{data-ftml-spfarg={#1}}{ #2 }
+}
+\stex_deactivate_macro:Nn \spfarg {sproof~environments}
 \tl_set:Nn \__stex_proof_proof_box_tl {
   \ltx@ifpackageloaded{amssymb}{$\square$}{
     \hbox{\vrule\vbox{\hrule width 6 pt\vskip 6pt\hrule}\vrule}
@@ -7743,6 +7955,8 @@
 \notation{apply}[infixop]{\argsep{#2}{\mathbin{#1}}\STEXinvisible{#1}}
 \notation{apply}[infixrel]{\argsep{#2}{\mathrel{#1}}\STEXinvisible{#1}}
 
+\symdef{autoprove}[name=prove automatically]{\mathrm{automatically\ proved}}
+
 \symdef{module~type}[args=i,op=\mathtt{MOD}]
   {\mathopen{\comp{\mathtt{MOD}(}}#1\mathclose{\comp{)}}}
 \symdef{module~type~merge}[args=a,op=\oplus]
@@ -7761,7 +7975,7 @@
 \symdef{ellipses}[ldots]{\ldots}
 \symdef{sequence~expression}[comma,args=a]{#1}
 \symdef{sequence~type}[args=1]{#1^{\comp\ast}}
-\symdef{sequence~map}[args=ia]{
+\symdef{sequence~map}[args=ai]{
   \comp{\mathrm{map}}\mathopen{\comp{(}}#1\mathpunct{\comp{,}}
   #2\mathclose{\comp{)}}
 }
@@ -7774,6 +7988,20 @@
 
 \symdef{implicit~bind}[args=Bi,assoc=pre]{\mathopen{\comp\{} #1 \mathclose{\comp{\}\c_math_subscript_token I}} #2}
 
+\symdecl{arrow}[args=ai,assoc=pre]
+\notation{arrow}[single]{
+  \argsep{#1}{\mathbin{\comp\times}}
+  \mathrel{\maincomp\to} #2
+}
+\notation{arrow}[double]{
+  \argsep{#1}{\mathbin{\comp\times}}
+  \mathrel{\maincomp\Rightarrow} #2
+}
+
+\symdef{intsecttp}[intersection type,args=a,sqcap,prec=0;-10]{ \argsep{#1}{\maincomp{\mathrel{\sqcap}}} }
+
+\symdef{bindin}[args=Bi]{ \mathop{\maincomp{\amalg}}_{#1}#2 }
+
 \symdecl*{integer~literal}
 \notation{integer~literal}{\mathbb Z}
 
@@ -7784,6 +8012,8 @@
 \symdef{judgment~holds}[args=i,role=judgment]{\comp\vdash\;#1}
 
 \symdef{object}{\mathtt{Obj}}
+
+\symdef{letin}[name=let in,args=Bi,role=let]{\maincomp{\mathrm{let}}\ #1\ \comp{\mathrm{in}}\ #2}
 
 \symdef{aseqdots}[args=a,prec=nobrackets]
   {#1\comp{,\ldots}}%{##1\comp,##2}
