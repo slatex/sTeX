@@ -903,6 +903,22 @@
   }
 }
 
+\cs_new_protected:Nn \_stex_set_meta_archive: {
+  \prop_if_exist:cF { c_stex_mathhub_FTML/meta_archive } {
+    \seq_if_empty:NF \c_stex_mathhub_files {
+      \stex_debug:nn{mathhub}{Opening~archive:~FTML/meta}
+      \__stex_mathhub_do_manifest:nn { FTML/meta }{
+        \tl_gset:ce {c_stex_mathhub_FTML/meta_archive}{
+          {\tl_to_str:n{FTML/meta}}
+          {\tl_to_str:n{http://mathhub.info}}
+          {}
+        }
+      }
+    }
+  }
+
+}
+
 \cs_new_protected:Nn \__stex_mathhub_require:n {
   \prop_if_exist:cF { c_stex_mathhub_#1_archive } {
     \seq_if_empty:NTF \c_stex_mathhub_files {
@@ -4434,6 +4450,10 @@
   \__stex_seqs_macro:
   \stex_if_check_terms:T \_stex_notation_check:
   \_stex_var_notation_macro:
+   \stex_if_do_html:T {
+    \def\comp{\_varcomp}
+    \_stex_notation_do_html:n \l_stex_key_name_str
+  }
   \group_begin:
   \tl_set_eq:NN \thisvarname \l_stex_key_name_str
   \tl_clear:N \thisstyle
@@ -4490,6 +4510,11 @@
       }
     }{\hbox\bgroup
       \_stex_annotate_force_break:n{
+
+        $\stex_annotate:nn{data-ftml-seqrange={}}{
+          \exp_args:Nno\symuse{Metatheory?sequence~range}\l__stex_seqs_range_clist
+        }$
+
         \tl_if_empty:NF \l_stex_key_type_tl {
           \stex_annotate:nn{data-ftml-type={}}{$\l_stex_key_type_tl$}
         }
@@ -5162,9 +5187,6 @@
     \_stex_term_arg_aB:nnnnn {
     \msg_error:nnx{stex}{error/assocarg}{\tl_to_str:n{#1}}
   }
-}
-\cs_new_protected:Npn \seqmap #1 #2 {
-  \symuse{Metatheory?sequence~expression}{\seqmap{#1}{#2}}%\l_tmpa_tl {#2}
 }
 \cs_new_protected:Npn \argmap #1 #2 #3 {
   \__stex_notations_check_aB_arg:Nn\argmap{#1}
@@ -6534,9 +6556,9 @@
     \seq_set_eq:NN \l_stex_aB_args_seq \l__stex_expr_old_seq
   \tl_set:Ne \l_tmpa_tl {
     \symuse{Metatheory?bind}{
-      \svar[MAP_DUMMY]{\exp_not:N\mathrm{MAPDUMMY}}
+      \svar[MAP_DUMMY]{\exp_not:N\mathcal{m}}
     }{
-      \exp_args:No\exp_not:n{\l_tmpa_cs{\svar[MAP_DUMMY]{\mathrm{MAPDUMMY}}}}
+      \exp_args:No\exp_not:n{\l_tmpa_cs{\svar[MAP_DUMMY]{\mathcal{m}}}}
     }
   }
   \exp_args:NNe \use:nn \group_end: {
@@ -6562,6 +6584,21 @@
 
 \cs_new_protected:Nn \__stex_expr_varseq_in_map:nnnnnnnn {
   \__stex_expr_assoc_make_seq:nnn{#2}{#6}{#3}
+}
+
+\cs_new_protected:Npn \seqmap #1 #2 {
+  %\symuse{Metatheory?sequence~expression}{
+    \cs_set:Npn \l_tmpa_cs ##1 {#1}
+    \tl_set:Ne \l_tmpa_tl {
+      \symuse{Metatheory?bind}{
+        \svar[MAP_DUMMY]{\exp_not:N\mathcal{m}}
+      }{
+        \exp_args:No\exp_not:n{\l_tmpa_cs{\svar[MAP_DUMMY]{\mathcal{m}}}}
+      }
+    }
+    \exp_args:Nnno \symuse{Metatheory?sequence~map}{#2}\l_tmpa_tl
+  %  \seqmap{#1}{#2}
+  %}%\l_tmpa_tl {#2}
 }
 \cs_set_protected:Npn \comp {}
 
@@ -7934,19 +7971,19 @@
 \cs_set:Npn \_stex_sref_do_aux:n #1 { #1 }
 \bool_set_false:N \c_stex_check_terms_bool
 \bool_set_false:N \l__stex_annotate_do_output_bool
-\tl_if_exist:cF {c_stex_mathhub_FTML/meta_archive}{
-  \tl_gset:ce {c_stex_mathhub_FTML/meta_archive}{
-    {\tl_to_str:n{FTML/meta}}
-    {\tl_to_str:n{http://mathhub.info}}
-    {}
-  }
-}
+\_stex_set_meta_archive:
 \tl_set:Ne \l_stex_current_document_uri {
   {\tl_to_str:n{FTML/meta}}{}
   {\tl_to_str:n{Metatheory}}{\tl_to_str:n{en}}{}
 }
 \_stex_module_setup_top_nosig:n{Metatheory}
 \g_stex_every_module_tl
+
+\symdef{typeof}[name=type~of,args=1]{\maincomp{\mathrm{tp}}\dobrackets{#1}}
+
+\symdef{commented}[args=2]{#2 \;(#1)}
+\notation{commented}[inv]{#2}
+
 \symdef{of~type}[args=ii,invisible]{#1}
 \notation{of~type}[colon]{#1 \mathbin{\comp{:}} #2}
 
@@ -7975,6 +8012,8 @@
 \symdef{ellipses}[ldots]{\ldots}
 \symdef{sequence~expression}[comma,args=a]{#1}
 \symdef{sequence~type}[args=1]{#1^{\comp\ast}}
+\symdef{ranged~sequence~type}[args=ia]{{#1}\c_math_subscript_token{\dobrackets{#2}}}
+\symdef{sequence~range}[inv,args=a]{#1}
 \symdef{sequence~map}[args=ai]{
   \comp{\mathrm{map}}\mathopen{\comp{(}}#1\mathpunct{\comp{,}}
   #2\mathclose{\comp{)}}
@@ -7982,6 +8021,12 @@
 \symdef{fold~right}[args=aibbi]{
   \maincomp{\mathrm{fold}}\dobrackets{#2\mathpunct{\comp;}#1\mathpunct{\comp;}
     \dobrackets{#3,#4} \mathrel{\comp\mapsto} #5
+  }
+}
+
+\symdef{fold}[args=abbi]{
+  \maincomp{\mathrm{fold}}\dobrackets{#1\mathpunct{\comp;}
+    \dobrackets{#2,#3} \mathrel{\comp\mapsto} #4
   }
 }
 
