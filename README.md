@@ -31,27 +31,36 @@ be found [here](https://kwarc.github.io/bibs/sTeX/).
 sTeX comes with a large corpus of pre-annotated materials that act as evaluation grounds
 and regression tests for the sTeX functionality and best practices that are publicly
 available. 
-* [HelloWorld](https://gl.mathhub.info/HelloWorld) a collection of simple hello world
-  examples the show off the best practices of sTeX annotation. 
 * [SMGLoM](https://gl.mathhub.info/smglom), the Semantic, Multilingual Glossary of
   Mathematics (and similar disciplines). SMGloM provides a large set of definitions and
   well-designed semantic macros for core mathematical (and computation) concepts and
   objects. This resource greatly facilitates "getting off the ground" in semantic
   annotation.
-* [MiKoMH](https://gl.mathhub.info/MiKoMH) a set of semantically annotated courses in
-  computer science and (symbolic) AI (ca. 5000 pages of slides and notes). Ca. 3000
-  problem/solutions exist are only available upon request. 
+* [courses](https://gl.mathhub.info/courses) a set of semantically annotated courses in
+  computer science and (symbolic) AI (ca. 7000 pages of slides and notes). Ca. 5000
+  problem/solutions and old exams are available publicly (more exist in private
+  repositories). 
+* [Papers](https://gl.mathhub.info/Papers) a set of semantically annotated research papers 
+  about the work in the [KWARC group at FAU](https://kwarc.info). 
+* [talks](https://gl.mathhub.info/talks) a set of semantically annotated presentations
+  about the work in the [KWARC group at FAU](https://kwarc.info). 
 * [sTeX3 Labs](https://gl.mathhub.info/sTeX) a set of experimental re-formalizations of
   (mostly) [SMGLoM](https://gl.mathhub.info/smglom) material to fully take advantage of
   the sTeX3 functionality and the
   [rusTeX](https://github.com/slatex/RusTeX)/[MMT](https://uniformal.github.io) pipeline
-  and knowledge managemen facilities. 
+  and knowledge management facilities. 
 
-All of these are hosted on [MathHub](https://mathhub.info), an experimental portal for the
+All of these are hosted on [MathHub](https://mathhub.info), a portal for the
 management of active mathematical documents and flexiformal mathematics. The organization
 of the material into "mathematical archives" (GIT repositories with a particular
 standardized structure on [a GitLab repository management server](https://gl.mathhub.info)
 greatly enhances modularization and the provision of added value services.
+
+## Application: The ALeA System
+
+sTeX is the main content representation format used in the [ALeA
+System](https::/alea.education), and adaptive learning assistant, which uses the semantic
+annotations for adaptive course materials and interactive learning interventions.
 
 ## Setup
 
@@ -86,3 +95,6 @@ The sTeX distribution contains the following directories (conformant with the CT
 * `tex`: packages and classes of the sTeX distribution
 * `lib`: bibTeX bibliography
 * `doc`: the sTeX manual  and further documentation
+
+<!--  LocalWords:  LPPL SMGLoM sTeXDIR cd TEXINPUTS bashrc texmf cnf param sudo fmtutil -->
+<!--  LocalWords:  sys CTAN dtx tex bibTeX -->
