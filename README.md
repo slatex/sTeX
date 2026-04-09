@@ -59,7 +59,7 @@ greatly enhances modularization and the provision of added value services.
 ## Application: The ALeA System
 
 sTeX is the main content representation format used in the [ALeA
-System](https::/alea.education), and adaptive learning assistant, which uses the semantic
+System](https://alea.education), and adaptive learning assistant, which uses the semantic
 annotations for adaptive course materials and interactive learning interventions.
 
 ## Setup
