@@ -1074,7 +1074,7 @@
 %
 % \end{implementation}
 %
-% \begin{sfunction}{\stex_persist:n,\stex_persist:e}{}
+% \begin{sfunction}{\stex_persist:n,\stex_persist:e,\loadsms}{}
 %
 % Writes the given code in the |.sms|-file (if smsmode is on)
 %
@@ -1087,6 +1087,19 @@
 % Is called at the end of the |.sty|-file:
 %
 %    \begin{macrocode}
+
+\cs_new_protected:Npn \loadsms #1 {
+  \stex_str_if_ends_with:nnTF{#1}{.sms}{
+    \_@@_load_file:n{#1}
+  }{
+    \stex_str_if_ends_with:nnTF{#1}{.tex}{
+      \_@@_load_file:n{#1}
+    }{
+      \_@@_load_file:n{#1.sms}
+    }
+  }
+}
+
 \cs_new_protected:Nn \_stex_persist_read_now: {
   \bool_if:NTF \c_stex_persist_mode_bool {
     \bool_if:NTF \c_stex_persist_write_mode_bool 
@@ -1102,9 +1115,11 @@
 \cs_new_protected:Nn \_@@_load_file:n {
   \file_if_exist:nT{#1}{
     \group_begin:
-    \cs_set:Npn \stex_persist:n ##1 {}
-    \cs_set:Npn \stex_persist:e ##1 {}
+      \cs_set:Npn \stex_persist:n ##1 {}
+      \cs_set:Npn \stex_persist:e ##1 {}
       \stex_debug:nn{persist}{restoring~from~sms~file}
+      \catcode`\:=11\relax
+      \catcode`\_=11\relax
       \catcode`\ =10\relax
       \cs:w @ @ input \cs_end:#1\relax
     \group_end:

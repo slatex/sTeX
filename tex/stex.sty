@@ -581,6 +581,19 @@
 }
 
 \iow_new:N \c__stex_persist_sms_iow
+
+\cs_new_protected:Npn \loadsms #1 {
+  \stex_str_if_ends_with:nnTF{#1}{.sms}{
+    \__stex_persist_load_file:n{#1}
+  }{
+    \stex_str_if_ends_with:nnTF{#1}{.tex}{
+      \__stex_persist_load_file:n{#1}
+    }{
+      \__stex_persist_load_file:n{#1.sms}
+    }
+  }
+}
+
 \cs_new_protected:Nn \_stex_persist_read_now: {
   \bool_if:NTF \c_stex_persist_mode_bool {
     \bool_if:NTF \c_stex_persist_write_mode_bool
@@ -596,9 +609,11 @@
 \cs_new_protected:Nn \__stex_persist_load_file:n {
   \file_if_exist:nT{#1}{
     \group_begin:
-    \cs_set:Npn \stex_persist:n ##1 {}
-    \cs_set:Npn \stex_persist:e ##1 {}
+      \cs_set:Npn \stex_persist:n ##1 {}
+      \cs_set:Npn \stex_persist:e ##1 {}
       \stex_debug:nn{persist}{restoring~from~sms~file}
+      \catcode`\:=11\relax
+      \catcode`\_=11\relax
       \catcode`\ =10\relax
       \cs:w @ @ input \cs_end:#1\relax
     \group_end:
@@ -4085,7 +4100,7 @@
   }
 }
 
-\cs_new_protected:Npn \stex_get_symbol:nF #1 #2 {
+\cs_new_protected:Npn \stex_get_symbol:nTF #1 #2 #3 {
   \tl_clear:N \l_stex_get_symbol_uri
   \cs_if_exist:cTF { #1 }{
     \cs_set_eq:Nc \l__stex_syms_cs { #1 }
@@ -4102,7 +4117,11 @@
   }{
     \__stex_syms_get_symbol_from_string:n { #1 }
   }
-  \tl_if_empty:NT \l_stex_get_symbol_uri { #2 }
+  \tl_if_empty:NTF \l_stex_get_symbol_uri { #3 } { #2 }
+}
+
+\cs_new_protected:Npn \stex_get_symbol:nF #1 #2 {
+  \stex_get_symbol:nTF{ #1 }{}{ #2 }
 }
 
 \cs_new_protected:Nn \__stex_syms_get_symbol_from_cs: {
@@ -7087,21 +7106,43 @@
 
 \let \this \stex_current_this:
 \cs_new_protected:Nn \stex_get_mathstructure:n {
-  \tl_clear:N \l_stex_get_structure_module_uri
-  \stex_get_symbol:nF{#1}{
+  \stex_get_mathstructure_maybe:nTF{#1}{}{
     \msg_error:nnn{stex}{error/unknownstructure}{#1}
   }
-  \exp_args:No \tl_if_eq:NNTF \l_stex_get_symbol_invoke_cs \stex_invoke_structure: {
-    \tl_set:Ne \l_stex_get_structure_module_uri { \exp_after:wN \__stex_structures_get:w \l_stex_get_symbol_type_tl , \stex_end:  }
+}
+\cs_new_protected:Npn \stex_get_mathstructure_maybe:nTF #1 #2 #3 {
+  \tl_clear:N \l_stex_get_structure_module_uri
+  \stex_get_symbol:nTF{#1}{
+    \exp_args:No \tl_if_eq:NNTF \l_stex_get_symbol_invoke_cs \stex_invoke_structure: {
+      \tl_set:Ne \l_stex_get_structure_module_uri { \exp_after:wN \__stex_structures_get:w \l_stex_get_symbol_type_tl , \stex_end:  }
+      #2
+    }{
+      #3
+    }
   }{
-    \msg_error:nnn{stex}{error/unknownstructure}{#1}
+    #3
   }
 }
 
 \cs_new:Npn \__stex_structures_get:w #1 , #2 \stex_end: { #1 }
 \cs_new_protected:Npn \usestructure #1 {
-  \stex_get_mathstructure:n{ #1 }
-  \stex_debug:nn{usestructure}{Using~structure~#1:~\stex_use_module_uri:N \l_stex_get_structure_module_uri}
+  \stex_if_smsmode:TF{
+    \stex_get_mathstructure_maybe:nTF{ #1 }{
+      \stex_debug:nn{usestructure}{Using~structure~#1:~\stex_use_module_uri:N \l_stex_get_structure_module_uri}
+      \__stex_structures_do_usestructure:
+    }{
+      \stex_debug:nn{usestructure}{Structure~#1~not~found~in~sms~mode}
+    }
+  }{
+    \stex_get_mathstructure:n{ #1 }
+    \stex_debug:nn{usestructure}{Using~structure~#1:~\stex_use_module_uri:N \l_stex_get_structure_module_uri}
+    \__stex_structures_do_usestructure:
+  }
+  \stex_smsmode_do:
+}
+\stex_sms_allow_escape:N \usestructure
+
+\cs_new_protected:Nn \__stex_structures_do_usestructure: {
   \seq_clear:N \l__stex_structures_imports_seq
   \clist_map_inline:Nn \l_stex_get_symbol_type_tl {
     \stex_if_module_exists:nT{##1}{
@@ -7448,7 +7489,11 @@
   \tl_clear:N \l_stex_key_from_tl
 }{
   proofend    .tl_set:N     = \l_stex_key_proofend_tl,
-  hide        .bool_set:N   = \l_stex_key_hide_bool,
+  hide        .code:n       = {
+    \str_if_eq:eeT{#1}{true}{
+      \bool_set_true:N \l_stex_key_hide_bool
+    }
+  },
   continues   .tl_set:N     = \l_stex_key_continues_tl, % <- unused
   functions   .tl_set:N     = \l_stex_key_functions_tl, % <- unused
   from        .tl_set:N     = \l_stex_key_from_tl % <- unused
