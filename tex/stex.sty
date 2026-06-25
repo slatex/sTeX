@@ -1793,7 +1793,7 @@
   \tl_clear:N \l_stex_key_fallback_tl
 }{
   % TODO get rid of this
-  fallback  .code:n = {},
+  fallback  .tl_set:N = \l_stex_key_fallback_tl,
   pre       .code:n = {},
   post      .code:n = {}
 }{archive file}
@@ -1840,9 +1840,9 @@
 \cs_new_protected:Nn \__stex_refs_local:n {
   \stex_debug:nn{sref}{Checking~#1}
   \tl_if_exist:cTF{ g_stex_sref_label_ #1 }{
-    \exp_args:Ne \stex_annotate:nn{data-ftml-sref={\use:c{ g_stex_sref_label_ #1 }}}{
+    %\exp_args:Ne \stex_annotate:nn{data-ftml-sref={\use:c{ g_stex_sref_label_ #1 }}}{
       \exp_args:Ne \__stex_refs_local_ref:n {\use:c{ g_stex_sref_label_ #1 }}
-    }
+    %}
   }{
     \tl_if_empty:NTF \l_stex_key_fallback_tl { ??? }{ \l_stex_key_fallback_tl }
   }
@@ -1915,16 +1915,18 @@
       }{
         \tl_set_eq:NN \l_stex_key_title_tl \l__stex_refs_default_title
         \str_set_eq:NN \l__stex_refs_file \l__stex_refs_default_file
+        \str_set_eq:NN \l_stex_key_archive_str \l__stex_refs_default_archive
+        \str_set_eq:NN \l_stex_key_file_str \l__stex_refs_default_relpath
         \str_if_eq:NNTF \l__stex_refs_default_file \c__stex_refs_iow_str {
           \exp_args:No \__stex_refs_local_ref:n \l__stex_refs_uri
         }{
-          \stex_debug:nn{sref}{in~title=\exp_args:No\exp_not:n\l_stex_key_title_tl,file=\l__stex_refs_default_file}
+          \stex_debug:nn{sref}{in~title=\exp_args:No\exp_not:n\l_stex_key_title_tl,file=\l__stex_refs_file,archive=\l_stex_key_archive_str,relpath=\l_stex_key_file_str}
           \__stex_refs_in:
         }
       }
     }
   }{
-    \stex_debug:nn{sref}{in~\exp_args:No\exp_not:n\l__stex_refs_in}
+    \stex_debug:nn{sref}{in~\exp_args:No\exp_not:n\l__stex_refs_in,archive=\l_stex_key_archive_str,relpath=\l_stex_key_file_str}
     \exp_args:No \stex_in_archive:nn \l_stex_key_archive_str {
       \str_set:Ne \l__stex_refs_file { \exp_args:No \stex_source_path:n {\l_stex_key_file_str}.sref }
     }
@@ -1948,8 +1950,15 @@
     \tl_set:Ne \l__stex_refs_tmp {
       \exp_after:wN \__stex_refs_in_text:nn \l__stex_refs_tmp
     }
-    \exp_args:Ne \stex_annotate:nn{data-ftml-sref={\l__stex_refs_uri}}{
-      \stex_if_html_backend:F{\cs_if_exist:NT \href {\exp_args:No \href \l__stex_refs_uri }} \l__stex_refs_tmp
+    \stex_if_html_backend:TF{
+      \exp_args:No \stex_in_archive:nn \l_stex_key_archive_str {
+        \exp_args:NNo \stex_document_uri_from_archive_file:Nn \l__stex_refs_in \l_stex_key_file_str
+        \exp_args:Ne \stex_annotate:nn{data-ftml-sref={\l__stex_refs_uri},data-ftml-sref-in={\stex_use_document_uri:N \l__stex_refs_in}}{
+          \l__stex_refs_tmp
+        }
+      }
+    }{
+      \cs_if_exist:NT \href {\exp_args:No \href \l__stex_refs_uri }\l__stex_refs_tmp
     }
   }
 }
@@ -1996,16 +2005,17 @@
 \tl_new:N \l__stex_refs_default_title
 \str_new:N \l__stex_refs_default_file
 \str_new:N \l__stex_refs_default_archive
+\str_new:N \l__stex_refs_default_relpath
 
 \newcommand\srefsetin[3][]{
-  \str_set:Ne \l__stex_refs_default_file { #2 }
+  \str_set:Ne \l__stex_refs_default_relpath { #2 }
   \tl_if_empty:nTF{#1}{
     \str_set:Ne \l__stex_refs_default_archive { \stex_archive_id:N \c_stex_main_archive }
   }{
     \str_set:Nn \l__stex_refs_default_archive { #1 }
   }
   \exp_args:No \stex_in_archive:nn \l__stex_refs_default_archive {
-    \str_set:Ne \l__stex_refs_default_file { \exp_args:No \stex_source_path:n {\l__stex_refs_default_file}.sref }
+    \str_set:Ne \l__stex_refs_default_file { \exp_args:No \stex_source_path:n {\l__stex_refs_default_relpath}.sref }
   }
   \str_set:Nn \l__stex_refs_default_title { #3 }
 }
