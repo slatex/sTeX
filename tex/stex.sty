@@ -5564,10 +5564,12 @@
     \__stex_expr_struct_type:n {#1}
     \tl_set:Nn \l_stex_struct_this_tl {}
     \peek_charcode_remove:NTF ! {
-      \peek_charcode:NTF [ {
-        \__stex_expr_maybe_notation:w
-      }{
-        \__stex_expr_maybe_notation:w []
+      \_stex_eat_exclamation_point_then:n{
+        \peek_charcode:NTF [ {
+          \__stex_expr_maybe_notation:w
+        }{
+          \__stex_expr_maybe_notation:w []
+        }
       }
     }{
       \__stex_expr_invoke_this:n
@@ -5798,14 +5800,16 @@
 }
 \cs_new_protected:Nn \__stex_expr_invoke_this:n {
   \peek_charcode_remove:NTF ! {
-    \exp_args:Nne\use:nn{
-      \group_end:\symuse{Metatheory?of~type}[invisible]{
-        \tl_if_empty:nTF{#1}{\_stex_annotate_force_break:n{}}{#1}
-      }
-    }{
-      {
-        \tl_set:Nn \exp_not:N \l_stex_current_full_tl { \l_stex_current_full_tl}
-        \__stex_expr_current_type:
+    \_stex_eat_exclamation_point_then:n {
+      \exp_args:Nne\use:nn{
+        \group_end:\symuse{Metatheory?of~type}[invisible]{
+          \tl_if_empty:nTF{#1}{\_stex_annotate_force_break:n{}}{#1}
+        }
+      }{
+        {
+          \tl_set:Nn \exp_not:N \l_stex_current_full_tl { \l_stex_current_full_tl}
+          \__stex_expr_current_type:
+        }
       }
     }
   }{
@@ -6058,11 +6062,13 @@
 \cs_new_protected:Nn \__stex_expr_math: {
   \stex_debug:nn{expressions}{math~mode}
   \peek_charcode_remove:NTF ! {
-    % operator
-    \peek_charcode_remove:NTF * \__stex_expr_op_custom:n {
-      % op notation
-      \peek_charcode:NTF [ \__stex_expr_op_notation:w {
-        \__stex_expr_op_notation:w []
+    \_stex_eat_exclamation_point_then:n {
+      % operator
+      \peek_charcode_remove:NTF * \__stex_expr_op_custom:n {
+        % op notation
+        \peek_charcode:NTF [ \__stex_expr_op_notation:w {
+          \__stex_expr_op_notation:w []
+        }
       }
     }
   }{
@@ -6080,7 +6086,7 @@
 }
 \cs_new_protected:Npn \__stex_expr_notation:w [ #1 ] {
   \peek_charcode_remove:NTF ! {
-    \__stex_expr_op_notation:w [#1]
+    \_stex_eat_exclamation_point_then:n{\__stex_expr_op_notation:w [#1]}
   }{
     \__stex_expr_full_notation:n {#1}
   }
@@ -6280,7 +6286,7 @@
 
 \cs_new_protected:Nn \__stex_expr_return_next: {
   \peek_charcode_remove:NTF ! {
-    \exp_after:wN \l__stex_expr_return_this_tl \l__stex_expr_return_args_tl \group_end:
+    \_stex_eat_exclamation_point_then:n{\exp_after:wN \l__stex_expr_return_this_tl \l__stex_expr_return_args_tl \group_end:}
   }\__stex_expr_return:
 }
 
@@ -6324,6 +6330,13 @@
 \cs_new_protected:Nn \_stex_eat_exclamation_point: {
   \peek_charcode_remove:NT ! \_stex_eat_exclamation_point:
 }
+\cs_new_protected:Nn \_stex_eat_exclamation_point_then:n {
+  \peek_charcode_remove:NTF ! {
+    \_stex_eat_exclamation_point_then:n {#1}
+  }{
+    #1
+  }
+}
 \bool_new:N \stex_in_invisible_html_bool
 \stex_if_html_backend:TF {
   \cs_new_protected:Nn \_stex_term_oms:nn {
@@ -6358,9 +6371,7 @@
 \stex_if_html_backend:TF {
   \cs_new_protected:Nn \__stex_expr_do_headterm:nn {
     \bool_if:NTF \stex_in_invisible_html_bool {
-      {\bool_set_true:N \l_stex_allow_semantic_bool
-        \ensuremath{\l_stex_current_term_tl}
-      }
+      {\bool_set_true:N \l_stex_allow_semantic_bool \l_stex_current_term_tl}
     }{
       \__stex_expr_annotate:nnn{complex}{#1}{
         \stex_annotate_invisible:nn{data-ftml-headterm={}}{
@@ -6418,7 +6429,11 @@
       data-ftml-head={\l_stex_current_full_tl},
       data-ftml-notationid={#2},
     }{
-      \_stex_annotate_force_break:n{#3}
+      \_stex_annotate_force_break:n{
+        \tl_if_empty:nTF{#3}{
+          \bool_if:NT \stex_in_invisible_html_bool {S}
+        }{#3}
+      }
     }
   }
 }{
