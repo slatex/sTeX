@@ -8,6 +8,7 @@
 %% 
 \ProvidesExplClass{notesslides}{2026/06/24}{4.1.0}{notesslides Class}
 \RequirePackage{l3keys2e}
+\RequirePackage{ragged2e}
 
 \str_const:Nn \c__notesslides_class_str {article}
 
